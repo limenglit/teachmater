@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Shuffle, Crown, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExportButtons from '@/components/ExportButtons';
 
 interface TeamMember { id: string; name: string; isCaptain: boolean }
 interface Team { id: string; name: string; members: TeamMember[] }
@@ -85,6 +86,8 @@ export default function TeamBuilder() {
     setDropTarget(null);
   };
 
+  const printRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="flex-1 p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
@@ -94,6 +97,7 @@ export default function TeamBuilder() {
             <p className="text-sm text-muted-foreground mt-1">按每队人数自动建队，可拖拽调整</p>
           </div>
           <div className="flex items-center gap-3">
+            {teams.length > 0 && <ExportButtons targetRef={printRef} filename="建队结果" />}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               每队人数
               <Input type="number" min={2} max={10} value={membersPerTeam}
@@ -112,7 +116,7 @@ export default function TeamBuilder() {
             <p className="text-sm">设定每队人数后随机分配，支持拖拽调整</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div ref={printRef} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <AnimatePresence>
               {teams.map((team, ti) => (
                 <motion.div

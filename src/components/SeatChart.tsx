@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle } from 'lucide-react';
+import ExportButtons from '@/components/ExportButtons';
 
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random';
 
@@ -150,6 +151,8 @@ export default function SeatChart() {
 
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
 
+  const printRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="flex-1 p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
@@ -199,17 +202,19 @@ export default function SeatChart() {
               {m.label}
             </button>
           ))}
+          {seats.length > 0 && <ExportButtons targetRef={printRef} filename="座位表" />}
           <Button onClick={autoSeat} className="gap-2 ml-auto">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
         </div>
 
-        {/* Podium */}
-        <div className="mb-4 text-center">
-          <div className="inline-block bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
-            🏫 讲 台
+        <div ref={printRef}>
+          {/* Podium */}
+          <div className="mb-4 text-center">
+            <div className="inline-block bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
+              🏫 讲 台
+            </div>
           </div>
-        </div>
 
         {/* Seat Grid */}
         {seats.length > 0 ? (
@@ -249,6 +254,7 @@ export default function SeatChart() {
             <p className="text-sm">支持竖S形、横S形、按组排列、随机等多种模式，可拖拽交换座位</p>
           </div>
         )}
+        </div>
 
         {/* Legend */}
         {seats.length > 0 && (
