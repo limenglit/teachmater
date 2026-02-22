@@ -4,6 +4,7 @@ import { Shuffle, Star, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
+import ExportButtons from '@/components/ExportButtons';
 
 interface GroupMember { id: string; name: string; isLeader: boolean }
 interface Group { id: string; name: string; members: GroupMember[] }
@@ -86,6 +87,8 @@ export default function GroupManager() {
     setDropTarget(null);
   };
 
+  const printRef = useRef<HTMLDivElement>(null);
+
   return (
     <div className="flex-1 p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
@@ -95,6 +98,7 @@ export default function GroupManager() {
             <p className="text-sm text-muted-foreground mt-1">将 {students.length} 名学生随机分成若干组，可拖拽调整</p>
           </div>
           <div className="flex items-center gap-3">
+            {groups.length > 0 && <ExportButtons targetRef={printRef} filename="分组结果" />}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               组数
               <Input type="number" min={2} max={10} value={groupCount}
@@ -113,7 +117,7 @@ export default function GroupManager() {
             <p className="text-sm">支持 2-10 组，可自定义组名、指定组长、拖拽调整</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div ref={printRef} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <AnimatePresence>
               {groups.map((group, gi) => (
                 <motion.div
