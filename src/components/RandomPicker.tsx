@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
-import { Play, Volume2, Mic, RotateCcw } from 'lucide-react';
+import { Play, Volume2, Mic, RotateCcw, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function RandomPicker() {
@@ -12,6 +13,7 @@ export default function RandomPicker() {
   const [noRepeat, setNoRepeat] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [rollDuration, setRollDuration] = useState(10); // 5-60 seconds
   const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
   const rollerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
@@ -39,18 +41,19 @@ export default function RandomPicker() {
     setIsRolling(true);
     setSelectedStudent(null);
 
-    // Simulate rolling through names
-    let count = 0;
-    const totalSteps = 20 + Math.floor(Math.random() * 15);
-    const startSpeed = 50;
+    const durationMs = rollDuration * 1000;
+    const startTime = Date.now();
+    const minInterval = 50;
 
     const step = () => {
-      count++;
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / durationMs, 1);
       const randomIndex = Math.floor(Math.random() * availableStudents.length);
       setSelectedStudent(availableStudents[randomIndex].name);
 
-      if (count < totalSteps) {
-        const delay = startSpeed + (count * count * 0.8); // Easing deceleration
+      if (progress < 1) {
+        // Ease-out: interval grows as progress increases
+        const delay = minInterval + (progress * progress * 400);
         animRef.current = window.setTimeout(step, delay);
       } else {
         // Final selection
@@ -66,7 +69,7 @@ export default function RandomPicker() {
     };
 
     step();
-  }, [availableStudents, isRolling, noRepeat, speakName]);
+  }, [availableStudents, isRolling, noRepeat, speakName, rollDuration]);
 
   useEffect(() => {
     return () => {
@@ -80,7 +83,7 @@ export default function RandomPicker() {
   return (
     <div className="flex-1 flex flex-col items-center p-8">
       {/* Controls */}
-      <div className="flex items-center gap-6 mb-8">
+      <div className="flex flex-wrap items-center gap-6 mb-4">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <Volume2 className="w-4 h-4" /> 音效
           <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
@@ -93,6 +96,20 @@ export default function RandomPicker() {
           <RotateCcw className="w-4 h-4" /> 不重复
           <Switch checked={noRepeat} onCheckedChange={setNoRepeat} />
         </label>
+      </div>
+      {/* Duration slider */}
+      <div className="flex items-center gap-3 mb-8 w-full max-w-sm">
+        <Timer className="w-4 h-4 text-muted-foreground shrink-0" />
+        <Slider
+          value={[rollDuration]}
+          onValueChange={([v]) => setRollDuration(v)}
+          min={5}
+          max={60}
+          step={1}
+          disabled={isRolling}
+          className="flex-1"
+        />
+        <span className="text-sm text-muted-foreground tabular-nums w-10 text-right">{rollDuration}秒</span>
       </div>
 
       <div className="flex gap-8 items-start w-full max-w-4xl">
