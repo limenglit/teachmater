@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
+import SpinWheel from '@/components/SpinWheel';
 
 export default function RandomPicker() {
   const { students } = useStudents();
@@ -79,6 +80,21 @@ export default function RandomPicker() {
 
   // Roller display - show scrolling names
   const displayNames = availableStudents.length > 0 ? availableStudents : students;
+  const useWheel = students.length <= 20 && students.length > 0;
+
+  const handleWheelRollStart = useCallback(() => {
+    setIsRolling(true);
+    setSelectedStudent(null);
+  }, []);
+
+  const handleWheelRollEnd = useCallback((chosen: { id: string; name: string }) => {
+    setSelectedStudent(chosen.name);
+    setIsRolling(false);
+    if (noRepeat) {
+      setUsedIds(prev => new Set([...prev, chosen.id]));
+    }
+    speakName(chosen.name);
+  }, [noRepeat, speakName]);
 
   return (
     <div className="flex-1 flex flex-col items-center p-8">
@@ -113,80 +129,98 @@ export default function RandomPicker() {
       </div>
 
       <div className="flex gap-8 items-start w-full max-w-4xl">
-        {/* Roller */}
-        <div className="flex-1">
-          <h3 className="text-lg font-medium text-foreground mb-1">随机选人</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            转盘/滚轮 ({students.length}人 → 滚轮)
-          </p>
-
-          <div className="relative bg-card rounded-2xl border border-border shadow-card overflow-hidden">
-            {/* Roller window */}
-            <div className="h-64 overflow-hidden relative" ref={rollerRef}>
-              {/* Gradient masks */}
-              <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none" />
-              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none" />
-
-              {/* Center highlight */}
-              <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-14 bg-highlight-soft rounded-xl z-5 border border-primary/20" />
-
-              {/* Names list */}
-              <div className="flex flex-col items-center justify-center h-full gap-1 py-4">
-                <AnimatePresence mode="popLayout">
-                  {isRolling ? (
-                    <motion.div
-                      key="rolling"
-                      className="text-2xl font-semibold text-primary"
-                      animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ duration: 0.15, repeat: Infinity }}
-                    >
-                      {selectedStudent || '...'}
-                    </motion.div>
-                  ) : selectedStudent ? (
-                    <motion.div
-                      key="selected"
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="text-center"
-                    >
-                      <div className="text-3xl font-bold text-primary mb-2">{selectedStudent}</div>
-                    </motion.div>
-                  ) : (
-                    displayNames.slice(0, 5).map((s, i) => (
-                      <div key={s.id} className="text-lg text-muted-foreground py-1.5">
-                        {s.name}
-                      </div>
-                    ))
-                  )}
-                </AnimatePresence>
+        {useWheel ? (
+          <>
+            <SpinWheel
+              students={students}
+              availableStudents={availableStudents}
+              isRolling={isRolling}
+              rollDuration={rollDuration}
+              noRepeat={noRepeat}
+              onRollStart={handleWheelRollStart}
+              onRollEnd={handleWheelRollEnd}
+            />
+            {noRepeat && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                <span>剩余 {availableStudents.length}/{students.length} 人</span>
+                {usedIds.size > 0 && (
+                  <button onClick={resetPool} className="text-primary hover:underline">重置</button>
+                )}
               </div>
-            </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Roller for >20 students */}
+            <div className="flex-1">
+              <h3 className="text-lg font-medium text-foreground mb-1">随机选人</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                滚轮模式 ({students.length}人)
+              </p>
 
-            {/* Roll button */}
-            <div className="p-4 flex flex-col items-center gap-2 border-t border-border">
-              <Button
-                onClick={startRoll}
-                disabled={isRolling || availableStudents.length === 0}
-                className="gap-2"
-                size="lg"
-              >
-                <Play className="w-4 h-4" />
-                {isRolling ? '滚动中...' : '滚动'}
-              </Button>
-              {selectedStudent && !isRolling && (
-                <p className="text-sm text-muted-foreground">选中：{selectedStudent}</p>
-              )}
-              {noRepeat && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>剩余 {availableStudents.length}/{students.length} 人</span>
-                  {usedIds.size > 0 && (
-                    <button onClick={resetPool} className="text-primary hover:underline">重置</button>
+              <div className="relative bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+                <div className="h-64 overflow-hidden relative" ref={rollerRef}>
+                  <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none" />
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none" />
+                  <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-14 bg-highlight-soft rounded-xl z-5 border border-primary/20" />
+
+                  <div className="flex flex-col items-center justify-center h-full gap-1 py-4">
+                    <AnimatePresence mode="popLayout">
+                      {isRolling ? (
+                        <motion.div
+                          key="rolling"
+                          className="text-2xl font-semibold text-primary"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 0.15, repeat: Infinity }}
+                        >
+                          {selectedStudent || '...'}
+                        </motion.div>
+                      ) : selectedStudent ? (
+                        <motion.div
+                          key="selected"
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="text-center"
+                        >
+                          <div className="text-3xl font-bold text-primary mb-2">{selectedStudent}</div>
+                        </motion.div>
+                      ) : (
+                        displayNames.slice(0, 5).map((s) => (
+                          <div key={s.id} className="text-lg text-muted-foreground py-1.5">
+                            {s.name}
+                          </div>
+                        ))
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+
+                <div className="p-4 flex flex-col items-center gap-2 border-t border-border">
+                  <Button
+                    onClick={startRoll}
+                    disabled={isRolling || availableStudents.length === 0}
+                    className="gap-2"
+                    size="lg"
+                  >
+                    <Play className="w-4 h-4" />
+                    {isRolling ? '滚动中...' : '滚动'}
+                  </Button>
+                  {selectedStudent && !isRolling && (
+                    <p className="text-sm text-muted-foreground">选中：{selectedStudent}</p>
+                  )}
+                  {noRepeat && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>剩余 {availableStudents.length}/{students.length} 人</span>
+                      {usedIds.size > 0 && (
+                        <button onClick={resetPool} className="text-primary hover:underline">重置</button>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* Dice Panel */}
         <DicePanel />
