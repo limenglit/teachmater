@@ -1,5 +1,6 @@
-import { useTheme, COLOR_SCHEMES, FONT_OPTIONS, FONT_SIZES } from '@/contexts/ThemeContext';
+import { useTheme, COLOR_SCHEMES, FONT_OPTIONS, FONT_SIZE_MIN, FONT_SIZE_MAX } from '@/contexts/ThemeContext';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Slider } from '@/components/ui/slider';
 import { Settings, Check, Type, ALargeSmall } from 'lucide-react';
 
 export default function SettingsPanel() {
@@ -86,25 +87,25 @@ export default function SettingsPanel() {
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <ALargeSmall className="w-4 h-4" /> 字号
             </h3>
-            <div className="flex gap-2">
-              {FONT_SIZES.map(size => (
-                <button
-                  key={size.id}
-                  onClick={() => setFontSize(size.id)}
-                  className={`flex-1 py-2.5 rounded-lg border text-center transition-all
-                    ${config.fontSize === size.id
-                      ? 'border-primary bg-accent/30 shadow-soft'
-                      : 'border-border hover:border-primary/30 bg-card'
-                    }`}
+            <div className="px-1">
+              <Slider
+                value={[config.fontSize]}
+                onValueChange={([v]) => setFontSize(v)}
+                min={FONT_SIZE_MIN}
+                max={FONT_SIZE_MAX}
+                step={0.05}
+                className="mb-3"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>小</span>
+                <span
+                  className="font-medium text-foreground tabular-nums"
+                  style={{ fontSize: `${config.fontSize * 14}px` }}
                 >
-                  <span
-                    className="text-foreground font-medium"
-                    style={{ fontSize: `${size.scale * 14}px` }}
-                  >
-                    {size.name}
-                  </span>
-                </button>
-              ))}
+                  {Math.round(config.fontSize * 100)}%
+                </span>
+                <span>大</span>
+              </div>
             </div>
           </section>
 

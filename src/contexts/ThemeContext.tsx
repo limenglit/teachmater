@@ -3,7 +3,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 export interface ThemeConfig {
   schemeId: string;
   fontFamily: string;
-  fontSize: 'small' | 'medium' | 'large';
+  fontSize: number; // scale: 0.9 ~ 2.0
 }
 
 export interface ColorScheme {
@@ -125,20 +125,24 @@ export const FONT_OPTIONS = [
   { id: 'serif', name: '宋体 (衬线)', value: '"Noto Serif SC", "SimSun", serif' },
 ];
 
-export const FONT_SIZES = [
-  { id: 'small' as const, name: '小', scale: 0.9 },
-  { id: 'medium' as const, name: '中', scale: 1.0 },
-  { id: 'large' as const, name: '大', scale: 1.15 },
-];
+export const FONT_SIZE_MIN = 0.9;
+export const FONT_SIZE_MAX = 2.0;
+export const FONT_SIZE_DEFAULT = 1.0;
 
 const STORAGE_KEY = 'teachmate_theme';
 
-const defaultConfig: ThemeConfig = { schemeId: 'fresh', fontFamily: 'noto', fontSize: 'medium' };
+const defaultConfig: ThemeConfig = { schemeId: 'fresh', fontFamily: 'noto', fontSize: FONT_SIZE_DEFAULT };
 
 function loadConfig(): ThemeConfig {
   try {
     const d = localStorage.getItem(STORAGE_KEY);
-    return d ? { ...defaultConfig, ...JSON.parse(d) } : defaultConfig;
+    if (!d) return defaultConfig;
+    const parsed = { ...defaultConfig, ...JSON.parse(d) };
+    // Migrate old enum fontSize to numeric
+    if (typeof parsed.fontSize === 'string') {
+      parsed.fontSize = parsed.fontSize === 'small' ? 0.9 : parsed.fontSize === 'large' ? 1.15 : 1.0;
+    }
+    return parsed;
   } catch { return defaultConfig; }
 }
 
@@ -146,7 +150,7 @@ interface ThemeContextType {
   config: ThemeConfig;
   setScheme: (id: string) => void;
   setFont: (id: string) => void;
-  setFontSize: (size: 'small' | 'medium' | 'large') => void;
+  setFontSize: (scale: number) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
@@ -169,9 +173,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.style.setProperty('--font-family', font.value);
     document.body.style.fontFamily = font.value;
 
-    // Apply font size
-    const size = FONT_SIZES.find(s => s.id === config.fontSize) || FONT_SIZES[1];
-    root.style.fontSize = `${size.scale * 16}px`;
+    // Apply font size (numeric scale)
+    const scale = typeof config.fontSize === 'number' ? config.fontSize : 1.0;
+    root.style.fontSize = `${scale * 16}px`;
 
     // Persist
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
@@ -179,7 +183,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setScheme = (id: string) => setConfig(prev => ({ ...prev, schemeId: id }));
   const setFont = (id: string) => setConfig(prev => ({ ...prev, fontFamily: id }));
-  const setFontSize = (size: 'small' | 'medium' | 'large') => setConfig(prev => ({ ...prev, fontSize: size }));
+  const setFontSize = (scale: number) => setConfig(prev => ({ ...prev, fontSize: Math.round(scale * 100) / 100 }));
 
   return (
     <ThemeContext.Provider value={{ config, setScheme, setFont, setFontSize }}>
