@@ -228,28 +228,33 @@ export default function RandomPicker() {
         )}
 
         {/* Dice Panel */}
-        <DicePanel />
+        <DicePanel soundEnabled={soundEnabled} voiceEnabled={voiceEnabled} noRepeat={noRepeat} />
       </div>
     </div>
   );
 }
 
 // Dice sub-component
-function DicePanel() {
+function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boolean; voiceEnabled: boolean; noRepeat: boolean }) {
   const { students } = useStudents();
   const [isRolling, setIsRolling] = useState(false);
   const [diceValues, setDiceValues] = useState<number[]>([]);
   const [result, setResult] = useState<string | null>(null);
   const [mode, setMode] = useState<'group' | 'team'>('group');
+  const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
+
+  const availableStudents = noRepeat
+    ? students.filter(s => !usedIds.has(s.id))
+    : students;
 
   // Simple dice: just pick a random student using dice visualization
-  const groupCount = Math.min(6, Math.ceil(students.length / 4));
-  const membersPerGroup = Math.ceil(students.length / groupCount);
+  const groupCount = Math.min(6, Math.ceil(availableStudents.length / 4));
+  const membersPerGroup = Math.ceil(availableStudents.length / groupCount);
 
   const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
   const rollDice = useCallback(() => {
-    if (students.length === 0 || isRolling) return;
+    if (availableStudents.length === 0 || isRolling) return;
     setIsRolling(true);
     setResult(null);
 
@@ -264,6 +269,7 @@ function DicePanel() {
     const interval = setInterval(() => {
       count++;
       setDiceValues(Array.from({ length: totalDice }, () => Math.floor(Math.random() * 6) + 1));
+      if (soundEnabled) playTick();
       if (count >= steps) {
         clearInterval(interval);
 
@@ -275,18 +281,26 @@ function DicePanel() {
         const groupIndex = ((finalValues[0] - 1) % groupCount);
         const memberIndex = ((finalValues[groupDiceCount] - 1) % membersPerGroup);
         const studentIndex = groupIndex * membersPerGroup + memberIndex;
-        const chosen = students[Math.min(studentIndex, students.length - 1)];
+        const chosen = availableStudents[Math.min(studentIndex, availableStudents.length - 1)];
 
         setResult(`第${groupIndex + 1}组 第${memberIndex + 1}人: ${chosen.name}`);
         setIsRolling(false);
 
+        if (noRepeat) {
+          setUsedIds(prev => new Set([...prev, chosen.id]));
+        }
+
+        if (soundEnabled) playCelebration();
+
         // Speak
-        const utterance = new SpeechSynthesisUtterance(chosen.name);
-        utterance.lang = 'zh-CN';
-        speechSynthesis.speak(utterance);
+        if (voiceEnabled) {
+          const utterance = new SpeechSynthesisUtterance(chosen.name);
+          utterance.lang = 'zh-CN';
+          speechSynthesis.speak(utterance);
+        }
       }
     }, 80);
-  }, [students, isRolling, groupCount, membersPerGroup]);
+  }, [availableStudents, isRolling, groupCount, membersPerGroup, soundEnabled, voiceEnabled, noRepeat]);
 
   const diceLabels = groupCount > 6
     ? ['组十位', '组个位', '成员个位']
@@ -337,7 +351,7 @@ function DicePanel() {
 
         {/* Roll button */}
         <div className="flex justify-center mb-3">
-          <Button onClick={rollDice} disabled={isRolling || students.length === 0} variant="outline" className="gap-2">
+          <Button onClick={rollDice} disabled={isRolling || availableStudents.length === 0} variant="outline" className="gap-2">
             🎲 投掷
           </Button>
         </div>
@@ -354,6 +368,14 @@ function DicePanel() {
               (组数{groupCount}→{groupCount > 6 ? '2' : '1'}个色子定位组)
             </p>
           </motion.div>
+        )}
+        {noRepeat && (
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-2">
+            <span>剩余 {availableStudents.length}/{students.length} 人</span>
+            {usedIds.size > 0 && (
+              <button onClick={() => setUsedIds(new Set())} className="text-primary hover:underline">重置</button>
+            )}
+          </div>
         )}
       </div>
     </div>
