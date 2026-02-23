@@ -42,33 +42,54 @@ export default function SpinWheel({
   const anglePerSlice = 360 / count;
   const [rotation, setRotation] = useState(0);
   const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [spinning, setSpinning] = useState(false);
   const wheelRef = useRef<HTMLDivElement>(null);
+  const chosenRef = useRef<{ student: Student; winnerIndex: number } | null>(null);
+  const timerRef = useRef<number>(0);
 
   const spin = useCallback(() => {
     if (count === 0 || isRolling) return;
     onRollStart();
     setSelectedName(null);
+    setSpinning(true);
 
     // Pick winner
     const winnerIndex = Math.floor(Math.random() * availableStudents.length);
     const chosen = availableStudents[winnerIndex];
+    chosenRef.current = { student: chosen, winnerIndex };
 
-    // Calculate final rotation: pointer is at top (0°/360°)
-    // Each segment center is at index * anglePerSlice
-    // We want the chosen segment to land under the pointer (top)
-    // Wheel rotates clockwise, so we need to rotate so that the segment's center aligns with 0°
+    // Calculate final rotation
     const targetAngle = 360 - (winnerIndex * anglePerSlice + anglePerSlice / 2);
-    const fullSpins = Math.floor(rollDuration / 2) * 360; // More spins for longer duration
+    const fullSpins = Math.floor(rollDuration / 2) * 360;
     const finalRotation = rotation + fullSpins + targetAngle + (360 - (rotation % 360));
 
     setRotation(finalRotation);
 
-    // After animation completes
-    setTimeout(() => {
-      setSelectedName(chosen.name);
-      onRollEnd(chosen);
+    // Auto-stop after duration
+    timerRef.current = window.setTimeout(() => {
+      stopWheel();
     }, rollDuration * 1000);
   }, [count, isRolling, availableStudents, anglePerSlice, rotation, rollDuration, onRollStart, onRollEnd]);
+
+  const stopWheel = useCallback(() => {
+    if (!spinning || !chosenRef.current) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    const { student } = chosenRef.current;
+    setSelectedName(student.name);
+    setSpinning(false);
+    onRollEnd(student);
+    chosenRef.current = null;
+  }, [spinning, onRollEnd]);
+
+  const handleWheelClick = useCallback(() => {
+    if (spinning) {
+      stopWheel();
+    }
+  }, [spinning, stopWheel]);
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
 
   const wheelSize = 320;
   const radius = wheelSize / 2;
@@ -76,9 +97,24 @@ export default function SpinWheel({
   return (
     <div className="flex-1 flex flex-col items-center">
       <h3 className="text-lg font-medium text-foreground mb-1">随机选人</h3>
-      <p className="text-sm text-muted-foreground mb-4">
+      <p className="text-sm text-muted-foreground mb-2">
         大转盘 ({students.length}人)
       </p>
+
+      {/* Selected name display above wheel */}
+      <div className="h-10 mb-2 flex items-center justify-center">
+        {selectedName && !spinning ? (
+          <motion.p
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-2xl font-bold text-primary"
+          >
+            🎉 {selectedName}
+          </motion.p>
+        ) : spinning ? (
+          <p className="text-sm text-muted-foreground animate-pulse">点击转盘停止...</p>
+        ) : null}
+      </div>
 
       <div className="relative" style={{ width: wheelSize, height: wheelSize }}>
         {/* Pointer triangle at top */}
@@ -97,18 +133,19 @@ export default function SpinWheel({
         {/* Wheel */}
         <motion.div
           ref={wheelRef}
-          className="w-full h-full rounded-full border-4 border-border shadow-lg overflow-hidden relative"
+          className={`w-full h-full rounded-full border-4 border-border shadow-lg overflow-hidden relative ${spinning ? 'cursor-pointer' : ''}`}
           style={{ transformOrigin: 'center center' }}
           animate={{ rotate: rotation }}
           transition={{
-            duration: rollDuration,
-            ease: [0.2, 0.8, 0.3, 1], // Custom ease-out curve
+            duration: spinning ? rollDuration : 0.3,
+            ease: spinning ? [0.2, 0.8, 0.3, 1] : 'easeOut',
           }}
+          onClick={handleWheelClick}
         >
           {/* SVG wheel segments */}
           <svg viewBox={`0 0 ${wheelSize} ${wheelSize}`} className="w-full h-full">
             {displayStudents.map((student, i) => {
-              const startAngle = i * anglePerSlice - 90; // -90 to start from top
+              const startAngle = i * anglePerSlice - 90;
               const endAngle = startAngle + anglePerSlice;
               const startRad = (startAngle * Math.PI) / 180;
               const endRad = (endAngle * Math.PI) / 180;
@@ -119,7 +156,6 @@ export default function SpinWheel({
               const x2 = radius + radius * Math.cos(endRad);
               const y2 = radius + radius * Math.sin(endRad);
 
-              // Text position at midpoint, slightly inside
               const midAngle = ((startAngle + endAngle) / 2 * Math.PI) / 180;
               const textR = radius * 0.65;
               const tx = radius + textR * Math.cos(midAngle);
@@ -144,11 +180,11 @@ export default function SpinWheel({
                     transform={`rotate(${textRotation}, ${tx}, ${ty})`}
                     className="fill-primary-foreground"
                     style={{
-                      fontSize: count > 12 ? '10px' : '12px',
-                      fontWeight: 600,
+                      fontSize: count > 15 ? '12px' : count > 8 ? '14px' : '16px',
+                      fontWeight: 700,
                     }}
                   >
-                    {student.name.length > 4 ? student.name.slice(0, 4) + '..' : student.name}
+                    {student.name.length > 3 ? student.name.slice(0, 3) + '..' : student.name}
                   </text>
                 </g>
               );
@@ -160,31 +196,22 @@ export default function SpinWheel({
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card border-2 border-border shadow-md flex items-center justify-center"
             style={{ width: wheelSize * 0.18, height: wheelSize * 0.18 }}
           >
-            <span className="text-xs font-bold text-primary">GO</span>
+            <span className="text-xs font-bold text-primary">{spinning ? 'STOP' : 'GO'}</span>
           </div>
         </motion.div>
       </div>
 
       {/* Controls below wheel */}
-      <div className="mt-5 flex flex-col items-center gap-2">
+      <div className="mt-4 flex flex-col items-center gap-2">
         <Button
           onClick={spin}
-          disabled={isRolling || availableStudents.length === 0}
+          disabled={spinning || availableStudents.length === 0}
           className="gap-2"
           size="lg"
         >
           <Play className="w-4 h-4" />
-          {isRolling ? '旋转中...' : '旋转'}
+          {spinning ? '旋转中（点击转盘停止）' : '旋转'}
         </Button>
-        {selectedName && !isRolling && (
-          <motion.p
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-lg font-bold text-primary"
-          >
-            🎉 选中：{selectedName}
-          </motion.p>
-        )}
       </div>
     </div>
   );
