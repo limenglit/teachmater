@@ -24,12 +24,12 @@ interface Props {
 
 export default function TabNavigation({ activeTab, onTabChange }: Props) {
   return (
-    <nav className="flex items-center gap-1 px-6 py-3 border-b border-border bg-card">
+    <nav className="flex items-center gap-1 px-3 sm:px-6 py-2 sm:py-3 border-b border-border bg-card overflow-x-auto scrollbar-hide">
       {tabs.map(tab => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0
             ${activeTab === tab.id
               ? 'bg-primary text-primary-foreground shadow-soft'
               : 'text-muted-foreground hover:text-foreground hover:bg-muted'

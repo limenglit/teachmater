@@ -6,7 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-export default function StudentSidebar() {
+interface Props {
+  onClose?: () => void;
+}
+
+export default function StudentSidebar({ onClose }: Props) {
   const { students, addStudent, removeStudent, clearAll, importFromText } = useStudents();
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
@@ -49,15 +53,22 @@ export default function StudentSidebar() {
             <span className="text-muted-foreground">📋</span>
             <h2 className="font-semibold text-foreground">学生名单</h2>
           </div>
-          <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
-            {students.length} 人
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
+              {students.length} 人
+            </span>
+            {onClose && (
+              <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Student List */}
       <div className="flex-1 overflow-y-auto p-2">
-        {students.map((student, index) => (
+        {students.map((student) => (
           <div
             key={student.id}
             className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors"

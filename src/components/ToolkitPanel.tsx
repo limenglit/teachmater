@@ -30,10 +30,10 @@ function CommandFlash({ text, emoji, onDone }: { text: string; emoji: string; on
 
 export default function ToolkitPanel() {
   return (
-    <div className="flex-1 p-8 overflow-auto">
+    <div className="flex-1 p-4 sm:p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-xl font-semibold text-foreground mb-6">课堂工具箱</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">课堂工具箱</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <CountdownTimer />
           <CommandCards />
           <QRCodeGenerator />

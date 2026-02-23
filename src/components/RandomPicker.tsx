@@ -101,9 +101,9 @@ export default function RandomPicker() {
   }, [noRepeat, speakName, soundEnabled]);
 
   return (
-    <div className="flex-1 flex flex-col items-center p-8">
+    <div className="flex-1 flex flex-col items-center p-4 sm:p-8 overflow-auto">
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-6 mb-4">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-6 mb-4">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <Volume2 className="w-4 h-4" /> 音效
           <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
@@ -132,7 +132,7 @@ export default function RandomPicker() {
         <span className="text-sm text-muted-foreground tabular-nums w-10 text-right">{rollDuration}秒</span>
       </div>
 
-      <div className="flex gap-8 items-start w-full max-w-4xl">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-center lg:items-start w-full max-w-4xl">
         {useWheel ? (
           <>
             <SpinWheel
@@ -307,7 +307,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boo
     : ['组', '成员'];
 
   return (
-    <div className="w-72">
+    <div className="w-full lg:w-72">
       <h3 className="text-lg font-medium text-foreground mb-1 flex items-center gap-2">
         🎲 智能色子
         <span className="text-xs text-muted-foreground font-normal">(基于分组/建队)</span>

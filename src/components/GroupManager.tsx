@@ -90,14 +90,14 @@ export default function GroupManager() {
   const printRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex-1 p-8 overflow-auto">
+    <div className="flex-1 p-4 sm:p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">人员分组</h2>
-            <p className="text-sm text-muted-foreground mt-1">将 {students.length} 名学生随机分成若干组，可拖拽调整</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">人员分组</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">将 {students.length} 名学生随机分成若干组</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {groups.length > 0 && <ExportButtons targetRef={printRef} filename="分组结果" />}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               组数
@@ -117,7 +117,7 @@ export default function GroupManager() {
             <p className="text-sm">支持 2-10 组，可自定义组名、指定组长、拖拽调整</p>
           </div>
         ) : (
-          <div ref={printRef} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             <AnimatePresence>
               {groups.map((group, gi) => (
                 <motion.div
