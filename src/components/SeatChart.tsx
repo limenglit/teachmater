@@ -154,17 +154,17 @@ export default function SeatChart() {
   const printRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex-1 p-8 overflow-auto">
+    <div className="flex-1 p-4 sm:p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">座位安排</h2>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">座位安排</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
               自定义教室布局，多种排座模式，支持拖拽交换座位
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               行
               <Input type="number" min={2} max={12} value={rows}

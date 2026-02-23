@@ -89,14 +89,14 @@ export default function TeamBuilder() {
   const printRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex-1 p-8 overflow-auto">
+    <div className="flex-1 p-4 sm:p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">建队</h2>
-            <p className="text-sm text-muted-foreground mt-1">按每队人数自动建队，可拖拽调整</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">建队</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">按每队人数自动建队，可拖拽调整</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {teams.length > 0 && <ExportButtons targetRef={printRef} filename="建队结果" />}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               每队人数
@@ -116,7 +116,7 @@ export default function TeamBuilder() {
             <p className="text-sm">设定每队人数后随机分配，支持拖拽调整</p>
           </div>
         ) : (
-          <div ref={printRef} className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             <AnimatePresence>
               {teams.map((team, ti) => (
                 <motion.div
