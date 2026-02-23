@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
 import SpinWheel from '@/components/SpinWheel';
+import { playTick, playCelebration } from '@/lib/sounds';
 
 export default function RandomPicker() {
   const { students } = useStudents();
@@ -51,6 +52,7 @@ export default function RandomPicker() {
       const progress = Math.min(elapsed / durationMs, 1);
       const randomIndex = Math.floor(Math.random() * availableStudents.length);
       setSelectedStudent(availableStudents[randomIndex].name);
+      if (soundEnabled) playTick();
 
       if (progress < 1) {
         // Ease-out: interval grows as progress increases
@@ -65,6 +67,7 @@ export default function RandomPicker() {
         if (noRepeat) {
           setUsedIds(prev => new Set([...prev, chosen.id]));
         }
+        if (soundEnabled) playCelebration();
         speakName(chosen.name);
       }
     };
@@ -93,8 +96,9 @@ export default function RandomPicker() {
     if (noRepeat) {
       setUsedIds(prev => new Set([...prev, chosen.id]));
     }
+    if (soundEnabled) playCelebration();
     speakName(chosen.name);
-  }, [noRepeat, speakName]);
+  }, [noRepeat, speakName, soundEnabled]);
 
   return (
     <div className="flex-1 flex flex-col items-center p-8">
@@ -137,6 +141,7 @@ export default function RandomPicker() {
               isRolling={isRolling}
               rollDuration={rollDuration}
               noRepeat={noRepeat}
+              soundEnabled={soundEnabled}
               onRollStart={handleWheelRollStart}
               onRollEnd={handleWheelRollEnd}
             />
