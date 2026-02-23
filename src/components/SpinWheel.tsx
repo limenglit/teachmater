@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
+import { playTick } from '@/lib/sounds';
 
 interface Student {
   id: string;
@@ -24,6 +25,7 @@ interface SpinWheelProps {
   isRolling: boolean;
   rollDuration: number;
   noRepeat: boolean;
+  soundEnabled: boolean;
   onRollStart: () => void;
   onRollEnd: (chosen: Student) => void;
 }
@@ -34,6 +36,7 @@ export default function SpinWheel({
   isRolling,
   rollDuration,
   noRepeat,
+  soundEnabled,
   onRollStart,
   onRollEnd,
 }: SpinWheelProps) {
@@ -46,6 +49,7 @@ export default function SpinWheel({
   const wheelRef = useRef<HTMLDivElement>(null);
   const chosenRef = useRef<{ student: Student; winnerIndex: number } | null>(null);
   const timerRef = useRef<number>(0);
+  const tickRef = useRef<number>(0);
 
   const spin = useCallback(() => {
     if (count === 0 || isRolling) return;
@@ -65,15 +69,29 @@ export default function SpinWheel({
 
     setRotation(finalRotation);
 
+    // Tick sound during spinning
+    if (soundEnabled) {
+      let tickInterval = 80;
+      const tickLoop = () => {
+        if (chosenRef.current) {
+          playTick();
+          tickInterval = Math.min(tickInterval + 8, 300);
+          tickRef.current = window.setTimeout(tickLoop, tickInterval);
+        }
+      };
+      tickLoop();
+    }
+
     // Auto-stop after duration
     timerRef.current = window.setTimeout(() => {
       stopWheel();
     }, rollDuration * 1000);
-  }, [count, isRolling, availableStudents, anglePerSlice, rotation, rollDuration, onRollStart, onRollEnd]);
+  }, [count, isRolling, availableStudents, anglePerSlice, rotation, rollDuration, onRollStart, onRollEnd, soundEnabled]);
 
   const stopWheel = useCallback(() => {
     if (!spinning || !chosenRef.current) return;
     if (timerRef.current) clearTimeout(timerRef.current);
+    if (tickRef.current) clearTimeout(tickRef.current);
     const { student } = chosenRef.current;
     setSelectedName(student.name);
     setSpinning(false);
@@ -88,7 +106,10 @@ export default function SpinWheel({
   }, [spinning, stopWheel]);
 
   useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      if (tickRef.current) clearTimeout(tickRef.current);
+    };
   }, []);
 
   const wheelSize = 320;
