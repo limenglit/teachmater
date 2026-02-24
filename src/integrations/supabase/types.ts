@@ -19,18 +19,21 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          nickname: string
           topic_id: string
         }
         Insert: {
           content: string
           created_at?: string
           id?: string
+          nickname?: string
           topic_id: string
         }
         Update: {
           content?: string
           created_at?: string
           id?: string
+          nickname?: string
           topic_id?: string
         }
         Relationships: [

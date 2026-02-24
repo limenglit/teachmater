@@ -1,0 +1,1 @@
+ALTER TABLE public.barrage_messages ADD COLUMN nickname TEXT NOT NULL DEFAULT '匿名';
