@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
+import BarrageDiscussion from './BarrageDiscussion';
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, onDone }: { text: string; emoji: string; onDone: () => void }) {
@@ -34,6 +35,7 @@ export default function ToolkitPanel() {
       <div className="max-w-5xl mx-auto">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">课堂工具箱</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <BarrageDiscussion />
           <CountdownTimer />
           <CommandCards />
           <QRCodeGenerator />
