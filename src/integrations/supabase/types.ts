@@ -49,16 +49,19 @@ export type Database = {
       discussion_topics: {
         Row: {
           created_at: string
+          creator_token: string | null
           id: string
           title: string
         }
         Insert: {
           created_at?: string
+          creator_token?: string | null
           id?: string
           title: string
         }
         Update: {
           created_at?: string
+          creator_token?: string | null
           id?: string
           title?: string
         }
@@ -69,7 +72,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      delete_topic: {
+        Args: { p_token: string; p_topic_id: string }
+        Returns: undefined
+      }
+      update_topic: {
+        Args: { p_title: string; p_token: string; p_topic_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
