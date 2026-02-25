@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, FileText, Cloud, Download, Trash2 } from 'lucide-react';
+import { Play, Pause, FileText, Cloud, Download, Trash2, Pencil } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 
 interface BarrageMessage {
@@ -124,6 +125,7 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
 export default function BarrageDiscussion() {
   const [topicTitle, setTopicTitle] = useState('');
   const [topicId, setTopicId] = useState<string | null>(null);
+  const [creatorToken, setCreatorToken] = useState<string | null>(null);
   const [messages, setMessages] = useState<BarrageMessage[]>([]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
@@ -132,6 +134,8 @@ export default function BarrageDiscussion() {
   const [reportContent, setReportContent] = useState('');
   const [wordCloudData, setWordCloudData] = useState<WordCloudItem[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
   const barrageIndexRef = useRef(0);
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -143,19 +147,60 @@ export default function BarrageDiscussion() {
   // Create topic
   const handleCreateTopic = async () => {
     if (!topicTitle.trim()) return;
+    const token = crypto.randomUUID();
     const { data, error } = await supabase
       .from('discussion_topics' as any)
-      .insert({ title: topicTitle.trim() } as any)
+      .insert({ title: topicTitle.trim(), creator_token: token } as any)
       .select('id')
       .single();
     if (error) {
       toast({ title: '创建失败', description: error.message, variant: 'destructive' });
       return;
     }
-    setTopicId((data as any).id);
+    const id = (data as any).id;
+    setTopicId(id);
+    setCreatorToken(token);
+    // Persist token for this topic
+    localStorage.setItem(`topic_token_${id}`, token);
     setMessages([]);
     setVisibleMessages([]);
     toast({ title: '话题已创建', description: '展示二维码让学生扫码参与' });
+  };
+
+  // Edit topic title
+  const handleEditTopic = async () => {
+    if (!editTitle.trim() || !topicId || !creatorToken) return;
+    try {
+      const { error } = await supabase.rpc('update_topic', {
+        p_topic_id: topicId,
+        p_token: creatorToken,
+        p_title: editTitle.trim(),
+      } as any);
+      if (error) throw error;
+      setTopicTitle(editTitle.trim());
+      setEditDialogOpen(false);
+      toast({ title: '话题已更新' });
+    } catch (e: any) {
+      toast({ title: '修改失败', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  // Delete topic
+  const handleDeleteTopic = async () => {
+    if (!topicId || !creatorToken) return;
+    if (!confirm('确定要删除该话题及所有弹幕数据吗？此操作不可撤销。')) return;
+    try {
+      const { error } = await supabase.rpc('delete_topic', {
+        p_topic_id: topicId,
+        p_token: creatorToken,
+      } as any);
+      if (error) throw error;
+      localStorage.removeItem(`topic_token_${topicId}`);
+      handleReset();
+      toast({ title: '话题已删除' });
+    } catch (e: any) {
+      toast({ title: '删除失败', description: e.message, variant: 'destructive' });
+    }
   };
 
   // Subscribe to realtime messages
@@ -260,6 +305,7 @@ export default function BarrageDiscussion() {
 
   const handleReset = () => {
     setTopicId(null);
+    setCreatorToken(null);
     setTopicTitle('');
     setMessages([]);
     setVisibleMessages([]);
@@ -296,6 +342,11 @@ export default function BarrageDiscussion() {
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           💬 {topicTitle}
           <span className="text-xs font-normal text-muted-foreground">({messages.length} 条弹幕)</span>
+          {creatorToken && (
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setEditTitle(topicTitle); setEditDialogOpen(true); }}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </h3>
         <div className="flex items-center gap-1.5 flex-wrap">
           <Button variant={view === 'barrage' ? 'default' : 'outline'} size="sm" onClick={() => setView('barrage')}>
@@ -312,8 +363,13 @@ export default function BarrageDiscussion() {
           <Button variant="outline" size="sm" onClick={handleExportJSON}>
             <Download className="w-3.5 h-3.5 mr-1" /> JSON
           </Button>
+          {creatorToken && (
+            <Button variant="outline" size="sm" onClick={handleDeleteTopic} className="text-destructive hover:text-destructive">
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> 删除话题
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleReset}>
-            <Trash2 className="w-3.5 h-3.5 mr-1" /> 结束
+            结束
           </Button>
         </div>
       </div>
@@ -402,6 +458,19 @@ export default function BarrageDiscussion() {
           )}
         </div>
       </div>
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>修改话题标题</DialogTitle>
+          </DialogHeader>
+          <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="输入新标题..." />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>取消</Button>
+            <Button onClick={handleEditTopic} disabled={!editTitle.trim()}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
