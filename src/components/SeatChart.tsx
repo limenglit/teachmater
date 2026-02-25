@@ -25,6 +25,8 @@ export default function SeatChart() {
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
   const [disabledSeats, setDisabledSeats] = useState<Set<string>>(new Set());
+  const [examSkipRow, setExamSkipRow] = useState(true);
+  const [examSkipCol, setExamSkipCol] = useState(false);
   const [dragFrom, setDragFrom] = useState<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
 
@@ -81,13 +83,12 @@ export default function SeatChart() {
         break;
       }
       case 'exam': {
-        // Vertical S pattern, skip every other row
         let idx = 0;
         for (let c = 0; c < cols && idx < names.length; c++) {
+          if (examSkipCol && c % 2 !== 0) continue;
           for (let r = 0; r < rows && idx < names.length; r++) {
             const row = c % 2 === 0 ? r : rows - 1 - r;
-            // Only use even rows (0, 2, 4...) for seating, skip odd rows
-            if (row % 2 !== 0) continue;
+            if (examSkipRow && row % 2 !== 0) continue;
             if (isAvailable(row, c)) grid[row][c] = names[idx++];
           }
         }
@@ -158,7 +159,7 @@ export default function SeatChart() {
     }
 
     setSeats(grid);
-  }, [students, rows, cols, mode, groupCount, disabledSeats]);
+  }, [students, rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol]);
 
   // Drag and drop for seat swapping
   const handleDragStart = (r: number, c: number) => {
@@ -195,6 +196,7 @@ export default function SeatChart() {
   };
 
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
+  const isExamMode = mode === 'exam';
 
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -226,6 +228,18 @@ export default function SeatChart() {
                 <Input type="number" min={2} max={10} value={groupCount}
                   onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))} className="w-14 h-8 text-center" />
               </label>
+            )}
+            {isExamMode && (
+              <>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                  <input type="checkbox" checked={examSkipRow} onChange={e => setExamSkipRow(e.target.checked)} className="accent-primary" />
+                  隔行
+                </label>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                  <input type="checkbox" checked={examSkipCol} onChange={e => setExamSkipCol(e.target.checked)} className="accent-primary" />
+                  隔列
+                </label>
+              </>
             )}
           </div>
         </div>
