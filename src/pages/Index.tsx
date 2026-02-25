@@ -14,6 +14,7 @@ import WeChatBanner from '@/components/WeChatBanner';
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('random');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -64,7 +65,11 @@ const Index = () => {
               transition-transform duration-300 ease-in-out
               ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}>
-              <StudentSidebar onClose={() => setSidebarOpen(false)} />
+              <StudentSidebar
+                onClose={() => setSidebarOpen(false)}
+                collapsed={sidebarCollapsed}
+                onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+              />
             </div>
             {renderContent()}
           </div>
