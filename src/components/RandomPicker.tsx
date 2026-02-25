@@ -304,7 +304,23 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boo
   const groupCount = Math.min(6, Math.ceil(availableStudents.length / 4));
   const membersPerGroup = Math.ceil(availableStudents.length / groupCount);
 
-  const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  // Dot positions for each dice face (relative to a 100x100 viewBox)
+  const dotPositions: Record<number, [number, number][]> = {
+    1: [[50, 50]],
+    2: [[28, 28], [72, 72]],
+    3: [[28, 28], [50, 50], [72, 72]],
+    4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+    5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
+    6: [[28, 28], [72, 28], [28, 50], [72, 50], [28, 72], [72, 72]],
+  };
+
+  const DiceFace = ({ value }: { value: number }) => (
+    <svg viewBox="0 0 100 100" className="w-full h-full">
+      {(dotPositions[value] || dotPositions[1]).map(([cx, cy], i) => (
+        <circle key={i} cx={cx} cy={cy} r={9} className="fill-foreground" />
+      ))}
+    </svg>
+  );
 
   const rollDice = useCallback(() => {
     if (availableStudents.length === 0 || isRolling) return;
@@ -391,9 +407,9 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boo
         <div className="flex justify-center gap-4 mb-4">
           {(diceValues.length > 0 ? diceValues : [1, 1]).map((val, i) => (
             <div key={i} className="text-center">
-              <div className={`w-16 h-16 rounded-xl border-2 border-border bg-muted flex items-center justify-center text-3xl
+              <div className={`w-24 h-24 rounded-2xl border-[3px] border-foreground bg-background flex items-center justify-center p-2
                 ${isRolling ? 'animate-dice-shake' : ''}`}>
-                {diceFaces[(val || 1) - 1]}
+                <DiceFace value={val || 1} />
               </div>
               <span className="text-[10px] text-muted-foreground mt-1 block">
                 {diceLabels[i] || ''}
