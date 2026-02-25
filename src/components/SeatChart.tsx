@@ -2,10 +2,10 @@ import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 
-type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random';
+type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 
 const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string }[] = [
   { id: 'verticalS', label: '竖S形', icon: <ArrowDownUp className="w-3.5 h-3.5" />, desc: '按列蛇形排列' },
@@ -14,6 +14,7 @@ const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string 
   { id: 'groupRow', label: '每组一排', icon: <Rows className="w-3.5 h-3.5" />, desc: '同组学生在同一行' },
   { id: 'smartCluster', label: '智能集中', icon: <Grid3X3 className="w-3.5 h-3.5" />, desc: '各组紧凑相邻排列' },
   { id: 'random', label: '随机排座', icon: <Shuffle className="w-3.5 h-3.5" />, desc: '完全随机打乱' },
+  { id: 'exam', label: '考试座位', icon: <BookOpen className="w-3.5 h-3.5" />, desc: '按名单竖S形隔行入座' },
 ];
 
 export default function SeatChart() {
@@ -23,8 +24,30 @@ export default function SeatChart() {
   const [seats, setSeats] = useState<(string | null)[][]>([]);
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
+  const [disabledSeats, setDisabledSeats] = useState<Set<string>>(new Set());
   const [dragFrom, setDragFrom] = useState<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
+
+  const seatKey = (r: number, c: number) => `${r}-${c}`;
+
+  const toggleDisabled = (r: number, c: number) => {
+    const key = seatKey(r, c);
+    setDisabledSeats(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+        // Clear any student from this seat
+        setSeats(s => {
+          const g = s.map(row => [...row]);
+          if (g[r]) g[r][c] = null;
+          return g;
+        });
+      }
+      return next;
+    });
+  };
 
   const makeGrid = (): (string | null)[][] =>
     Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
@@ -33,13 +56,16 @@ export default function SeatChart() {
     const grid = makeGrid();
     const names = students.map(s => s.name);
 
+    // Collect available positions based on mode
+    const isAvailable = (r: number, c: number) => !disabledSeats.has(seatKey(r, c));
+
     switch (mode) {
       case 'verticalS': {
         let idx = 0;
         for (let c = 0; c < cols && idx < names.length; c++) {
           for (let r = 0; r < rows && idx < names.length; r++) {
             const row = c % 2 === 0 ? r : rows - 1 - r;
-            grid[row][c] = names[idx++];
+            if (isAvailable(row, c)) grid[row][c] = names[idx++];
           }
         }
         break;
@@ -49,20 +75,35 @@ export default function SeatChart() {
         for (let r = 0; r < rows && idx < names.length; r++) {
           for (let c = 0; c < cols && idx < names.length; c++) {
             const col = r % 2 === 0 ? c : cols - 1 - c;
-            grid[r][col] = names[idx++];
+            if (isAvailable(r, col)) grid[r][col] = names[idx++];
+          }
+        }
+        break;
+      }
+      case 'exam': {
+        // Vertical S pattern, skip every other row
+        let idx = 0;
+        for (let c = 0; c < cols && idx < names.length; c++) {
+          for (let r = 0; r < rows && idx < names.length; r++) {
+            const row = c % 2 === 0 ? r : rows - 1 - r;
+            // Only use even rows (0, 2, 4...) for seating, skip odd rows
+            if (row % 2 !== 0) continue;
+            if (isAvailable(row, c)) grid[row][c] = names[idx++];
           }
         }
         break;
       }
       case 'groupCol': {
-        // Split into groups then fill each group into a column
         const groups = splitIntoGroups(names, groupCount);
         groups.forEach((group, gi) => {
           const col = gi % cols;
-          group.forEach((name, mi) => {
-            const row = mi + Math.floor(gi / cols) * Math.ceil(names.length / groupCount);
-            if (row < rows && col < cols) grid[row][col] = name;
-          });
+          let placed = 0;
+          for (let r = 0; r < rows && placed < group.length; r++) {
+            const row = r + Math.floor(gi / cols) * Math.ceil(names.length / groupCount);
+            if (row < rows && col < cols && isAvailable(row, col)) {
+              grid[row][col] = group[placed++];
+            }
+          }
         });
         break;
       }
@@ -70,16 +111,18 @@ export default function SeatChart() {
         const groups = splitIntoGroups(names, groupCount);
         groups.forEach((group, gi) => {
           const row = gi % rows;
-          group.forEach((name, mi) => {
-            const col = mi + Math.floor(gi / rows) * Math.ceil(names.length / groupCount);
-            if (row < rows && col < cols) grid[row][col] = name;
-          });
+          let placed = 0;
+          for (let c = 0; c < cols && placed < group.length; c++) {
+            const col = c + Math.floor(gi / rows) * Math.ceil(names.length / groupCount);
+            if (row < rows && col < cols && isAvailable(row, col)) {
+              grid[row][col] = group[placed++];
+            }
+          }
         });
         break;
       }
       case 'smartCluster': {
         const groups = splitIntoGroups(names, groupCount);
-        // Arrange groups in a grid of blocks
         const blocksPerRow = Math.ceil(Math.sqrt(groupCount));
         const blockRows = Math.ceil(groupCount / blocksPerRow);
         const blockH = Math.floor(rows / blockRows);
@@ -90,13 +133,15 @@ export default function SeatChart() {
           const bCol = gi % blocksPerRow;
           const startR = bRow * blockH;
           const startC = bCol * blockW;
-          group.forEach((name, mi) => {
+          let placed = 0;
+          for (let mi = 0; placed < group.length; mi++) {
             const lr = mi % blockH;
             const lc = Math.floor(mi / blockH);
             const r = startR + lr;
             const c = startC + lc;
-            if (r < rows && c < cols) grid[r][c] = name;
-          });
+            if (r >= rows || c >= cols) break;
+            if (isAvailable(r, c)) grid[r][c] = group[placed++];
+          }
         });
         break;
       }
@@ -105,7 +150,7 @@ export default function SeatChart() {
         let idx = 0;
         for (let r = 0; r < rows && idx < shuffled.length; r++) {
           for (let c = 0; c < cols && idx < shuffled.length; c++) {
-            grid[r][c] = shuffled[idx++];
+            if (isAvailable(r, c)) grid[r][c] = shuffled[idx++];
           }
         }
         break;
@@ -113,7 +158,7 @@ export default function SeatChart() {
     }
 
     setSeats(grid);
-  }, [students, rows, cols, mode, groupCount]);
+  }, [students, rows, cols, mode, groupCount, disabledSeats]);
 
   // Drag and drop for seat swapping
   const handleDragStart = (r: number, c: number) => {
@@ -224,24 +269,28 @@ export default function SeatChart() {
                 row.map((name, ci) => {
                   const isDragging = dragFrom?.r === ri && dragFrom?.c === ci;
                   const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
+                  const isDisabled = disabledSeats.has(seatKey(ri, ci));
                   return (
                     <div
                       key={`${ri}-${ci}`}
-                      draggable={!!name}
+                      draggable={!!name && !isDisabled}
                       onDragStart={() => handleDragStart(ri, ci)}
-                      onDragOver={e => handleDragOver(e, ri, ci)}
-                      onDrop={e => handleDrop(e, ri, ci)}
+                      onDragOver={e => !isDisabled && handleDragOver(e, ri, ci)}
+                      onDrop={e => !isDisabled && handleDrop(e, ri, ci)}
                       onDragEnd={handleDragEnd}
+                      onClick={() => !name && toggleDisabled(ri, ci)}
                       className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
-                        ${name
-                          ? `bg-card border-border text-foreground shadow-card cursor-grab active:cursor-grabbing hover:border-primary/40
-                             ${isDragging ? 'opacity-30 scale-90' : ''}
-                             ${isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-105' : ''}`
-                          : `bg-muted/50 border-dashed border-border text-muted-foreground
-                             ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`
+                        ${isDisabled
+                          ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
+                          : name
+                            ? `bg-card border-border text-foreground shadow-card cursor-grab active:cursor-grabbing hover:border-primary/40
+                               ${isDragging ? 'opacity-30 scale-90' : ''}
+                               ${isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-105' : ''}`
+                            : `bg-muted/50 border-dashed border-border text-muted-foreground cursor-pointer hover:border-destructive/40
+                               ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`
                         }`}
                     >
-                      {name || '空'}
+                      {isDisabled ? <X className="w-4 h-4" /> : name || '空'}
                     </div>
                   );
                 })
@@ -251,7 +300,7 @@ export default function SeatChart() {
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">选择排座模式后点击「自动排座」</p>
-            <p className="text-sm">支持竖S形、横S形、按组排列、随机等多种模式，可拖拽交换座位</p>
+            <p className="text-sm">支持竖S形、横S形、按组排列、考试隔行等多种模式，可拖拽交换座位</p>
           </div>
         )}
         </div>
@@ -259,7 +308,7 @@ export default function SeatChart() {
         {/* Legend */}
         {seats.length > 0 && (
           <p className="text-center text-xs text-muted-foreground mt-4">
-            💡 拖拽任意学生到其他座位可交换位置
+            💡 拖拽学生交换座位 · 点击空座位可禁用/启用该位置
           </p>
         )}
       </div>
