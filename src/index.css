@@ -112,6 +112,10 @@
   .text-balance {
     text-wrap: balance;
   }
+  .writing-vertical {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+  }
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

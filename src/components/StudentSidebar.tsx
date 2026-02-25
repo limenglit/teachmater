@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
-import { User, Plus, Trash2, Upload, X } from 'lucide-react';
+import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,9 +8,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 
 interface Props {
   onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export default function StudentSidebar({ onClose }: Props) {
+export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }: Props) {
   const { students, addStudent, removeStudent, clearAll, importFromText } = useStudents();
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
@@ -44,6 +46,21 @@ export default function StudentSidebar({ onClose }: Props) {
     }
   };
 
+  if (collapsed) {
+    return (
+      <div className="w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2">
+        <button
+          onClick={onToggleCollapse}
+          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+          title="展开名单栏"
+        >
+          <PanelLeftOpen className="w-4 h-4" />
+        </button>
+        <span className="text-xs text-muted-foreground font-medium writing-vertical">{students.length}人</span>
+      </div>
+    );
+  }
+
   return (
     <div className="w-64 border-r border-border bg-card flex flex-col h-full">
       {/* Header */}
@@ -57,6 +74,15 @@ export default function StudentSidebar({ onClose }: Props) {
             <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
               {students.length} 人
             </span>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="hidden lg:flex p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
+                title="折叠名单栏"
+              >
+                <PanelLeftClose className="w-4 h-4" />
+              </button>
+            )}
             {onClose && (
               <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
                 <X className="w-4 h-4" />
