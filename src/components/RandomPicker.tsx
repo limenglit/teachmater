@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
-import { Play, Volume2, Mic, RotateCcw, Timer } from 'lucide-react';
+import { Play, Volume2, Mic, RotateCcw, Timer, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -15,10 +15,13 @@ export default function RandomPicker() {
   const [noRepeat, setNoRepeat] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [rollDuration, setRollDuration] = useState(10); // 5-60 seconds
+  const [rollDuration, setRollDuration] = useState(10);
   const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
+  const [popupEnabled, setPopupEnabled] = useState(true);
+  const [popupName, setPopupName] = useState<string | null>(null);
   const rollerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
+  const popupTimerRef = useRef<number>(0);
 
   const availableStudents = noRepeat
     ? students.filter(s => !usedIds.has(s.id))
@@ -27,6 +30,12 @@ export default function RandomPicker() {
   const resetPool = useCallback(() => {
     setUsedIds(new Set());
     setSelectedStudent(null);
+  }, []);
+
+  const showPopup = useCallback((name: string) => {
+    setPopupName(name);
+    if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+    popupTimerRef.current = window.setTimeout(() => setPopupName(null), 3000);
   }, []);
 
   // Speak name using Web Speech API
@@ -69,6 +78,7 @@ export default function RandomPicker() {
         }
         if (soundEnabled) playCelebration();
         speakName(chosen.name);
+        if (popupEnabled) showPopup(chosen.name);
       }
     };
 
@@ -78,6 +88,7 @@ export default function RandomPicker() {
   useEffect(() => {
     return () => {
       if (animRef.current) clearTimeout(animRef.current);
+      if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
     };
   }, []);
 
@@ -98,7 +109,8 @@ export default function RandomPicker() {
     }
     if (soundEnabled) playCelebration();
     speakName(chosen.name);
-  }, [noRepeat, speakName, soundEnabled]);
+    if (popupEnabled) showPopup(chosen.name);
+  }, [noRepeat, speakName, soundEnabled, popupEnabled, showPopup]);
 
   return (
     <div className="flex-1 flex flex-col items-center p-4 sm:p-8 overflow-auto">
@@ -115,6 +127,10 @@ export default function RandomPicker() {
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           <RotateCcw className="w-4 h-4" /> 不重复
           <Switch checked={noRepeat} onCheckedChange={setNoRepeat} />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Sparkles className="w-4 h-4" /> 大字弹出
+          <Switch checked={popupEnabled} onCheckedChange={setPopupEnabled} />
         </label>
       </div>
       {/* Duration slider */}
@@ -230,6 +246,43 @@ export default function RandomPicker() {
         {/* Dice Panel */}
         <DicePanel soundEnabled={soundEnabled} voiceEnabled={voiceEnabled} noRepeat={noRepeat} />
       </div>
+
+      {/* Fullscreen name popup */}
+      <AnimatePresence>
+        {popupName && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/60 backdrop-blur-sm"
+            onClick={() => setPopupName(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: 'spring', damping: 15, stiffness: 200 }}
+              className="text-center"
+            >
+              <div
+                className="text-7xl sm:text-8xl md:text-9xl font-bold text-background drop-shadow-lg"
+                style={{ fontFamily: 'system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif' }}
+              >
+                {popupName}
+              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-4 text-background/60 text-sm"
+              >
+                点击任意处关闭
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
