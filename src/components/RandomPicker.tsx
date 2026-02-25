@@ -244,7 +244,7 @@ export default function RandomPicker() {
         )}
 
         {/* Dice Panel */}
-        <DicePanel soundEnabled={soundEnabled} voiceEnabled={voiceEnabled} noRepeat={noRepeat} />
+        <DicePanel soundEnabled={soundEnabled} voiceEnabled={voiceEnabled} noRepeat={noRepeat} popupEnabled={popupEnabled} showPopup={showPopup} />
       </div>
 
       {/* Fullscreen name popup */}
@@ -288,7 +288,7 @@ export default function RandomPicker() {
 }
 
 // Dice sub-component
-function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boolean; voiceEnabled: boolean; noRepeat: boolean }) {
+function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPopup }: { soundEnabled: boolean; voiceEnabled: boolean; noRepeat: boolean; popupEnabled: boolean; showPopup: (name: string) => void }) {
   const { students } = useStudents();
   const [isRolling, setIsRolling] = useState(false);
   const [diceValues, setDiceValues] = useState<number[]>([]);
@@ -360,6 +360,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boo
         }
 
         if (soundEnabled) playCelebration();
+        if (popupEnabled) showPopup(chosen.name);
 
         // Speak
         if (voiceEnabled) {
@@ -378,7 +379,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boo
   return (
     <div className="w-full lg:w-72">
       <h3 className="text-lg font-medium text-foreground mb-1 flex items-center gap-2">
-        🎲 智能色子
+        🎲 智能骰子
         <span className="text-xs text-muted-foreground font-normal">(基于分组/建队)</span>
       </h3>
 
@@ -434,7 +435,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat }: { soundEnabled: boo
           >
             <p className="font-semibold text-foreground">{result}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              (组数{groupCount}→{groupCount > 6 ? '2' : '1'}个色子定位组)
+              (组数{groupCount}→{groupCount > 6 ? '2' : '1'}个骰子定位组)
             </p>
           </motion.div>
         )}
