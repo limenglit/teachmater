@@ -254,7 +254,7 @@ export default function BarrageDiscussion() {
     setView('report');
     try {
       const res = await supabase.functions.invoke('analyze-barrage', {
-        body: { messages: messages.map(m => m.content), type: 'report' },
+        body: { messages: messages.map(m => m.content), type: 'report', topic_id: topicId, creator_token: creatorToken },
       });
       if (res.error) throw res.error;
       setReportContent(res.data.result);
@@ -275,7 +275,7 @@ export default function BarrageDiscussion() {
     setView('wordcloud');
     try {
       const res = await supabase.functions.invoke('analyze-barrage', {
-        body: { messages: messages.map(m => m.content), type: 'wordcloud' },
+        body: { messages: messages.map(m => m.content), type: 'wordcloud', topic_id: topicId, creator_token: creatorToken },
       });
       if (res.error) throw res.error;
       // Parse JSON from AI response
