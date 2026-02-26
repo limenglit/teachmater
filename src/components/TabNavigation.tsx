@@ -1,6 +1,6 @@
-import { Dices, Users, Zap, LayoutGrid, Wrench } from 'lucide-react';
+import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck } from 'lucide-react';
 
-export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'toolkit';
+export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'toolkit' | 'checkin';
 
 interface TabItem {
   id: TabId;
@@ -15,6 +15,7 @@ const tabs: TabItem[] = [
   { id: 'teams', label: '建队', emoji: '⚡', icon: <Zap className="w-4 h-4" /> },
   { id: 'seats', label: '座位', emoji: '🏫', icon: <LayoutGrid className="w-4 h-4" /> },
   { id: 'toolkit', label: '工具箱', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
+  { id: 'checkin', label: '签到', emoji: '📋', icon: <ClipboardCheck className="w-4 h-4" /> },
 ];
 
 interface Props {
