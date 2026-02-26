@@ -25,20 +25,66 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   useEffect(() => {
-    if (!user) { navigate('/auth'); return; }
-    // Small delay to ensure auth token is fully available
-    const timer = setTimeout(() => loadUsers(), 300);
-    return () => clearTimeout(timer);
-  }, [user]);
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
 
-  const loadUsers = async () => {
-    setLoading(true);
+    // Delay a bit and then load with robust session checks/retries
+    const timer = setTimeout(() => {
+      void loadUsers(0);
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [user, navigate]);
+
+  const ensureSessionReady = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) return session;
+
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error) return null;
+    return data.session;
+  };
+
+  const loadUsers = async (attempt: number) => {
+    if (attempt === 0) setLoading(true);
+
+    const session = await ensureSessionReady();
+    if (!session) {
+      if (attempt < 2) {
+        setTimeout(() => {
+          void loadUsers(attempt + 1);
+        }, 800);
+        return;
+      }
+
+      setLoading(false);
+      toast({ title: '登录状态失效', description: '请重新登录后再试', variant: 'destructive' });
+      navigate('/auth');
+      return;
+    }
+
     const { data, error } = await supabase.rpc('get_pending_users');
+
     if (error) {
+      const msg = (error.message || '').toLowerCase();
+      const transientAuthError = msg.includes('unauthorized') || msg.includes('jwt') || msg.includes('permission');
+
+      if (attempt < 2 && transientAuthError) {
+        await supabase.auth.refreshSession();
+        setTimeout(() => {
+          void loadUsers(attempt + 1);
+        }, 800);
+        return;
+      }
+
+      setLoading(false);
       toast({ title: '无权限访问', description: '仅管理员可查看', variant: 'destructive' });
       navigate('/');
       return;
     }
+
     setUsers((data as PendingUser[]) || []);
     setLoading(false);
   };
