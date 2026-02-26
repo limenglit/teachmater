@@ -58,37 +58,53 @@ export default function CheckInPanel() {
   useEffect(() => {
     if (!session || session.status !== 'active') return;
 
+    // First, load existing records for this session
+    const loadExisting = async () => {
+      const { data } = await supabase
+        .from('checkin_records')
+        .select('*')
+        .eq('session_id', session.id);
+      if (data) {
+        setRecords(data as CheckinRecord[]);
+      }
+    };
+    loadExisting();
+
     const channel = supabase
       .channel(`checkin-${session.id}`)
       .on('postgres_changes', {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'checkin_records',
         filter: `session_id=eq.${session.id}`,
       }, async (payload) => {
-        const rec = payload.new as CheckinRecord;
-        // Determine match status
-        const isMatch = studentNames.some(n => n.trim() === rec.student_name.trim());
-        const finalStatus = isMatch ? 'matched' : 'unknown';
-        
-        if (rec.status === 'pending') {
-          // Update status in DB
-          await supabase
-            .from('checkin_records')
-            .update({ status: finalStatus })
-            .eq('id', rec.id);
+        if (payload.eventType === 'INSERT') {
+          const rec = payload.new as CheckinRecord;
+          const names = students.map(s => s.name);
+          const isMatch = names.some(n => n.trim() === rec.student_name.trim());
+          const finalStatus = isMatch ? 'matched' : 'unknown';
+          
+          if (rec.status !== finalStatus) {
+            await supabase
+              .from('checkin_records')
+              .update({ status: finalStatus })
+              .eq('id', rec.id);
+          }
+          
+          const updatedRec = { ...rec, status: finalStatus };
+          setRecords(prev => {
+            if (prev.some(r => r.id === rec.id)) return prev;
+            return [...prev, updatedRec];
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          const rec = payload.new as CheckinRecord;
+          setRecords(prev => prev.map(r => r.id === rec.id ? rec : r));
         }
-        
-        const updatedRec = { ...rec, status: finalStatus };
-        setRecords(prev => {
-          if (prev.some(r => r.id === rec.id)) return prev;
-          return [...prev, updatedRec];
-        });
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [session]);
+  }, [session?.id, session?.status, students]);
 
   // Timer countdown
   useEffect(() => {

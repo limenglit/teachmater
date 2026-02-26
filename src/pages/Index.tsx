@@ -17,6 +17,14 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Auto-collapse sidebar when entering checkin tab
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    if (tab === 'checkin') {
+      setSidebarCollapsed(true);
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'random': return <RandomPicker />;
@@ -53,7 +61,7 @@ const Index = () => {
           </header>
 
           {/* Tab Navigation */}
-          <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
           {/* Main Content */}
           <div className="flex flex-1 overflow-hidden relative">
