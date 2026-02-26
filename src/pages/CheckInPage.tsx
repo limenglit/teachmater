@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,14 @@ export default function CheckInPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'expired'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
+  const [studentNames, setStudentNames] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!sessionId) return;
-    // Check if session is active
     supabase
       .from('checkin_sessions')
       .select('*')
@@ -28,9 +32,49 @@ export default function CheckInPage() {
           setStatus('expired');
         } else {
           setSessionValid(true);
+          const names = (data as any).student_names;
+          if (Array.isArray(names)) {
+            setStudentNames(names);
+          }
         }
       });
   }, [sessionId]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleNameChange = (val: string) => {
+    setName(val);
+    if (val.trim() && studentNames.length > 0) {
+      const filtered = studentNames.filter(n =>
+        n.includes(val.trim())
+      );
+      setSuggestions(filtered.slice(0, 8));
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const selectSuggestion = (s: string) => {
+    setName(s);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
 
   const handleCheckin = async () => {
     const trimmed = name.trim();
@@ -38,12 +82,6 @@ export default function CheckInPage() {
 
     setStatus('loading');
 
-    // Fetch student names from session's creator context
-    // We check by inserting — the teacher side does matching via realtime
-    // First check if name is in any local student list — but student side doesn't have access
-    // So we just insert and let the teacher side handle matching
-
-    // Check if already checked in
     const { data: existing } = await supabase
       .from('checkin_records')
       .select('id')
@@ -56,13 +94,6 @@ export default function CheckInPage() {
       return;
     }
 
-    // We need to check if the session has a student list — but names are local
-    // So we insert with status 'pending' and let teacher side update
-    // Actually, teacher side matches via realtime — we insert with 'matched' or 'unknown'
-    // But student side doesn't know the list. Let's just insert with 'pending'
-    // and let the teacher's realtime handler decide.
-    // Simpler: insert as 'matched' — teacher side checks name match on receipt.
-    
     const { error } = await supabase
       .from('checkin_records')
       .insert({
@@ -122,14 +153,44 @@ export default function CheckInPage() {
         </div>
 
         <div className="space-y-3">
-          <Input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleCheckin()}
-            placeholder="请输入姓名"
-            className="h-12 text-center text-lg"
-            autoFocus
-          />
+          <div className="relative">
+            <Input
+              ref={inputRef}
+              value={name}
+              onChange={e => handleNameChange(e.target.value)}
+              onFocus={() => {
+                if (suggestions.length > 0) setShowSuggestions(true);
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setShowSuggestions(false);
+                  handleCheckin();
+                }
+              }}
+              placeholder="请输入姓名"
+              className="h-12 text-center text-lg"
+              autoFocus
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                className="absolute z-50 w-full mt-1 rounded-md border border-border bg-popover shadow-md overflow-hidden"
+              >
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    className="w-full text-left px-4 py-2.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectSuggestion(s);
+                    }}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <Button
             onClick={handleCheckin}
             disabled={!name.trim() || status === 'loading'}
