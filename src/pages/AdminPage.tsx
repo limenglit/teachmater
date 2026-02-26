@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface PendingUser {
@@ -20,6 +21,8 @@ export default function AdminPage() {
   const [users, setUsers] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
@@ -62,9 +65,21 @@ export default function AdminPage() {
     setActing(null);
   };
 
-  const pendingUsers = users.filter(u => u.status === 'pending');
-  const approvedUsers = users.filter(u => u.status === 'approved');
-  const rejectedUsers = users.filter(u => u.status === 'rejected');
+  const filtered = useMemo(() => {
+    let list = users;
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(u => u.email.toLowerCase().includes(q) || (u.nickname && u.nickname.toLowerCase().includes(q)));
+    }
+    if (filter !== 'all') {
+      list = list.filter(u => u.status === filter);
+    }
+    return list;
+  }, [users, search, filter]);
+
+  const pendingUsers = filtered.filter(u => u.status === 'pending');
+  const approvedUsers = filtered.filter(u => u.status === 'approved');
+  const rejectedUsers = filtered.filter(u => u.status === 'rejected');
 
   const statusBadge = (status: string) => {
     switch (status) {
@@ -133,7 +148,32 @@ export default function AdminPage() {
         </Button>
       </header>
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
+      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
+        {/* Search & Filter */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="搜索邮箱或昵称…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="pl-8 h-9"
+            />
+          </div>
+          <div className="flex gap-1">
+            {([['all', '全部'], ['pending', '待审批'], ['approved', '已批准'], ['rejected', '已拒绝']] as const).map(([key, label]) => (
+              <Button
+                key={key}
+                size="sm"
+                variant={filter === key ? 'default' : 'outline'}
+                className="h-9 text-xs"
+                onClick={() => setFilter(key)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
