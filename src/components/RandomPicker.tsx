@@ -408,7 +408,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         <div className="flex justify-center gap-4 mb-4">
           {(diceValues.length > 0 ? diceValues : [1, 1]).map((val, i) => (
             <div key={i} className="text-center">
-              <div className={`w-24 h-24 rounded-2xl border-[3px] border-foreground bg-background flex items-center justify-center p-2
+              <div className={`w-12 h-12 rounded-xl border-2 border-foreground bg-background flex items-center justify-center p-1
                 ${isRolling ? 'animate-dice-shake' : ''}`}>
                 <DiceFace value={val || 1} />
               </div>
