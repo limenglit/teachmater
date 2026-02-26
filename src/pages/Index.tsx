@@ -8,6 +8,7 @@ import GroupManager from '@/components/GroupManager';
 import TeamBuilder from '@/components/TeamBuilder';
 import SeatChart from '@/components/SeatChart';
 import ToolkitPanel from '@/components/ToolkitPanel';
+import CheckInPanel from '@/components/CheckInPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 
@@ -23,6 +24,7 @@ const Index = () => {
       case 'teams': return <TeamBuilder />;
       case 'seats': return <SeatChart />;
       case 'toolkit': return <ToolkitPanel />;
+      case 'checkin': return <CheckInPanel />;
     }
   };
 

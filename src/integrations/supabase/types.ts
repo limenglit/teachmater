@@ -46,6 +46,65 @@ export type Database = {
           },
         ]
       }
+      checkin_records: {
+        Row: {
+          checked_in_at: string
+          id: string
+          session_id: string
+          status: string
+          student_name: string
+        }
+        Insert: {
+          checked_in_at?: string
+          id?: string
+          session_id: string
+          status?: string
+          student_name: string
+        }
+        Update: {
+          checked_in_at?: string
+          id?: string
+          session_id?: string
+          status?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkin_records_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "checkin_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checkin_sessions: {
+        Row: {
+          created_at: string
+          creator_token: string
+          duration_minutes: number
+          ended_at: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          creator_token?: string
+          duration_minutes?: number
+          ended_at?: string | null
+          id?: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          creator_token?: string
+          duration_minutes?: number
+          ended_at?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       discussion_topics: {
         Row: {
           created_at: string
