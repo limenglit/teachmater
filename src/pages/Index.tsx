@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StudentProvider } from '@/contexts/StudentContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import StudentSidebar from '@/components/StudentSidebar';
 import TabNavigation, { TabId } from '@/components/TabNavigation';
 import RandomPicker from '@/components/RandomPicker';
@@ -11,13 +12,18 @@ import ToolkitPanel from '@/components/ToolkitPanel';
 import CheckInPanel from '@/components/CheckInPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
+import ClassLibrary from '@/components/ClassLibrary';
+import { LogIn, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('random');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<'list' | 'library'>('list');
 
-  // Auto-collapse sidebar when entering checkin tab
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
     if (tab === 'checkin') {
@@ -56,12 +62,26 @@ const Index = () => {
               >
                 <span className="text-base">📋</span>
               </button>
+              {/* Auth button */}
+              {user ? (
+                <span className="text-xs text-muted-foreground hidden sm:inline mr-1 truncate max-w-[120px]">
+                  {user.email}
+                </span>
+              ) : (
+                <button
+                  onClick={() => navigate('/auth')}
+                  className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                  title="登录"
+                >
+                  <LogIn className="w-5 h-5" />
+                </button>
+              )}
               <SettingsPanel />
             </div>
           </header>
 
           {/* Tab Navigation */}
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!user} />
 
           {/* Main Content */}
           <div className="flex flex-1 overflow-hidden relative">
@@ -69,18 +89,60 @@ const Index = () => {
             {sidebarOpen && (
               <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
             )}
-            {/* Sidebar */}
-            <div className={`
-              fixed lg:relative z-50 lg:z-auto h-full
-              transition-transform duration-300 ease-in-out
-              ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-            `}>
-              <StudentSidebar
-                onClose={() => setSidebarOpen(false)}
-                collapsed={sidebarCollapsed}
-                onToggleCollapse={() => setSidebarCollapsed(c => !c)}
-              />
-            </div>
+
+            {/* Sidebar area */}
+            {activeTab !== 'checkin' || user ? (
+              <div className={`
+                fixed lg:relative z-50 lg:z-auto h-full
+                transition-transform duration-300 ease-in-out
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+              `}>
+            {user && sidebarMode === 'library' ? (
+                  <div className="h-full flex flex-col w-[500px] lg:w-[560px]">
+                    <div className="flex border-b border-border bg-card">
+                      <button
+                        onClick={() => setSidebarMode('list')}
+                        className="flex-1 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        📋 当前名单
+                      </button>
+                      <button
+                        onClick={() => setSidebarMode('library')}
+                        className="flex-1 px-3 py-2 text-xs font-medium text-primary border-b-2 border-primary"
+                      >
+                        🏫 班级库
+                      </button>
+                    </div>
+                    <ClassLibrary />
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col">
+                    {user && (
+                      <div className="flex border-b border-border bg-card">
+                        <button
+                          onClick={() => setSidebarMode('list')}
+                          className="flex-1 px-3 py-2 text-xs font-medium text-primary border-b-2 border-primary"
+                        >
+                          📋 当前名单
+                        </button>
+                        <button
+                          onClick={() => setSidebarMode('library')}
+                          className="flex-1 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          🏫 班级库
+                        </button>
+                      </div>
+                    )}
+                    <StudentSidebar
+                      onClose={() => setSidebarOpen(false)}
+                      collapsed={sidebarCollapsed}
+                      onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             {renderContent()}
           </div>
         </div>
