@@ -86,6 +86,7 @@ export type Database = {
           ended_at: string | null
           id: string
           status: string
+          student_names: Json | null
         }
         Insert: {
           created_at?: string
@@ -94,6 +95,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           status?: string
+          student_names?: Json | null
         }
         Update: {
           created_at?: string
@@ -102,6 +104,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           status?: string
+          student_names?: Json | null
         }
         Relationships: []
       }

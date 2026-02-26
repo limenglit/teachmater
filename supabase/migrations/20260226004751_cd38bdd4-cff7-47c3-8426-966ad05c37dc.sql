@@ -1,0 +1,1 @@
+ALTER TABLE public.checkin_sessions ADD COLUMN student_names JSONB DEFAULT '[]'::jsonb;

@@ -130,7 +130,7 @@ export default function CheckInPanel() {
   const handleStart = async () => {
     const { data, error } = await supabase
       .from('checkin_sessions')
-      .insert({ duration_minutes: duration })
+      .insert({ duration_minutes: duration, student_names: studentNames } as any)
       .select()
       .single();
 
