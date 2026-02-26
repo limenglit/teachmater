@@ -17,7 +17,8 @@ import { LogIn, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, approvalStatus, isAdmin } = useAuth();
+  const isApproved = user && approvalStatus === 'approved';
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('random');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -63,6 +64,15 @@ const Index = () => {
                 <span className="text-base">📋</span>
               </button>
               {/* Auth button */}
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                  title="用户管理"
+                >
+                  🛡️
+                </button>
+              )}
               {user ? (
                 <span className="text-xs text-muted-foreground hidden sm:inline mr-1 truncate max-w-[120px]">
                   {user.email}
@@ -81,7 +91,7 @@ const Index = () => {
           </header>
 
           {/* Tab Navigation */}
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!user} />
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!isApproved} />
 
           {/* Main Content */}
           <div className="flex flex-1 overflow-hidden relative">
@@ -91,13 +101,13 @@ const Index = () => {
             )}
 
             {/* Sidebar area */}
-            {activeTab !== 'checkin' || user ? (
+            {activeTab !== 'checkin' || isApproved ? (
               <div className={`
                 fixed lg:relative z-50 lg:z-auto h-full
                 transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
               `}>
-            {user && sidebarMode === 'library' ? (
+            {isApproved && sidebarMode === 'library' ? (
                   <div className="h-full flex flex-col w-[500px] lg:w-[560px]">
                     <div className="flex border-b border-border bg-card">
                       <button
@@ -117,7 +127,7 @@ const Index = () => {
                   </div>
                 ) : (
                   <div className="h-full flex flex-col">
-                    {user && (
+                    {isApproved && (
                       <div className="flex border-b border-border bg-card">
                         <button
                           onClick={() => setSidebarMode('list')}

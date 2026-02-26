@@ -1,18 +1,80 @@
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, ArrowLeft, Clock, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function AuthPage() {
+  const { user, approvalStatus, isAdmin, signOut } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Already logged in but pending approval
+  if (user && approvalStatus === 'pending') {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="text-6xl">⏳</div>
+          <h1 className="text-xl font-bold text-foreground">等待审批</h1>
+          <p className="text-sm text-muted-foreground">
+            您的账户已注册成功，正在等待管理员审批。<br />
+            审批通过后即可使用全部功能。
+          </p>
+          <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+            <div className="flex items-center justify-center gap-2 text-warning">
+              <Clock className="w-5 h-5" />
+              <span className="text-sm font-medium">审批中</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
+          </div>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-3 h-3 mr-1" /> 以访客继续
+            </Button>
+            <Button variant="ghost" size="sm" onClick={signOut} className="text-destructive">
+              退出登录
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Already logged in but rejected
+  if (user && approvalStatus === 'rejected') {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="w-full max-w-sm text-center space-y-6">
+          <div className="text-6xl">❌</div>
+          <h1 className="text-xl font-bold text-foreground">审批未通过</h1>
+          <p className="text-sm text-muted-foreground">
+            您的注册申请未通过审批。如有疑问请联系管理员。
+          </p>
+          <div className="flex gap-2 justify-center">
+            <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+              <ArrowLeft className="w-3 h-3 mr-1" /> 以访客继续
+            </Button>
+            <Button variant="ghost" size="sm" onClick={signOut} className="text-destructive">
+              退出登录
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Already logged in and approved
+  if (user && approvalStatus === 'approved') {
+    navigate('/');
+    return null;
+  }
 
   const handleLogin = async () => {
     if (!email || !password) return;
@@ -21,9 +83,8 @@ export default function AuthPage() {
     setLoading(false);
     if (error) {
       toast({ title: '登录失败', description: error.message, variant: 'destructive' });
-    } else {
-      navigate('/');
     }
+    // Auth state change will handle redirect via approvalStatus
   };
 
   const handleSignup = async () => {
@@ -41,7 +102,7 @@ export default function AuthPage() {
     if (error) {
       toast({ title: '注册失败', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: '注册成功', description: '请查收验证邮件后登录' });
+      toast({ title: '注册成功', description: '请查收验证邮件后登录，管理员审批通过后可使用全部功能' });
       setMode('login');
     }
   };
@@ -76,43 +137,24 @@ export default function AuthPage() {
             <>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="邮箱地址"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="pl-10"
-                />
+                <Input type="email" placeholder="邮箱地址" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" />
               </div>
               <Button onClick={handleForgotPassword} disabled={loading} className="w-full">
                 {loading ? '发送中...' : '发送重置邮件'}
               </Button>
-              <button onClick={() => setMode('login')} className="text-sm text-primary hover:underline w-full text-center">
-                返回登录
-              </button>
+              <button onClick={() => setMode('login')} className="text-sm text-primary hover:underline w-full text-center">返回登录</button>
             </>
           ) : (
             <>
               {mode === 'signup' && (
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="昵称（可选）"
-                    value={nickname}
-                    onChange={e => setNickname(e.target.value)}
-                    className="pl-10"
-                  />
+                  <Input placeholder="昵称（可选）" value={nickname} onChange={e => setNickname(e.target.value)} className="pl-10" />
                 </div>
               )}
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="邮箱地址"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="pl-10"
-                />
+                <Input type="email" placeholder="邮箱地址" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" />
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -125,24 +167,20 @@ export default function AuthPage() {
                   className="pl-10"
                 />
               </div>
-              <Button
-                onClick={mode === 'login' ? handleLogin : handleSignup}
-                disabled={loading}
-                className="w-full"
-              >
+              <Button onClick={mode === 'login' ? handleLogin : handleSignup} disabled={loading} className="w-full">
                 {loading ? '请稍候...' : mode === 'login' ? '登录' : '注册'}
               </Button>
+              {mode === 'signup' && (
+                <p className="text-xs text-muted-foreground text-center">
+                  注册后需管理员审批方可使用全部功能
+                </p>
+              )}
               <div className="flex items-center justify-between text-sm">
-                <button
-                  onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-                  className="text-primary hover:underline"
-                >
+                <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="text-primary hover:underline">
                   {mode === 'login' ? '没有账户？注册' : '已有账户？登录'}
                 </button>
                 {mode === 'login' && (
-                  <button onClick={() => setMode('forgot')} className="text-muted-foreground hover:underline">
-                    忘记密码
-                  </button>
+                  <button onClick={() => setMode('forgot')} className="text-muted-foreground hover:underline">忘记密码</button>
                 )}
               </div>
             </>

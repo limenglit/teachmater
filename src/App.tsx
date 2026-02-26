@@ -12,10 +12,11 @@ const DiscussPage = lazy(() => import("./pages/DiscussPage"));
 const CheckInPage = lazy(() => import("./pages/CheckInPage"));
 const AuthPage = lazy(() => import("./pages/AuthPage"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 
 const queryClient = new QueryClient();
 
-const Loading = () => <div className="flex items-center justify-center min-h-screen">加载中...</div>;
+const Loading = () => <div className="flex items-center justify-center min-h-screen text-muted-foreground">加载中...</div>;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Suspense fallback={<Loading />}><AuthPage /></Suspense>} />
             <Route path="/reset-password" element={<Suspense fallback={<Loading />}><ResetPassword /></Suspense>} />
+            <Route path="/admin" element={<Suspense fallback={<Loading />}><AdminPage /></Suspense>} />
             <Route path="/discuss/:topicId" element={<Suspense fallback={<Loading />}><DiscussPage /></Suspense>} />
             <Route path="/checkin/:sessionId" element={<Suspense fallback={<Loading />}><CheckInPage /></Suspense>} />
             <Route path="*" element={<NotFound />} />
