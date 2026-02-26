@@ -1,19 +1,84 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+function errorResponse(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), {
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, type } = await req.json();
+    const body = await req.json();
+    const { messages, type, topic_id, creator_token } = body;
+
+    // Validate type
+    if (!type || !['report', 'wordcloud'].includes(type)) {
+      return errorResponse('Invalid type. Must be "report" or "wordcloud"', 400);
+    }
+
+    // Validate topic_id
+    if (!topic_id || typeof topic_id !== 'string') {
+      return errorResponse('topic_id is required', 400);
+    }
+
+    // Validate creator_token
+    if (!creator_token || typeof creator_token !== 'string') {
+      return errorResponse('creator_token is required', 403);
+    }
+
+    // Validate messages array
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return errorResponse('Messages must be a non-empty array', 400);
+    }
+    if (messages.length > 1000) {
+      return errorResponse('Too many messages (max 1000)', 400);
+    }
+
+    // Validate each message
+    for (let i = 0; i < messages.length; i++) {
+      if (typeof messages[i] !== 'string') {
+        return errorResponse(`Message at index ${i} must be a string`, 400);
+      }
+      if (messages[i].length > 500) {
+        return errorResponse(`Message at index ${i} exceeds max length`, 400);
+      }
+    }
+
+    // Verify topic exists and creator_token matches
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    );
+
+    const { data: topic, error: topicError } = await supabaseClient
+      .from('discussion_topics')
+      .select('id, creator_token')
+      .eq('id', topic_id)
+      .single();
+
+    if (topicError || !topic) {
+      return errorResponse('Topic not found', 404);
+    }
+
+    if (topic.creator_token !== creator_token) {
+      return errorResponse('Unauthorized', 403);
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const allText = messages.join('\n');
+    if (allText.length > 50000) {
+      return errorResponse('Total message content too large', 400);
+    }
 
     let systemPrompt = '';
     if (type === 'report') {
@@ -57,20 +122,14 @@ ${allText}`;
     if (!response.ok) {
       const status = response.status;
       if (status === 429) {
-        return new Response(JSON.stringify({ error: "请求过于频繁，请稍后再试" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("请求过于频繁，请稍后再试", 429);
       }
       if (status === 402) {
-        return new Response(JSON.stringify({ error: "AI 额度不足，请充值" }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("AI 额度不足，请充值", 402);
       }
       const t = await response.text();
       console.error("AI gateway error:", status, t);
-      return new Response(JSON.stringify({ error: "AI 分析失败" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("AI 分析失败", 500);
     }
 
     const data = await response.json();
@@ -81,7 +140,7 @@ ${allText}`;
     });
   } catch (e) {
     console.error("analyze-barrage error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
