@@ -223,6 +223,7 @@ export type Database = {
           created_at: string
           id: string
           nickname: string | null
+          status: string
           user_id: string
         }
         Insert: {
@@ -230,6 +231,7 @@ export type Database = {
           created_at?: string
           id?: string
           nickname?: string | null
+          status?: string
           user_id: string
         }
         Update: {
@@ -237,6 +239,25 @@ export type Database = {
           created_at?: string
           id?: string
           nickname?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -246,17 +267,37 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_user: { Args: { p_user_id: string }; Returns: undefined }
       delete_topic: {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
       }
+      get_my_status: { Args: never; Returns: string }
+      get_pending_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          nickname: string
+          status: string
+          user_id: string
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      reject_user: { Args: { p_user_id: string }; Returns: undefined }
       update_topic: {
         Args: { p_title: string; p_token: string; p_topic_id: string }
         Returns: undefined
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -383,6 +424,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
