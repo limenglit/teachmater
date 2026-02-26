@@ -14,8 +14,8 @@ const tabs: TabItem[] = [
   { id: 'groups', label: '分组', emoji: '👥', icon: <Users className="w-4 h-4" /> },
   { id: 'teams', label: '建队', emoji: '⚡', icon: <Zap className="w-4 h-4" /> },
   { id: 'seats', label: '座位', emoji: '🏫', icon: <LayoutGrid className="w-4 h-4" /> },
-  { id: 'toolkit', label: '工具箱', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
   { id: 'checkin', label: '签到', emoji: '📋', icon: <ClipboardCheck className="w-4 h-4" /> },
+  { id: 'toolkit', label: '工具箱', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
 ];
 
 interface Props {
