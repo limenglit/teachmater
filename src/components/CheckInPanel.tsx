@@ -50,6 +50,7 @@ export default function CheckInPanel() {
   const [leaveSet, setLeaveSet] = useState<Set<string>>(new Set());
   const [showHistory, setShowHistory] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+  const resultExportRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   const studentNames = students.map(s => s.name);
@@ -272,13 +273,31 @@ export default function CheckInPanel() {
 
           {session?.status === 'ended' && (
             <div className="border border-border rounded-lg p-4 bg-card text-left space-y-3 mt-6">
-              <h3 className="font-semibold text-foreground">上次签到结果</h3>
-              <div className="text-sm text-muted-foreground">
-                已签到 {checkedNames.length} 人，未签到 {uncheckedStudents.length} 人
-                {unknownRecords.length > 0 && `，未知 ${unknownRecords.length} 人`}
+              <div ref={resultExportRef} className="space-y-3 p-2">
+                <h3 className="font-semibold text-foreground">上次签到结果</h3>
+                <div className="text-sm text-muted-foreground">
+                  已签到 {checkedNames.length} 人，未签到 {uncheckedStudents.length} 人
+                  {unknownRecords.length > 0 && `，未知 ${unknownRecords.length} 人`}
+                </div>
+                <div className="space-y-1">
+                  {records.filter(r => r.status === 'matched').map(r => (
+                    <div key={r.id} className="flex items-center justify-between text-sm">
+                      <span className="text-foreground">{r.student_name}</span>
+                      <span className="text-xs text-muted-foreground">{new Date(r.checked_in_at).toLocaleTimeString()}</span>
+                    </div>
+                  ))}
+                </div>
+                {uncheckedStudents.length > 0 && (
+                  <div className="space-y-1 pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground font-medium">未签到：</p>
+                    {uncheckedStudents.map(n => (
+                      <div key={n} className="text-sm text-muted-foreground">{n}{leaveSet.has(n) ? '（请假）' : ''}</div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
-                <ExportButtons targetRef={exportRef as React.RefObject<HTMLElement>} filename="签到记录" />
+                <ExportButtons targetRef={resultExportRef as React.RefObject<HTMLElement>} filename="签到记录" />
                 <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5 h-8 text-xs">
                   <Download className="w-3.5 h-3.5" /> CSV
                 </Button>
