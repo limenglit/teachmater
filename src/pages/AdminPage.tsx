@@ -26,7 +26,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
-    loadUsers();
+    // Small delay to ensure auth token is fully available
+    const timer = setTimeout(() => loadUsers(), 300);
+    return () => clearTimeout(timer);
   }, [user]);
 
   const loadUsers = async () => {
