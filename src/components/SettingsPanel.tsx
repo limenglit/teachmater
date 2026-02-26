@@ -1,10 +1,39 @@
+import { useState, useEffect } from 'react';
 import { useTheme, COLOR_SCHEMES, FONT_OPTIONS, FONT_SIZE_MIN, FONT_SIZE_MAX } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
-import { Settings, Check, Type, ALargeSmall } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Settings, Check, Type, ALargeSmall, LogOut, User } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 export default function SettingsPanel() {
   const { config, setScheme, setFont, setFontSize } = useTheme();
+  const { user, signOut } = useAuth();
+  const [nickname, setNickname] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('nickname').eq('user_id', user.id).single().then(({ data }) => {
+      if (data) setNickname((data as any).nickname || '');
+    });
+  }, [user]);
+
+  const saveProfile = async () => {
+    if (!user) return;
+    setSaving(true);
+    await supabase.from('profiles').update({ nickname: nickname.trim() }).eq('user_id', user.id);
+    setSaving(false);
+    toast({ title: '已保存' });
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({ title: '已退出登录' });
+  };
 
   return (
     <Sheet>
@@ -19,6 +48,38 @@ export default function SettingsPanel() {
         </SheetHeader>
 
         <div className="mt-6 space-y-8">
+          {/* User Profile */}
+          {user && (
+            <section>
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <User className="w-4 h-4" /> 个人资料
+              </h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">邮箱</label>
+                  <p className="text-sm text-foreground truncate">{user.email}</p>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">昵称</label>
+                  <div className="flex gap-1.5 mt-1">
+                    <Input
+                      value={nickname}
+                      onChange={e => setNickname(e.target.value)}
+                      placeholder="设置昵称"
+                      className="h-8 text-sm"
+                    />
+                    <Button size="sm" onClick={saveProfile} disabled={saving} className="h-8 px-3">
+                      {saving ? '...' : '保存'}
+                    </Button>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full mt-2 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5">
+                  <LogOut className="w-3.5 h-3.5" /> 退出登录
+                </Button>
+              </div>
+            </section>
+          )}
+
           {/* Color Schemes */}
           <section>
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -35,7 +96,6 @@ export default function SettingsPanel() {
                       : 'border-border hover:border-primary/30 bg-card'
                     }`}
                 >
-                  {/* Color preview dots */}
                   <div className="flex gap-1.5 mb-2">
                     {scheme.preview.map((color, i) => (
                       <div
@@ -111,7 +171,7 @@ export default function SettingsPanel() {
 
           {/* Info */}
           <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-            🔒 数据仅保存于本地，安全无忧
+            {user ? '☁️ 班级库数据已云端同步' : '🔒 数据仅保存于本地，安全无忧'}
           </div>
         </div>
       </SheetContent>
