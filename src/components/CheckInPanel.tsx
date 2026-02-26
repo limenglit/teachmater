@@ -271,30 +271,96 @@ export default function CheckInPanel() {
             </Button>
           </div>
 
-          {session?.status === 'ended' && (
-            <div className="border border-border rounded-lg p-4 bg-card text-left space-y-3 mt-6">
-              <div ref={resultExportRef} className="space-y-3 p-2">
-                <h3 className="font-semibold text-foreground">上次签到结果</h3>
-                <div className="text-sm text-muted-foreground">
-                  已签到 {checkedNames.length} 人，未签到 {uncheckedStudents.length} 人
-                  {unknownRecords.length > 0 && `，未知 ${unknownRecords.length} 人`}
+          {session?.status === 'ended' && (() => {
+            const matchedRecords = records.filter(r => r.status === 'matched');
+            const totalStudents = studentNames.length;
+            const checkinRate = totalStudents > 0 ? Math.round((matchedRecords.length / totalStudents) * 100) : 0;
+            const leaveCount = uncheckedStudents.filter(n => leaveSet.has(n)).length;
+            const absentCount = uncheckedStudents.length - leaveCount;
+
+            // Average check-in time (seconds from session start)
+            const sessionStart = new Date(session.created_at).getTime();
+            const checkinTimes = matchedRecords.map(r => (new Date(r.checked_in_at).getTime() - sessionStart) / 1000);
+            const avgTime = checkinTimes.length > 0 ? Math.round(checkinTimes.reduce((a, b) => a + b, 0) / checkinTimes.length) : 0;
+            const fastestTime = checkinTimes.length > 0 ? Math.round(Math.min(...checkinTimes)) : 0;
+            const slowestTime = checkinTimes.length > 0 ? Math.round(Math.max(...checkinTimes)) : 0;
+            const formatDuration = (s: number) => s < 60 ? `${s}秒` : `${Math.floor(s / 60)}分${s % 60}秒`;
+
+            return (
+            <div className="border border-border rounded-lg p-4 bg-card text-left space-y-4 mt-6">
+              <div ref={resultExportRef} className="space-y-4 p-2">
+                <h3 className="font-semibold text-foreground text-base">签到统计</h3>
+
+                {/* Stats cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="rounded-lg bg-primary/10 p-3 text-center">
+                    <div className="text-2xl font-bold text-primary">{checkinRate}%</div>
+                    <div className="text-xs text-muted-foreground mt-1">签到率</div>
+                  </div>
+                  <div className="rounded-lg bg-accent p-3 text-center">
+                    <div className="text-2xl font-bold text-accent-foreground">{matchedRecords.length}<span className="text-sm font-normal text-muted-foreground">/{totalStudents}</span></div>
+                    <div className="text-xs text-muted-foreground mt-1">已签到</div>
+                  </div>
+                  <div className="rounded-lg bg-destructive/10 p-3 text-center">
+                    <div className="text-2xl font-bold text-destructive">{absentCount}</div>
+                    <div className="text-xs text-muted-foreground mt-1">缺勤</div>
+                  </div>
+                  <div className="rounded-lg bg-muted p-3 text-center">
+                    <div className="text-2xl font-bold text-foreground">{leaveCount}</div>
+                    <div className="text-xs text-muted-foreground mt-1">请假</div>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  {records.filter(r => r.status === 'matched').map(r => (
-                    <div key={r.id} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{r.student_name}</span>
-                      <span className="text-xs text-muted-foreground">{new Date(r.checked_in_at).toLocaleTimeString()}</span>
+
+                {/* Time stats */}
+                {matchedRecords.length > 0 && (
+                  <div className="rounded-lg border border-border p-3 space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">签到用时统计</p>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <div className="text-sm font-semibold text-foreground">{formatDuration(avgTime)}</div>
+                        <div className="text-xs text-muted-foreground">平均用时</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-primary">{formatDuration(fastestTime)}</div>
+                        <div className="text-xs text-muted-foreground">最快</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-destructive">{formatDuration(slowestTime)}</div>
+                        <div className="text-xs text-muted-foreground">最慢</div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-                {uncheckedStudents.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-border">
-                    <p className="text-xs text-muted-foreground font-medium">未签到：</p>
-                    {uncheckedStudents.map(n => (
-                      <div key={n} className="text-sm text-muted-foreground">{n}{leaveSet.has(n) ? '（请假）' : ''}</div>
-                    ))}
                   </div>
                 )}
+
+                {unknownRecords.length > 0 && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">未知签到 ({unknownRecords.length}人)</p>
+                    <div className="text-sm text-muted-foreground">{unknownRecords.map(r => r.student_name).join('、')}</div>
+                  </div>
+                )}
+
+                {/* Detail lists */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-primary flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> 已签到 ({matchedRecords.length})</p>
+                    {matchedRecords.map(r => (
+                      <div key={r.id} className="flex items-center justify-between text-sm pl-4">
+                        <span className="text-foreground">{r.student_name}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(r.checked_in_at).toLocaleTimeString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {uncheckedStudents.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-destructive flex items-center gap-1"><XCircle className="w-3 h-3" /> 未签到 ({uncheckedStudents.length})</p>
+                      {uncheckedStudents.map(n => (
+                        <div key={n} className="text-sm pl-4 text-muted-foreground">
+                          {n}{leaveSet.has(n) ? <span className="text-xs ml-1 bg-accent text-accent-foreground px-1 py-0.5 rounded">请假</span> : ''}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex gap-2">
                 <ExportButtons targetRef={resultExportRef as React.RefObject<HTMLElement>} filename="签到记录" />
@@ -303,7 +369,8 @@ export default function CheckInPanel() {
                 </Button>
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     );
