@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -33,6 +33,11 @@ export default function SeatChart() {
   const [windowOnLeft, setWindowOnLeft] = useState(true);
   const [startFrom, setStartFrom] = useState<StartFrom>('door');
 
+  // Aisle state: indices after which an aisle is inserted
+  const [colAisles, setColAisles] = useState<number[]>([]);
+  const [rowAisles, setRowAisles] = useState<number[]>([]);
+  const [draggingAisle, setDraggingAisle] = useState<{ type: 'row' | 'col'; index: number } | null>(null);
+
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
   const toggleDisabled = (r: number, c: number) => {
@@ -43,7 +48,6 @@ export default function SeatChart() {
         next.delete(key);
       } else {
         next.add(key);
-        // Clear any student from this seat
         setSeats(s => {
           const g = s.map(row => [...row]);
           if (g[r]) g[r][c] = null;
@@ -57,22 +61,7 @@ export default function SeatChart() {
   const makeGrid = (): (string | null)[][] =>
     Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
 
-  // Determine if we should reverse column order based on startFrom + windowOnLeft
-  // "door" side: if windowOnLeft, door is right, so start from right (reverse cols)
-  // "window" side: if windowOnLeft, window is left, so start from left (normal)
-  const shouldReverseCols = useCallback(() => {
-    if (startFrom === 'door') return !windowOnLeft; // door on left → start from left (no reverse); door on right → reverse
-    return windowOnLeft; // window on left → no reverse; window on right → reverse
-    // Actually: windowOnLeft=true means window=left, door=right
-    // startFrom='door' + windowOnLeft=true → start from right (col=cols-1 first) → reverse
-    // startFrom='door' + windowOnLeft=false → start from left → no reverse
-    // startFrom='window' + windowOnLeft=true → start from left → no reverse
-    // startFrom='window' + windowOnLeft=false → start from right → reverse
-  }, [startFrom, windowOnLeft]);
-
   const getColOrder = useCallback(() => {
-    // windowOnLeft=true: left=window, right=door
-    // startFrom='door': start from door side
     const doorOnRight = windowOnLeft;
     const startFromRight = (startFrom === 'door' && doorOnRight) || (startFrom === 'window' && !doorOnRight);
     if (startFromRight) {
@@ -207,16 +196,13 @@ export default function SeatChart() {
   const handleDrop = (e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
     if (!dragFrom) return;
-
     setSeats(prev => {
       const next = prev.map(row => [...row]);
-      // Swap
       const temp = next[r][c];
       next[r][c] = next[dragFrom.r][dragFrom.c];
       next[dragFrom.r][dragFrom.c] = temp;
       return next;
     });
-
     setDragFrom(null);
     setDropTarget(null);
   };
@@ -226,20 +212,233 @@ export default function SeatChart() {
     setDropTarget(null);
   };
 
+  // Aisle management
+  const addColAisle = () => {
+    // Add aisle after the middle column by default
+    const mid = Math.floor(cols / 2) - 1;
+    const candidate = colAisles.includes(mid) ? findNextFree(mid, cols - 1, colAisles) : mid;
+    if (candidate !== null) setColAisles(prev => [...prev, candidate].sort((a, b) => a - b));
+  };
+
+  const addRowAisle = () => {
+    const mid = Math.floor(rows / 2) - 1;
+    const candidate = rowAisles.includes(mid) ? findNextFree(mid, rows - 1, rowAisles) : mid;
+    if (candidate !== null) setRowAisles(prev => [...prev, candidate].sort((a, b) => a - b));
+  };
+
+  const removeColAisle = (idx: number) => {
+    setColAisles(prev => prev.filter(a => a !== idx));
+  };
+
+  const removeRowAisle = (idx: number) => {
+    setRowAisles(prev => prev.filter(a => a !== idx));
+  };
+
+  // Aisle drag to reposition
+  const handleAisleDragStart = (e: React.DragEvent, type: 'row' | 'col', index: number) => {
+    e.stopPropagation();
+    setDraggingAisle({ type, index });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleAisleDragOver = (e: React.DragEvent) => {
+    if (draggingAisle) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  const handleAisleDropOnGap = (e: React.DragEvent, type: 'row' | 'col', newIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggingAisle || draggingAisle.type !== type) return;
+    const oldIndex = draggingAisle.index;
+    if (oldIndex === newIndex) { setDraggingAisle(null); return; }
+
+    if (type === 'col') {
+      setColAisles(prev => {
+        const next = prev.filter(a => a !== oldIndex);
+        if (!next.includes(newIndex)) next.push(newIndex);
+        return next.sort((a, b) => a - b);
+      });
+    } else {
+      setRowAisles(prev => {
+        const next = prev.filter(a => a !== oldIndex);
+        if (!next.includes(newIndex)) next.push(newIndex);
+        return next.sort((a, b) => a - b);
+      });
+    }
+    setDraggingAisle(null);
+  };
+
+  const handleAisleDragEnd = () => {
+    setDraggingAisle(null);
+  };
+
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
   const isExamMode = mode === 'exam';
-
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Build the visual grid with aisles inserted
+  const buildVisualGrid = () => {
+    if (seats.length === 0) return null;
+
+    const elements: React.ReactNode[] = [];
+    // Total visual columns = cols + colAisles.length
+    const totalVisualCols = cols + colAisles.length;
+
+    // Map real col index to visual col index
+    const realToVisualCol = (realCol: number) => {
+      let offset = 0;
+      for (const a of colAisles) {
+        if (realCol > a) offset++;
+      }
+      return realCol + offset;
+    };
+
+    // Render rows with row aisles
+    for (let ri = 0; ri < rows; ri++) {
+      // Render seat cells for this row
+      for (let ci = 0; ci < cols; ci++) {
+        const visualCol = realToVisualCol(ci);
+        const name = seats[ri]?.[ci] ?? null;
+        const isDragging = dragFrom?.r === ri && dragFrom?.c === ci;
+        const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
+        const isDisabled = disabledSeats.has(seatKey(ri, ci));
+
+        elements.push(
+          <div
+            key={`seat-${ri}-${ci}`}
+            draggable={!!name && !isDisabled}
+            onDragStart={() => handleDragStart(ri, ci)}
+            onDragOver={e => !isDisabled && handleDragOver(e, ri, ci)}
+            onDrop={e => !isDisabled && handleDrop(e, ri, ci)}
+            onDragEnd={handleDragEnd}
+            onClick={() => !name && toggleDisabled(ri, ci)}
+            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
+            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
+              ${isDisabled
+                ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
+                : name
+                  ? `bg-card border-border text-foreground shadow-card cursor-grab active:cursor-grabbing hover:border-primary/40
+                     ${isDragging ? 'opacity-30 scale-90' : ''}
+                     ${isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-105' : ''}`
+                  : `bg-muted/50 border-dashed border-border text-muted-foreground cursor-pointer hover:border-destructive/40
+                     ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`
+              }`}
+          >
+            {isDisabled ? <X className="w-4 h-4" /> : name || '空'}
+          </div>
+        );
+      }
+
+      // Render column aisle cells for this row
+      for (const aisleAfterCol of colAisles) {
+        const visualCol = aisleAfterCol + colAisles.filter(a => a < aisleAfterCol).length + 1;
+        elements.push(
+          <div
+            key={`col-aisle-${ri}-${aisleAfterCol}`}
+            draggable
+            onDragStart={e => handleAisleDragStart(e, 'col', aisleAfterCol)}
+            onDragEnd={handleAisleDragEnd}
+            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
+            className="w-16 h-12 flex items-center justify-center cursor-grab active:cursor-grabbing group"
+            title="拖动调整过道位置，双击删除"
+            onDoubleClick={() => removeColAisle(aisleAfterCol)}
+          >
+            <div className="w-0.5 h-8 bg-border group-hover:bg-primary/40 rounded transition-colors" />
+          </div>
+        );
+      }
+
+      // If there's a row aisle after this row, render the aisle row
+      if (rowAisles.includes(ri)) {
+        const aisleVisualRow = getVisualRow(ri, rowAisles) + 2; // +1 for current row, +1 for 1-indexed
+        for (let ci = 0; ci < totalVisualCols; ci++) {
+          elements.push(
+            <div
+              key={`row-aisle-${ri}-${ci}`}
+              draggable={ci === 0}
+              onDragStart={ci === 0 ? (e => handleAisleDragStart(e, 'row', ri)) : undefined}
+              onDragEnd={ci === 0 ? handleAisleDragEnd : undefined}
+              style={{ gridRow: aisleVisualRow, gridColumn: ci + 1 }}
+              className={`w-16 h-12 flex items-center justify-center ${ci === 0 ? 'cursor-grab active:cursor-grabbing' : ''} group`}
+              title={ci === 0 ? '拖动调整过道位置，双击删除' : undefined}
+              onDoubleClick={ci === 0 ? () => removeRowAisle(ri) : undefined}
+            >
+              <div className="w-8 h-0.5 bg-border group-hover:bg-primary/40 rounded transition-colors" />
+            </div>
+          );
+        }
+      }
+    }
+
+    // Drop zones for repositioning aisles
+    if (draggingAisle?.type === 'col') {
+      for (let ci = 0; ci < cols - 1; ci++) {
+        if (colAisles.includes(ci) && ci !== draggingAisle.index) continue;
+        const visualCol = realToVisualCol(ci);
+        // Overlay between visualCol and visualCol+1
+        elements.push(
+          <div
+            key={`col-drop-${ci}`}
+            onDragOver={handleAisleDragOver}
+            onDrop={e => handleAisleDropOnGap(e, 'col', ci)}
+            style={{
+              gridRow: `1 / -1`,
+              gridColumn: colAisles.includes(ci) ? visualCol + 2 : visualCol + 1,
+              pointerEvents: 'all',
+            }}
+            className={`w-16 z-10 ${ci === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
+          />
+        );
+      }
+    }
+
+    if (draggingAisle?.type === 'row') {
+      for (let ri = 0; ri < rows - 1; ri++) {
+        if (rowAisles.includes(ri) && ri !== draggingAisle.index) continue;
+        const visualRow = getVisualRow(ri, rowAisles);
+        elements.push(
+          <div
+            key={`row-drop-${ri}`}
+            onDragOver={handleAisleDragOver}
+            onDrop={e => handleAisleDropOnGap(e, 'row', ri)}
+            style={{
+              gridRow: visualRow + 1,
+              gridColumn: `1 / -1`,
+              pointerEvents: 'all',
+            }}
+            className={`h-12 z-10 ${ri === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
+          />
+        );
+      }
+    }
+
+    const totalVisualRows = rows + rowAisles.length;
+
+    return (
+      <div
+        className="inline-grid gap-1.5 relative"
+        style={{
+          gridTemplateColumns: `repeat(${totalVisualCols}, 4rem)`,
+          gridTemplateRows: `repeat(${totalVisualRows}, 3rem)`,
+        }}
+      >
+        {elements}
+      </div>
+    );
+  };
 
   return (
     <div className="flex-1 p-4 sm:p-8 overflow-auto">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-lg sm:text-xl font-semibold text-foreground">座位安排</h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              自定义教室布局，多种排座模式，支持拖拽交换座位
+              自定义教室布局，多种排座模式，支持拖拽交换座位和过道设置
             </p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -286,7 +485,7 @@ export default function SeatChart() {
           </div>
         </div>
 
-        {/* Mode selector */}
+        {/* Mode selector + Aisle buttons */}
         <div className="flex flex-wrap gap-2 mb-5">
           {MODES.map(m => (
             <button
@@ -303,11 +502,39 @@ export default function SeatChart() {
               {m.label}
             </button>
           ))}
+
+          <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">
+            <Button variant="outline" size="sm" onClick={addColAisle} className="gap-1 text-xs h-8" title="添加列过道">
+              <Plus className="w-3 h-3" /> 列过道
+            </Button>
+            <Button variant="outline" size="sm" onClick={addRowAisle} className="gap-1 text-xs h-8" title="添加行过道">
+              <Plus className="w-3 h-3" /> 行过道
+            </Button>
+          </div>
+
           {seats.length > 0 && <ExportButtons targetRef={printRef} filename="座位表" />}
           <Button onClick={autoSeat} className="gap-2 ml-auto">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
         </div>
+
+        {/* Aisle indicators */}
+        {(colAisles.length > 0 || rowAisles.length > 0) && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {colAisles.map(a => (
+              <span key={`ca-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                列过道 (第{a + 1}列后)
+                <button onClick={() => removeColAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+            {rowAisles.map(a => (
+              <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                行过道 (第{a + 1}行后)
+                <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+        )}
 
         <div ref={printRef}>
           {/* Podium with window/door */}
@@ -332,65 +559,50 @@ export default function SeatChart() {
 
           {/* Seat Grid with side markers */}
           {seats.length > 0 ? (
-          <div className="flex justify-center items-stretch gap-2">
-            {/* Left side marker */}
-            <div className="flex items-center text-sm text-muted-foreground writing-vertical">
-              <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🪟 窗户侧' : '🚪 门侧'}</span>
+            <div className="flex justify-center items-stretch gap-2">
+              <div className="flex items-center text-sm text-muted-foreground">
+                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🪟 窗户侧' : '🚪 门侧'}</span>
+              </div>
+              {buildVisualGrid()}
+              <div className="flex items-center text-sm text-muted-foreground">
+                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🚪 门侧' : '🪟 窗户侧'}</span>
+              </div>
             </div>
-            <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-              {seats.flatMap((row, ri) =>
-                row.map((name, ci) => {
-                  const isDragging = dragFrom?.r === ri && dragFrom?.c === ci;
-                  const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
-                  const isDisabled = disabledSeats.has(seatKey(ri, ci));
-                  return (
-                    <div
-                      key={`${ri}-${ci}`}
-                      draggable={!!name && !isDisabled}
-                      onDragStart={() => handleDragStart(ri, ci)}
-                      onDragOver={e => !isDisabled && handleDragOver(e, ri, ci)}
-                      onDrop={e => !isDisabled && handleDrop(e, ri, ci)}
-                      onDragEnd={handleDragEnd}
-                      onClick={() => !name && toggleDisabled(ri, ci)}
-                      className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
-                        ${isDisabled
-                          ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
-                          : name
-                            ? `bg-card border-border text-foreground shadow-card cursor-grab active:cursor-grabbing hover:border-primary/40
-                               ${isDragging ? 'opacity-30 scale-90' : ''}
-                               ${isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-105' : ''}`
-                            : `bg-muted/50 border-dashed border-border text-muted-foreground cursor-pointer hover:border-destructive/40
-                               ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`
-                        }`}
-                    >
-                      {isDisabled ? <X className="w-4 h-4" /> : name || '空'}
-                    </div>
-                  );
-                })
-              )}
+          ) : (
+            <div className="text-center py-20 text-muted-foreground">
+              <p className="text-lg mb-2">选择排座模式后点击「自动排座」</p>
+              <p className="text-sm">支持竖S形、横S形、按组排列、考试隔行等多种模式，可拖拽交换座位</p>
             </div>
-            {/* Right side marker */}
-            <div className="flex items-center text-sm text-muted-foreground">
-              <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🚪 门侧' : '🪟 窗户侧'}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">选择排座模式后点击「自动排座」</p>
-            <p className="text-sm">支持竖S形、横S形、按组排列、考试隔行等多种模式，可拖拽交换座位</p>
-          </div>
-        )}
+          )}
         </div>
 
         {/* Legend */}
         {seats.length > 0 && (
           <p className="text-center text-xs text-muted-foreground mt-4">
-            💡 拖拽学生交换座位 · 点击空座位可禁用/启用该位置
+            💡 拖拽学生交换座位 · 点击空座位可禁用/启用 · 拖动过道线可调整位置 · 双击过道线可删除
           </p>
         )}
       </div>
     </div>
   );
+}
+
+function getVisualRow(realRow: number, rowAisles: number[]): number {
+  let offset = 0;
+  for (const a of rowAisles) {
+    if (realRow > a) offset++;
+  }
+  return realRow + offset;
+}
+
+function findNextFree(start: number, max: number, existing: number[]): number | null {
+  for (let i = start; i < max; i++) {
+    if (!existing.includes(i)) return i;
+  }
+  for (let i = 0; i < start; i++) {
+    if (!existing.includes(i)) return i;
+  }
+  return null;
 }
 
 function splitIntoGroups(names: string[], count: number): string[][] {
