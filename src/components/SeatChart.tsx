@@ -2,10 +2,11 @@ import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
+type StartFrom = 'door' | 'window';
 
 const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string }[] = [
   { id: 'verticalS', label: '竖S形', icon: <ArrowDownUp className="w-3.5 h-3.5" />, desc: '按列蛇形排列' },
@@ -19,8 +20,8 @@ const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string 
 
 export default function SeatChart() {
   const { students } = useStudents();
-  const [rows, setRows] = useState(6);
-  const [cols, setCols] = useState(6);
+  const [rows, setRows] = useState(10);
+  const [cols, setCols] = useState(8);
   const [seats, setSeats] = useState<(string | null)[][]>([]);
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
@@ -29,6 +30,8 @@ export default function SeatChart() {
   const [examSkipCol, setExamSkipCol] = useState(false);
   const [dragFrom, setDragFrom] = useState<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
+  const [windowOnLeft, setWindowOnLeft] = useState(true);
+  const [startFrom, setStartFrom] = useState<StartFrom>('door');
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
@@ -54,19 +57,43 @@ export default function SeatChart() {
   const makeGrid = (): (string | null)[][] =>
     Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
 
+  // Determine if we should reverse column order based on startFrom + windowOnLeft
+  // "door" side: if windowOnLeft, door is right, so start from right (reverse cols)
+  // "window" side: if windowOnLeft, window is left, so start from left (normal)
+  const shouldReverseCols = useCallback(() => {
+    if (startFrom === 'door') return !windowOnLeft; // door on left → start from left (no reverse); door on right → reverse
+    return windowOnLeft; // window on left → no reverse; window on right → reverse
+    // Actually: windowOnLeft=true means window=left, door=right
+    // startFrom='door' + windowOnLeft=true → start from right (col=cols-1 first) → reverse
+    // startFrom='door' + windowOnLeft=false → start from left → no reverse
+    // startFrom='window' + windowOnLeft=true → start from left → no reverse
+    // startFrom='window' + windowOnLeft=false → start from right → reverse
+  }, [startFrom, windowOnLeft]);
+
+  const getColOrder = useCallback(() => {
+    // windowOnLeft=true: left=window, right=door
+    // startFrom='door': start from door side
+    const doorOnRight = windowOnLeft;
+    const startFromRight = (startFrom === 'door' && doorOnRight) || (startFrom === 'window' && !doorOnRight);
+    if (startFromRight) {
+      return Array.from({ length: cols }, (_, i) => cols - 1 - i);
+    }
+    return Array.from({ length: cols }, (_, i) => i);
+  }, [cols, startFrom, windowOnLeft]);
+
   const autoSeat = useCallback(() => {
     const grid = makeGrid();
     const names = students.map(s => s.name);
-
-    // Collect available positions based on mode
     const isAvailable = (r: number, c: number) => !disabledSeats.has(seatKey(r, c));
+    const colOrder = getColOrder();
 
     switch (mode) {
       case 'verticalS': {
         let idx = 0;
-        for (let c = 0; c < cols && idx < names.length; c++) {
+        for (let ci = 0; ci < cols && idx < names.length; ci++) {
+          const c = colOrder[ci];
           for (let r = 0; r < rows && idx < names.length; r++) {
-            const row = c % 2 === 0 ? r : rows - 1 - r;
+            const row = ci % 2 === 0 ? r : rows - 1 - r;
             if (isAvailable(row, c)) grid[row][c] = names[idx++];
           }
         }
@@ -75,19 +102,21 @@ export default function SeatChart() {
       case 'horizontalS': {
         let idx = 0;
         for (let r = 0; r < rows && idx < names.length; r++) {
-          for (let c = 0; c < cols && idx < names.length; c++) {
-            const col = r % 2 === 0 ? c : cols - 1 - c;
-            if (isAvailable(r, col)) grid[r][col] = names[idx++];
+          for (let ci = 0; ci < cols && idx < names.length; ci++) {
+            const rawCol = r % 2 === 0 ? ci : cols - 1 - ci;
+            const c = colOrder[rawCol];
+            if (isAvailable(r, c)) grid[r][c] = names[idx++];
           }
         }
         break;
       }
       case 'exam': {
         let idx = 0;
-        for (let c = 0; c < cols && idx < names.length; c++) {
-          if (examSkipCol && c % 2 !== 0) continue;
+        for (let ci = 0; ci < cols && idx < names.length; ci++) {
+          const c = colOrder[ci];
+          if (examSkipCol && ci % 2 !== 0) continue;
           for (let r = 0; r < rows && idx < names.length; r++) {
-            const row = c % 2 === 0 ? r : rows - 1 - r;
+            const row = ci % 2 === 0 ? r : rows - 1 - r;
             if (examSkipRow && row % 2 !== 0) continue;
             if (isAvailable(row, c)) grid[row][c] = names[idx++];
           }
@@ -97,12 +126,13 @@ export default function SeatChart() {
       case 'groupCol': {
         const groups = splitIntoGroups(names, groupCount);
         groups.forEach((group, gi) => {
-          const col = gi % cols;
+          const colIdx = gi % cols;
+          const c = colOrder[colIdx];
           let placed = 0;
           for (let r = 0; r < rows && placed < group.length; r++) {
             const row = r + Math.floor(gi / cols) * Math.ceil(names.length / groupCount);
-            if (row < rows && col < cols && isAvailable(row, col)) {
-              grid[row][col] = group[placed++];
+            if (row < rows && isAvailable(row, c)) {
+              grid[row][c] = group[placed++];
             }
           }
         });
@@ -113,10 +143,11 @@ export default function SeatChart() {
         groups.forEach((group, gi) => {
           const row = gi % rows;
           let placed = 0;
-          for (let c = 0; c < cols && placed < group.length; c++) {
-            const col = c + Math.floor(gi / rows) * Math.ceil(names.length / groupCount);
-            if (row < rows && col < cols && isAvailable(row, col)) {
-              grid[row][col] = group[placed++];
+          for (let ci = 0; ci < cols && placed < group.length; ci++) {
+            const c = colOrder[ci];
+            const colShift = ci + Math.floor(gi / rows) * Math.ceil(names.length / groupCount);
+            if (row < rows && colShift < cols && isAvailable(row, c)) {
+              grid[row][c] = group[placed++];
             }
           }
         });
@@ -159,7 +190,7 @@ export default function SeatChart() {
     }
 
     setSeats(grid);
-  }, [students, rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol]);
+  }, [students, rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, getColOrder]);
 
   // Drag and drop for seat swapping
   const handleDragStart = (r: number, c: number) => {
@@ -241,6 +272,17 @@ export default function SeatChart() {
                 </label>
               </>
             )}
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              起始
+              <select
+                value={startFrom}
+                onChange={e => setStartFrom(e.target.value as StartFrom)}
+                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              >
+                <option value="door">靠门开始</option>
+                <option value="window">靠窗开始</option>
+              </select>
+            </label>
           </div>
         </div>
 
@@ -268,16 +310,33 @@ export default function SeatChart() {
         </div>
 
         <div ref={printRef}>
-          {/* Podium */}
-          <div className="mb-4 text-center">
-            <div className="inline-block bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
+          {/* Podium with window/door */}
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <div className="text-lg cursor-default select-none" title={windowOnLeft ? '窗户' : '门'}>
+              {windowOnLeft ? '🪟' : '🚪'}
+            </div>
+            <div className="bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
               🏫 讲 台
             </div>
+            <div className="text-lg cursor-default select-none" title={windowOnLeft ? '门' : '窗户'}>
+              {windowOnLeft ? '🚪' : '🪟'}
+            </div>
+            <button
+              onClick={() => setWindowOnLeft(prev => !prev)}
+              className="ml-1 p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="对换门窗位置"
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+            </button>
           </div>
 
-        {/* Seat Grid */}
-        {seats.length > 0 ? (
-          <div className="flex justify-center">
+          {/* Seat Grid with side markers */}
+          {seats.length > 0 ? (
+          <div className="flex justify-center items-stretch gap-2">
+            {/* Left side marker */}
+            <div className="flex items-center text-sm text-muted-foreground writing-vertical">
+              <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🪟 窗户侧' : '🚪 门侧'}</span>
+            </div>
             <div className="inline-grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
               {seats.flatMap((row, ri) =>
                 row.map((name, ci) => {
@@ -309,6 +368,10 @@ export default function SeatChart() {
                   );
                 })
               )}
+            </div>
+            {/* Right side marker */}
+            <div className="flex items-center text-sm text-muted-foreground">
+              <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🚪 门侧' : '🪟 窗户侧'}</span>
             </div>
           </div>
         ) : (
