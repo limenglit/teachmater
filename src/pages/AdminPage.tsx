@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +24,8 @@ export default function AdminPage() {
   const [acting, setActing] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [batchActing, setBatchActing] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -113,6 +116,45 @@ export default function AdminPage() {
     setActing(null);
   };
 
+  const toggleSelect = useCallback((userId: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback((userIds: string[]) => {
+    setSelected(prev => {
+      const allSelected = userIds.every(id => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) {
+        userIds.forEach(id => next.delete(id));
+      } else {
+        userIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBatchAction = async (action: 'approve' | 'reject') => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    setBatchActing(true);
+    const rpcName = action === 'approve' ? 'approve_user' : 'reject_user';
+    const newStatus = action === 'approve' ? 'approved' : 'rejected';
+    let successCount = 0;
+    for (const id of ids) {
+      const { error } = await supabase.rpc(rpcName, { p_user_id: id });
+      if (!error) successCount++;
+    }
+    setUsers(prev => prev.map(u => ids.includes(u.user_id) ? { ...u, status: newStatus } : u));
+    setSelected(new Set());
+    setBatchActing(false);
+    toast({ title: `已${action === 'approve' ? '批准' : '拒绝'} ${successCount} 位用户` });
+  };
+
   const filtered = useMemo(() => {
     let list = users;
     if (search.trim()) {
@@ -139,50 +181,50 @@ export default function AdminPage() {
 
   const renderUserRow = (u: PendingUser) => (
     <div key={u.user_id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-card">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground truncate">{u.email}</span>
-          {statusBadge(u.status)}
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5">
-          {u.nickname && <span>{u.nickname} · </span>}
-          {new Date(u.created_at).toLocaleString()}
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <Checkbox
+          checked={selected.has(u.user_id)}
+          onCheckedChange={() => toggleSelect(u.user_id)}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-foreground truncate">{u.email}</span>
+            {statusBadge(u.status)}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {u.nickname && <span>{u.nickname} · </span>}
+            {new Date(u.created_at).toLocaleString()}
+          </div>
         </div>
       </div>
       {u.status === 'pending' && (
         <div className="flex gap-1.5 ml-3">
-          <Button
-            size="sm"
-            className="h-7 text-xs gap-1"
-            onClick={() => handleApprove(u.user_id)}
-            disabled={acting === u.user_id}
-          >
+          <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleApprove(u.user_id)} disabled={acting === u.user_id}>
             <CheckCircle2 className="w-3 h-3" /> 批准
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/5"
-            onClick={() => handleReject(u.user_id)}
-            disabled={acting === u.user_id}
-          >
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => handleReject(u.user_id)} disabled={acting === u.user_id}>
             <XCircle className="w-3 h-3" /> 拒绝
           </Button>
         </div>
       )}
       {u.status === 'rejected' && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1 ml-3"
-          onClick={() => handleApprove(u.user_id)}
-          disabled={acting === u.user_id}
-        >
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 ml-3" onClick={() => handleApprove(u.user_id)} disabled={acting === u.user_id}>
           <CheckCircle2 className="w-3 h-3" /> 改为批准
         </Button>
       )}
     </div>
   );
+
+  const renderSectionHeader = (userList: PendingUser[], label: string) => {
+    const ids = userList.map(u => u.user_id);
+    const allSelected = ids.length > 0 && ids.every(id => selected.has(id));
+    return (
+      <div className="flex items-center gap-2">
+        <Checkbox checked={allSelected} onCheckedChange={() => toggleSelectAll(ids)} />
+        <span>全选</span>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-surface">
@@ -222,6 +264,23 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
+
+        {/* Batch action bar */}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 p-3 bg-accent/50 rounded-lg border border-border">
+            <span className="text-sm text-foreground font-medium">已选 {selected.size} 人</span>
+            <div className="flex gap-1.5 ml-auto">
+              <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleBatchAction('approve')} disabled={batchActing}>
+                {batchActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} 批量批准
+              </Button>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => handleBatchAction('reject')} disabled={batchActing}>
+                {batchActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />} 批量拒绝
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>取消</Button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -232,6 +291,7 @@ export default function AdminPage() {
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-warning" /> 待审批 ({pendingUsers.length})
+                  <span className="ml-auto">{renderSectionHeader(pendingUsers, '待审批')}</span>
                 </h2>
                 <div className="space-y-2">{pendingUsers.map(renderUserRow)}</div>
               </section>
@@ -247,6 +307,7 @@ export default function AdminPage() {
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-success" /> 已批准 ({approvedUsers.length})
+                  <span className="ml-auto">{renderSectionHeader(approvedUsers, '已批准')}</span>
                 </h2>
                 <div className="space-y-2">{approvedUsers.map(renderUserRow)}</div>
               </section>
@@ -256,6 +317,7 @@ export default function AdminPage() {
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <XCircle className="w-4 h-4 text-destructive" /> 已拒绝 ({rejectedUsers.length})
+                  <span className="ml-auto">{renderSectionHeader(rejectedUsers, '已拒绝')}</span>
                 </h2>
                 <div className="space-y-2">{rejectedUsers.map(renderUserRow)}</div>
               </section>
