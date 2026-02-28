@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -256,22 +256,41 @@ export default function SeatChart() {
     });
   }, []);
 
+  const pendingColAisleRef = useRef<number | null>(null);
+  const pointerStartPosRef = useRef<{ x: number; y: number } | null>(null);
+
   const clearPointerColAisleDrag = useCallback(() => {
+    pendingColAisleRef.current = null;
+    pointerStartPosRef.current = null;
     setPointerDraggingColAisle(null);
     setPointerColDropTarget(null);
     draggingAisleRef.current = null;
     setDraggingAisle(null);
   }, []);
 
-  const startColAislePointerDrag = (e: React.MouseEvent, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
-
+  const activateColAislePointerDrag = useCallback((index: number) => {
+    pendingColAisleRef.current = null;
     const payload = { type: 'col' as const, index };
     draggingAisleRef.current = payload;
     setDraggingAisle(payload);
     setPointerDraggingColAisle(index);
     setPointerColDropTarget(index);
+  }, []);
+
+  const startColAislePointerDrag = (e: React.MouseEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pendingColAisleRef.current = index;
+    pointerStartPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleColAisleDoubleClick = (e: React.MouseEvent, aisleIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    pendingColAisleRef.current = null;
+    pointerStartPosRef.current = null;
+    clearPointerColAisleDrag();
+    removeColAisle(aisleIndex);
   };
 
   const finishColAislePointerDrag = useCallback((targetIndex?: number | null) => {
@@ -279,31 +298,45 @@ export default function SeatChart() {
       clearPointerColAisleDrag();
       return;
     }
-
     const resolvedTarget = targetIndex ?? pointerColDropTarget;
     if (resolvedTarget !== null && resolvedTarget !== undefined) {
       moveAisle('col', pointerDraggingColAisle, resolvedTarget);
     }
-
     clearPointerColAisleDrag();
   }, [clearPointerColAisleDrag, moveAisle, pointerColDropTarget, pointerDraggingColAisle]);
 
   useEffect(() => {
-    if (pointerDraggingColAisle === null) return;
-
-    const handleMouseUp = () => finishColAislePointerDrag();
+    const handleMouseMove = (e: MouseEvent) => {
+      if (pendingColAisleRef.current !== null && pointerStartPosRef.current && pointerDraggingColAisle === null) {
+        const dx = Math.abs(e.clientX - pointerStartPosRef.current.x);
+        const dy = Math.abs(e.clientY - pointerStartPosRef.current.y);
+        if (dx > 4 || dy > 4) {
+          activateColAislePointerDrag(pendingColAisleRef.current);
+        }
+      }
+    };
+    const handleMouseUp = () => {
+      if (pendingColAisleRef.current !== null && pointerDraggingColAisle === null) {
+        pendingColAisleRef.current = null;
+        pointerStartPosRef.current = null;
+        return;
+      }
+      if (pointerDraggingColAisle !== null) {
+        finishColAislePointerDrag();
+      }
+    };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') clearPointerColAisleDrag();
     };
-
+    window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('keydown', handleKeyDown);
-
     return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [clearPointerColAisleDrag, finishColAislePointerDrag, pointerDraggingColAisle]);
+  }, [activateColAislePointerDrag, clearPointerColAisleDrag, finishColAislePointerDrag, pointerDraggingColAisle]);
 
   // Aisle drag to reposition (native drag fallback)
   const handleAisleDragStart = (e: React.DragEvent, type: 'row' | 'col', index: number) => {
@@ -457,7 +490,7 @@ export default function SeatChart() {
             style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
             className={`w-16 h-12 flex items-center justify-center transition-colors ${isPointerDraggingThis ? 'cursor-grabbing' : 'cursor-grab'} group`}
             title="按住并拖动调整过道位置，双击删除"
-            onDoubleClick={() => removeColAisle(aisleAfterCol)}
+            onDoubleClick={e => handleColAisleDoubleClick(e, aisleAfterCol)}
           >
             <div className={`w-0.5 h-8 rounded transition-colors ${isPointerDraggingThis ? 'bg-primary' : 'bg-border group-hover:bg-primary/40'}`} />
           </div>
@@ -663,13 +696,13 @@ export default function SeatChart() {
           {/* Podium with window/door */}
           <div className="mb-4 flex items-center justify-center gap-3">
             <div className="text-lg cursor-default select-none" title={windowOnLeft ? '窗户' : '门'}>
-              {windowOnLeft ? '🪟' : '🚪'}
+              {windowOnLeft ? <span className="inline-flex items-center justify-center w-7 h-7 border-2 border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span> : '🚪'}
             </div>
             <div className="bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
               🏫 讲 台
             </div>
             <div className="text-lg cursor-default select-none" title={windowOnLeft ? '门' : '窗户'}>
-              {windowOnLeft ? '🚪' : '🪟'}
+              {windowOnLeft ? '🚪' : <span className="inline-flex items-center justify-center w-7 h-7 border-2 border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span>}
             </div>
             <button
               onClick={() => setWindowOnLeft(prev => !prev)}
@@ -684,11 +717,11 @@ export default function SeatChart() {
           {seats.length > 0 ? (
             <div className="flex justify-center items-stretch gap-2">
               <div className="flex items-center text-sm text-muted-foreground">
-                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🪟 窗户侧' : '🚪 门侧'}</span>
+                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '▢ 窗户侧' : '🚪 门侧'}</span>
               </div>
               {buildVisualGrid()}
               <div className="flex items-center text-sm text-muted-foreground">
-                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🚪 门侧' : '🪟 窗户侧'}</span>
+                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🚪 门侧' : '▢ 窗户侧'}</span>
               </div>
             </div>
           ) : (
