@@ -37,6 +37,7 @@ export default function SeatChart() {
   const [colAisles, setColAisles] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
   const [draggingAisle, setDraggingAisle] = useState<{ type: 'row' | 'col'; index: number } | null>(null);
+  const draggingAisleRef = useRef<{ type: 'row' | 'col'; index: number } | null>(null);
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
@@ -237,12 +238,15 @@ export default function SeatChart() {
   // Aisle drag to reposition
   const handleAisleDragStart = (e: React.DragEvent, type: 'row' | 'col', index: number) => {
     e.stopPropagation();
-    setDraggingAisle({ type, index });
+    const payload = { type, index };
+    draggingAisleRef.current = payload;
+    setDraggingAisle(payload);
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `${type}:${index}`);
   };
 
   const handleAisleDragOver = (e: React.DragEvent) => {
-    if (draggingAisle) {
+    if (draggingAisle || draggingAisleRef.current) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
     }
@@ -251,8 +255,18 @@ export default function SeatChart() {
   const handleAisleDropOnGap = (e: React.DragEvent, type: 'row' | 'col', newIndex: number) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!draggingAisle || draggingAisle.type !== type) return;
-    const oldIndex = draggingAisle.index;
+
+    let current = draggingAisle ?? draggingAisleRef.current;
+    if (!current) {
+      const raw = e.dataTransfer.getData('text/plain');
+      const [dragType, dragIndex] = raw.split(':');
+      if ((dragType === 'row' || dragType === 'col') && dragIndex !== undefined) {
+        current = { type: dragType, index: Number(dragIndex) };
+      }
+    }
+
+    if (!current || current.type !== type || Number.isNaN(current.index)) return;
+    const oldIndex = current.index;
     if (oldIndex === newIndex) { setDraggingAisle(null); return; }
 
     if (type === 'col') {
@@ -268,11 +282,15 @@ export default function SeatChart() {
         return next.sort((a, b) => a - b);
       });
     }
+    draggingAisleRef.current = null;
     setDraggingAisle(null);
   };
 
   const handleAisleDragEnd = () => {
-    setDraggingAisle(null);
+    setTimeout(() => {
+      draggingAisleRef.current = null;
+      setDraggingAisle(null);
+    }, 0);
   };
 
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
@@ -311,12 +329,44 @@ export default function SeatChart() {
             key={`seat-${ri}-${ci}`}
             draggable={!!name && !isDisabled}
             onDragStart={() => handleDragStart(ri, ci)}
-            onDragOver={e => !isDisabled && !draggingAisle && handleDragOver(e, ri, ci)}
-            onDrop={e => !isDisabled && !draggingAisle && handleDrop(e, ri, ci)}
+            onDragOver={e => {
+              if (isDisabled) return;
+              const raw = e.dataTransfer.getData('text/plain');
+              const isAisleDrag = !!draggingAisle || !!draggingAisleRef.current || raw.startsWith('col:') || raw.startsWith('row:');
+              if (isAisleDrag) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                return;
+              }
+              handleDragOver(e, ri, ci);
+            }}
+            onDrop={e => {
+              if (isDisabled) return;
+
+              const raw = e.dataTransfer.getData('text/plain');
+              const [dragType, dragIndex] = raw.split(':');
+              const parsedIndex = Number(dragIndex);
+              const currentAisle = draggingAisle ?? draggingAisleRef.current;
+              const isColAisleDrag = currentAisle?.type === 'col' || (dragType === 'col' && Number.isFinite(parsedIndex));
+              const isAnyAisleDrag = !!currentAisle || dragType === 'col' || dragType === 'row';
+
+              if (isColAisleDrag) {
+                const targetIndex = Math.min(ci, cols - 2);
+                handleAisleDropOnGap(e, 'col', targetIndex);
+                return;
+              }
+
+              if (isAnyAisleDrag) {
+                e.preventDefault();
+                return;
+              }
+
+              handleDrop(e, ri, ci);
+            }}
             onDragEnd={handleDragEnd}
             onClick={() => !name && toggleDisabled(ri, ci)}
             style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
-            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none ${draggingAisle?.type === 'col' ? 'pointer-events-none' : ''}
+            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
               ${isDisabled
                 ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
                 : name
