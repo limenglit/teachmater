@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,8 @@ export default function SeatChart() {
   const [rowAisles, setRowAisles] = useState<number[]>([]);
   const [draggingAisle, setDraggingAisle] = useState<{ type: 'row' | 'col'; index: number } | null>(null);
   const draggingAisleRef = useRef<{ type: 'row' | 'col'; index: number } | null>(null);
+  const [pointerDraggingColAisle, setPointerDraggingColAisle] = useState<number | null>(null);
+  const [pointerColDropTarget, setPointerColDropTarget] = useState<number | null>(null);
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
@@ -235,7 +237,75 @@ export default function SeatChart() {
     setRowAisles(prev => prev.filter(a => a !== idx));
   };
 
-  // Aisle drag to reposition
+  const moveAisle = useCallback((type: 'row' | 'col', oldIndex: number, newIndex: number) => {
+    if (oldIndex === newIndex) return;
+
+    if (type === 'col') {
+      setColAisles(prev => {
+        const next = prev.filter(a => a !== oldIndex);
+        if (!next.includes(newIndex)) next.push(newIndex);
+        return next.sort((a, b) => a - b);
+      });
+      return;
+    }
+
+    setRowAisles(prev => {
+      const next = prev.filter(a => a !== oldIndex);
+      if (!next.includes(newIndex)) next.push(newIndex);
+      return next.sort((a, b) => a - b);
+    });
+  }, []);
+
+  const clearPointerColAisleDrag = useCallback(() => {
+    setPointerDraggingColAisle(null);
+    setPointerColDropTarget(null);
+    draggingAisleRef.current = null;
+    setDraggingAisle(null);
+  }, []);
+
+  const startColAislePointerDrag = (e: React.MouseEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const payload = { type: 'col' as const, index };
+    draggingAisleRef.current = payload;
+    setDraggingAisle(payload);
+    setPointerDraggingColAisle(index);
+    setPointerColDropTarget(index);
+  };
+
+  const finishColAislePointerDrag = useCallback((targetIndex?: number | null) => {
+    if (pointerDraggingColAisle === null) {
+      clearPointerColAisleDrag();
+      return;
+    }
+
+    const resolvedTarget = targetIndex ?? pointerColDropTarget;
+    if (resolvedTarget !== null && resolvedTarget !== undefined) {
+      moveAisle('col', pointerDraggingColAisle, resolvedTarget);
+    }
+
+    clearPointerColAisleDrag();
+  }, [clearPointerColAisleDrag, moveAisle, pointerColDropTarget, pointerDraggingColAisle]);
+
+  useEffect(() => {
+    if (pointerDraggingColAisle === null) return;
+
+    const handleMouseUp = () => finishColAislePointerDrag();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') clearPointerColAisleDrag();
+    };
+
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [clearPointerColAisleDrag, finishColAislePointerDrag, pointerDraggingColAisle]);
+
+  // Aisle drag to reposition (native drag fallback)
   const handleAisleDragStart = (e: React.DragEvent, type: 'row' | 'col', index: number) => {
     e.stopPropagation();
     const payload = { type, index };
@@ -266,30 +336,23 @@ export default function SeatChart() {
     }
 
     if (!current || current.type !== type || Number.isNaN(current.index)) return;
-    const oldIndex = current.index;
-    if (oldIndex === newIndex) { setDraggingAisle(null); return; }
 
-    if (type === 'col') {
-      setColAisles(prev => {
-        const next = prev.filter(a => a !== oldIndex);
-        if (!next.includes(newIndex)) next.push(newIndex);
-        return next.sort((a, b) => a - b);
-      });
-    } else {
-      setRowAisles(prev => {
-        const next = prev.filter(a => a !== oldIndex);
-        if (!next.includes(newIndex)) next.push(newIndex);
-        return next.sort((a, b) => a - b);
-      });
-    }
+    moveAisle(type, current.index, newIndex);
+
     draggingAisleRef.current = null;
     setDraggingAisle(null);
+    if (type === 'col') {
+      setPointerDraggingColAisle(null);
+      setPointerColDropTarget(null);
+    }
   };
 
   const handleAisleDragEnd = () => {
     setTimeout(() => {
       draggingAisleRef.current = null;
       setDraggingAisle(null);
+      setPointerDraggingColAisle(null);
+      setPointerColDropTarget(null);
     }, 0);
   };
 
@@ -385,18 +448,18 @@ export default function SeatChart() {
       // Render column aisle cells for this row
       for (const aisleAfterCol of colAisles) {
         const visualCol = aisleAfterCol + colAisles.filter(a => a < aisleAfterCol).length + 1;
+        const isPointerDraggingThis = pointerDraggingColAisle === aisleAfterCol;
+
         elements.push(
           <div
             key={`col-aisle-${ri}-${aisleAfterCol}`}
-            draggable
-            onDragStart={e => handleAisleDragStart(e, 'col', aisleAfterCol)}
-            onDragEnd={handleAisleDragEnd}
+            onMouseDown={e => startColAislePointerDrag(e, aisleAfterCol)}
             style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
-            className="w-16 h-12 flex items-center justify-center cursor-grab active:cursor-grabbing group"
-            title="拖动调整过道位置，双击删除"
+            className={`w-16 h-12 flex items-center justify-center transition-colors ${isPointerDraggingThis ? 'cursor-grabbing' : 'cursor-grab'} group`}
+            title="按住并拖动调整过道位置，双击删除"
             onDoubleClick={() => removeColAisle(aisleAfterCol)}
           >
-            <div className="w-0.5 h-8 bg-border group-hover:bg-primary/40 rounded transition-colors" />
+            <div className={`w-0.5 h-8 rounded transition-colors ${isPointerDraggingThis ? 'bg-primary' : 'bg-border group-hover:bg-primary/40'}`} />
           </div>
         );
       }
@@ -428,18 +491,28 @@ export default function SeatChart() {
       for (let ci = 0; ci < cols - 1; ci++) {
         if (colAisles.includes(ci) && ci !== draggingAisle.index) continue;
         const visualCol = realToVisualCol(ci);
+        const isPointerTarget = pointerDraggingColAisle !== null && pointerColDropTarget === ci;
+
         // Overlay between visualCol and visualCol+1
         elements.push(
           <div
             key={`col-drop-${ci}`}
             onDragOver={handleAisleDragOver}
             onDrop={e => handleAisleDropOnGap(e, 'col', ci)}
+            onMouseEnter={() => {
+              if (pointerDraggingColAisle !== null) setPointerColDropTarget(ci);
+            }}
+            onMouseUp={e => {
+              if (pointerDraggingColAisle === null) return;
+              e.preventDefault();
+              finishColAislePointerDrag(ci);
+            }}
             style={{
               gridRow: `1 / -1`,
               gridColumn: colAisles.includes(ci) ? visualCol + 2 : visualCol + 1,
               pointerEvents: 'all',
             }}
-            className={`w-16 z-10 relative ${ci === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
+            className={`w-16 z-10 relative ${isPointerTarget ? 'bg-primary/20 border-2 border-dashed border-primary/60 rounded-lg' : ci === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
           />
         );
       }
