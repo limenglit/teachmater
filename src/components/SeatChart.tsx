@@ -389,7 +389,7 @@ export default function SeatChart() {
               gridColumn: colAisles.includes(ci) ? visualCol + 2 : visualCol + 1,
               pointerEvents: 'all',
             }}
-            className={`w-16 z-10 ${ci === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
+            className={`w-16 z-10 relative ${ci === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
           />
         );
       }
@@ -409,7 +409,7 @@ export default function SeatChart() {
               gridColumn: `1 / -1`,
               pointerEvents: 'all',
             }}
-            className={`h-12 z-10 ${ri === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
+            className={`h-12 z-10 relative ${ri === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
           />
         );
       }
