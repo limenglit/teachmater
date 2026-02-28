@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { createPortal } from 'react-dom';
+import ReactDOM from 'react-dom';
 import BarrageDiscussion from './BarrageDiscussion';
 
 // Command card flash overlay
@@ -99,7 +99,7 @@ function CountdownTimer() {
   const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   const fullscreenOverlay = isFullscreen
-    ? createPortal(
+    ? ReactDOM.createPortal(
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
