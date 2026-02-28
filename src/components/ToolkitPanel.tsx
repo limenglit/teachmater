@@ -10,22 +10,38 @@ import BarrageDiscussion from './BarrageDiscussion';
 // Command card flash overlay
 function CommandFlash({ text, emoji, onDone }: { text: string; emoji: string; onDone: () => void }) {
   useEffect(() => {
-    const timer = setTimeout(onDone, 2000);
-    return () => clearTimeout(timer);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDone();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
   }, [onDone]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/20 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background cursor-pointer"
       onClick={onDone}
     >
-      <div className="bg-card rounded-3xl shadow-elevated p-12 text-center">
-        <div className="text-7xl mb-4">{emoji}</div>
-        <div className="text-3xl font-bold text-foreground">{text}</div>
-      </div>
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+        className="text-center"
+      >
+        <div className="text-[10rem] leading-none mb-6">{emoji}</div>
+        <div className="text-5xl sm:text-7xl font-bold text-foreground">{text}</div>
+      </motion.div>
+      <motion.p
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 0.6, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="absolute bottom-8 text-sm text-muted-foreground"
+      >
+        按 ESC 或点击任意处退出
+      </motion.p>
     </motion.div>
   );
 }
