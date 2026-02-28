@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
-import ReactDOM from 'react-dom';
+
 import BarrageDiscussion from './BarrageDiscussion';
 
 // Command card flash overlay
@@ -99,7 +99,7 @@ function CountdownTimer() {
   const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 
   const fullscreenOverlay = isFullscreen
-    ? ReactDOM.createPortal(
+    ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -107,7 +107,6 @@ function CountdownTimer() {
           className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background"
           onClick={() => {}}
         >
-          {/* Close button */}
           <button
             onClick={() => setIsFullscreen(false)}
             className="absolute top-6 right-6 p-3 rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
@@ -116,21 +115,13 @@ function CountdownTimer() {
             <Minimize className="w-6 h-6" />
           </button>
 
-          {/* Circular progress */}
           <div className="relative mb-8">
             <svg width="320" height="320" viewBox="0 0 320 320">
-              <circle
-                cx="160" cy="160" r="140"
-                fill="none"
-                stroke="hsl(var(--muted))"
-                strokeWidth="8"
-              />
+              <circle cx="160" cy="160" r="140" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
               <motion.circle
-                cx="160" cy="160" r="140"
-                fill="none"
+                cx="160" cy="160" r="140" fill="none"
                 stroke={isDone ? 'hsl(var(--destructive))' : isUrgent ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
-                strokeWidth="8"
-                strokeLinecap="round"
+                strokeWidth="8" strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 140}
                 animate={{ strokeDashoffset: 2 * Math.PI * 140 * (1 - progress) }}
                 transition={{ duration: 0.5 }}
@@ -157,11 +148,9 @@ function CountdownTimer() {
             </div>
           </div>
 
-          {/* Fullscreen controls */}
           <div className="flex items-center gap-4">
             <Button
-              variant={isRunning ? 'outline' : 'default'}
-              size="lg"
+              variant={isRunning ? 'outline' : 'default'} size="lg"
               onClick={() => setIsRunning(!isRunning)}
               disabled={isDone && !isRunning}
               className="gap-2 text-lg px-8 h-14"
@@ -173,8 +162,7 @@ function CountdownTimer() {
               <RotateCcw className="w-5 h-5" /> 重置
             </Button>
           </div>
-        </motion.div>,
-        document.body
+        </motion.div>
       )
     : null;
 
