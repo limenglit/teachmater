@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Link as LinkIcon, Download } from 'lucide-react';
+import { Play, Pause, RotateCcw, Link as LinkIcon, Download, Maximize, Minimize, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import BarrageDiscussion from './BarrageDiscussion';
 
 // Command card flash overlay
@@ -46,9 +47,10 @@ export default function ToolkitPanel() {
 }
 
 function CountdownTimer() {
-  const [totalSeconds, setTotalSeconds] = useState(300); // 5 min default
+  const [totalSeconds, setTotalSeconds] = useState(300);
   const [remaining, setRemaining] = useState(300);
   const [isRunning, setIsRunning] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const intervalRef = useRef<number>(0);
 
   const minutes = Math.floor(remaining / 60);
@@ -69,6 +71,16 @@ function CountdownTimer() {
     return () => clearInterval(intervalRef.current);
   }, [isRunning, remaining]);
 
+  // ESC to exit fullscreen
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isFullscreen]);
+
   const handleReset = () => {
     setIsRunning(false);
     setRemaining(totalSeconds);
@@ -81,17 +93,106 @@ function CountdownTimer() {
   };
 
   const progress = totalSeconds > 0 ? remaining / totalSeconds : 0;
+  const isUrgent = remaining <= 10 && remaining > 0;
+  const isDone = remaining === 0;
+
+  const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+  const fullscreenOverlay = isFullscreen
+    ? createPortal(
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background"
+          onClick={() => {}}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setIsFullscreen(false)}
+            className="absolute top-6 right-6 p-3 rounded-full bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="退出全屏 (ESC)"
+          >
+            <Minimize className="w-6 h-6" />
+          </button>
+
+          {/* Circular progress */}
+          <div className="relative mb-8">
+            <svg width="320" height="320" viewBox="0 0 320 320">
+              <circle
+                cx="160" cy="160" r="140"
+                fill="none"
+                stroke="hsl(var(--muted))"
+                strokeWidth="8"
+              />
+              <motion.circle
+                cx="160" cy="160" r="140"
+                fill="none"
+                stroke={isDone ? 'hsl(var(--destructive))' : isUrgent ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 140}
+                animate={{ strokeDashoffset: 2 * Math.PI * 140 * (1 - progress) }}
+                transition={{ duration: 0.5 }}
+                transform="rotate(-90 160 160)"
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <motion.span
+                className={`text-8xl font-extralight tabular-nums tracking-wider ${isDone ? 'text-destructive' : isUrgent ? 'text-destructive' : 'text-foreground'}`}
+                animate={isUrgent ? { scale: [1, 1.05, 1] } : {}}
+                transition={isUrgent ? { repeat: Infinity, duration: 1 } : {}}
+              >
+                {timeDisplay}
+              </motion.span>
+              {isDone && (
+                <motion.span
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-2xl text-destructive mt-2 font-medium"
+                >
+                  时间到！
+                </motion.span>
+              )}
+            </div>
+          </div>
+
+          {/* Fullscreen controls */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant={isRunning ? 'outline' : 'default'}
+              size="lg"
+              onClick={() => setIsRunning(!isRunning)}
+              disabled={isDone && !isRunning}
+              className="gap-2 text-lg px-8 h-14"
+            >
+              {isRunning ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+              {isRunning ? '暂停' : '开始'}
+            </Button>
+            <Button variant="outline" size="lg" onClick={handleReset} className="gap-2 text-lg px-8 h-14">
+              <RotateCcw className="w-5 h-5" /> 重置
+            </Button>
+          </div>
+        </motion.div>,
+        document.body
+      )
+    : null;
 
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-card p-6">
-      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">⏳ 倒计时器</h3>
+    <div
+      className="bg-card rounded-2xl border border-border shadow-card p-6 cursor-pointer hover:border-primary/30 transition-colors"
+      onClick={() => !isFullscreen && setIsFullscreen(true)}
+    >
+      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+        ⏳ 倒计时器
+        <Maximize className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
+      </h3>
 
       {/* Time display */}
       <div className="text-center mb-4">
-        <div className={`text-5xl font-light tabular-nums tracking-wider ${remaining === 0 ? 'text-destructive' : 'text-foreground'}`}>
-          {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+        <div className={`text-5xl font-light tabular-nums tracking-wider ${isDone ? 'text-destructive' : 'text-foreground'}`}>
+          {timeDisplay}
         </div>
-        {/* Progress bar */}
         <div className="h-1 bg-muted rounded-full mt-4 overflow-hidden">
           <motion.div
             className="h-full bg-primary rounded-full"
@@ -101,22 +202,18 @@ function CountdownTimer() {
         </div>
       </div>
 
-      {/* Time input */}
+      {/* Time input - stop click propagation */}
       {!isRunning && (
-        <div className="flex items-center justify-center gap-2 mb-4">
+        <div className="flex items-center justify-center gap-2 mb-4" onClick={e => e.stopPropagation()}>
           <Input
-            type="number"
-            min={0}
-            max={99}
+            type="number" min={0} max={99}
             value={Math.floor(totalSeconds / 60)}
             onChange={e => handleTimeChange('min', Number(e.target.value))}
             className="w-16 h-8 text-center text-sm"
           />
           <span className="text-muted-foreground">:</span>
           <Input
-            type="number"
-            min={0}
-            max={59}
+            type="number" min={0} max={59}
             value={totalSeconds % 60}
             onChange={e => handleTimeChange('sec', Number(e.target.value))}
             className="w-16 h-8 text-center text-sm"
@@ -125,12 +222,11 @@ function CountdownTimer() {
       )}
 
       {/* Controls */}
-      <div className="flex justify-center gap-2">
+      <div className="flex justify-center gap-2" onClick={e => e.stopPropagation()}>
         <Button
-          variant={isRunning ? 'outline' : 'default'}
-          size="sm"
+          variant={isRunning ? 'outline' : 'default'} size="sm"
           onClick={() => setIsRunning(!isRunning)}
-          disabled={remaining === 0 && !isRunning}
+          disabled={isDone && !isRunning}
           className="gap-1"
         >
           {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -140,6 +236,8 @@ function CountdownTimer() {
           <RotateCcw className="w-3.5 h-3.5" /> 重置
         </Button>
       </div>
+
+      <AnimatePresence>{fullscreenOverlay}</AnimatePresence>
     </div>
   );
 }
