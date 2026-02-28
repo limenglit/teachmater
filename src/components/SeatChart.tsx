@@ -311,12 +311,12 @@ export default function SeatChart() {
             key={`seat-${ri}-${ci}`}
             draggable={!!name && !isDisabled}
             onDragStart={() => handleDragStart(ri, ci)}
-            onDragOver={e => !isDisabled && handleDragOver(e, ri, ci)}
-            onDrop={e => !isDisabled && handleDrop(e, ri, ci)}
+            onDragOver={e => !isDisabled && !draggingAisle && handleDragOver(e, ri, ci)}
+            onDrop={e => !isDisabled && !draggingAisle && handleDrop(e, ri, ci)}
             onDragEnd={handleDragEnd}
             onClick={() => !name && toggleDisabled(ri, ci)}
             style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
-            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
+            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none ${draggingAisle?.type === 'col' ? 'pointer-events-none' : ''}
               ${isDisabled
                 ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
                 : name
