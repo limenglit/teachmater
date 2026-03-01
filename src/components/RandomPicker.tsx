@@ -15,7 +15,7 @@ export default function RandomPicker() {
   const [noRepeat, setNoRepeat] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [rollDuration, setRollDuration] = useState(10);
+  const [rollDuration, setRollDuration] = useState(3);
   const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
   const [popupEnabled, setPopupEnabled] = useState(true);
   const [popupName, setPopupName] = useState<string | null>(null);
@@ -24,6 +24,9 @@ export default function RandomPicker() {
   const rollerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const popupTimerRef = useRef<number>(0);
+  const currentRollingRef = useRef<{ id: string; name: string } | null>(null);
+  const isRollingRef = useRef(false);
+  const rollStartTimeRef = useRef(0);
 
   const availableStudents = noRepeat
     ? students.filter(s => !usedIds.has(s.id))
@@ -50,9 +53,27 @@ export default function RandomPicker() {
     speechSynthesis.speak(utterance);
   }, [voiceEnabled]);
 
+  const finishRoll = useCallback((chosen: { id: string; name: string }) => {
+    if (animRef.current) clearTimeout(animRef.current);
+    animRef.current = 0;
+    isRollingRef.current = false;
+    setSelectedStudent(chosen.name);
+    setIsRolling(false);
+    setPickedNames(prev => [...prev, chosen.name]);
+    if (noRepeat) {
+      setUsedIds(prev => new Set([...prev, chosen.id]));
+    }
+    if (soundEnabled) playCelebration();
+    speakName(chosen.name);
+    if (popupEnabled) showPopup(chosen.name);
+  }, [noRepeat, speakName, soundEnabled, popupEnabled, showPopup]);
+
   const startRoll = useCallback(() => {
     if (availableStudents.length === 0 || isRolling) return;
     setIsRolling(true);
+    isRollingRef.current = true;
+    const rollStartTime = Date.now();
+    rollStartTimeRef.current = rollStartTime;
     setSelectedStudent(null);
 
     const durationMs = rollDuration * 1000;
@@ -60,34 +81,45 @@ export default function RandomPicker() {
     const minInterval = 50;
 
     const step = () => {
+      if (!isRollingRef.current) return;
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / durationMs, 1);
       const randomIndex = Math.floor(Math.random() * availableStudents.length);
-      setSelectedStudent(availableStudents[randomIndex].name);
+      const current = availableStudents[randomIndex];
+      currentRollingRef.current = current;
+      setSelectedStudent(current.name);
       if (soundEnabled) playTick();
 
       if (progress < 1) {
-        // Ease-out: interval grows as progress increases
         const delay = minInterval + (progress * progress * 400);
         animRef.current = window.setTimeout(step, delay);
       } else {
-        // Final selection
         const finalIndex = Math.floor(Math.random() * availableStudents.length);
         const chosen = availableStudents[finalIndex];
-        setSelectedStudent(chosen.name);
-        setIsRolling(false);
-        setPickedNames(prev => [...prev, chosen.name]);
-        if (noRepeat) {
-          setUsedIds(prev => new Set([...prev, chosen.id]));
-        }
-        if (soundEnabled) playCelebration();
-        speakName(chosen.name);
-        if (popupEnabled) showPopup(chosen.name);
+        finishRoll(chosen);
       }
     };
 
     step();
-  }, [availableStudents, isRolling, noRepeat, speakName, rollDuration]);
+  }, [availableStudents, isRolling, noRepeat, speakName, rollDuration, finishRoll, soundEnabled]);
+
+  // Press any key or click to stop immediately
+  useEffect(() => {
+    const stopNow = () => {
+      if (!isRollingRef.current) return;
+      if (Date.now() - rollStartTimeRef.current < 300) return; // ignore the starting click
+      const chosen = currentRollingRef.current;
+      if (chosen) finishRoll(chosen);
+    };
+    const onKey = (e: KeyboardEvent) => { if (isRollingRef.current && Date.now() - rollStartTimeRef.current > 300) { e.preventDefault(); stopNow(); } };
+    const onClick = () => stopNow();
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('click', onClick, true);
+    };
+  }, [finishRoll]);
 
   useEffect(() => {
     return () => {
@@ -144,8 +176,8 @@ export default function RandomPicker() {
         <Slider
           value={[rollDuration]}
           onValueChange={([v]) => setRollDuration(v)}
-          min={5}
-          max={60}
+          min={1}
+          max={10}
           step={1}
           disabled={isRolling}
           className="flex-1"
@@ -242,7 +274,7 @@ export default function RandomPicker() {
                     size="lg"
                   >
                     <Play className="w-4 h-4" />
-                    {isRolling ? '滚动中...' : '滚动'}
+                    {isRolling ? '按任意键停止...' : '滚动'}
                   </Button>
                   {selectedStudent && !isRolling && (
                     <p className="text-sm text-muted-foreground">选中：{selectedStudent}</p>
