@@ -19,6 +19,8 @@ export default function RandomPicker() {
   const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
   const [popupEnabled, setPopupEnabled] = useState(true);
   const [popupName, setPopupName] = useState<string | null>(null);
+  const [pickedNames, setPickedNames] = useState<string[]>([]);
+  const [showPickedList, setShowPickedList] = useState(false);
   const rollerRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
   const popupTimerRef = useRef<number>(0);
@@ -30,6 +32,7 @@ export default function RandomPicker() {
   const resetPool = useCallback(() => {
     setUsedIds(new Set());
     setSelectedStudent(null);
+    setPickedNames([]);
   }, []);
 
   const showPopup = useCallback((name: string) => {
@@ -73,6 +76,7 @@ export default function RandomPicker() {
         const chosen = availableStudents[finalIndex];
         setSelectedStudent(chosen.name);
         setIsRolling(false);
+        setPickedNames(prev => [...prev, chosen.name]);
         if (noRepeat) {
           setUsedIds(prev => new Set([...prev, chosen.id]));
         }
@@ -104,6 +108,7 @@ export default function RandomPicker() {
   const handleWheelRollEnd = useCallback((chosen: { id: string; name: string }) => {
     setSelectedStudent(chosen.name);
     setIsRolling(false);
+    setPickedNames(prev => [...prev, chosen.name]);
     if (noRepeat) {
       setUsedIds(prev => new Set([...prev, chosen.id]));
     }
@@ -162,11 +167,24 @@ export default function RandomPicker() {
               onRollEnd={handleWheelRollEnd}
             />
             {noRepeat && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                {pickedNames.length > 0 && (
+                  <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
+                    已选 {pickedNames.length} 人
+                  </button>
+                )}
                 <span>剩余 {availableStudents.length}/{students.length} 人</span>
                 {usedIds.size > 0 && (
                   <button onClick={resetPool} className="text-primary hover:underline">重置</button>
                 )}
+              </div>
+            )}
+            {!noRepeat && pickedNames.length > 0 && (
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
+                  已选 {pickedNames.length} 人
+                </button>
+                <button onClick={() => setPickedNames([])} className="text-primary hover:underline">清空</button>
               </div>
             )}
           </>
@@ -230,11 +248,24 @@ export default function RandomPicker() {
                     <p className="text-sm text-muted-foreground">选中：{selectedStudent}</p>
                   )}
                   {noRepeat && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      {pickedNames.length > 0 && (
+                        <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
+                          已选 {pickedNames.length} 人
+                        </button>
+                      )}
                       <span>剩余 {availableStudents.length}/{students.length} 人</span>
                       {usedIds.size > 0 && (
                         <button onClick={resetPool} className="text-primary hover:underline">重置</button>
                       )}
+                    </div>
+                  )}
+                  {!noRepeat && pickedNames.length > 0 && (
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
+                        已选 {pickedNames.length} 人
+                      </button>
+                      <button onClick={() => setPickedNames([])} className="text-primary hover:underline">清空</button>
                     </div>
                   )}
                 </div>
@@ -246,6 +277,40 @@ export default function RandomPicker() {
         {/* Dice Panel */}
         <DicePanel soundEnabled={soundEnabled} voiceEnabled={voiceEnabled} noRepeat={noRepeat} popupEnabled={popupEnabled} showPopup={showPopup} />
       </div>
+
+      {/* Picked students list overlay */}
+      <AnimatePresence>
+        {showPickedList && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-foreground/40 backdrop-blur-sm cursor-pointer"
+            onClick={() => setShowPickedList(false)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setShowPickedList(false); }}
+            tabIndex={0}
+            ref={(el) => el?.focus()}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card rounded-2xl border border-border shadow-elevated p-6 max-w-sm w-full mx-4 max-h-[70vh] overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-foreground mb-3">已选名单 ({pickedNames.length}人)</h3>
+              <div className="flex flex-wrap gap-2">
+                {pickedNames.map((name, i) => (
+                  <span key={i} className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium">
+                    {i + 1}. {name}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-4 text-center">点击空白处或按 ESC 关闭</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Fullscreen name popup */}
       <AnimatePresence>
