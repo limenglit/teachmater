@@ -107,6 +107,19 @@ function CommandCards() {
 
 function QRCodeGenerator() {
   const [url, setUrl] = useState('');
+  const [wechatMode, setWechatMode] = useState(true);
+
+  // Build the QR value: wrap through /go redirect for WeChat compatibility
+  const getQrValue = () => {
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+    if (!wechatMode) return trimmed;
+    // Use the app's own /go page as intermediary
+    const base = window.location.origin;
+    return `${base}/go?url=${encodeURIComponent(trimmed)}`;
+  };
+
+  const qrValue = getQrValue();
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
@@ -121,12 +134,25 @@ function QRCodeGenerator() {
         className="mb-4"
       />
 
-      {url.trim() && (
+      <label className="flex items-center gap-2 mb-4 text-sm text-muted-foreground cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={wechatMode}
+          onChange={e => setWechatMode(e.target.checked)}
+          className="rounded border-border"
+        />
+        微信兼容模式（推荐）
+      </label>
+
+      {url.trim() && qrValue && (
         <div className="flex flex-col items-center gap-3">
           <div className="bg-background p-3 rounded-xl border border-border">
-            <QRCodeSVG value={url} size={140} level="M" />
+            <QRCodeSVG value={qrValue} size={140} level="M" />
           </div>
           <p className="text-xs text-muted-foreground text-center break-all max-w-full">{url}</p>
+          {wechatMode && (
+            <p className="text-xs text-primary/70 text-center">🛡️ 微信扫码将引导在浏览器中打开</p>
+          )}
         </div>
       )}
 
