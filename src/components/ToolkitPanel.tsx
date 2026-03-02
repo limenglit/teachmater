@@ -133,13 +133,13 @@ function CountdownTimer() {
 
           <div className="relative mb-8">
             <svg width="320" height="320" viewBox="0 0 320 320">
-              <circle cx="160" cy="160" r="140" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+              <circle cx="160" cy="160" r="150" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
               <motion.circle
-                cx="160" cy="160" r="140" fill="none"
+                cx="160" cy="160" r="150" fill="none"
                 stroke={isDone ? 'hsl(var(--destructive))' : isUrgent ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
                 strokeWidth="8" strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 140}
-                animate={{ strokeDashoffset: 2 * Math.PI * 140 * (1 - progress) }}
+                strokeDasharray={2 * Math.PI * 150}
+                animate={{ strokeDashoffset: 2 * Math.PI * 150 * (1 - progress) }}
                 transition={{ duration: 0.5 }}
                 transform="rotate(-90 160 160)"
               />
