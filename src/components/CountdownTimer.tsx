@@ -183,7 +183,7 @@ export default function CountdownTimer() {
           </AnimatePresence>
 
           <div className="relative mb-8">
-            <svg width="320" height="320" viewBox="0 0 320 320">
+            <svg width="330" height="330" viewBox="0 0 330 330">
               <circle cx="160" cy="160" r="160" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
               <motion.circle
                 cx="160" cy="160" r="160" fill="none"
