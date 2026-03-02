@@ -185,9 +185,9 @@ export default function RandomPicker() {
         <span className="text-sm text-muted-foreground tabular-nums w-10 text-right">{rollDuration}秒</span>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-center lg:items-start w-full max-w-4xl">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch w-full max-w-4xl">
         {useWheel ? (
-          <>
+          <div className="flex-1 flex flex-col">
             <SpinWheel
               students={students}
               availableStudents={availableStudents}
@@ -219,17 +219,16 @@ export default function RandomPicker() {
                 <button onClick={() => setPickedNames([])} className="text-primary hover:underline">清空</button>
               </div>
             )}
-          </>
+          </div>
         ) : (
-          <>
+          <div className="flex-1 flex flex-col">
             {/* Roller for >20 students */}
-            <div className="flex-1">
               <h3 className="text-lg font-medium text-foreground mb-1">随机选人</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 滚轮模式 ({students.length}人)
               </p>
 
-              <div className="relative bg-card rounded-2xl border border-border shadow-card overflow-hidden">
+              <div className="relative bg-card rounded-2xl border border-border shadow-card overflow-hidden flex-1 flex flex-col">
                 <div className="h-64 overflow-hidden relative" ref={rollerRef}>
                   <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none" />
                   <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none" />
@@ -266,7 +265,7 @@ export default function RandomPicker() {
                   </div>
                 </div>
 
-                <div className="p-4 flex flex-col items-center gap-2 border-t border-border">
+                <div className="p-4 flex flex-col items-center gap-2 border-t border-border mt-auto">
                   <Button
                     onClick={startRoll}
                     disabled={isRolling || availableStudents.length === 0}
@@ -302,8 +301,7 @@ export default function RandomPicker() {
                   )}
                 </div>
               </div>
-            </div>
-          </>
+          </div>
         )}
 
         {/* Dice Panel */}
@@ -475,7 +473,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
     : ['组', '成员'];
 
   return (
-    <div className="w-full lg:w-72">
+    <div className="w-full lg:flex-1 flex flex-col">
       <h3 className="text-lg font-medium text-foreground mb-1 flex items-center gap-2">
         🎲 智能骰子
         <span className="text-xs text-muted-foreground font-normal">(基于分组/建队)</span>
