@@ -478,8 +478,11 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         🎲 智能骰子
         <span className="text-xs text-muted-foreground font-normal">(基于分组/建队)</span>
       </h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        骰子模式
+      </p>
 
-      <div className="bg-card rounded-2xl border border-border shadow-card p-5 mt-4">
+      <div className="bg-card rounded-2xl border border-border shadow-card p-5 flex-1 flex flex-col">
         {/* Mode toggle */}
         <div className="flex gap-2 mb-5">
           <button
