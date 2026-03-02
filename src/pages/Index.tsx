@@ -53,7 +53,7 @@ const Index = () => {
           <header className="flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 bg-card border-b border-border">
             <div className="flex items-center gap-2 sm:gap-3">
               <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">互动课堂派</h1>
-              <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">TeachMate|洛阳理工学院|limeng@lit.edu.cn</span>
+              <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">TeachMate|--洛阳理工学院--|--limeng@lit.edu.cn</span>
             </div>
             <div className="flex items-center gap-1">
               {/* Mobile sidebar toggle */}
