@@ -184,13 +184,13 @@ export default function CountdownTimer() {
 
           <div className="relative mb-8">
             <svg width="330" height="330" viewBox="0 0 330 330">
-              <circle cx="160" cy="160" r="160" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+              <circle cx="160" cy="160" r="155" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
               <motion.circle
-                cx="160" cy="160" r="160" fill="none"
+                cx="160" cy="160" r="155" fill="none"
                 stroke={isAlert ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'}
-                strokeWidth="8" strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 160}
-                animate={{ strokeDashoffset: 2 * Math.PI * 160 * (1 - progress) }}
+                strokeWidth="5" strokeLinecap="round"
+                strokeDasharray={2 * Math.PI * 155}
+                animate={{ strokeDashoffset: 2 * Math.PI * 155* (1 - progress) }}
                 transition={{ duration: 0.5 }}
                 transform="rotate(-90 160 160)"
               />
