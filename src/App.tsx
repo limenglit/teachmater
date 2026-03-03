@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { StudentProvider } from '@/contexts/StudentContext';
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -22,6 +23,7 @@ const Loading = () => <div className="flex items-center justify-center min-h-scr
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <StudentProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -38,6 +40,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </StudentProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

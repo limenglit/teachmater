@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useStudents } from '@/contexts/StudentContext';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ export default function CheckInPage() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'expired'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
+  const { addStudent } = useStudents();
   const [studentNames, setStudentNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -109,6 +111,8 @@ export default function CheckInPage() {
     }
 
     setStatus('success');
+    // also add to local student list for seating if available
+    addStudent(trimmed);
   };
 
   if (sessionValid === null) {

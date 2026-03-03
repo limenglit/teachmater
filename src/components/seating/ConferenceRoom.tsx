@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSettings } from '@/contexts/SettingsContext';
+import { distributeConferenceLongTable } from '@/lib/seating';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -8,29 +10,23 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
+type RefObj = { id: string; type: 'podium' | 'door' | 'window' | 'aisle'; x: number; y: number; label?: string };
+
 export default function ConferenceRoom({ students }: Props) {
+  const { settings } = useSettings();
   const [seatsPerSide, setSeatsPerSide] = useState(8);
-  const [seatGap, setSeatGap] = useState(6);
+  const [seatGap, setSeatGap] = useState(settings.defaultSeatGap);
   const [assignment, setAssignment] = useState<{ top: string[]; bottom: string[]; headLeft: string; headRight: string }>({ top: [], bottom: [], headLeft: '', headRight: '' });
   const [seated, setSeated] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const [tableOffset, setTableOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
+  const [refsObjs, setRefsObjs] = useState<RefObj[]>([]);
+  const refDragging = useRef<{id:string,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
-    const names = shuffle
-      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
-      : students.map(s => s.name);
-
-    const headLeft = names[0] || '';
-    const headRight = names[1] || '';
-    const rest = names.slice(2);
-    const top: string[] = [];
-    const bottom: string[] = [];
-    rest.forEach((n, i) => {
-      if (i < seatsPerSide) top.push(n);
-      else if (i < seatsPerSide * 2) bottom.push(n);
-    });
+    const names = students.map(s => s.name);
+    const { top, bottom, headLeft, headRight } = distributeConferenceLongTable(names, seatsPerSide, shuffle);
     setAssignment({ top, bottom, headLeft, headRight });
     setSeated(true);
   };
@@ -68,8 +64,13 @@ export default function ConferenceRoom({ students }: Props) {
           y: draggingRef.current.origY + dy,
         });
       }
+      if (refDragging.current) {
+        const dx = e.clientX - refDragging.current.startX;
+        const dy = e.clientY - refDragging.current.startY;
+        setRefsObjs(rs => rs.map(r => r.id === refDragging.current!.id ? { ...r, x: refDragging.current!.origX + dx, y: refDragging.current!.origY + dy } : r));
+      }
     };
-    const handleMouseUp = () => { draggingRef.current = null; };
+    const handleMouseUp = () => { draggingRef.current = null; refDragging.current = null; };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -79,6 +80,7 @@ export default function ConferenceRoom({ students }: Props) {
   }, []);
 
   const startDrag = (e: React.MouseEvent) => {
+    if (!settings.enableDragging) return;
     e.stopPropagation();
     draggingRef.current = {
       startX: e.clientX,
@@ -86,6 +88,23 @@ export default function ConferenceRoom({ students }: Props) {
       origX: tableOffset.x,
       origY: tableOffset.y,
     };
+  };
+
+  const startRefDrag = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const found = refsObjs.find(r => r.id === id);
+    refDragging.current = {
+      id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: found?.x || 0,
+      origY: found?.y || 0,
+    };
+  };
+
+  const addRef = (type: RefObj['type']) => {
+    const id = `${type}-${Date.now()}`;
+    setRefsObjs(rs => [...rs, { id, type, x: 0, y: 0, label: type }]);
   };
 
   return (
@@ -102,6 +121,14 @@ export default function ConferenceRoom({ students }: Props) {
             onChange={e => setSeatGap(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
+        {seated && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => addRef('podium')}>添加讲台</Button>
+            <Button variant="ghost" size="sm" onClick={() => addRef('door')}>添加门</Button>
+            <Button variant="ghost" size="sm" onClick={() => addRef('window')}>添加窗</Button>
+            <Button variant="ghost" size="sm" onClick={() => addRef('aisle')}>添加过道</Button>
+          </div>
+        )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
@@ -115,6 +142,7 @@ export default function ConferenceRoom({ students }: Props) {
       <div ref={printRef}>
         {seated ? (
           <div className="flex justify-center overflow-auto">
+            <div className="relative">
             <svg
   width={svgW}
   height={svgH}
@@ -150,6 +178,20 @@ export default function ConferenceRoom({ students }: Props) {
                 会议桌
               </text>
             </svg>
+
+            <div className="absolute inset-0 pointer-events-none">
+              {refsObjs.map(r => (
+                <div
+                  key={r.id}
+                  className="absolute pointer-events-auto bg-white/80 border rounded px-2 py-1 text-xs shadow"
+                  style={{ left: r.x, top: r.y, transform: 'translate(-50%,-50%)' }}
+                  onMouseDown={(e) => startRefDrag(e, r.id)}
+                  onDoubleClick={() => setRefsObjs(rs => rs.filter(x => x.id !== r.id))}
+                >
+                  {r.label}
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">

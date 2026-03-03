@@ -16,6 +16,43 @@ interface CheckinRecord {
   status: string;
 }
 
+/**
+ * helper used by CheckInPanel subscription; exported for testing
+ */
+export async function processCheckinPayload(
+  payload: any,
+  students: { name: string }[],
+  addStudent: (name: string) => void,
+  setRecords: React.Dispatch<React.SetStateAction<CheckinRecord[]>>
+) {
+  if (payload.eventType === 'INSERT') {
+    const rec = payload.new as CheckinRecord;
+    const names = students.map(s => s.name);
+    const isMatch = names.some(n => n.trim() === rec.student_name.trim());
+    const finalStatus = isMatch ? 'matched' : 'unknown';
+
+    if (rec.status !== finalStatus) {
+      await supabase
+        .from('checkin_records')
+        .update({ status: finalStatus })
+        .eq('id', rec.id);
+    }
+
+    const updatedRec = { ...rec, status: finalStatus };
+    setRecords(prev => {
+      if (prev.some(r => r.id === rec.id)) return prev;
+      return [...prev, updatedRec];
+    });
+    const trimmedName = rec.student_name.trim();
+    if (trimmedName && !students.some(s => s.name === trimmedName)) {
+      addStudent(trimmedName);
+    }
+  } else if (payload.eventType === 'UPDATE') {
+    const rec = payload.new as CheckinRecord;
+    setRecords(prev => prev.map(r => r.id === rec.id ? rec : r));
+  }
+}
+
 interface SessionData {
   id: string;
   created_at: string;
@@ -42,7 +79,7 @@ function saveHistory(session: SessionData, records: CheckinRecord[], studentName
 }
 
 export default function CheckInPanel() {
-  const { students } = useStudents();
+  const { students, addStudent } = useStudents();
   const [session, setSession] = useState<SessionData | null>(null);
   const [records, setRecords] = useState<CheckinRecord[]>([]);
   const [duration, setDuration] = useState(5);
@@ -71,6 +108,36 @@ export default function CheckInPanel() {
     };
     loadExisting();
 
+    const handlePayload = async (payload: any) => {
+      if (payload.eventType === 'INSERT') {
+        const rec = payload.new as CheckinRecord;
+        const names = students.map(s => s.name);
+        const isMatch = names.some(n => n.trim() === rec.student_name.trim());
+        const finalStatus = isMatch ? 'matched' : 'unknown';
+
+        if (rec.status !== finalStatus) {
+          await supabase
+            .from('checkin_records')
+            .update({ status: finalStatus })
+            .eq('id', rec.id);
+        }
+
+        const updatedRec = { ...rec, status: finalStatus };
+        setRecords(prev => {
+          if (prev.some(r => r.id === rec.id)) return prev;
+          return [...prev, updatedRec];
+        });
+        // always sync new checkin name into student store (avoid duplicates)
+        const trimmedName = rec.student_name.trim();
+        if (trimmedName && !students.some(s => s.name === trimmedName)) {
+          addStudent(trimmedName);
+        }
+      } else if (payload.eventType === 'UPDATE') {
+        const rec = payload.new as CheckinRecord;
+        setRecords(prev => prev.map(r => r.id === rec.id ? rec : r));
+      }
+    };
+
     const channel = supabase
       .channel(`checkin-${session.id}`)
       .on('postgres_changes', {
@@ -78,30 +145,7 @@ export default function CheckInPanel() {
         schema: 'public',
         table: 'checkin_records',
         filter: `session_id=eq.${session.id}`,
-      }, async (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const rec = payload.new as CheckinRecord;
-          const names = students.map(s => s.name);
-          const isMatch = names.some(n => n.trim() === rec.student_name.trim());
-          const finalStatus = isMatch ? 'matched' : 'unknown';
-          
-          if (rec.status !== finalStatus) {
-            await supabase
-              .from('checkin_records')
-              .update({ status: finalStatus })
-              .eq('id', rec.id);
-          }
-          
-          const updatedRec = { ...rec, status: finalStatus };
-          setRecords(prev => {
-            if (prev.some(r => r.id === rec.id)) return prev;
-            return [...prev, updatedRec];
-          });
-        } else if (payload.eventType === 'UPDATE') {
-          const rec = payload.new as CheckinRecord;
-          setRecords(prev => prev.map(r => r.id === rec.id ? rec : r));
-        }
-      })
+      }, handlePayload)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };

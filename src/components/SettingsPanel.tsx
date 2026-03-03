@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTheme, COLOR_SCHEMES, FONT_OPTIONS, FONT_SIZE_MIN, FONT_SIZE_MAX } from '@/contexts/ThemeContext';
+import { useSettings } from '@/contexts/SettingsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -11,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function SettingsPanel() {
   const { config, setScheme, setFont, setFontSize } = useTheme();
+  const { settings, setSettings } = useSettings();
   const { user, signOut } = useAuth();
   const [nickname, setNickname] = useState('');
   const [saving, setSaving] = useState(false);
@@ -139,6 +141,66 @@ export default function SettingsPanel() {
                   {config.fontFamily === font.id && <Check className="w-4 h-4 text-primary" />}
                 </button>
               ))}
+            </div>
+          </section>
+
+          {/* Layout Defaults */}
+          <section>
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              ⚙️ 默认布局
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm">座位间距</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={200}
+                  value={settings.defaultSeatGap}
+                  onChange={e => setSettings({ defaultSeatGap: Math.max(0, Math.min(200, Number(e.target.value))) })}
+                  className="w-20 h-8 text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">桌子间距</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={200}
+                  value={settings.defaultTableGap}
+                  onChange={e => setSettings({ defaultTableGap: Math.max(0, Math.min(200, Number(e.target.value))) })}
+                  className="w-20 h-8 text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">行间距</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={400}
+                  value={settings.defaultRowGap}
+                  onChange={e => setSettings({ defaultRowGap: Math.max(0, Math.min(400, Number(e.target.value))) })}
+                  className="w-20 h-8 text-center"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">允许拖拽</label>
+                <input
+                  type="checkbox"
+                  checked={settings.enableDragging}
+                  onChange={e => setSettings({ enableDragging: e.target.checked })}
+                  className="accent-primary"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-sm">显示参考对象</label>
+                <input
+                  type="checkbox"
+                  checked={settings.showReferenceObjects}
+                  onChange={e => setSettings({ showReferenceObjects: e.target.checked })}
+                  className="accent-primary"
+                />
+              </div>
             </div>
           </section>
 

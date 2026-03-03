@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { distributeComputerLab } from '@/lib/seating';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -7,6 +8,8 @@ import ExportButtons from '@/components/ExportButtons';
 interface Props {
   students: { id: string; name: string }[];
 }
+
+type RefObj = { id: string; type: 'podium' | 'door' | 'window' | 'aisle'; x: number; y: number; label?: string };
 
 export default function ComputerLab({ students }: Props) {
   const [rowCount, setRowCount] = useState(5);
@@ -18,58 +21,13 @@ export default function ComputerLab({ students }: Props) {
   const [seated, setSeated] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
+  const [refsObjs, setRefsObjs] = useState<RefObj[]>([]);
+  const refDragging = useRef<{id:string,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
-    const names = shuffle
-      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
-      : students.map(s => s.name);
-
-    const result: typeof assignment = [];
-    let idx = 0;
-
-    if (dualSide) {
-      // 两侧模式：每排一张长桌，两侧分别坐学生
-      for (let r = 0; r < rowCount && idx < names.length; r++) {
-        // 上侧
-        const topSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          topSeats.push(names[idx++]);
-        }
-        if (topSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'top', students: topSeats });
-        }
-
-        // 下侧
-        const bottomSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          bottomSeats.push(names[idx++]);
-        }
-        if (bottomSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'bottom', students: bottomSeats });
-        }
-      }
-    } else {
-      // 单侧模式：每排两张长桌（上下各一张），都在一侧坐
-      for (let r = 0; r < rowCount && idx < names.length; r++) {
-        const topSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          topSeats.push(names[idx++]);
-        }
-        if (topSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'top', students: topSeats });
-        }
-
-        const bottomSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          bottomSeats.push(names[idx++]);
-        }
-        if (bottomSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'bottom', students: bottomSeats });
-        }
-      }
-    }
-
-    setAssignment(result);
+    const names = students.map(s => s.name);
+    const res = distributeComputerLab(names, rowCount, seatsPerSide, dualSide, shuffle);
+    setAssignment(res);
     setSeated(true);
   };
 
@@ -100,8 +58,13 @@ export default function ComputerLab({ students }: Props) {
             : p
         ));
       }
+      if (refDragging.current) {
+        const dx = e.clientX - refDragging.current.startX;
+        const dy = e.clientY - refDragging.current.startY;
+        setRefsObjs(rs => rs.map(r => r.id === refDragging.current!.id ? { ...r, x: refDragging.current!.origX + dx, y: refDragging.current!.origY + dy } : r));
+      }
     };
-    const handleMouseUp = () => { draggingRef.current = null; };
+    const handleMouseUp = () => { draggingRef.current = null; refDragging.current = null; };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -119,6 +82,23 @@ export default function ComputerLab({ students }: Props) {
       origX: rowOffsets[row]?.x || 0,
       origY: rowOffsets[row]?.y || 0,
     };
+  };
+
+  const startRefDrag = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const found = refsObjs.find(r => r.id === id);
+    refDragging.current = {
+      id,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: found?.x || 0,
+      origY: found?.y || 0,
+    };
+  };
+
+  const addRef = (type: RefObj['type']) => {
+    const id = `${type}-${Date.now()}`;
+    setRefsObjs(rs => [...rs, { id, type, x: 0, y: 0, label: type }]);
   };
 
   const renderSeat = (x: number, y: number, name: string, key: string) => (
@@ -156,6 +136,14 @@ export default function ComputerLab({ students }: Props) {
           长桌两侧
         </label>
         {seated && <ExportButtons targetRef={printRef} filename="机房座位" />}
+        {seated && (
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => addRef('podium')}>添加讲台</Button>
+            <Button variant="ghost" size="sm" onClick={() => addRef('door')}>添加门</Button>
+            <Button variant="ghost" size="sm" onClick={() => addRef('window')}>添加窗</Button>
+            <Button variant="ghost" size="sm" onClick={() => addRef('aisle')}>添加过道</Button>
+          </div>
+        )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
@@ -169,7 +157,8 @@ export default function ComputerLab({ students }: Props) {
       <div ref={printRef}>
         {seated ? (
           <div className="flex justify-center overflow-auto">
-            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
+            <div className="relative">
+              <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
               {/* Render each row of long desks */}
               {Array.from({ length: maxRows }).map((_, rowIdx) => {
                 const offset = rowOffsets[rowIdx] || { x: 0, y: 0 };
@@ -221,6 +210,21 @@ export default function ComputerLab({ students }: Props) {
                 );
               })}
             </svg>
+
+              <div className="absolute inset-0 pointer-events-none">
+                {refsObjs.map(r => (
+                  <div
+                    key={r.id}
+                    className="absolute pointer-events-auto bg-white/80 border rounded px-2 py-1 text-xs shadow"
+                    style={{ left: r.x, top: r.y, transform: 'translate(-50%,-50%)' }}
+                    onMouseDown={(e) => startRefDrag(e, r.id)}
+                    onDoubleClick={() => setRefsObjs(rs => rs.filter(x => x.id !== r.id))}
+                  >
+                    {r.label}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
