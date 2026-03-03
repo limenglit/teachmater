@@ -1,6 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { useSettings } from '@/contexts/SettingsContext';
-import { distributeConcertHall } from '@/lib/seating';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -10,23 +8,31 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
-type RefObj = { id: string; type: 'podium' | 'door' | 'window' | 'aisle'; x: number; y: number; label?: string };
-
 export default function ConcertHall({ students }: Props) {
-  const { settings } = useSettings();
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(5);
-  const [seatGap, setSeatGap] = useState(settings.defaultRowGap); // radius step
+  const [seatGap, setSeatGap] = useState(50); // radius step
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
-  const [refsObjs, setRefsObjs] = useState<RefObj[]>([]);
-  const refDragging = useRef<{id:string,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
-    const names = students.map(s => s.name);
-    const rows = distributeConcertHall(names, seatsPerRow, rowCount, shuffle);
+    const names = shuffle
+      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
+      : students.map(s => s.name);
+
+    const rows: string[][] = [];
+    let idx = 0;
+    for (let r = 0; r < rowCount && idx < names.length; r++) {
+      const row: string[] = [];
+      // Each row has seatsPerRow + r*2 more seats (wider as you go back)
+      const count = seatsPerRow + r * 2;
+      for (let c = 0; c < count && idx < names.length; c++) {
+        row.push(names[idx++]);
+      }
+      rows.push(row);
+    }
     setAssignment(rows);
   };
 
@@ -47,13 +53,8 @@ export default function ConcertHall({ students }: Props) {
         const dy = e.clientY - draggingRef.current.startY;
         setOffset({ x: draggingRef.current.origX + dx, y: draggingRef.current.origY + dy });
       }
-      if (refDragging.current) {
-        const dx = e.clientX - refDragging.current.startX;
-        const dy = e.clientY - refDragging.current.startY;
-        setRefsObjs(rs => rs.map(r => r.id === refDragging.current!.id ? { ...r, x: refDragging.current!.origX + dx, y: refDragging.current!.origY + dy } : r));
-      }
     };
-    const handleMouseUp = () => { draggingRef.current = null; refDragging.current = null; };
+    const handleMouseUp = () => { draggingRef.current = null; };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -62,7 +63,6 @@ export default function ConcertHall({ students }: Props) {
     };
   }, []);
   const startDrag = (e: React.MouseEvent) => {
-    if (!settings.enableDragging) return;
     e.stopPropagation();
     draggingRef.current = {
       startX: e.clientX,
@@ -70,23 +70,6 @@ export default function ConcertHall({ students }: Props) {
       origX: offset.x,
       origY: offset.y,
     };
-  };
-
-  const startRefDrag = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const found = refsObjs.find(r => r.id === id);
-    refDragging.current = {
-      id,
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: found?.x || 0,
-      origY: found?.y || 0,
-    };
-  };
-
-  const addRef = (type: RefObj['type']) => {
-    const id = `${type}-${Date.now()}`;
-    setRefsObjs(rs => [...rs, { id, type, x: 0, y: 0, label: type }]);
   };
 
   return (
@@ -108,14 +91,6 @@ export default function ConcertHall({ students }: Props) {
             onChange={e => setSeatGap(Math.max(20, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" />}
-        {assignment.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => addRef('podium')}>添加讲台</Button>
-            <Button variant="ghost" size="sm" onClick={() => addRef('door')}>添加门</Button>
-            <Button variant="ghost" size="sm" onClick={() => addRef('window')}>添加窗</Button>
-            <Button variant="ghost" size="sm" onClick={() => addRef('aisle')}>添加过道</Button>
-          </div>
-        )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
@@ -129,12 +104,11 @@ export default function ConcertHall({ students }: Props) {
       <div ref={printRef}>
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto">
-            <div className="relative">
-              <svg
-                width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
-                className="font-sans" style={{ fontFamily: 'var(--font-family)' }}
-                {...(settings.enableDragging ? { onMouseDown: startDrag } : {})}
-              >
+            <svg
+              width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
+              className="font-sans" style={{ fontFamily: 'var(--font-family)' }}
+              onMouseDown={startDrag}
+            >
               {/* Stage */}
               <rect x={cx - stageW / 2} y={stageY - 20} width={stageW} height={36} rx={8}
                 className="fill-primary/15 stroke-primary/30" strokeWidth={2} />
@@ -168,20 +142,6 @@ export default function ConcertHall({ students }: Props) {
                 });
               })}
             </svg>
-
-            <div className="absolute inset-0 pointer-events-none">
-              {refsObjs.map(r => (
-                <div
-                  key={r.id}
-                  className="absolute pointer-events-auto bg-white/80 border rounded px-2 py-1 text-xs shadow"
-                  style={{ left: r.x, top: r.y, transform: 'translate(-50%,-50%)' }}
-                  onMouseDown={(e) => startRefDrag(e, r.id)}
-                  onDoubleClick={() => setRefsObjs(rs => rs.filter(x => x.id !== r.id))}
-                >
-                  {r.label}
-                </div>
-              ))}
-            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">

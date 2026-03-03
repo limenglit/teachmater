@@ -1,6 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { useSettings } from '@/contexts/SettingsContext';
-import { distributeToTables } from '@/lib/seating';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -11,24 +9,25 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
-type RefObj = { id: string; type: 'podium' | 'door' | 'window' | 'aisle'; x: number; y: number; label?: string };
-
 export default function BanquetHall({ students }: Props) {
-  const { settings } = useSettings();
   const [seatsPerTable, setSeatsPerTable] = useState(10);
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 10) || 3);
   const [assignment, setAssignment] = useState<string[][]>([]);
-  const [tableGap, setTableGap] = useState(settings.defaultTableGap);
+  const [tableGap, setTableGap] = useState(24);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
-  const [refsObjs, setRefsObjs] = useState<RefObj[]>([]);
-  const refDragging = useRef<{id:string,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
-    const names = students.map(s => s.name);
-    const tables = distributeToTables(names, tableCount, seatsPerTable, shuffle);
+    const names = shuffle
+      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
+      : students.map(s => s.name);
+    const tables: string[][] = Array.from({ length: tableCount }, () => []);
+    names.forEach((n, i) => {
+      const ti = i % tableCount;
+      if (tables[ti].length < seatsPerTable) tables[ti].push(n);
+    });
     setAssignment(tables);
   };
 
@@ -49,13 +48,8 @@ export default function BanquetHall({ students }: Props) {
             : p
         ));
       }
-      if (refDragging.current) {
-        const dx = e.clientX - refDragging.current.startX;
-        const dy = e.clientY - refDragging.current.startY;
-        setRefsObjs(rs => rs.map(r => r.id === refDragging.current!.id ? { ...r, x: refDragging.current!.origX + dx, y: refDragging.current!.origY + dy } : r));
-      }
     };
-    const handleMouseUp = () => { draggingRef.current = null; refDragging.current = null; };
+    const handleMouseUp = () => { draggingRef.current = null; };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -65,7 +59,6 @@ export default function BanquetHall({ students }: Props) {
   }, []);
 
   const startTableDrag = (e: React.MouseEvent, index: number) => {
-    if (!settings.enableDragging) return;
     e.stopPropagation();
     draggingRef.current = {
       index,
@@ -74,23 +67,6 @@ export default function BanquetHall({ students }: Props) {
       origX: tablePositions[index]?.x || 0,
       origY: tablePositions[index]?.y || 0,
     };
-  };
-
-  const startRefDrag = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    const found = refsObjs.find(r => r.id === id);
-    refDragging.current = {
-      id,
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: found?.x || 0,
-      origY: found?.y || 0,
-    };
-  };
-
-  const addRef = (type: RefObj['type']) => {
-    const id = `${type}-${Date.now()}`;
-    setRefsObjs(rs => [...rs, { id, type, x: 0, y: 0, label: type }]);
   };
 
   const renderBanquetTable = (tableIndex: number, people: string[]) => {
@@ -103,9 +79,9 @@ export default function BanquetHall({ students }: Props) {
     return (
       <div
         key={tableIndex}
-        className={"flex flex-col items-center " + (settings.enableDragging ? 'cursor-move' : '')}
+        className="flex flex-col items-center cursor-move"
         style={{ transform: `translate(${pos.x}px,${pos.y}px)` }}
-        {...(settings.enableDragging ? { onMouseDown: (e: any) => startTableDrag(e, tableIndex) } : {})}
+        onMouseDown={e => startTableDrag(e, tableIndex)}
       >
         <svg width={170} height={170} viewBox="0 0 170 170" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={42} className="fill-primary/5 stroke-primary/20" strokeWidth={1} strokeDasharray="4 2" />
@@ -175,14 +151,6 @@ export default function BanquetHall({ students }: Props) {
           共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
         </span>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" />}
-        {assignment.length > 0 && settings.showReferenceObjects && (
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => addRef('podium')}>添加讲台</Button>
-            <Button variant="ghost" size="sm" onClick={() => addRef('door')}>添加门</Button>
-            <Button variant="ghost" size="sm" onClick={() => addRef('window')}>添加窗</Button>
-            <Button variant="ghost" size="sm" onClick={() => addRef('aisle')}>添加过道</Button>
-          </div>
-        )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
@@ -202,24 +170,8 @@ export default function BanquetHall({ students }: Props) {
 
         {assignment.length > 0 ? (
           <div className="flex justify-center">
-            <div className="relative">
-              <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
-                {assignment.map((people, i) => renderBanquetTable(i, people))}
-              </div>
-
-              <div className="absolute inset-0 pointer-events-none">
-                {refsObjs.map(r => (
-                  <div
-                    key={r.id}
-                    className="absolute pointer-events-auto bg-white/80 border rounded px-2 py-1 text-xs shadow"
-                    style={{ left: r.x, top: r.y, transform: 'translate(-50%,-50%)' }}
-                    onMouseDown={(e) => startRefDrag(e, r.id)}
-                    onDoubleClick={() => setRefsObjs(rs => rs.filter(x => x.id !== r.id))}
-                  >
-                    {r.label}
-                  </div>
-                ))}
-              </div>
+            <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
+              {assignment.map((people, i) => renderBanquetTable(i, people))}
             </div>
           </div>
         ) : (
