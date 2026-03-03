@@ -1,0 +1,199 @@
+import { useState, useRef } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { LayoutGrid, Shuffle } from 'lucide-react';
+import ExportButtons from '@/components/ExportButtons';
+
+interface Props {
+  students: { id: string; name: string }[];
+}
+
+export default function ComputerLab({ students }: Props) {
+  const [rowCount, setRowCount] = useState(5);
+  const [seatsPerSide, setSeatsPerSide] = useState(8);
+  const [dualSide, setDualSide] = useState(true); // 是否两侧坐学生
+  const [assignment, setAssignment] = useState<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }[]>([]);
+  const [seated, setSeated] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const autoSeat = (shuffle = false) => {
+    const names = shuffle
+      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
+      : students.map(s => s.name);
+
+    const result: typeof assignment = [];
+    let idx = 0;
+
+    if (dualSide) {
+      // 两侧模式：每排一张长桌，两侧分别坐学生
+      for (let r = 0; r < rowCount && idx < names.length; r++) {
+        // 上侧
+        const topSeats: string[] = [];
+        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
+          topSeats.push(names[idx++]);
+        }
+        if (topSeats.length > 0) {
+          result.push({ rowIndex: r, side: 'top', students: topSeats });
+        }
+
+        // 下侧
+        const bottomSeats: string[] = [];
+        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
+          bottomSeats.push(names[idx++]);
+        }
+        if (bottomSeats.length > 0) {
+          result.push({ rowIndex: r, side: 'bottom', students: bottomSeats });
+        }
+      }
+    } else {
+      // 单侧模式：每排两张长桌（上下各一张），都在一侧坐
+      for (let r = 0; r < rowCount && idx < names.length; r++) {
+        const topSeats: string[] = [];
+        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
+          topSeats.push(names[idx++]);
+        }
+        if (topSeats.length > 0) {
+          result.push({ rowIndex: r, side: 'top', students: topSeats });
+        }
+
+        const bottomSeats: string[] = [];
+        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
+          bottomSeats.push(names[idx++]);
+        }
+        if (bottomSeats.length > 0) {
+          result.push({ rowIndex: r, side: 'bottom', students: bottomSeats });
+        }
+      }
+    }
+
+    setAssignment(result);
+    setSeated(true);
+  };
+
+  const seatW = 56;
+  const seatH = 36;
+  const gap = 4;
+  const tableMargin = 20;
+  const rowGap = 80;
+
+  // 计算 SVG 尺寸
+  const tableW = seatsPerSide * (seatW + gap) + gap;
+  const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
+  const svgW = tableW + tableMargin * 2 + 100;
+  const svgH = maxRows * rowGap + 120;
+
+  const renderSeat = (x: number, y: number, name: string, key: string) => (
+    <g key={key}>
+      <rect x={x} y={y} width={seatW} height={seatH} rx={4}
+        className={name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'} strokeWidth={1.5} />
+      {name && (
+        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
+          {name.length > 3 ? name.slice(0, 3) : name}
+        </text>
+      )}
+    </g>
+  );
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          排数
+          <Input type="number" min={1} max={15} value={rowCount}
+            onChange={e => setRowCount(Math.max(1, Math.min(15, Number(e.target.value))))} className="w-14 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          每侧座位数
+          <Input type="number" min={3} max={16} value={seatsPerSide}
+            onChange={e => setSeatsPerSide(Math.max(3, Math.min(16, Number(e.target.value))))} className="w-14 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input type="checkbox" checked={dualSide} onChange={e => setDualSide(e.target.checked)} className="accent-primary" />
+          长桌两侧
+        </label>
+        {seated && <ExportButtons targetRef={printRef} filename="机房座位" />}
+        <div className="flex gap-2 ml-auto">
+          <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
+            <Shuffle className="w-4 h-4" /> 随机排座
+          </Button>
+          <Button onClick={() => autoSeat(false)} className="gap-2">
+            <LayoutGrid className="w-4 h-4" /> 自动排座
+          </Button>
+        </div>
+      </div>
+
+      <div ref={printRef}>
+        {seated ? (
+          <div className="flex justify-center overflow-auto">
+            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
+              {/* Render each row of long desks */}
+              {Array.from({ length: maxRows }).map((_, rowIdx) => {
+                const baseY = 60 + rowIdx * rowGap;
+                const centerX = svgW / 2;
+                const tableX = (svgW - tableW) / 2;
+
+                // Get students for this row
+                const topGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'top');
+                const bottomGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'bottom');
+
+                return (
+                  <g key={`row-${rowIdx}`}>
+                    {/* Top side of the desk */}
+                    {topGroup && (
+                      <>
+                        {/* Desk */}
+                        <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
+                          className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
+                        <text x={centerX} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-xs">
+                          ━━━ 长桌 ━━━
+                        </text>
+                        {/* Seats on top */}
+                        {topGroup.students.map((name, i) => {
+                          const x = tableX + gap + i * (seatW + gap);
+                          const y = baseY - seatH - 8;
+                          return renderSeat(x, y, name, `top-${rowIdx}-${i}`);
+                        })}
+                      </>
+                    )}
+
+                    {/* Bottom side of the desk */}
+                    {bottomGroup && (
+                      <>
+                        {/* Desk */}
+                        {!dualSide && (
+                          <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
+                            className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
+                        )}
+                        {/* Seats on bottom */}
+                        {bottomGroup.students.map((name, i) => {
+                          const x = tableX + gap + i * (seatW + gap);
+                          const y = dualSide ? baseY + 28 : baseY + 88;
+                          return renderSeat(x, y, name, `bottom-${rowIdx}-${i}`);
+                        })}
+                      </>
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="text-center py-20 text-muted-foreground">
+            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
+            <p className="text-sm">
+              {dualSide
+                ? `长桌长边两侧，${rowCount} 排，每侧 ${seatsPerSide} 个座位`
+                : `长桌单侧，${rowCount} 排，每排 ${seatsPerSide * 2} 个座位`}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {seated && (
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          💡 {dualSide ? '长桌两侧对面坐，适合机房配对学习' : '长桌单侧坐学生，上下两排长桌'}
+        </p>
+      )}
+    </div>
+  );
+}

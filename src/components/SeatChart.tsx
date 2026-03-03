@@ -8,8 +8,9 @@ import SmartClassroom from '@/components/seating/SmartClassroom';
 import ConferenceRoom from '@/components/seating/ConferenceRoom';
 import ConcertHall from '@/components/seating/ConcertHall';
 import BanquetHall from '@/components/seating/BanquetHall';
+import ComputerLab from '@/components/seating/ComputerLab';
 
-type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet';
+type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type StartFrom = 'door' | 'window';
 
@@ -19,6 +20,7 @@ const SCENES: { id: SceneType; label: string; desc: string }[] = [
   { id: 'conference', label: '📋 会议室', desc: '长条会议桌' },
   { id: 'concertHall', label: '🎵 音乐厅', desc: '半圆形围绕舞台' },
   { id: 'banquet', label: '🎪 宴会厅', desc: '圆桌宴会布局' },
+  { id: 'computerLab', label: '💻 机房', desc: '长桌两侧对面坐' },
 ];
 
 const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -626,6 +628,7 @@ export default function SeatChart() {
         {scene === 'conference' && <ConferenceRoom students={students} />}
         {scene === 'concertHall' && <ConcertHall students={students} />}
         {scene === 'banquet' && <BanquetHall students={students} />}
+        {scene === 'computerLab' && <ComputerLab students={students} />}
 
         {/* Classroom scene - original layout */}
         {scene === 'classroom' && (<>
