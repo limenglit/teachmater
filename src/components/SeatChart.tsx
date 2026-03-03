@@ -4,9 +4,22 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import SmartClassroom from '@/components/seating/SmartClassroom';
+import ConferenceRoom from '@/components/seating/ConferenceRoom';
+import ConcertHall from '@/components/seating/ConcertHall';
+import BanquetHall from '@/components/seating/BanquetHall';
 
+type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type StartFrom = 'door' | 'window';
+
+const SCENES: { id: SceneType; label: string; desc: string }[] = [
+  { id: 'classroom', label: '🏫 教室', desc: '传统教室网格布局' },
+  { id: 'smartClassroom', label: '⭕ 智能教室', desc: '圆形桌分组讨论' },
+  { id: 'conference', label: '📋 会议室', desc: '长条会议桌' },
+  { id: 'concertHall', label: '🎵 音乐厅', desc: '半圆形围绕舞台' },
+  { id: 'banquet', label: '🎪 宴会厅', desc: '圆桌宴会布局' },
+];
 
 const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string }[] = [
   { id: 'verticalS', label: '竖S形', icon: <ArrowDownUp className="w-3.5 h-3.5" />, desc: '按列蛇形排列' },
@@ -20,6 +33,7 @@ const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string 
 
 export default function SeatChart() {
   const { students } = useStudents();
+  const [scene, setScene] = useState<SceneType>('classroom');
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(8);
   const [seats, setSeats] = useState<(string | null)[][]>([]);
@@ -589,6 +603,32 @@ export default function SeatChart() {
   return (
     <div className="flex-1 p-4 sm:p-8 overflow-auto">
       <div className="max-w-6xl mx-auto">
+        {/* Scene selector */}
+        <div className="flex flex-wrap gap-2 mb-5">
+          {SCENES.map(s => (
+            <button
+              key={s.id}
+              onClick={() => setScene(s.id)}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
+                ${scene === s.id
+                  ? 'bg-primary text-primary-foreground border-primary shadow-soft'
+                  : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted'
+                }`}
+              title={s.desc}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Non-classroom scenes */}
+        {scene === 'smartClassroom' && <SmartClassroom students={students} />}
+        {scene === 'conference' && <ConferenceRoom students={students} />}
+        {scene === 'concertHall' && <ConcertHall students={students} />}
+        {scene === 'banquet' && <BanquetHall students={students} />}
+
+        {/* Classroom scene - original layout */}
+        {scene === 'classroom' && (<>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
@@ -738,6 +778,7 @@ export default function SeatChart() {
             💡 拖拽学生交换座位 · 点击空座位可禁用/启用 · 拖动过道线可调整位置 · 双击过道线可删除
           </p>
         )}
+        </>)}
       </div>
     </div>
   );
