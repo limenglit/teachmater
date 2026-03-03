@@ -47,7 +47,7 @@ export default function ConferenceRoom({ students }: Props) {
       <rect x={x} y={y} width={seatW} height={seatH} rx={6}
         className={name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'} strokeWidth={1.5} />
       {name && (
-        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[10px]">
+        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
           {name.length > 3 ? name.slice(0, 3) : name}
         </text>
       )}
@@ -76,7 +76,7 @@ export default function ConferenceRoom({ students }: Props) {
       <div ref={printRef}>
         {seated ? (
           <div className="flex justify-center overflow-auto">
-            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
               {/* Conference table */}
               <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={10}
                 className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
@@ -100,7 +100,7 @@ export default function ConferenceRoom({ students }: Props) {
               {renderSeat(tableX + tableW + 12, tableY + (tableH - seatH) / 2, assignment.headRight, 'head-right')}
 
               {/* Labels */}
-              <text x={tableX + tableW / 2} y={tableY + tableH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-medium">
+              <text x={tableX + tableW / 2} y={tableY + tableH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-sm font-medium">
                 会议桌
               </text>
             </svg>

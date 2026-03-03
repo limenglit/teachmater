@@ -38,13 +38,13 @@ export default function BanquetHall({ students }: Props) {
 
     return (
       <div key={tableIndex} className="flex flex-col items-center">
-        <svg width={170} height={170} viewBox="0 0 170 170">
+        <svg width={170} height={170} viewBox="0 0 170 170" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={42} className="fill-primary/5 stroke-primary/20" strokeWidth={1} strokeDasharray="4 2" />
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
-          <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-[10px] font-medium">
+          <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-sm font-medium">
             {tableIndex + 1}桌
           </text>
-          <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className="fill-primary/60 text-[8px]">
+          <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className="fill-primary/60 text-xs">
             {people.length}人
           </text>
           {Array.from({ length: totalSlots }).map((_, i) => {
@@ -72,7 +72,7 @@ export default function BanquetHall({ students }: Props) {
                   style={{ transition: 'all 0.15s' }}
                 />
                 {name && !isDragging && (
-                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[7px] pointer-events-none">
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs pointer-events-none">
                     {name.length > 3 ? name.slice(0, 3) : name}
                   </text>
                 )}

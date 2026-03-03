@@ -69,11 +69,11 @@ export default function ConcertHall({ students }: Props) {
       <div ref={printRef}>
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto">
-            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
               {/* Stage */}
               <rect x={cx - stageW / 2} y={stageY - 20} width={stageW} height={36} rx={8}
                 className="fill-primary/15 stroke-primary/30" strokeWidth={2} />
-              <text x={cx} y={stageY} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-medium">
+              <text x={cx} y={stageY} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-sm font-medium">
                 🎵 舞 台
               </text>
 
@@ -95,7 +95,7 @@ export default function ConcertHall({ students }: Props) {
                     <g key={`${ri}-${ci}`}>
                       <circle cx={sx} cy={sy} r={seatR}
                         className="fill-card stroke-border" strokeWidth={1.5} />
-                      <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[8px]">
+                      <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
                         {name.length > 2 ? name.slice(0, 2) : name}
                       </text>
                     </g>

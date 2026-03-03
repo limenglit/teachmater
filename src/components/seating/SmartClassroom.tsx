@@ -46,9 +46,9 @@ export default function SmartClassroom({ students }: Props) {
 
     return (
       <div key={tableIndex} className="flex flex-col items-center gap-1">
-        <svg width={160} height={160} viewBox="0 0 160 160">
+        <svg width={160} height={160} viewBox="0 0 160 160" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
-          <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-[10px] font-medium">
+          <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-medium">
             {tableIndex + 1}桌
           </text>
           {Array.from({ length: totalSlots }).map((_, i) => {
@@ -77,7 +77,7 @@ export default function SmartClassroom({ students }: Props) {
                   style={{ transition: 'all 0.15s' }}
                 />
                 {name && !isDragging && (
-                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[8px] pointer-events-none">
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs pointer-events-none">
                     {name.length > 3 ? name.slice(0, 3) : name}
                   </text>
                 )}
