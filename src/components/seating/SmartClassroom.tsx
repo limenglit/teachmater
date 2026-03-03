@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { useRoundTableDrag } from './useRoundTableDrag';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -13,6 +14,7 @@ export default function SmartClassroom({ students }: Props) {
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 6) || 4);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
+  const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const autoSeat = () => {
     const names = students.map(s => s.name);
@@ -34,9 +36,7 @@ export default function SmartClassroom({ students }: Props) {
     setAssignment(tables);
   };
 
-  // Layout tables in a grid
   const tableCols = Math.ceil(Math.sqrt(tableCount));
-  const tableRows = Math.ceil(tableCount / tableCols);
 
   const renderRoundTable = (tableIndex: number, people: string[]) => {
     const radius = 52;
@@ -47,26 +47,37 @@ export default function SmartClassroom({ students }: Props) {
     return (
       <div key={tableIndex} className="flex flex-col items-center gap-1">
         <svg width={160} height={160} viewBox="0 0 160 160">
-          {/* Table circle */}
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
           <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-[10px] font-medium">
             {tableIndex + 1}桌
           </text>
-          {/* Seats */}
           {Array.from({ length: totalSlots }).map((_, i) => {
             const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
             const sx = cx + radius * Math.cos(angle);
             const sy = cy + radius * Math.sin(angle);
             const name = people[i] || '';
+            const isDragging = dragFrom?.table === tableIndex && dragFrom?.seat === i;
+            const isOver = dropTarget?.table === tableIndex && dropTarget?.seat === i;
             return (
-              <g key={i}>
+              <g
+                key={i}
+                style={{ cursor: name ? 'grab' : 'default' }}
+                onMouseDown={name ? (e) => { e.preventDefault(); handleDragStart(tableIndex, i); } : undefined}
+                onMouseEnter={() => { if (dragFrom) handleDragOver(tableIndex, i); }}
+                onMouseUp={() => { if (dragFrom) handleDrop(tableIndex, i); }}
+              >
                 <circle
                   cx={sx} cy={sy} r={seatRadius}
-                  className={name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'}
-                  strokeWidth={1.5}
+                  className={
+                    isDragging ? 'fill-primary/20 stroke-primary' :
+                    isOver ? 'fill-accent stroke-primary' :
+                    name ? 'fill-card stroke-border hover:stroke-primary/50' : 'fill-muted/50 stroke-border/50'
+                  }
+                  strokeWidth={isOver ? 2.5 : 1.5}
+                  style={{ transition: 'all 0.15s' }}
                 />
-                {name && (
-                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[8px]">
+                {name && !isDragging && (
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[8px] pointer-events-none">
                     {name.length > 3 ? name.slice(0, 3) : name}
                   </text>
                 )}
@@ -79,7 +90,7 @@ export default function SmartClassroom({ students }: Props) {
   };
 
   return (
-    <div>
+    <div onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd}>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每桌人数
@@ -105,10 +116,7 @@ export default function SmartClassroom({ students }: Props) {
       <div ref={printRef}>
         {assignment.length > 0 ? (
           <div className="flex justify-center">
-            <div
-              className="inline-grid gap-4"
-              style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)` }}
-            >
+            <div className="inline-grid gap-4" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)` }}>
               {assignment.map((people, i) => renderRoundTable(i, people))}
             </div>
           </div>
@@ -122,7 +130,7 @@ export default function SmartClassroom({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 调整每桌人数和桌数后重新排座
+          💡 点击并拖拽学生姓名可交换座位（支持跨桌交换）
         </p>
       )}
     </div>

@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { useRoundTableDrag } from './useRoundTableDrag';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -13,12 +14,12 @@ export default function BanquetHall({ students }: Props) {
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 10) || 3);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
+  const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
-
     const tables: string[][] = Array.from({ length: tableCount }, () => []);
     names.forEach((n, i) => {
       const ti = i % tableCount;
@@ -38,7 +39,6 @@ export default function BanquetHall({ students }: Props) {
     return (
       <div key={tableIndex} className="flex flex-col items-center">
         <svg width={170} height={170} viewBox="0 0 170 170">
-          {/* Tablecloth decoration */}
           <circle cx={cx} cy={cy} r={42} className="fill-primary/5 stroke-primary/20" strokeWidth={1} strokeDasharray="4 2" />
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
           <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-[10px] font-medium">
@@ -47,19 +47,32 @@ export default function BanquetHall({ students }: Props) {
           <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className="fill-primary/60 text-[8px]">
             {people.length}人
           </text>
-          {/* Seats */}
           {Array.from({ length: totalSlots }).map((_, i) => {
             const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
             const sx = cx + radius * Math.cos(angle);
             const sy = cy + radius * Math.sin(angle);
             const name = people[i] || '';
+            const isDragging = dragFrom?.table === tableIndex && dragFrom?.seat === i;
+            const isOver = dropTarget?.table === tableIndex && dropTarget?.seat === i;
             return (
-              <g key={i}>
+              <g
+                key={i}
+                style={{ cursor: name ? 'grab' : 'default' }}
+                onMouseDown={name ? (e) => { e.preventDefault(); handleDragStart(tableIndex, i); } : undefined}
+                onMouseEnter={() => { if (dragFrom) handleDragOver(tableIndex, i); }}
+                onMouseUp={() => { if (dragFrom) handleDrop(tableIndex, i); }}
+              >
                 <circle cx={sx} cy={sy} r={seatRadius}
-                  className={name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                  strokeWidth={1.5} />
-                {name && (
-                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[7px]">
+                  className={
+                    isDragging ? 'fill-primary/20 stroke-primary' :
+                    isOver ? 'fill-accent stroke-primary' :
+                    name ? 'fill-card stroke-border hover:stroke-primary/50' : 'fill-muted/30 stroke-border/30'
+                  }
+                  strokeWidth={isOver ? 2.5 : 1.5}
+                  style={{ transition: 'all 0.15s' }}
+                />
+                {name && !isDragging && (
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[7px] pointer-events-none">
                     {name.length > 3 ? name.slice(0, 3) : name}
                   </text>
                 )}
@@ -72,7 +85,7 @@ export default function BanquetHall({ students }: Props) {
   };
 
   return (
-    <div>
+    <div onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd}>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每桌人数
@@ -99,7 +112,6 @@ export default function BanquetHall({ students }: Props) {
       </div>
 
       <div ref={printRef}>
-        {/* Banquet hall header */}
         <div className="text-center mb-4">
           <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-medium border border-primary/20">
             🎪 宴会厅
@@ -108,10 +120,7 @@ export default function BanquetHall({ students }: Props) {
 
         {assignment.length > 0 ? (
           <div className="flex justify-center">
-            <div
-              className="inline-grid gap-3"
-              style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)` }}
-            >
+            <div className="inline-grid gap-3" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)` }}>
               {assignment.map((people, i) => renderBanquetTable(i, people))}
             </div>
           </div>
@@ -125,7 +134,7 @@ export default function BanquetHall({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 调整桌数和每桌人数后重新排座 · 桌数会根据总人数自动建议
+          💡 点击并拖拽学生姓名可交换座位（支持跨桌交换）
         </p>
       )}
     </div>
