@@ -1,0 +1,123 @@
+import { useState, useRef } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { LayoutGrid, Shuffle } from 'lucide-react';
+import ExportButtons from '@/components/ExportButtons';
+
+interface Props {
+  students: { id: string; name: string }[];
+}
+
+export default function ConferenceRoom({ students }: Props) {
+  const [seatsPerSide, setSeatsPerSide] = useState(8);
+  const [assignment, setAssignment] = useState<{ top: string[]; bottom: string[]; headLeft: string; headRight: string }>({ top: [], bottom: [], headLeft: '', headRight: '' });
+  const [seated, setSeated] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const autoSeat = (shuffle = false) => {
+    const names = shuffle
+      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
+      : students.map(s => s.name);
+
+    const headLeft = names[0] || '';
+    const headRight = names[1] || '';
+    const rest = names.slice(2);
+    const top: string[] = [];
+    const bottom: string[] = [];
+    rest.forEach((n, i) => {
+      if (i < seatsPerSide) top.push(n);
+      else if (i < seatsPerSide * 2) bottom.push(n);
+    });
+    setAssignment({ top, bottom, headLeft, headRight });
+    setSeated(true);
+  };
+
+  const seatW = 64;
+  const seatH = 40;
+  const gap = 6;
+  const tableW = seatsPerSide * (seatW + gap) + gap;
+  const tableH = 60;
+  const svgW = tableW + seatW * 2 + 60;
+  const svgH = tableH + seatH * 2 + 80;
+  const tableX = (svgW - tableW) / 2;
+  const tableY = (svgH - tableH) / 2;
+
+  const renderSeat = (x: number, y: number, name: string, key: string) => (
+    <g key={key}>
+      <rect x={x} y={y} width={seatW} height={seatH} rx={6}
+        className={name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'} strokeWidth={1.5} />
+      {name && (
+        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-[10px]">
+          {name.length > 3 ? name.slice(0, 3) : name}
+        </text>
+      )}
+    </g>
+  );
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          每边座位数
+          <Input type="number" min={3} max={15} value={seatsPerSide}
+            onChange={e => setSeatsPerSide(Math.max(3, Math.min(15, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
+        {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
+        <div className="flex gap-2 ml-auto">
+          <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
+            <Shuffle className="w-4 h-4" /> 随机排座
+          </Button>
+          <Button onClick={() => autoSeat(false)} className="gap-2">
+            <LayoutGrid className="w-4 h-4" /> 自动排座
+          </Button>
+        </div>
+      </div>
+
+      <div ref={printRef}>
+        {seated ? (
+          <div className="flex justify-center overflow-auto">
+            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}>
+              {/* Conference table */}
+              <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={10}
+                className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
+
+              {/* Top row */}
+              {Array.from({ length: seatsPerSide }).map((_, i) => {
+                const x = tableX + gap + i * (seatW + gap);
+                const y = tableY - seatH - 8;
+                return renderSeat(x, y, assignment.top[i] || '', `top-${i}`);
+              })}
+
+              {/* Bottom row */}
+              {Array.from({ length: seatsPerSide }).map((_, i) => {
+                const x = tableX + gap + i * (seatW + gap);
+                const y = tableY + tableH + 8;
+                return renderSeat(x, y, assignment.bottom[i] || '', `bot-${i}`);
+              })}
+
+              {/* Head seats */}
+              {renderSeat(tableX - seatW - 12, tableY + (tableH - seatH) / 2, assignment.headLeft, 'head-left')}
+              {renderSeat(tableX + tableW + 12, tableY + (tableH - seatH) / 2, assignment.headRight, 'head-right')}
+
+              {/* Labels */}
+              <text x={tableX + tableW / 2} y={tableY + tableH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-medium">
+                会议桌
+              </text>
+            </svg>
+          </div>
+        ) : (
+          <div className="text-center py-20 text-muted-foreground">
+            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
+            <p className="text-sm">长条会议桌，每边 {seatsPerSide} 个座位</p>
+          </div>
+        )}
+      </div>
+
+      {seated && (
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          💡 两端为主位，调整每边座位数后重新排座
+        </p>
+      )}
+    </div>
+  );
+}
