@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -12,9 +12,12 @@ export default function ComputerLab({ students }: Props) {
   const [rowCount, setRowCount] = useState(5);
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [dualSide, setDualSide] = useState(true); // 是否两侧坐学生
+  const [tableGap, setTableGap] = useState(80);
   const [assignment, setAssignment] = useState<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }[]>([]);
+  const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
     const names = shuffle
@@ -74,13 +77,49 @@ export default function ComputerLab({ students }: Props) {
   const seatH = 36;
   const gap = 4;
   const tableMargin = 20;
-  const rowGap = 80;
+  const rowGap = tableGap; // controlled by state
 
   // 计算 SVG 尺寸
   const tableW = seatsPerSide * (seatW + gap) + gap;
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
   const svgW = tableW + tableMargin * 2 + 100;
   const svgH = maxRows * rowGap + 120;
+
+  useEffect(() => {
+    setRowOffsets(Array(rowCount).fill({ x: 0, y: 0 }));
+  }, [rowCount]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (draggingRef.current) {
+        const dx = e.clientX - draggingRef.current.startX;
+        const dy = e.clientY - draggingRef.current.startY;
+        setRowOffsets(offs => offs.map((p,i) =>
+          i === draggingRef.current!.row
+            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
+            : p
+        ));
+      }
+    };
+    const handleMouseUp = () => { draggingRef.current = null; };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const startRowDrag = (e: React.MouseEvent, row: number) => {
+    e.stopPropagation();
+    draggingRef.current = {
+      row,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: rowOffsets[row]?.x || 0,
+      origY: rowOffsets[row]?.y || 0,
+    };
+  };
 
   const renderSeat = (x: number, y: number, name: string, key: string) => (
     <g key={key}>
@@ -107,6 +146,11 @@ export default function ComputerLab({ students }: Props) {
           <Input type="number" min={3} max={16} value={seatsPerSide}
             onChange={e => setSeatsPerSide(Math.max(3, Math.min(16, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          行间距
+          <Input type="number" min={20} max={200} value={tableGap}
+            onChange={e => setTableGap(Math.max(20, Math.min(200, Number(e.target.value))))} className="w-14 h-8 text-center" />
+        </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
           <input type="checkbox" checked={dualSide} onChange={e => setDualSide(e.target.checked)} className="accent-primary" />
           长桌两侧
@@ -128,16 +172,17 @@ export default function ComputerLab({ students }: Props) {
             <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
               {/* Render each row of long desks */}
               {Array.from({ length: maxRows }).map((_, rowIdx) => {
-                const baseY = 60 + rowIdx * rowGap;
-                const centerX = svgW / 2;
-                const tableX = (svgW - tableW) / 2;
+                const offset = rowOffsets[rowIdx] || { x: 0, y: 0 };
+                const baseY = 60 + rowIdx * rowGap + offset.y;
+                const centerX = svgW / 2 + offset.x;
+                const tableX = (svgW - tableW) / 2 + offset.x;
 
                 // Get students for this row
                 const topGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'top');
                 const bottomGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'bottom');
 
                 return (
-                  <g key={`row-${rowIdx}`}>
+                  <g key={`row-${rowIdx}`} onMouseDown={e => startRowDrag(e, rowIdx)} style={{ cursor: 'move' }}>
                     {/* Top side of the desk */}
                     {topGroup && (
                       <>

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -13,7 +13,10 @@ export default function SmartClassroom({ students }: Props) {
   const [seatsPerTable, setSeatsPerTable] = useState(6);
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 6) || 4);
   const [assignment, setAssignment] = useState<string[][]>([]);
+  const [tableGap, setTableGap] = useState(20);
+  const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const autoSeat = () => {
@@ -38,14 +41,58 @@ export default function SmartClassroom({ students }: Props) {
 
   const tableCols = Math.ceil(Math.sqrt(tableCount));
 
+  // initialize positions when table count changes
+  useEffect(() => {
+    setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
+  }, [tableCount]);
+
+  // drag listeners
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (draggingRef.current) {
+        const dx = e.clientX - draggingRef.current.startX;
+        const dy = e.clientY - draggingRef.current.startY;
+        setTablePositions(pos => pos.map((p, i) =>
+          i === draggingRef.current!.index
+            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
+            : p
+        ));
+      }
+    };
+    const handleMouseUp = () => { draggingRef.current = null; };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const startTableDrag = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation();
+    draggingRef.current = {
+      index,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: tablePositions[index]?.x || 0,
+      origY: tablePositions[index]?.y || 0,
+    };
+  };
+
   const renderRoundTable = (tableIndex: number, people: string[]) => {
     const radius = 52;
     const seatRadius = 16;
     const cx = 80, cy = 80;
     const totalSlots = Math.max(seatsPerTable, people.length);
+    const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
 
     return (
-      <div key={tableIndex} className="flex flex-col items-center gap-1">
+      <div
+        key={tableIndex}
+        className="flex flex-col items-center gap-1 cursor-move"
+        style={{ transform: `translate(${pos.x}px,${pos.y}px)` }}
+        onMouseDown={e => startTableDrag(e, tableIndex)}
+      >
         <svg width={160} height={160} viewBox="0 0 160 160" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
           <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-medium">
@@ -102,6 +149,11 @@ export default function SmartClassroom({ students }: Props) {
           <Input type="number" min={1} max={20} value={tableCount}
             onChange={e => setTableCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          桌子间距
+          <Input type="number" min={0} max={100} value={tableGap}
+            onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={shuffleSeat} className="gap-2">
@@ -116,7 +168,7 @@ export default function SmartClassroom({ students }: Props) {
       <div ref={printRef}>
         {assignment.length > 0 ? (
           <div className="flex justify-center">
-            <div className="inline-grid gap-4" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)` }}>
+            <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
               {assignment.map((people, i) => renderRoundTable(i, people))}
             </div>
           </div>

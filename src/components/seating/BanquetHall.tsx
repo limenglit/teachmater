@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -13,7 +13,10 @@ export default function BanquetHall({ students }: Props) {
   const [seatsPerTable, setSeatsPerTable] = useState(10);
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 10) || 3);
   const [assignment, setAssignment] = useState<string[][]>([]);
+  const [tableGap, setTableGap] = useState(24);
+  const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const autoSeat = (shuffle = false) => {
@@ -30,14 +33,56 @@ export default function BanquetHall({ students }: Props) {
 
   const tableCols = Math.ceil(Math.sqrt(tableCount));
 
+  useEffect(() => {
+    setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
+  }, [tableCount]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (draggingRef.current) {
+        const dx = e.clientX - draggingRef.current.startX;
+        const dy = e.clientY - draggingRef.current.startY;
+        setTablePositions(pos => pos.map((p, i) =>
+          i === draggingRef.current!.index
+            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
+            : p
+        ));
+      }
+    };
+    const handleMouseUp = () => { draggingRef.current = null; };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const startTableDrag = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation();
+    draggingRef.current = {
+      index,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: tablePositions[index]?.x || 0,
+      origY: tablePositions[index]?.y || 0,
+    };
+  };
+
   const renderBanquetTable = (tableIndex: number, people: string[]) => {
     const radius = 60;
     const seatRadius = 16;
     const cx = 85, cy = 85;
     const totalSlots = seatsPerTable;
+    const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
 
     return (
-      <div key={tableIndex} className="flex flex-col items-center">
+      <div
+        key={tableIndex}
+        className="flex flex-col items-center cursor-move"
+        style={{ transform: `translate(${pos.x}px,${pos.y}px)` }}
+        onMouseDown={e => startTableDrag(e, tableIndex)}
+      >
         <svg width={170} height={170} viewBox="0 0 170 170" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={42} className="fill-primary/5 stroke-primary/20" strokeWidth={1} strokeDasharray="4 2" />
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
@@ -97,6 +142,11 @@ export default function BanquetHall({ students }: Props) {
           <Input type="number" min={1} max={30} value={tableCount}
             onChange={e => setTableCount(Math.max(1, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          桌子间距
+          <Input type="number" min={0} max={100} value={tableGap}
+            onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
         <span className="text-xs text-muted-foreground">
           共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
         </span>
@@ -120,7 +170,7 @@ export default function BanquetHall({ students }: Props) {
 
         {assignment.length > 0 ? (
           <div className="flex justify-center">
-            <div className="inline-grid gap-3" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)` }}>
+            <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
               {assignment.map((people, i) => renderBanquetTable(i, people))}
             </div>
           </div>

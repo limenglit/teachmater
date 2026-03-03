@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -10,9 +10,12 @@ interface Props {
 
 export default function ConferenceRoom({ students }: Props) {
   const [seatsPerSide, setSeatsPerSide] = useState(8);
+  const [seatGap, setSeatGap] = useState(6);
   const [assignment, setAssignment] = useState<{ top: string[]; bottom: string[]; headLeft: string; headRight: string }>({ top: [], bottom: [], headLeft: '', headRight: '' });
   const [seated, setSeated] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const [tableOffset, setTableOffset] = useState({ x: 0, y: 0 });
+  const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
     const names = shuffle
@@ -34,13 +37,13 @@ export default function ConferenceRoom({ students }: Props) {
 
   const seatW = 64;
   const seatH = 40;
-  const gap = 6;
+  const gap = seatGap;
   const tableW = seatsPerSide * (seatW + gap) + gap;
   const tableH = 60;
   const svgW = tableW + seatW * 2 + 60;
   const svgH = tableH + seatH * 2 + 80;
-  const tableX = (svgW - tableW) / 2;
-  const tableY = (svgH - tableH) / 2;
+  const tableX = (svgW - tableW) / 2 + tableOffset.x;
+  const tableY = (svgH - tableH) / 2 + tableOffset.y;
 
   const renderSeat = (x: number, y: number, name: string, key: string) => (
     <g key={key}>
@@ -54,6 +57,37 @@ export default function ConferenceRoom({ students }: Props) {
     </g>
   );
 
+  // dragging for table
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (draggingRef.current) {
+        const dx = e.clientX - draggingRef.current.startX;
+        const dy = e.clientY - draggingRef.current.startY;
+        setTableOffset({
+          x: draggingRef.current.origX + dx,
+          y: draggingRef.current.origY + dy,
+        });
+      }
+    };
+    const handleMouseUp = () => { draggingRef.current = null; };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
+  const startDrag = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    draggingRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: tableOffset.x,
+      origY: tableOffset.y,
+    };
+  };
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -61,6 +95,11 @@ export default function ConferenceRoom({ students }: Props) {
           每边座位数
           <Input type="number" min={3} max={15} value={seatsPerSide}
             onChange={e => setSeatsPerSide(Math.max(3, Math.min(15, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          座位间距
+          <Input type="number" min={2} max={20} value={seatGap}
+            onChange={e => setSeatGap(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
         <div className="flex gap-2 ml-auto">
@@ -76,7 +115,14 @@ export default function ConferenceRoom({ students }: Props) {
       <div ref={printRef}>
         {seated ? (
           <div className="flex justify-center overflow-auto">
-            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
+            <svg
+  width={svgW}
+  height={svgH}
+  viewBox={`0 0 ${svgW} ${svgH}`}
+  className="font-sans"
+  style={{ fontFamily: 'var(--font-family)' }}
+  onMouseDown={startDrag}
+>
               {/* Conference table */}
               <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={10}
                 className="fill-primary/10 stroke-primary/30" strokeWidth={2} />

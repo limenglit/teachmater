@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -11,8 +11,11 @@ interface Props {
 export default function ConcertHall({ students }: Props) {
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(5);
+  const [seatGap, setSeatGap] = useState(50); // radius step
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
     const names = shuffle
@@ -35,12 +38,39 @@ export default function ConcertHall({ students }: Props) {
 
   const svgW = 700;
   const svgH = 420;
-  const cx = svgW / 2;
-  const stageY = 60;
+  const cx = svgW / 2 + offset.x;
+  const stageY = 60 + offset.y;
   const stageW = 160;
   const startRadius = 100;
-  const radiusStep = 50;
+  const radiusStep = seatGap;
   const seatR = 14;
+
+  // dragging logic for concert hall
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (draggingRef.current) {
+        const dx = e.clientX - draggingRef.current.startX;
+        const dy = e.clientY - draggingRef.current.startY;
+        setOffset({ x: draggingRef.current.origX + dx, y: draggingRef.current.origY + dy });
+      }
+    };
+    const handleMouseUp = () => { draggingRef.current = null; };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+  const startDrag = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    draggingRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: offset.x,
+      origY: offset.y,
+    };
+  };
 
   return (
     <div>
@@ -54,6 +84,11 @@ export default function ConcertHall({ students }: Props) {
           排数
           <Input type="number" min={2} max={10} value={rowCount}
             onChange={e => setRowCount(Math.max(2, Math.min(10, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          排间距
+          <Input type="number" min={20} max={100} value={seatGap}
+            onChange={e => setSeatGap(Math.max(20, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" />}
         <div className="flex gap-2 ml-auto">
@@ -69,7 +104,11 @@ export default function ConcertHall({ students }: Props) {
       <div ref={printRef}>
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto">
-            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
+            <svg
+              width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
+              className="font-sans" style={{ fontFamily: 'var(--font-family)' }}
+              onMouseDown={startDrag}
+            >
               {/* Stage */}
               <rect x={cx - stageW / 2} y={stageY - 20} width={stageW} height={36} rx={8}
                 className="fill-primary/15 stroke-primary/30" strokeWidth={2} />
