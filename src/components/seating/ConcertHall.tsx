@@ -8,9 +8,13 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
+type ConcertSeatMode = 'arcBalanced' | 'groupZone' | 'verticalS' | 'horizontalS';
+
 export default function ConcertHall({ students }: Props) {
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(5);
+  const [groupCount, setGroupCount] = useState(4);
+  const [mode, setMode] = useState<ConcertSeatMode>('arcBalanced');
   const [seatGap, setSeatGap] = useState(50); // radius step
   const [canvasWidth, setCanvasWidth] = useState(1200);
   const [canvasHeight, setCanvasHeight] = useState(800);
@@ -19,22 +23,71 @@ export default function ConcertHall({ students }: Props) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
 
+  const splitIntoGroups = (names: string[], count: number) => {
+    const groups: string[][] = Array.from({ length: count }, () => []);
+    names.forEach((n, i) => groups[i % count].push(n));
+    return groups;
+  };
+
+  const seatCaps = Array.from({ length: rowCount }, (_, r) => seatsPerRow + r * 2);
+
+  const seatOrder = (seatMode: ConcertSeatMode) => {
+    const slots: { row: number; col: number }[] = [];
+
+    if (seatMode === 'verticalS') {
+      const maxCols = Math.max(...seatCaps);
+      for (let c = 0; c < maxCols; c++) {
+        for (let ri = 0; ri < rowCount; ri++) {
+          const r = c % 2 === 0 ? ri : rowCount - 1 - ri;
+          if (c < seatCaps[r]) slots.push({ row: r, col: c });
+        }
+      }
+      return slots;
+    }
+
+    if (seatMode === 'horizontalS') {
+      for (let r = 0; r < rowCount; r++) {
+        const cap = seatCaps[r];
+        for (let ci = 0; ci < cap; ci++) {
+          const c = r % 2 === 0 ? ci : cap - 1 - ci;
+          slots.push({ row: r, col: c });
+        }
+      }
+      return slots;
+    }
+
+    for (let r = 0; r < rowCount; r++) {
+      for (let c = 0; c < seatCaps[r]; c++) slots.push({ row: r, col: c });
+    }
+    return slots;
+  };
+
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
 
-    const rows: string[][] = [];
-    let idx = 0;
-    for (let r = 0; r < rowCount && idx < names.length; r++) {
-      const row: string[] = [];
-      // Each row has seatsPerRow + r*2 more seats (wider as you go back)
-      const count = seatsPerRow + r * 2;
-      for (let c = 0; c < count && idx < names.length; c++) {
-        row.push(names[idx++]);
-      }
-      rows.push(row);
+    const rows: string[][] = seatCaps.map(cap => Array.from({ length: cap }, () => ''));
+
+    if (mode === 'groupZone') {
+      const groups = splitIntoGroups(names, Math.max(1, groupCount));
+      const slots = seatOrder('horizontalS');
+      let cursor = 0;
+      groups.forEach(group => {
+        group.forEach(n => {
+          if (cursor >= slots.length) return;
+          const slot = slots[cursor++];
+          rows[slot.row][slot.col] = n;
+        });
+      });
+    } else {
+      const slots = seatOrder(mode);
+      names.slice(0, slots.length).forEach((n, i) => {
+        const slot = slots[i];
+        rows[slot.row][slot.col] = n;
+      });
     }
+
     setAssignment(rows);
   };
 
@@ -92,6 +145,26 @@ export default function ConcertHall({ students }: Props) {
           <Input type="number" min={20} max={100} value={seatGap}
             onChange={e => setSeatGap(Math.max(20, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          模式
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as ConcertSeatMode)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="arcBalanced">扇区平衡</option>
+            <option value="groupZone">分组分区</option>
+            <option value="verticalS">竖S分配</option>
+            <option value="horizontalS">横S分配</option>
+          </select>
+        </label>
+        {mode === 'groupZone' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            组数
+            <Input type="number" min={2} max={20} value={groupCount}
+              onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           画布宽
           <Input type="number" min={1200} value={canvasWidth}

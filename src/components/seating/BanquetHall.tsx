@@ -9,9 +9,13 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
+type BanquetSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+
 export default function BanquetHall({ students }: Props) {
   const [seatsPerTable, setSeatsPerTable] = useState(10);
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 10) || 3);
+  const [groupCount, setGroupCount] = useState(4);
+  const [mode, setMode] = useState<BanquetSeatMode>('tableRoundRobin');
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [tableGap, setTableGap] = useState(24);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
@@ -19,19 +23,69 @@ export default function BanquetHall({ students }: Props) {
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
+  const tableCols = Math.ceil(Math.sqrt(tableCount));
+
+  const placeName = (tables: string[][], preferred: number, name: string) => {
+    const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)];
+    const target = order.find(idx => tables[idx].length < seatsPerTable);
+    if (target !== undefined) tables[target].push(name);
+  };
+
+  const splitIntoGroups = (names: string[], count: number) => {
+    const groups: string[][] = Array.from({ length: count }, () => []);
+    names.forEach((n, i) => groups[i % count].push(n));
+    return groups;
+  };
+
+  const getTableOrder = (seatMode: BanquetSeatMode) => {
+    const cols = Math.ceil(Math.sqrt(tableCount));
+    const rows = Math.ceil(tableCount / cols);
+    const order: number[] = [];
+
+    if (seatMode === 'verticalS') {
+      for (let c = 0; c < cols; c++) {
+        for (let ri = 0; ri < rows; ri++) {
+          const r = c % 2 === 0 ? ri : rows - 1 - ri;
+          const idx = r * cols + c;
+          if (idx < tableCount) order.push(idx);
+        }
+      }
+      return order;
+    }
+
+    if (seatMode === 'horizontalS') {
+      for (let r = 0; r < rows; r++) {
+        for (let ci = 0; ci < cols; ci++) {
+          const c = r % 2 === 0 ? ci : cols - 1 - ci;
+          const idx = r * cols + c;
+          if (idx < tableCount) order.push(idx);
+        }
+      }
+      return order;
+    }
+
+    return Array.from({ length: tableCount }, (_, i) => i);
+  };
+
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
     const tables: string[][] = Array.from({ length: tableCount }, () => []);
-    names.forEach((n, i) => {
-      const ti = i % tableCount;
-      if (tables[ti].length < seatsPerTable) tables[ti].push(n);
-    });
+
+    if (mode === 'tableGrouped') {
+      const groups = splitIntoGroups(names, Math.max(1, groupCount));
+      groups.forEach((group, gi) => {
+        group.forEach(n => placeName(tables, gi % tableCount, n));
+      });
+      setAssignment(tables);
+      return;
+    }
+
+    const order = getTableOrder(mode);
+    names.forEach((n, i) => placeName(tables, order[i % order.length], n));
     setAssignment(tables);
   };
-
-  const tableCols = Math.ceil(Math.sqrt(tableCount));
 
   useEffect(() => {
     setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
@@ -142,6 +196,26 @@ export default function BanquetHall({ students }: Props) {
           <Input type="number" min={1} max={30} value={tableCount}
             onChange={e => setTableCount(Math.max(1, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          模式
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as BanquetSeatMode)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="tableRoundRobin">每桌轮转</option>
+            <option value="tableGrouped">每组一桌</option>
+            <option value="verticalS">竖S桌序</option>
+            <option value="horizontalS">横S桌序</option>
+          </select>
+        </label>
+        {mode === 'tableGrouped' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            组数
+            <Input type="number" min={2} max={30} value={groupCount}
+              onChange={e => setGroupCount(Math.max(2, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           桌子间距
           <Input type="number" min={0} max={100} value={tableGap}

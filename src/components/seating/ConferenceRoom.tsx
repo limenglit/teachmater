@@ -8,8 +8,12 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
+type ConferenceSeatMode = 'balanced' | 'groupCluster' | 'verticalS' | 'horizontalS';
+
 export default function ConferenceRoom({ students }: Props) {
   const [seatsPerSide, setSeatsPerSide] = useState(8);
+  const [groupCount, setGroupCount] = useState(4);
+  const [mode, setMode] = useState<ConferenceSeatMode>('balanced');
   const [seatGap, setSeatGap] = useState(6);
   const [canvasWidth, setCanvasWidth] = useState(1200);
   const [canvasHeight, setCanvasHeight] = useState(800);
@@ -19,6 +23,39 @@ export default function ConferenceRoom({ students }: Props) {
   const [tableOffset, setTableOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
 
+  const splitIntoGroups = (names: string[], count: number) => {
+    const groups: string[][] = Array.from({ length: count }, () => []);
+    names.forEach((n, i) => groups[i % count].push(n));
+    return groups;
+  };
+
+  const slotOrder = (seatMode: ConferenceSeatMode) => {
+    const slots: { side: 'top' | 'bottom'; index: number }[] = [];
+
+    if (seatMode === 'verticalS') {
+      for (let c = 0; c < seatsPerSide; c++) {
+        if (c % 2 === 0) {
+          slots.push({ side: 'top', index: c });
+          slots.push({ side: 'bottom', index: c });
+        } else {
+          slots.push({ side: 'bottom', index: c });
+          slots.push({ side: 'top', index: c });
+        }
+      }
+      return slots;
+    }
+
+    if (seatMode === 'horizontalS') {
+      for (let c = 0; c < seatsPerSide; c++) slots.push({ side: 'top', index: c });
+      for (let ci = 0; ci < seatsPerSide; ci++) slots.push({ side: 'bottom', index: seatsPerSide - 1 - ci });
+      return slots;
+    }
+
+    for (let c = 0; c < seatsPerSide; c++) slots.push({ side: 'top', index: c });
+    for (let c = 0; c < seatsPerSide; c++) slots.push({ side: 'bottom', index: c });
+    return slots;
+  };
+
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
@@ -27,12 +64,30 @@ export default function ConferenceRoom({ students }: Props) {
     const headLeft = names[0] || '';
     const headRight = names[1] || '';
     const rest = names.slice(2);
-    const top: string[] = [];
-    const bottom: string[] = [];
-    rest.forEach((n, i) => {
-      if (i < seatsPerSide) top.push(n);
-      else if (i < seatsPerSide * 2) bottom.push(n);
-    });
+    const top: string[] = Array.from({ length: seatsPerSide }, () => '');
+    const bottom: string[] = Array.from({ length: seatsPerSide }, () => '');
+
+    if (mode === 'groupCluster') {
+      const groups = splitIntoGroups(rest, Math.max(1, groupCount));
+      const slots = slotOrder('horizontalS');
+      let cursor = 0;
+      groups.forEach(group => {
+        group.forEach(n => {
+          if (cursor >= slots.length) return;
+          const slot = slots[cursor++];
+          if (slot.side === 'top') top[slot.index] = n;
+          else bottom[slot.index] = n;
+        });
+      });
+    } else {
+      const slots = slotOrder(mode);
+      rest.slice(0, slots.length).forEach((n, i) => {
+        const slot = slots[i];
+        if (slot.side === 'top') top[slot.index] = n;
+        else bottom[slot.index] = n;
+      });
+    }
+
     setAssignment({ top, bottom, headLeft, headRight });
     setSeated(true);
   };
@@ -103,6 +158,26 @@ export default function ConferenceRoom({ students }: Props) {
           <Input type="number" min={2} max={20} value={seatGap}
             onChange={e => setSeatGap(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          模式
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as ConferenceSeatMode)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="balanced">两侧平衡</option>
+            <option value="groupCluster">分组同侧</option>
+            <option value="verticalS">竖S分配</option>
+            <option value="horizontalS">横S分配</option>
+          </select>
+        </label>
+        {mode === 'groupCluster' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            组数
+            <Input type="number" min={2} max={20} value={groupCount}
+              onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           画布宽
           <Input type="number" min={1200} value={canvasWidth}

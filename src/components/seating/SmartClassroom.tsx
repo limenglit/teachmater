@@ -9,9 +9,13 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
+type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+
 export default function SmartClassroom({ students }: Props) {
   const [seatsPerTable, setSeatsPerTable] = useState(6);
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 6) || 4);
+  const [groupCount, setGroupCount] = useState(4);
+  const [mode, setMode] = useState<SmartSeatMode>('tableRoundRobin');
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [tableGap, setTableGap] = useState(20);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
@@ -19,23 +23,65 @@ export default function SmartClassroom({ students }: Props) {
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
-  const autoSeat = () => {
-    const names = students.map(s => s.name);
-    const tables: string[][] = Array.from({ length: tableCount }, () => []);
-    names.forEach((n, i) => {
-      const ti = i % tableCount;
-      if (tables[ti].length < seatsPerTable) tables[ti].push(n);
-    });
-    setAssignment(tables);
+  const placeName = (tables: string[][], preferred: number, name: string) => {
+    const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)];
+    const target = order.find(idx => tables[idx].length < seatsPerTable);
+    if (target !== undefined) tables[target].push(name);
   };
 
-  const shuffleSeat = () => {
-    const names = [...students.map(s => s.name)].sort(() => Math.random() - 0.5);
+  const splitIntoGroups = (names: string[], count: number) => {
+    const groups: string[][] = Array.from({ length: count }, () => []);
+    names.forEach((n, i) => groups[i % count].push(n));
+    return groups;
+  };
+
+  const getTableOrder = (seatMode: SmartSeatMode) => {
+    const cols = Math.ceil(Math.sqrt(tableCount));
+    const rows = Math.ceil(tableCount / cols);
+    const order: number[] = [];
+
+    if (seatMode === 'verticalS') {
+      for (let c = 0; c < cols; c++) {
+        for (let ri = 0; ri < rows; ri++) {
+          const r = c % 2 === 0 ? ri : rows - 1 - ri;
+          const idx = r * cols + c;
+          if (idx < tableCount) order.push(idx);
+        }
+      }
+      return order;
+    }
+
+    if (seatMode === 'horizontalS') {
+      for (let r = 0; r < rows; r++) {
+        for (let ci = 0; ci < cols; ci++) {
+          const c = r % 2 === 0 ? ci : cols - 1 - ci;
+          const idx = r * cols + c;
+          if (idx < tableCount) order.push(idx);
+        }
+      }
+      return order;
+    }
+
+    return Array.from({ length: tableCount }, (_, i) => i);
+  };
+
+  const autoSeat = (shuffle = false) => {
+    const names = shuffle
+      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
+      : students.map(s => s.name);
     const tables: string[][] = Array.from({ length: tableCount }, () => []);
-    names.forEach((n, i) => {
-      const ti = i % tableCount;
-      if (tables[ti].length < seatsPerTable) tables[ti].push(n);
-    });
+
+    if (mode === 'tableGrouped') {
+      const groups = splitIntoGroups(names, Math.max(1, groupCount));
+      groups.forEach((group, gi) => {
+        group.forEach(n => placeName(tables, gi % tableCount, n));
+      });
+      setAssignment(tables);
+      return;
+    }
+
+    const order = getTableOrder(mode);
+    names.forEach((n, i) => placeName(tables, order[i % order.length], n));
     setAssignment(tables);
   };
 
@@ -150,16 +196,36 @@ export default function SmartClassroom({ students }: Props) {
             onChange={e => setTableCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          模式
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as SmartSeatMode)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="tableRoundRobin">每桌轮转</option>
+            <option value="tableGrouped">每组一桌</option>
+            <option value="verticalS">竖S桌序</option>
+            <option value="horizontalS">横S桌序</option>
+          </select>
+        </label>
+        {mode === 'tableGrouped' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            组数
+            <Input type="number" min={2} max={20} value={groupCount}
+              onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          </label>
+        )}
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           桌子间距
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
         <div className="flex gap-2 ml-auto">
-          <Button variant="outline" onClick={shuffleSeat} className="gap-2">
+          <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
           </Button>
-          <Button onClick={autoSeat} className="gap-2">
+          <Button onClick={() => autoSeat(false)} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
         </div>

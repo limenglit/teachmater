@@ -8,9 +8,13 @@ interface Props {
   students: { id: string; name: string }[];
 }
 
+type LabSeatMode = 'balanced' | 'groupRow' | 'verticalS' | 'horizontalS';
+
 export default function ComputerLab({ students }: Props) {
   const [rowCount, setRowCount] = useState(5);
   const [seatsPerSide, setSeatsPerSide] = useState(8);
+  const [groupCount, setGroupCount] = useState(4);
+  const [mode, setMode] = useState<LabSeatMode>('balanced');
   const [dualSide, setDualSide] = useState(true); // 是否两侧坐学生
   const [tableGap, setTableGap] = useState(80);
   const [canvasWidth, setCanvasWidth] = useState(1200);
@@ -21,55 +25,91 @@ export default function ComputerLab({ students }: Props) {
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
+  const splitIntoGroups = (names: string[], count: number) => {
+    const groups: string[][] = Array.from({ length: count }, () => []);
+    names.forEach((n, i) => groups[i % count].push(n));
+    return groups;
+  };
+
+  const getSeatOrder = (seatMode: LabSeatMode) => {
+    const slots: { row: number; side: 'top' | 'bottom'; col: number }[] = [];
+
+    if (seatMode === 'verticalS') {
+      for (let c = 0; c < seatsPerSide; c++) {
+        for (let ri = 0; ri < rowCount; ri++) {
+          const row = c % 2 === 0 ? ri : rowCount - 1 - ri;
+          if ((row + c) % 2 === 0) {
+            slots.push({ row, side: 'top', col: c });
+            slots.push({ row, side: 'bottom', col: c });
+          } else {
+            slots.push({ row, side: 'bottom', col: c });
+            slots.push({ row, side: 'top', col: c });
+          }
+        }
+      }
+      return slots;
+    }
+
+    if (seatMode === 'horizontalS') {
+      for (let r = 0; r < rowCount; r++) {
+        for (let ci = 0; ci < seatsPerSide; ci++) {
+          const c = r % 2 === 0 ? ci : seatsPerSide - 1 - ci;
+          slots.push({ row: r, side: 'top', col: c });
+        }
+        for (let ci = 0; ci < seatsPerSide; ci++) {
+          const c = r % 2 === 0 ? seatsPerSide - 1 - ci : ci;
+          slots.push({ row: r, side: 'bottom', col: c });
+        }
+      }
+      return slots;
+    }
+
+    for (let r = 0; r < rowCount; r++) {
+      for (let c = 0; c < seatsPerSide; c++) slots.push({ row: r, side: 'top', col: c });
+      for (let c = 0; c < seatsPerSide; c++) slots.push({ row: r, side: 'bottom', col: c });
+    }
+    return slots;
+  };
+
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
 
     const result: typeof assignment = [];
-    let idx = 0;
+    const matrix = Array.from({ length: rowCount }, (_, rowIndex) => ({
+      rowIndex,
+      top: Array.from({ length: seatsPerSide }, () => ''),
+      bottom: Array.from({ length: seatsPerSide }, () => ''),
+    }));
 
-    if (dualSide) {
-      // 两侧模式：每排一张长桌，两侧分别坐学生
-      for (let r = 0; r < rowCount && idx < names.length; r++) {
-        // 上侧
-        const topSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          topSeats.push(names[idx++]);
-        }
-        if (topSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'top', students: topSeats });
-        }
-
-        // 下侧
-        const bottomSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          bottomSeats.push(names[idx++]);
-        }
-        if (bottomSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'bottom', students: bottomSeats });
-        }
-      }
+    if (mode === 'groupRow') {
+      const groups = splitIntoGroups(names, Math.max(1, groupCount));
+      groups.forEach((group, gi) => {
+        const row = gi % rowCount;
+        let cursor = 0;
+        group.forEach(n => {
+          if (cursor < seatsPerSide) {
+            matrix[row].top[cursor] = n;
+          } else if (cursor < seatsPerSide * 2) {
+            matrix[row].bottom[cursor - seatsPerSide] = n;
+          }
+          cursor++;
+        });
+      });
     } else {
-      // 单侧模式：每排两张长桌（上下各一张），都在一侧坐
-      for (let r = 0; r < rowCount && idx < names.length; r++) {
-        const topSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          topSeats.push(names[idx++]);
-        }
-        if (topSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'top', students: topSeats });
-        }
-
-        const bottomSeats: string[] = [];
-        for (let i = 0; i < seatsPerSide && idx < names.length; i++) {
-          bottomSeats.push(names[idx++]);
-        }
-        if (bottomSeats.length > 0) {
-          result.push({ rowIndex: r, side: 'bottom', students: bottomSeats });
-        }
-      }
+      const slots = getSeatOrder(mode);
+      names.slice(0, slots.length).forEach((n, i) => {
+        const slot = slots[i];
+        if (slot.side === 'top') matrix[slot.row].top[slot.col] = n;
+        else matrix[slot.row].bottom[slot.col] = n;
+      });
     }
+
+    matrix.forEach(row => {
+      result.push({ rowIndex: row.rowIndex, side: 'top', students: row.top });
+      result.push({ rowIndex: row.rowIndex, side: 'bottom', students: row.bottom });
+    });
 
     setAssignment(result);
     setSeated(true);
@@ -148,6 +188,26 @@ export default function ComputerLab({ students }: Props) {
           <Input type="number" min={3} max={16} value={seatsPerSide}
             onChange={e => setSeatsPerSide(Math.max(3, Math.min(16, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          模式
+          <select
+            value={mode}
+            onChange={e => setMode(e.target.value as LabSeatMode)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="balanced">行列平衡</option>
+            <option value="groupRow">每组同排</option>
+            <option value="verticalS">竖S分配</option>
+            <option value="horizontalS">横S分配</option>
+          </select>
+        </label>
+        {mode === 'groupRow' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            组数
+            <Input type="number" min={2} max={20} value={groupCount}
+              onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-14 h-8 text-center" />
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           行间距
           <Input type="number" min={20} max={200} value={tableGap}
