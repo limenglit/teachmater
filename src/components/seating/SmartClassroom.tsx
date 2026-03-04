@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { useRoundTableDrag } from './useRoundTableDrag';
+import { splitIntoGroups } from '@/lib/seatUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -15,12 +16,26 @@ export default function SmartClassroom({ students }: Props) {
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [tableGap, setTableGap] = useState(20);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
+  const [useGroupMode, setUseGroupMode] = useState(false);
+  const [groupCount, setGroupCount] = useState(2);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const autoSeat = () => {
     const names = students.map(s => s.name);
+
+    if (useGroupMode && groupCount > 0) {
+      // in group mode we treat each group as a table
+      const groups = splitIntoGroups(names, groupCount);
+      // adjust table count and size to fit largest group
+      setTableCount(groups.length);
+      const maxSize = Math.max(...groups.map(g => g.length));
+      setSeatsPerTable(maxSize);
+      setAssignment(groups.map(g => [...g]));
+      return;
+    }
+
     const tables: string[][] = Array.from({ length: tableCount }, () => []);
     names.forEach((n, i) => {
       const ti = i % tableCount;
@@ -142,11 +157,13 @@ export default function SmartClassroom({ students }: Props) {
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每桌人数
           <Input type="number" min={3} max={12} value={seatsPerTable}
+            disabled={useGroupMode}
             onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           桌数
           <Input type="number" min={1} max={20} value={tableCount}
+            disabled={useGroupMode}
             onChange={e => setTableCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -154,6 +171,17 @@ export default function SmartClassroom({ students }: Props) {
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input type="checkbox" checked={useGroupMode} onChange={e => setUseGroupMode(e.target.checked)} className="accent-primary" />
+          按组排座
+        </label>
+        {useGroupMode && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            组数
+            <Input type="number" min={1} max={20} value={groupCount}
+              onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          </label>
+        )}
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={shuffleSeat} className="gap-2">
