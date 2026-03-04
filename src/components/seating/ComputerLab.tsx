@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -16,6 +17,7 @@ export default function ComputerLab({ students }: Props) {
   const [assignment, setAssignment] = useState<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }[]>([]);
   const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
+  const [groupCount, setGroupCount] = useState(4);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
@@ -69,6 +71,21 @@ export default function ComputerLab({ students }: Props) {
       }
     }
 
+    setAssignment(result);
+    setSeated(true);
+  };
+
+  const groupSeat = () => {
+    const names = students.map(s => s.name);
+    const groups = splitIntoGroups(names, groupCount);
+    const result: typeof assignment = [];
+    let idx = 0;
+    for (let r = 0; r < rowCount && idx < groups.length; r++) {
+      const g = groups[idx++];
+      if (g && g.length) result.push({ rowIndex: r, side: 'top', students: g.slice(0, seatsPerSide) });
+      const g2 = groups[idx++];
+      if (g2 && g2.length) result.push({ rowIndex: r, side: 'bottom', students: g2.slice(0, seatsPerSide) });
+    }
     setAssignment(result);
     setSeated(true);
   };
@@ -155,6 +172,11 @@ export default function ComputerLab({ students }: Props) {
           <input type="checkbox" checked={dualSide} onChange={e => setDualSide(e.target.checked)} className="accent-primary" />
           长桌两侧
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          组数
+          <Input type="number" min={1} max={20} value={groupCount}
+            onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-14 h-8 text-center" />
+        </label>
         {seated && <ExportButtons targetRef={printRef} filename="机房座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -163,6 +185,7 @@ export default function ComputerLab({ students }: Props) {
           <Button onClick={() => autoSeat(false)} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
+          <Button variant="ghost" onClick={groupSeat} className="gap-2">分组排座</Button>
         </div>
       </div>
 

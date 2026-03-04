@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { useRoundTableDrag } from './useRoundTableDrag';
+import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -14,6 +15,7 @@ export default function SmartClassroom({ students }: Props) {
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 6) || 4);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [tableGap, setTableGap] = useState(20);
+  const [groupCount, setGroupCount] = useState(4);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
@@ -21,22 +23,24 @@ export default function SmartClassroom({ students }: Props) {
 
   const autoSeat = () => {
     const names = students.map(s => s.name);
-    const tables: string[][] = Array.from({ length: tableCount }, () => []);
-    names.forEach((n, i) => {
-      const ti = i % tableCount;
-      if (tables[ti].length < seatsPerTable) tables[ti].push(n);
-    });
+    const groups = splitIntoGroups(names, tableCount);
+    const tables = groups.map(g => g.slice(0, seatsPerTable));
     setAssignment(tables);
   };
 
   const shuffleSeat = () => {
-    const names = [...students.map(s => s.name)].sort(() => Math.random() - 0.5);
-    const tables: string[][] = Array.from({ length: tableCount }, () => []);
-    names.forEach((n, i) => {
-      const ti = i % tableCount;
-      if (tables[ti].length < seatsPerTable) tables[ti].push(n);
-    });
+    const names = shuffleArray(students.map(s => s.name));
+    const groups = splitIntoGroups(names, tableCount);
+    const tables = groups.map(g => g.slice(0, seatsPerTable));
     setAssignment(tables);
+  };
+
+  const groupSeat = () => {
+    const names = students.map(s => s.name);
+    const groups = splitIntoGroups(names, groupCount);
+    const tables = groups.map(g => g.slice(0, seatsPerTable));
+    while (tables.length < tableCount) tables.push([]);
+    setAssignment(tables.slice(0, tableCount));
   };
 
   const tableCols = Math.ceil(Math.sqrt(tableCount));
@@ -155,12 +159,20 @@ export default function SmartClassroom({ students }: Props) {
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          组数
+          <Input type="number" min={1} max={20} value={groupCount}
+            onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={shuffleSeat} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
           </Button>
           <Button onClick={autoSeat} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
+          </Button>
+          <Button variant="ghost" onClick={groupSeat} className="gap-2">
+            分组排座
           </Button>
         </div>
       </div>
