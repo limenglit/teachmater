@@ -3,8 +3,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
-import { clampValue, splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
-import SceneLandmarks from './SceneLandmarks';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -15,14 +13,14 @@ export default function ConferenceRoom({ students }: Props) {
   const [seatGap, setSeatGap] = useState(6);
   const [assignment, setAssignment] = useState<{ top: string[]; bottom: string[]; headLeft: string; headRight: string }>({ top: [], bottom: [], headLeft: '', headRight: '' });
   const [seated, setSeated] = useState(false);
-  const [groupCount, setGroupCount] = useState(4);
-  const [freeCanvasMode, setFreeCanvasMode] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const [tableOffset, setTableOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
-    const names = shuffle ? shuffleArray(students.map(s => s.name)) : students.map(s => s.name);
+    const names = shuffle
+      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
+      : students.map(s => s.name);
 
     const headLeft = names[0] || '';
     const headRight = names[1] || '';
@@ -37,25 +35,6 @@ export default function ConferenceRoom({ students }: Props) {
     setSeated(true);
   };
 
-  const groupSeat = () => {
-    const names = students.map(s => s.name);
-    const groups = splitIntoGroups(names, groupCount);
-    // flatten groups but keep each group contiguous on seating order
-    const flat = groups.flat();
-    const headLeft = flat[0] || '';
-    const headRight = flat[1] || '';
-    const rest = flat.slice(2);
-    const top: string[] = [];
-    const bottom: string[] = [];
-    let idx = 0;
-    for (let i = 0; i < rest.length; i++) {
-      if (i < seatsPerSide) top.push(rest[i]);
-      else if (i < seatsPerSide * 2) bottom.push(rest[i]);
-    }
-    setAssignment({ top, bottom, headLeft, headRight });
-    setSeated(true);
-  };
-
   const seatW = 64;
   const seatH = 40;
   const gap = seatGap;
@@ -65,18 +44,6 @@ export default function ConferenceRoom({ students }: Props) {
   const svgH = tableH + seatH * 2 + 80;
   const tableX = (svgW - tableW) / 2 + tableOffset.x;
   const tableY = (svgH - tableH) / 2 + tableOffset.y;
-  const baseTableX = (svgW - tableW) / 2;
-  const baseTableY = (svgH - tableH) / 2;
-  const padding = 8;
-
-  const xBounds = {
-    min: (seatW + 12 + padding) - baseTableX,
-    max: (svgW - padding - tableW - 12 - seatW) - baseTableX,
-  };
-  const yBounds = {
-    min: (seatH + 8 + padding) - baseTableY,
-    max: (svgH - padding - tableH - 8 - seatH) - baseTableY,
-  };
 
   const renderSeat = (x: number, y: number, name: string, key: string) => (
     <g key={key}>
@@ -90,20 +57,15 @@ export default function ConferenceRoom({ students }: Props) {
     </g>
   );
 
-  useEffect(() => {
-    if (!freeCanvasMode) {
-      setTableOffset({ x: 0, y: 0 });
-    }
-  }, [freeCanvasMode]);
-
+  // dragging for table
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (draggingRef.current) {
         const dx = e.clientX - draggingRef.current.startX;
         const dy = e.clientY - draggingRef.current.startY;
         setTableOffset({
-          x: clampValue(draggingRef.current.origX + dx, xBounds.min, xBounds.max),
-          y: clampValue(draggingRef.current.origY + dy, yBounds.min, yBounds.max),
+          x: draggingRef.current.origX + dx,
+          y: draggingRef.current.origY + dy,
         });
       }
     };
@@ -114,10 +76,9 @@ export default function ConferenceRoom({ students }: Props) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [xBounds.max, xBounds.min, yBounds.max, yBounds.min]);
+  }, []);
 
   const startDrag = (e: React.MouseEvent) => {
-    if (!freeCanvasMode) return;
     e.stopPropagation();
     draggingRef.current = {
       startX: e.clientX,
@@ -140,15 +101,6 @@ export default function ConferenceRoom({ students }: Props) {
           <Input type="number" min={2} max={20} value={seatGap}
             onChange={e => setSeatGap(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          组数
-          <Input type="number" min={1} max={20} value={groupCount}
-            onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-          <input type="checkbox" checked={freeCanvasMode} onChange={e => setFreeCanvasMode(e.target.checked)} className="accent-primary" />
-          自由画布
-        </label>
         {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -157,31 +109,20 @@ export default function ConferenceRoom({ students }: Props) {
           <Button onClick={() => autoSeat(false)} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
-          <Button variant="ghost" onClick={groupSeat} className="gap-2">分组排座</Button>
         </div>
       </div>
 
-      <SceneLandmarks
-        printRef={printRef}
-        top={{ label: '投影/白板', emoji: '📽️' }}
-        sides={{
-          left: { label: '窗', boxStyle: true },
-          right: { label: '门', emoji: '🚪' },
-          swappable: true,
-        }}
-        bottom={{ label: '入 口', emoji: '🚶' }}
-      >
+      <div ref={printRef}>
         {seated ? (
           <div className="flex justify-center overflow-auto">
-            <div className="inline-block border border-border rounded-lg bg-card/40 p-2 overflow-hidden">
             <svg
-              width={svgW}
-              height={svgH}
-              viewBox={`0 0 ${svgW} ${svgH}`}
-              className="font-sans"
-              style={{ fontFamily: 'var(--font-family)' }}
-              onMouseDown={freeCanvasMode ? startDrag : undefined}
-            >
+  width={svgW}
+  height={svgH}
+  viewBox={`0 0 ${svgW} ${svgH}`}
+  className="font-sans"
+  style={{ fontFamily: 'var(--font-family)' }}
+  onMouseDown={startDrag}
+>
               {/* Conference table */}
               <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={10}
                 className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
@@ -209,7 +150,6 @@ export default function ConferenceRoom({ students }: Props) {
                 会议桌
               </text>
             </svg>
-            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
@@ -217,11 +157,11 @@ export default function ConferenceRoom({ students }: Props) {
             <p className="text-sm">长条会议桌，每边 {seatsPerSide} 个座位</p>
           </div>
         )}
-      </SceneLandmarks>
+      </div>
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 两端为主位 · 拖动投影/白板和门窗可调整位置
+          💡 两端为主位，调整每边座位数后重新排座
         </p>
       )}
     </div>

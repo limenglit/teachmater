@@ -10,60 +10,9 @@ import ConcertHall from '@/components/seating/ConcertHall';
 import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 
-import { splitIntoGroups } from '@/lib/seatingUtils';
-
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type StartFrom = 'door' | 'window';
-
-// reference object types for all scenes
-export type RefType = 'podium' | 'door' | 'window' | 'aisle' | 'stage' | 'entrance';
-export interface RefObject {
-  id: number;
-  type: RefType;
-  // relative position inside container, 0..1
-  x: number;
-  y: number;
-  orientation?: 'left' | 'right' | 'top' | 'bottom';
-}
-
-function initRefs(scene: SceneType): RefObject[] {
-  switch (scene) {
-    case 'classroom':
-      return [
-        { id: 1, type: 'podium', x: 0.5, y: 0.05 },
-        { id: 2, type: 'door', x: 0.05, y: 0.1, orientation: 'left' },
-        { id: 3, type: 'window', x: 0.95, y: 0.1, orientation: 'right' },
-      ];
-    case 'smartClassroom':
-      return [
-        { id: 1, type: 'podium', x: 0.5, y: 0.05 },
-        { id: 2, type: 'door', x: 0.05, y: 0.1, orientation: 'left' },
-      ];
-    case 'conference':
-      return [
-        { id: 1, type: 'entrance', x: 0.1, y: 0.5, orientation: 'left' },
-        { id: 2, type: 'entrance', x: 0.9, y: 0.5, orientation: 'right' },
-        { id: 3, type: 'podium', x: 0.5, y: 0.1 },
-      ];
-    case 'concertHall':
-      return [
-        { id: 1, type: 'stage', x: 0.5, y: 0.1 },
-        { id: 2, type: 'entrance', x: 0.1, y: 0.5 },
-        { id: 3, type: 'entrance', x: 0.9, y: 0.5 },
-      ];
-    case 'banquet':
-      return [
-        { id: 1, type: 'stage', x: 0.5, y: 0.1 },
-        { id: 2, type: 'entrance', x: 0.1, y: 0.5 },
-      ];
-    case 'computerLab':
-      return [
-        { id: 1, type: 'podium', x: 0.5, y: 0.05 },
-        { id: 2, type: 'door', x: 0.9, y: 0.1, orientation: 'right' },
-      ];
-  }
-}
 
 const SCENES: { id: SceneType; label: string; desc: string }[] = [
   { id: 'classroom', label: '🏫 教室', desc: '传统教室网格布局' },
@@ -97,14 +46,8 @@ export default function SeatChart() {
   const [examSkipCol, setExamSkipCol] = useState(false);
   const [dragFrom, setDragFrom] = useState<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
-  // orientation between door and window is derived from refObjects
+  const [windowOnLeft, setWindowOnLeft] = useState(true);
   const [startFrom, setStartFrom] = useState<StartFrom>('door');
-  // reference objects for current scene
-  const [refs, setRefs] = useState<RefObject[]>(() => initRefs(scene));
-
-  useEffect(() => {
-    setRefs(initRefs(scene));
-  }, [scene]);
 
   // Aisle state: indices after which an aisle is inserted
   const [colAisles, setColAisles] = useState<number[]>([]);
@@ -138,18 +81,13 @@ export default function SeatChart() {
     Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
 
   const getColOrder = useCallback(() => {
-    const doorObj = refs.find(o => o.type === 'door');
-    const windowObj = refs.find(o => o.type === 'window');
-    const doorOnRight =
-      doorObj && windowObj ? doorObj.x > windowObj.x : true;
-    const startFromRight =
-      (startFrom === 'door' && doorOnRight) ||
-      (startFrom === 'window' && !doorOnRight);
+    const doorOnRight = windowOnLeft;
+    const startFromRight = (startFrom === 'door' && doorOnRight) || (startFrom === 'window' && !doorOnRight);
     if (startFromRight) {
       return Array.from({ length: cols }, (_, i) => cols - 1 - i);
     }
     return Array.from({ length: cols }, (_, i) => i);
-  }, [cols, startFrom, refs]);
+  }, [cols, startFrom, windowOnLeft]);
 
   const autoSeat = useCallback(() => {
     const grid = makeGrid();
@@ -685,9 +623,6 @@ export default function SeatChart() {
           ))}
         </div>
 
-        {/* reference objects editor (same panel for every scene) */}
-        <SceneReferenceEditor refs={refs} setRefs={setRefs} />
-
         {/* Non-classroom scenes */}
         {scene === 'smartClassroom' && <SmartClassroom students={students} />}
         {scene === 'conference' && <ConferenceRoom students={students} />}
@@ -801,27 +736,35 @@ export default function SeatChart() {
         )}
 
         <div ref={printRef}>
+          {/* Podium with window/door */}
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <div className="text-lg cursor-default select-none" title={windowOnLeft ? '窗户' : '门'}>
+              {windowOnLeft ? <span className="inline-flex items-center justify-center w-7 h-7 border-2 border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span> : '🚪'}
+            </div>
+            <div className="bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
+              🏫 讲 台
+            </div>
+            <div className="text-lg cursor-default select-none" title={windowOnLeft ? '门' : '窗户'}>
+              {windowOnLeft ? '🚪' : <span className="inline-flex items-center justify-center w-7 h-7 border-2 border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span>}
+            </div>
+            <button
+              onClick={() => setWindowOnLeft(prev => !prev)}
+              className="ml-1 p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="对换门窗位置"
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+            </button>
+          </div>
+
           {/* Seat Grid with side markers */}
           {seats.length > 0 ? (
-            <div className="flex justify-center">
-              <div className="inline-flex items-stretch gap-2 border border-border rounded-lg bg-card/40 p-3 overflow-auto">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <span className="[writing-mode:vertical-rl] tracking-widest">{(() => {
-                      const windowObj = refs.find(o => o.type === 'window');
-                      const doorObj = refs.find(o => o.type === 'door');
-                      const leftIsWindow = windowObj && doorObj ? windowObj.x < doorObj.x : true;
-                      return leftIsWindow ? '▢ 窗户侧' : '🚪 门侧';
-                    })()}</span>
-                </div>
-                {buildVisualGrid()}
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <span className="[writing-mode:vertical-rl] tracking-widest">{(() => {
-                      const windowObj = refs.find(o => o.type === 'window');
-                      const doorObj = refs.find(o => o.type === 'door');
-                      const leftIsWindow = windowObj && doorObj ? windowObj.x < doorObj.x : true;
-                      return leftIsWindow ? '🚪 门侧' : '▢ 窗户侧';
-                    })()}</span>
-                </div>
+            <div className="flex justify-center items-stretch gap-2">
+              <div className="flex items-center text-sm text-muted-foreground">
+                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '▢ 窗户侧' : '🚪 门侧'}</span>
+              </div>
+              {buildVisualGrid()}
+              <div className="flex items-center text-sm text-muted-foreground">
+                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🚪 门侧' : '▢ 窗户侧'}</span>
               </div>
             </div>
           ) : (
@@ -844,102 +787,6 @@ export default function SeatChart() {
   );
 }
 
-// editor overlay for reference objects (podium, door, window, stage, etc)
-function SceneReferenceEditor({
-  refs,
-  setRefs,
-}: {
-  refs: RefObject[];
-  setRefs: React.Dispatch<RefObject[]>;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef<{ id: number }>({ id: -1 });
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (dragging.current.id === -1) return;
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const x = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-      const y = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 1);
-      setRefs(prev =>
-        prev.map(o => (o.id === dragging.current.id ? { ...o, x, y } : o)),
-      );
-    };
-    const handleMouseUp = () => {
-      dragging.current.id = -1;
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [setRefs]);
-
-  const startDrag = (e: React.MouseEvent, obj: RefObject) => {
-    e.stopPropagation();
-    dragging.current.id = obj.id;
-  };
-
-  const swapDoorWindow = () => {
-    const door = refs.find(o => o.type === 'door');
-    const win = refs.find(o => o.type === 'window');
-    if (door && win) {
-      setRefs(prev =>
-        prev.map(o => {
-          if (o.id === door.id) return { ...o, x: win.x, y: win.y };
-          if (o.id === win.id) return { ...o, x: door.x, y: door.y };
-          return o;
-        }),
-      );
-    }
-  };
-
-  const ICONS: Record<RefType, React.ReactNode> = {
-    podium: (
-      <div className="bg-primary/10 text-primary px-4 py-1 rounded text-xs font-medium border border-primary/20">
-        🏫
-      </div>
-    ),
-    door: <span className="text-2xl">🚪</span>,
-    window: (
-      <span className="inline-flex items-center justify-center w-7 h-7 border-2 border-primary/40 rounded bg-primary/10 text-xs text-primary">
-        窗
-      </span>
-    ),
-    aisle: <div className="w-2 h-8 bg-primary" />,
-    stage: <span className="text-2xl">🎤</span>,
-    entrance: <span className="text-2xl">🚪</span>,
-  };
-
-  const hasDoor = refs.some(o => o.type === 'door');
-  const hasWindow = refs.some(o => o.type === 'window');
-
-  return (
-    <div className="mb-4 relative w-full h-24 border border-border rounded-lg" ref={containerRef}>
-      {refs.map(o => (
-        <div
-          key={o.id}
-          style={{ left: `${o.x * 100}%`, top: `${o.y * 100}%` }}
-          className="absolute cursor-grab transform -translate-x-1/2 -translate-y-1/2"
-          onMouseDown={e => startDrag(e, o)}
-        >
-          {ICONS[o.type]}
-        </div>
-      ))}
-      {hasDoor && hasWindow && (
-        <button
-          onClick={swapDoorWindow}
-          className="absolute right-2 bottom-2 p-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors text-xs"
-        >
-          ↔️ 门窗
-        </button>
-      )}
-    </div>
-  );
-}
-
 function getVisualRow(realRow: number, rowAisles: number[]): number {
   let offset = 0;
   for (const a of rowAisles) {
@@ -958,3 +805,8 @@ function findNextFree(start: number, max: number, existing: number[]): number | 
   return null;
 }
 
+function splitIntoGroups(names: string[], count: number): string[][] {
+  const groups: string[][] = Array.from({ length: count }, () => []);
+  names.forEach((n, i) => groups[i % count].push(n));
+  return groups;
+}
