@@ -20,10 +20,25 @@ export default function ComputerLab({ students }: Props) {
   const [canvasWidth, setCanvasWidth] = useState(1200);
   const [canvasHeight, setCanvasHeight] = useState(800);
   const [assignment, setAssignment] = useState<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }[]>([]);
+  const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
+  const [dragFrom, setDragFrom] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
+
+  const seatKey = (row: number, side: 'top' | 'bottom', col: number) => `${row}-${side}-${col}`;
+
+  const toggleSeatOpen = (row: number, side: 'top' | 'bottom', col: number) => {
+    const key = seatKey(row, side, col);
+    setClosedSeats(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const splitIntoGroups = (names: string[], count: number) => {
     const groups: string[][] = Array.from({ length: count }, () => []);
@@ -87,18 +102,26 @@ export default function ComputerLab({ students }: Props) {
       const groups = splitIntoGroups(names, Math.max(1, groupCount));
       groups.forEach((group, gi) => {
         const row = gi % rowCount;
-        let cursor = 0;
+        const rowSlots: { side: 'top' | 'bottom'; col: number }[] = [];
+        for (let c = 0; c < seatsPerSide; c++) {
+          if (!closedSeats.has(seatKey(row, 'top', c))) rowSlots.push({ side: 'top', col: c });
+        }
+        for (let c = 0; c < seatsPerSide; c++) {
+          if (!closedSeats.has(seatKey(row, 'bottom', c))) rowSlots.push({ side: 'bottom', col: c });
+        }
+
         group.forEach(n => {
-          if (cursor < seatsPerSide) {
-            matrix[row].top[cursor] = n;
-          } else if (cursor < seatsPerSide * 2) {
-            matrix[row].bottom[cursor - seatsPerSide] = n;
+          const slot = rowSlots.shift();
+          if (!slot) return;
+          if (slot.side === 'top') {
+            matrix[row].top[slot.col] = n;
+          } else {
+            matrix[row].bottom[slot.col] = n;
           }
-          cursor++;
         });
       });
     } else {
-      const slots = getSeatOrder(mode);
+      const slots = getSeatOrder(mode).filter(slot => !closedSeats.has(seatKey(slot.row, slot.side, slot.col)));
       names.slice(0, slots.length).forEach((n, i) => {
         const slot = slots[i];
         if (slot.side === 'top') matrix[slot.row].top[slot.col] = n;
@@ -132,6 +155,19 @@ export default function ComputerLab({ students }: Props) {
   }, [rowCount]);
 
   useEffect(() => {
+    setClosedSeats(prev => {
+      const next = new Set<string>();
+      prev.forEach(key => {
+        const [rowStr, side, colStr] = key.split('-');
+        const row = Number(rowStr);
+        const col = Number(colStr);
+        if (row < rowCount && (side === 'top' || side === 'bottom') && col < seatsPerSide) next.add(key);
+      });
+      return next;
+    });
+  }, [rowCount, seatsPerSide]);
+
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (draggingRef.current) {
         const dx = e.clientX - draggingRef.current.startX;
@@ -163,20 +199,80 @@ export default function ComputerLab({ students }: Props) {
     };
   };
 
-  const renderSeat = (x: number, y: number, name: string, key: string) => (
-    <g key={key}>
+  const renderSeat = (x: number, y: number, name: string, slot: string) => {
+    const isClosed = closedSeats.has(slot);
+    const isDragging = dragFrom === slot;
+    const isOver = dropTarget === slot;
+    return (
+    <g
+      key={slot}
+      style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
+      onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
+      onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
+      onMouseUp={() => {
+        if (!dragFrom || !dropTarget) return;
+        const from = dragFrom;
+        const to = dropTarget;
+        if (from === to || closedSeats.has(from) || closedSeats.has(to)) {
+          setDragFrom(null);
+          setDropTarget(null);
+          return;
+        }
+
+        setAssignment(prev => {
+          const next = prev.map(group => ({ ...group, students: [...group.students] }));
+          const [fr, fs, fc] = from.split('-');
+          const [tr, ts, tc] = to.split('-');
+          const fromRow = Number(fr);
+          const toRow = Number(tr);
+          const fromCol = Number(fc);
+          const toCol = Number(tc);
+
+          const fromGroup = next.find(g => g.rowIndex === fromRow && g.side === fs);
+          const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
+          if (!fromGroup || !toGroup) return prev;
+
+          const temp = fromGroup.students[fromCol] || '';
+          fromGroup.students[fromCol] = toGroup.students[toCol] || '';
+          toGroup.students[toCol] = temp;
+          return next;
+        });
+
+        setDragFrom(null);
+        setDropTarget(null);
+      }}
+      onClick={() => {
+        if (!name) {
+          const [rStr, side, cStr] = slot.split('-');
+          toggleSeatOpen(Number(rStr), side as 'top' | 'bottom', Number(cStr));
+        }
+      }}
+    >
       <rect x={x} y={y} width={seatW} height={seatH} rx={4}
-        className={name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'} strokeWidth={1.5} />
-      {name && (
+        className={
+          isClosed ? 'fill-muted stroke-destructive/60' :
+          isDragging ? 'fill-primary/20 stroke-primary' :
+          isOver ? 'fill-accent stroke-primary' :
+          name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'
+        }
+        strokeWidth={isOver ? 2.5 : 1.5}
+      />
+      {isClosed && (
+        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
+          关
+        </text>
+      )}
+      {name && !isDragging && (
         <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
           {name.length > 3 ? name.slice(0, 3) : name}
         </text>
       )}
     </g>
   );
+  };
 
   return (
-    <div>
+    <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           排数
@@ -268,7 +364,7 @@ export default function ComputerLab({ students }: Props) {
                         {topGroup.students.map((name, i) => {
                           const x = tableX + gap + i * (seatW + gap);
                           const y = baseY - seatH - 8;
-                          return renderSeat(x, y, name, `top-${rowIdx}-${i}`);
+                          return renderSeat(x, y, name, seatKey(rowIdx, 'top', i));
                         })}
                       </>
                     )}
@@ -285,7 +381,7 @@ export default function ComputerLab({ students }: Props) {
                         {bottomGroup.students.map((name, i) => {
                           const x = tableX + gap + i * (seatW + gap);
                           const y = dualSide ? baseY + 28 : baseY + 88;
-                          return renderSeat(x, y, name, `bottom-${rowIdx}-${i}`);
+                          return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', i));
                         })}
                       </>
                     )}
@@ -308,7 +404,7 @@ export default function ComputerLab({ students }: Props) {
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 {dualSide ? '长桌两侧对面坐，适合机房配对学习' : '长桌单侧坐学生，上下两排长桌'}
+          💡 拖拽姓名可换座；点击空座位可关闭/开放使用
         </p>
       )}
     </div>

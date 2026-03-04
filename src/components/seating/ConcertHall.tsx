@@ -19,6 +19,9 @@ export default function ConcertHall({ students }: Props) {
   const [canvasWidth, setCanvasWidth] = useState(1200);
   const [canvasHeight, setCanvasHeight] = useState(800);
   const [assignment, setAssignment] = useState<string[][]>([]);
+  const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
+  const [dragFrom, setDragFrom] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
@@ -30,6 +33,17 @@ export default function ConcertHall({ students }: Props) {
   };
 
   const seatCaps = Array.from({ length: rowCount }, (_, r) => seatsPerRow + r * 2);
+  const seatKey = (row: number, col: number) => `${row}-${col}`;
+
+  const toggleSeatOpen = (row: number, col: number) => {
+    const key = seatKey(row, col);
+    setClosedSeats(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   const seatOrder = (seatMode: ConcertSeatMode) => {
     const slots: { row: number; col: number }[] = [];
@@ -71,7 +85,7 @@ export default function ConcertHall({ students }: Props) {
 
     if (mode === 'groupZone') {
       const groups = splitIntoGroups(names, Math.max(1, groupCount));
-      const slots = seatOrder('horizontalS');
+      const slots = seatOrder('horizontalS').filter(slot => !closedSeats.has(seatKey(slot.row, slot.col)));
       let cursor = 0;
       groups.forEach(group => {
         group.forEach(n => {
@@ -81,7 +95,7 @@ export default function ConcertHall({ students }: Props) {
         });
       });
     } else {
-      const slots = seatOrder(mode);
+      const slots = seatOrder(mode).filter(slot => !closedSeats.has(seatKey(slot.row, slot.col)));
       names.slice(0, slots.length).forEach((n, i) => {
         const slot = slots[i];
         rows[slot.row][slot.col] = n;
@@ -117,6 +131,19 @@ export default function ConcertHall({ students }: Props) {
       window.removeEventListener('mouseup', handleMouseUp);
     };
   }, []);
+
+  useEffect(() => {
+    setClosedSeats(prev => {
+      const next = new Set<string>();
+      prev.forEach(key => {
+        const [rStr, cStr] = key.split('-');
+        const r = Number(rStr);
+        const c = Number(cStr);
+        if (r < rowCount && c < (seatsPerRow + r * 2)) next.add(key);
+      });
+      return next;
+    });
+  }, [rowCount, seatsPerRow]);
   const startDrag = (e: React.MouseEvent) => {
     e.stopPropagation();
     draggingRef.current = {
@@ -128,7 +155,7 @@ export default function ConcertHall({ students }: Props) {
   };
 
   return (
-    <div>
+    <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每排座位
@@ -215,13 +242,59 @@ export default function ConcertHall({ students }: Props) {
                   const sx = cx + r * Math.cos(angle);
                   const sy = stageY + 20 + r * Math.sin(angle);
 
+                  const slot = seatKey(ri, ci);
+                  const isClosed = closedSeats.has(slot);
+                  const isDragging = dragFrom === slot;
+                  const isOver = dropTarget === slot;
+
                   return (
-                    <g key={`${ri}-${ci}`}>
+                    <g
+                      key={`${ri}-${ci}`}
+                      style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
+                      onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
+                      onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
+                      onMouseUp={() => {
+                        if (!dragFrom || !dropTarget) return;
+                        const from = dragFrom;
+                        const to = dropTarget;
+                        if (from === to || closedSeats.has(from) || closedSeats.has(to)) {
+                          setDragFrom(null);
+                          setDropTarget(null);
+                          return;
+                        }
+                        setAssignment(prev => {
+                          const next = prev.map(r => [...r]);
+                          const [fr, fc] = from.split('-').map(Number);
+                          const [tr, tc] = to.split('-').map(Number);
+                          const temp = next[fr][fc];
+                          next[fr][fc] = next[tr][tc];
+                          next[tr][tc] = temp;
+                          return next;
+                        });
+                        setDragFrom(null);
+                        setDropTarget(null);
+                      }}
+                      onClick={() => { if (!name) toggleSeatOpen(ri, ci); }}
+                    >
                       <circle cx={sx} cy={sy} r={seatR}
-                        className="fill-card stroke-border" strokeWidth={1.5} />
-                      <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
-                        {name.length > 2 ? name.slice(0, 2) : name}
-                      </text>
+                        className={
+                          isClosed ? 'fill-muted stroke-destructive/60' :
+                          isDragging ? 'fill-primary/20 stroke-primary' :
+                          isOver ? 'fill-accent stroke-primary' :
+                          'fill-card stroke-border'
+                        }
+                        strokeWidth={isOver ? 2.5 : 1.5}
+                      />
+                      {isClosed && (
+                        <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
+                          关
+                        </text>
+                      )}
+                      {name && !isDragging && (
+                        <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
+                          {name.length > 2 ? name.slice(0, 2) : name}
+                        </text>
+                      )}
                     </g>
                   );
                 });
@@ -238,7 +311,7 @@ export default function ConcertHall({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 外排座位自动递增，后排比前排多2个座位
+          💡 拖拽姓名可换座；点击空座位可关闭/开放使用
         </p>
       )}
     </div>

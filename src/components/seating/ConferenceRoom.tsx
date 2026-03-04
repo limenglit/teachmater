@@ -18,6 +18,9 @@ export default function ConferenceRoom({ students }: Props) {
   const [canvasWidth, setCanvasWidth] = useState(1200);
   const [canvasHeight, setCanvasHeight] = useState(800);
   const [assignment, setAssignment] = useState<{ top: string[]; bottom: string[]; headLeft: string; headRight: string }>({ top: [], bottom: [], headLeft: '', headRight: '' });
+  const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
+  const [dragFrom, setDragFrom] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [seated, setSeated] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const [tableOffset, setTableOffset] = useState({ x: 0, y: 0 });
@@ -56,39 +59,72 @@ export default function ConferenceRoom({ students }: Props) {
     return slots;
   };
 
+  const getSeatValue = (data: { top: string[]; bottom: string[]; headLeft: string; headRight: string }, slot: string) => {
+    if (slot === 'head-left') return data.headLeft;
+    if (slot === 'head-right') return data.headRight;
+    const [side, idxStr] = slot.split('-');
+    const idx = Number(idxStr);
+    if (side === 'top') return data.top[idx] || '';
+    return data.bottom[idx] || '';
+  };
+
+  const setSeatValue = (data: { top: string[]; bottom: string[]; headLeft: string; headRight: string }, slot: string, value: string) => {
+    if (slot === 'head-left') {
+      data.headLeft = value;
+      return;
+    }
+    if (slot === 'head-right') {
+      data.headRight = value;
+      return;
+    }
+    const [side, idxStr] = slot.split('-');
+    const idx = Number(idxStr);
+    if (side === 'top') data.top[idx] = value;
+    else data.bottom[idx] = value;
+  };
+
+  const toggleSeatOpen = (slot: string) => {
+    setClosedSeats(prev => {
+      const next = new Set(prev);
+      if (next.has(slot)) next.delete(slot);
+      else next.add(slot);
+      return next;
+    });
+  };
+
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
 
-    const headLeft = names[0] || '';
-    const headRight = names[1] || '';
-    const rest = names.slice(2);
     const top: string[] = Array.from({ length: seatsPerSide }, () => '');
     const bottom: string[] = Array.from({ length: seatsPerSide }, () => '');
+    const next = { top, bottom, headLeft: '', headRight: '' };
+
+    const availableHeadSlots = ['head-left', 'head-right'].filter(slot => !closedSeats.has(slot));
+    const sideSlots =
+      mode === 'groupCluster'
+        ? slotOrder('horizontalS').map(slot => `${slot.side}-${slot.index}`)
+        : slotOrder(mode).map(slot => `${slot.side}-${slot.index}`);
+    const availableSideSlots = sideSlots.filter(slot => !closedSeats.has(slot));
+    const allSlots = [...availableHeadSlots, ...availableSideSlots];
 
     if (mode === 'groupCluster') {
-      const groups = splitIntoGroups(rest, Math.max(1, groupCount));
-      const slots = slotOrder('horizontalS');
+      const groups = splitIntoGroups(names, Math.max(1, groupCount));
       let cursor = 0;
       groups.forEach(group => {
         group.forEach(n => {
-          if (cursor >= slots.length) return;
-          const slot = slots[cursor++];
-          if (slot.side === 'top') top[slot.index] = n;
-          else bottom[slot.index] = n;
+          if (cursor >= allSlots.length) return;
+          setSeatValue(next, allSlots[cursor++], n);
         });
       });
     } else {
-      const slots = slotOrder(mode);
-      rest.slice(0, slots.length).forEach((n, i) => {
-        const slot = slots[i];
-        if (slot.side === 'top') top[slot.index] = n;
-        else bottom[slot.index] = n;
+      names.slice(0, allSlots.length).forEach((n, i) => {
+        setSeatValue(next, allSlots[i], n);
       });
     }
 
-    setAssignment({ top, bottom, headLeft, headRight });
+    setAssignment(next);
     setSeated(true);
   };
 
@@ -102,17 +138,65 @@ export default function ConferenceRoom({ students }: Props) {
   const tableX = (svgW - tableW) / 2 + tableOffset.x;
   const tableY = (svgH - tableH) / 2 + tableOffset.y;
 
-  const renderSeat = (x: number, y: number, name: string, key: string) => (
-    <g key={key}>
+  const renderSeat = (x: number, y: number, name: string, slot: string) => {
+    const isClosed = closedSeats.has(slot);
+    const isDragging = dragFrom === slot;
+    const isOver = dropTarget === slot;
+    return (
+    <g
+      key={slot}
+      style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
+      onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
+      onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
+      onMouseUp={() => {
+        if (!dragFrom || !dropTarget) return;
+        const from = dragFrom;
+        const to = dropTarget;
+        if (from === to || closedSeats.has(from) || closedSeats.has(to)) {
+          setDragFrom(null);
+          setDropTarget(null);
+          return;
+        }
+        setAssignment(prev => {
+          const next = {
+            top: [...prev.top],
+            bottom: [...prev.bottom],
+            headLeft: prev.headLeft,
+            headRight: prev.headRight,
+          };
+          const fromVal = getSeatValue(next, from);
+          const toVal = getSeatValue(next, to);
+          setSeatValue(next, from, toVal);
+          setSeatValue(next, to, fromVal);
+          return next;
+        });
+        setDragFrom(null);
+        setDropTarget(null);
+      }}
+      onClick={() => { if (!name) toggleSeatOpen(slot); }}
+    >
       <rect x={x} y={y} width={seatW} height={seatH} rx={6}
-        className={name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'} strokeWidth={1.5} />
-      {name && (
+        className={
+          isClosed ? 'fill-muted stroke-destructive/60' :
+          isDragging ? 'fill-primary/20 stroke-primary' :
+          isOver ? 'fill-accent stroke-primary' :
+          name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'
+        }
+        strokeWidth={isOver ? 2.5 : 1.5}
+      />
+      {isClosed && (
+        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
+          关
+        </text>
+      )}
+      {name && !isDragging && (
         <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
           {name.length > 3 ? name.slice(0, 3) : name}
         </text>
       )}
     </g>
   );
+  };
 
   // dragging for table
   useEffect(() => {
@@ -146,7 +230,7 @@ export default function ConferenceRoom({ students }: Props) {
   };
 
   return (
-    <div>
+    <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每边座位数
@@ -225,7 +309,7 @@ export default function ConferenceRoom({ students }: Props) {
               {Array.from({ length: seatsPerSide }).map((_, i) => {
                 const x = tableX + gap + i * (seatW + gap);
                 const y = tableY + tableH + 8;
-                return renderSeat(x, y, assignment.bottom[i] || '', `bot-${i}`);
+                return renderSeat(x, y, assignment.bottom[i] || '', `bottom-${i}`);
               })}
 
               {/* Head seats */}
@@ -248,7 +332,7 @@ export default function ConferenceRoom({ students }: Props) {
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 两端为主位，调整每边座位数后重新排座
+          💡 拖拽姓名可换座；点击空座位可关闭/开放使用
         </p>
       )}
     </div>

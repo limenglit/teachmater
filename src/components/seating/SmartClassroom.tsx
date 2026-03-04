@@ -17,16 +17,36 @@ export default function SmartClassroom({ students }: Props) {
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<SmartSeatMode>('tableRoundRobin');
   const [assignment, setAssignment] = useState<string[][]>([]);
+  const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [tableGap, setTableGap] = useState(20);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
+  const seatKey = (tableIndex: number, seatIndex: number) => `${tableIndex}-${seatIndex}`;
+
+  const toggleSeatOpen = (tableIndex: number, seatIndex: number) => {
+    const key = seatKey(tableIndex, seatIndex);
+    setClosedSeats(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   const placeName = (tables: string[][], preferred: number, name: string) => {
     const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)];
-    const target = order.find(idx => tables[idx].length < seatsPerTable);
-    if (target !== undefined) tables[target].push(name);
+    for (const tableIdx of order) {
+      for (let seatIdx = 0; seatIdx < seatsPerTable; seatIdx++) {
+        if (closedSeats.has(seatKey(tableIdx, seatIdx))) continue;
+        if (!tables[tableIdx][seatIdx]) {
+          tables[tableIdx][seatIdx] = name;
+          return;
+        }
+      }
+    }
   };
 
   const splitIntoGroups = (names: string[], count: number) => {
@@ -69,7 +89,7 @@ export default function SmartClassroom({ students }: Props) {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
-    const tables: string[][] = Array.from({ length: tableCount }, () => []);
+    const tables: string[][] = Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => ''));
 
     if (mode === 'tableGrouped') {
       const groups = splitIntoGroups(names, Math.max(1, groupCount));
@@ -91,6 +111,19 @@ export default function SmartClassroom({ students }: Props) {
   useEffect(() => {
     setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
   }, [tableCount]);
+
+  useEffect(() => {
+    setClosedSeats(prev => {
+      const next = new Set<string>();
+      prev.forEach(key => {
+        const [tableStr, seatStr] = key.split('-');
+        const t = Number(tableStr);
+        const s = Number(seatStr);
+        if (t < tableCount && s < seatsPerTable) next.add(key);
+      });
+      return next;
+    });
+  }, [tableCount, seatsPerTable]);
 
   // drag listeners
   useEffect(() => {
@@ -129,7 +162,7 @@ export default function SmartClassroom({ students }: Props) {
     const radius = 52;
     const seatRadius = 16;
     const cx = 80, cy = 80;
-    const totalSlots = Math.max(seatsPerTable, people.length);
+    const totalSlots = seatsPerTable;
     const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
 
     return (
@@ -149,19 +182,22 @@ export default function SmartClassroom({ students }: Props) {
             const sx = cx + radius * Math.cos(angle);
             const sy = cy + radius * Math.sin(angle);
             const name = people[i] || '';
+            const isClosed = closedSeats.has(seatKey(tableIndex, i));
             const isDragging = dragFrom?.table === tableIndex && dragFrom?.seat === i;
             const isOver = dropTarget?.table === tableIndex && dropTarget?.seat === i;
             return (
               <g
                 key={i}
-                style={{ cursor: name ? 'grab' : 'default' }}
-                onMouseDown={name ? (e) => { e.preventDefault(); handleDragStart(tableIndex, i); } : undefined}
-                onMouseEnter={() => { if (dragFrom) handleDragOver(tableIndex, i); }}
-                onMouseUp={() => { if (dragFrom) handleDrop(tableIndex, i); }}
+                style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
+                onMouseDown={name && !isClosed ? (e) => { e.preventDefault(); handleDragStart(tableIndex, i); } : undefined}
+                onMouseEnter={() => { if (dragFrom && !isClosed) handleDragOver(tableIndex, i); }}
+                onMouseUp={() => { if (dragFrom && !isClosed) handleDrop(tableIndex, i); }}
+                onClick={() => { if (!name) toggleSeatOpen(tableIndex, i); }}
               >
                 <circle
                   cx={sx} cy={sy} r={seatRadius}
                   className={
+                    isClosed ? 'fill-muted stroke-destructive/60' :
                     isDragging ? 'fill-primary/20 stroke-primary' :
                     isOver ? 'fill-accent stroke-primary' :
                     name ? 'fill-card stroke-border hover:stroke-primary/50' : 'fill-muted/50 stroke-border/50'
@@ -169,6 +205,11 @@ export default function SmartClassroom({ students }: Props) {
                   strokeWidth={isOver ? 2.5 : 1.5}
                   style={{ transition: 'all 0.15s' }}
                 />
+                {isClosed && (
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
+                    关
+                  </text>
+                )}
                 {name && !isDragging && (
                   <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs pointer-events-none">
                     {name.length > 3 ? name.slice(0, 3) : name}
@@ -248,7 +289,7 @@ export default function SmartClassroom({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 点击并拖拽学生姓名可交换座位（支持跨桌交换）
+          💡 拖拽姓名可交换座位；点击空座位可关闭/开放使用
         </p>
       )}
     </div>
