@@ -94,10 +94,8 @@ export default function ComputerLab({ students }: Props) {
 
   const tableW = seatsPerSide * (seatW + gap) + gap;
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
-  const baseSvgW = tableW + tableMargin * 2 + 100;
-  const baseSvgH = maxRows * rowGap + 120;
-  const svgW = freeCanvasMode ? Math.max(baseSvgW + 600, 1200) : baseSvgW;
-  const svgH = freeCanvasMode ? Math.max(baseSvgH + 420, 760) : baseSvgH;
+  const svgW = tableW + tableMargin * 2 + 100;
+  const svgH = maxRows * rowGap + 120;
   const baseTableX = (svgW - tableW) / 2;
   const canvasPadding = 10;
 
@@ -221,7 +219,6 @@ export default function ComputerLab({ students }: Props) {
         {seated ? (
           <div className="flex justify-center overflow-auto">
             <div className="inline-block border border-border rounded-lg bg-card/40 p-2 overflow-hidden">
-            <div className={freeCanvasMode ? 'rounded-md border border-dashed border-border/70 bg-muted/20' : ''}>
             <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
               {Array.from({ length: maxRows }).map((_, rowIdx) => {
                 const offset = rowOffsets[rowIdx] || { x: 0, y: 0 };
@@ -266,7 +263,6 @@ export default function ComputerLab({ students }: Props) {
                 );
               })}
             </svg>
-            </div>
             </div>
           </div>
         ) : (

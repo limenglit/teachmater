@@ -61,10 +61,8 @@ export default function ConferenceRoom({ students }: Props) {
   const gap = seatGap;
   const tableW = seatsPerSide * (seatW + gap) + gap;
   const tableH = 60;
-  const baseSvgW = tableW + seatW * 2 + 60;
-  const baseSvgH = tableH + seatH * 2 + 80;
-  const svgW = freeCanvasMode ? Math.max(baseSvgW + 520, 980) : baseSvgW;
-  const svgH = freeCanvasMode ? Math.max(baseSvgH + 260, 620) : baseSvgH;
+  const svgW = tableW + seatW * 2 + 60;
+  const svgH = tableH + seatH * 2 + 80;
   const tableX = (svgW - tableW) / 2 + tableOffset.x;
   const tableY = (svgH - tableH) / 2 + tableOffset.y;
   const baseTableX = (svgW - tableW) / 2;
@@ -176,7 +174,6 @@ export default function ConferenceRoom({ students }: Props) {
         {seated ? (
           <div className="flex justify-center overflow-auto">
             <div className="inline-block border border-border rounded-lg bg-card/40 p-2 overflow-hidden">
-            <div className={freeCanvasMode ? 'rounded-md border border-dashed border-border/70 bg-muted/20' : ''}>
             <svg
               width={svgW}
               height={svgH}
@@ -212,7 +209,6 @@ export default function ConferenceRoom({ students }: Props) {
                 会议桌
               </text>
             </svg>
-            </div>
             </div>
           </div>
         ) : (
