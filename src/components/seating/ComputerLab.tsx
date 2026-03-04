@@ -13,8 +13,8 @@ export default function ComputerLab({ students }: Props) {
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [dualSide, setDualSide] = useState(true); // 是否两侧坐学生
   const [tableGap, setTableGap] = useState(80);
-  const [canvasWidth, setCanvasWidth] = useState(2600);
-  const [canvasHeight, setCanvasHeight] = useState(1600);
+  const [canvasWidth, setCanvasWidth] = useState(1200);
+  const [canvasHeight, setCanvasHeight] = useState(800);
   const [assignment, setAssignment] = useState<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }[]>([]);
   const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
