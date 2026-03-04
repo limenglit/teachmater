@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { useRoundTableDrag } from './useRoundTableDrag';
-import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -15,7 +14,6 @@ export default function BanquetHall({ students }: Props) {
   const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 10) || 3);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [tableGap, setTableGap] = useState(24);
-  const [groupCount, setGroupCount] = useState(4);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
@@ -25,17 +23,12 @@ export default function BanquetHall({ students }: Props) {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
-    const groups = splitIntoGroups(names, tableCount);
-    const tables = groups.map(g => g.slice(0, seatsPerTable));
+    const tables: string[][] = Array.from({ length: tableCount }, () => []);
+    names.forEach((n, i) => {
+      const ti = i % tableCount;
+      if (tables[ti].length < seatsPerTable) tables[ti].push(n);
+    });
     setAssignment(tables);
-  };
-
-  const groupSeat = () => {
-    const names = students.map(s => s.name);
-    const groups = splitIntoGroups(names, groupCount);
-    const tables = groups.map(g => g.slice(0, seatsPerTable));
-    while (tables.length < tableCount) tables.push([]);
-    setAssignment(tables.slice(0, tableCount));
   };
 
   const tableCols = Math.ceil(Math.sqrt(tableCount));
@@ -157,11 +150,6 @@ export default function BanquetHall({ students }: Props) {
         <span className="text-xs text-muted-foreground">
           共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
         </span>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          组数
-          <Input type="number" min={1} max={20} value={groupCount}
-            onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
-        </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -170,7 +158,6 @@ export default function BanquetHall({ students }: Props) {
           <Button onClick={() => autoSeat(false)} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
-          <Button variant="ghost" onClick={groupSeat} className="gap-2">分组排座</Button>
         </div>
       </div>
 
