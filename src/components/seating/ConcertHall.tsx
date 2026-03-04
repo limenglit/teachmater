@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import SceneLandmarks from './SceneLandmarks';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -11,7 +12,7 @@ interface Props {
 export default function ConcertHall({ students }: Props) {
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(5);
-  const [seatGap, setSeatGap] = useState(50); // radius step
+  const [seatGap, setSeatGap] = useState(50);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -26,7 +27,6 @@ export default function ConcertHall({ students }: Props) {
     let idx = 0;
     for (let r = 0; r < rowCount && idx < names.length; r++) {
       const row: string[] = [];
-      // Each row has seatsPerRow + r*2 more seats (wider as you go back)
       const count = seatsPerRow + r * 2;
       for (let c = 0; c < count && idx < names.length; c++) {
         row.push(names[idx++]);
@@ -45,7 +45,6 @@ export default function ConcertHall({ students }: Props) {
   const radiusStep = seatGap;
   const seatR = 14;
 
-  // dragging logic for concert hall
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (draggingRef.current) {
@@ -101,7 +100,15 @@ export default function ConcertHall({ students }: Props) {
         </div>
       </div>
 
-      <div ref={printRef}>
+      <SceneLandmarks
+        printRef={printRef}
+        sides={{
+          left: { label: '安全出口', emoji: '🚪' },
+          right: { label: '安全出口', emoji: '🚪' },
+          swappable: false,
+        }}
+        bottom={{ label: '观众入口', emoji: '🚶' }}
+      >
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto">
             <svg
@@ -149,11 +156,11 @@ export default function ConcertHall({ students }: Props) {
             <p className="text-sm">半圆形音乐厅，{rowCount} 排座位围绕舞台</p>
           </div>
         )}
-      </div>
+      </SceneLandmarks>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 外排座位自动递增，后排比前排多2个座位
+          💡 外排座位自动递增 · 拖动舞台和出口可调整位置
         </p>
       )}
     </div>

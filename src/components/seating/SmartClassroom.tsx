@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { useRoundTableDrag } from './useRoundTableDrag';
+import SceneLandmarks from './SceneLandmarks';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -165,7 +166,15 @@ export default function SmartClassroom({ students }: Props) {
         </div>
       </div>
 
-      <div ref={printRef}>
+      <SceneLandmarks
+        printRef={printRef}
+        top={{ label: '讲 台', emoji: '🏫' }}
+        sides={{
+          left: { label: '窗', boxStyle: true },
+          right: { label: '门', emoji: '🚪' },
+          swappable: true,
+        }}
+      >
         {assignment.length > 0 ? (
           <div className="flex justify-center">
             <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
@@ -178,11 +187,11 @@ export default function SmartClassroom({ students }: Props) {
             <p className="text-sm">圆形桌智能教室，每桌 {seatsPerTable} 人，共 {tableCount} 桌</p>
           </div>
         )}
-      </div>
+      </SceneLandmarks>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 点击并拖拽学生姓名可交换座位（支持跨桌交换）
+          💡 点击并拖拽学生姓名可交换座位（支持跨桌交换）· 拖动讲台/门窗可调整位置
         </p>
       )}
     </div>
