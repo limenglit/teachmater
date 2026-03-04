@@ -5,6 +5,7 @@ import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { clampValue, splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
+import SceneLandmarks from './SceneLandmarks';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -210,13 +211,16 @@ export default function BanquetHall({ students }: Props) {
         </div>
       </div>
 
-      <div ref={printRef}>
-        <div className="text-center mb-4">
-          <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-medium border border-primary/20">
-            🎪 宴会厅
-          </div>
-        </div>
-
+      <SceneLandmarks
+        printRef={printRef}
+        top={{ label: '主席台 / 舞台', emoji: '🎤' }}
+        bottom={{ label: '入 口', emoji: '🚶' }}
+        sides={{
+          left: { label: '服务通道', emoji: '🍽️' },
+          right: { label: '备餐区', emoji: '👨‍🍳' },
+          swappable: true,
+        }}
+      >
         {assignment.length > 0 ? (
           <div className="flex justify-center">
             <div className="border border-border rounded-lg bg-card/40 p-3 overflow-hidden" style={{ width: freeCanvasMode ? `${canvasWidth + 24}px` : 'auto' }}>
@@ -237,11 +241,11 @@ export default function BanquetHall({ students }: Props) {
             <p className="text-sm">宴会厅圆桌，{seatsPerTable} 人一桌，根据人数自动分配</p>
           </div>
         )}
-      </div>
+      </SceneLandmarks>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 点击并拖拽学生姓名可交换座位（支持跨桌交换）
+          💡 点击并拖拽学生姓名可交换座位（支持跨桌交换）· 拖动主席台/入口可调整位置
         </p>
       )}
     </div>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { clampValue, splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
+import SceneLandmarks from './SceneLandmarks';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -89,7 +90,6 @@ export default function ConferenceRoom({ students }: Props) {
     </g>
   );
 
-  // dragging for table
   useEffect(() => {
     if (!freeCanvasMode) {
       setTableOffset({ x: 0, y: 0 });
@@ -161,18 +161,27 @@ export default function ConferenceRoom({ students }: Props) {
         </div>
       </div>
 
-      <div ref={printRef}>
+      <SceneLandmarks
+        printRef={printRef}
+        top={{ label: '投影/白板', emoji: '📽️' }}
+        sides={{
+          left: { label: '窗', boxStyle: true },
+          right: { label: '门', emoji: '🚪' },
+          swappable: true,
+        }}
+        bottom={{ label: '入 口', emoji: '🚶' }}
+      >
         {seated ? (
           <div className="flex justify-center overflow-auto">
             <div className="inline-block border border-border rounded-lg bg-card/40 p-2 overflow-hidden">
             <svg
-  width={svgW}
-  height={svgH}
-  viewBox={`0 0 ${svgW} ${svgH}`}
-  className="font-sans"
-  style={{ fontFamily: 'var(--font-family)' }}
-  onMouseDown={freeCanvasMode ? startDrag : undefined}
->
+              width={svgW}
+              height={svgH}
+              viewBox={`0 0 ${svgW} ${svgH}`}
+              className="font-sans"
+              style={{ fontFamily: 'var(--font-family)' }}
+              onMouseDown={freeCanvasMode ? startDrag : undefined}
+            >
               {/* Conference table */}
               <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={10}
                 className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
@@ -208,11 +217,11 @@ export default function ConferenceRoom({ students }: Props) {
             <p className="text-sm">长条会议桌，每边 {seatsPerSide} 个座位</p>
           </div>
         )}
-      </div>
+      </SceneLandmarks>
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 两端为主位，调整每边座位数后重新排座
+          💡 两端为主位 · 拖动投影/白板和门窗可调整位置
         </p>
       )}
     </div>
