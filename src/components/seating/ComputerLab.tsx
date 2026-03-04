@@ -13,6 +13,8 @@ export default function ComputerLab({ students }: Props) {
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [dualSide, setDualSide] = useState(true); // 是否两侧坐学生
   const [tableGap, setTableGap] = useState(80);
+  const [canvasWidth, setCanvasWidth] = useState(2600);
+  const [canvasHeight, setCanvasHeight] = useState(1600);
   const [assignment, setAssignment] = useState<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }[]>([]);
   const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
@@ -82,8 +84,8 @@ export default function ComputerLab({ students }: Props) {
   // 计算 SVG 尺寸
   const tableW = seatsPerSide * (seatW + gap) + gap;
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
-  const svgW = tableW + tableMargin * 2 + 100;
-  const svgH = maxRows * rowGap + 120;
+  const svgW = Math.max(tableW + tableMargin * 2 + 100, canvasWidth);
+  const svgH = Math.max(maxRows * rowGap + 120, canvasHeight);
 
   useEffect(() => {
     setRowOffsets(Array(rowCount).fill({ x: 0, y: 0 }));
@@ -150,6 +152,16 @@ export default function ComputerLab({ students }: Props) {
           行间距
           <Input type="number" min={20} max={200} value={tableGap}
             onChange={e => setTableGap(Math.max(20, Math.min(200, Number(e.target.value))))} className="w-14 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          画布宽
+          <Input type="number" min={1200} value={canvasWidth}
+            onChange={e => setCanvasWidth(Math.max(1200, Number(e.target.value) || 1200))} className="w-20 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          画布高
+          <Input type="number" min={800} value={canvasHeight}
+            onChange={e => setCanvasHeight(Math.max(800, Number(e.target.value) || 800))} className="w-20 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
           <input type="checkbox" checked={dualSide} onChange={e => setDualSide(e.target.checked)} className="accent-primary" />

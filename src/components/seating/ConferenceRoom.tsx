@@ -11,6 +11,8 @@ interface Props {
 export default function ConferenceRoom({ students }: Props) {
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [seatGap, setSeatGap] = useState(6);
+  const [canvasWidth, setCanvasWidth] = useState(2200);
+  const [canvasHeight, setCanvasHeight] = useState(1400);
   const [assignment, setAssignment] = useState<{ top: string[]; bottom: string[]; headLeft: string; headRight: string }>({ top: [], bottom: [], headLeft: '', headRight: '' });
   const [seated, setSeated] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
@@ -40,8 +42,8 @@ export default function ConferenceRoom({ students }: Props) {
   const gap = seatGap;
   const tableW = seatsPerSide * (seatW + gap) + gap;
   const tableH = 60;
-  const svgW = tableW + seatW * 2 + 60;
-  const svgH = tableH + seatH * 2 + 80;
+  const svgW = canvasWidth;
+  const svgH = canvasHeight;
   const tableX = (svgW - tableW) / 2 + tableOffset.x;
   const tableY = (svgH - tableH) / 2 + tableOffset.y;
 
@@ -100,6 +102,16 @@ export default function ConferenceRoom({ students }: Props) {
           座位间距
           <Input type="number" min={2} max={20} value={seatGap}
             onChange={e => setSeatGap(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          画布宽
+          <Input type="number" min={800} value={canvasWidth}
+            onChange={e => setCanvasWidth(Math.max(800, Number(e.target.value) || 800))} className="w-20 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          画布高
+          <Input type="number" min={500} value={canvasHeight}
+            onChange={e => setCanvasHeight(Math.max(500, Number(e.target.value) || 500))} className="w-20 h-8 text-center" />
         </label>
         {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
         <div className="flex gap-2 ml-auto">

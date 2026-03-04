@@ -12,6 +12,8 @@ export default function ConcertHall({ students }: Props) {
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(5);
   const [seatGap, setSeatGap] = useState(50); // radius step
+  const [canvasWidth, setCanvasWidth] = useState(2400);
+  const [canvasHeight, setCanvasHeight] = useState(1600);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -36,8 +38,8 @@ export default function ConcertHall({ students }: Props) {
     setAssignment(rows);
   };
 
-  const svgW = 700;
-  const svgH = 420;
+  const svgW = canvasWidth;
+  const svgH = canvasHeight;
   const cx = svgW / 2 + offset.x;
   const stageY = 60 + offset.y;
   const stageW = 160;
@@ -89,6 +91,16 @@ export default function ConcertHall({ students }: Props) {
           排间距
           <Input type="number" min={20} max={100} value={seatGap}
             onChange={e => setSeatGap(Math.max(20, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          画布宽
+          <Input type="number" min={1000} value={canvasWidth}
+            onChange={e => setCanvasWidth(Math.max(1000, Number(e.target.value) || 1000))} className="w-20 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          画布高
+          <Input type="number" min={700} value={canvasHeight}
+            onChange={e => setCanvasHeight(Math.max(700, Number(e.target.value) || 700))} className="w-20 h-8 text-center" />
         </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" />}
         <div className="flex gap-2 ml-auto">
