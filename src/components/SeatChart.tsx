@@ -10,6 +10,8 @@ import ConcertHall from '@/components/seating/ConcertHall';
 import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 
+import { splitIntoGroups } from '@/lib/seatingUtils';
+
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type StartFrom = 'door' | 'window';
@@ -954,8 +956,3 @@ function findNextFree(start: number, max: number, existing: number[]): number | 
   return null;
 }
 
-function splitIntoGroups(names: string[], count: number): string[][] {
-  const groups: string[][] = Array.from({ length: count }, () => []);
-  names.forEach((n, i) => groups[i % count].push(n));
-  return groups;
-}

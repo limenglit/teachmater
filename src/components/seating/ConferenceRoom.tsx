@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -13,6 +14,7 @@ export default function ConferenceRoom({ students }: Props) {
   const [seatGap, setSeatGap] = useState(6);
   const [assignment, setAssignment] = useState<{ top: string[]; bottom: string[]; headLeft: string; headRight: string }>({ top: [], bottom: [], headLeft: '', headRight: '' });
   const [seated, setSeated] = useState(false);
+  const [groupCount, setGroupCount] = useState(4);
   const printRef = useRef<HTMLDivElement>(null);
   const [tableOffset, setTableOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
@@ -31,6 +33,25 @@ export default function ConferenceRoom({ students }: Props) {
       if (i < seatsPerSide) top.push(n);
       else if (i < seatsPerSide * 2) bottom.push(n);
     });
+    setAssignment({ top, bottom, headLeft, headRight });
+    setSeated(true);
+  };
+
+  const groupSeat = () => {
+    const names = students.map(s => s.name);
+    const groups = splitIntoGroups(names, groupCount);
+    // flatten groups but keep each group contiguous on seating order
+    const flat = groups.flat();
+    const headLeft = flat[0] || '';
+    const headRight = flat[1] || '';
+    const rest = flat.slice(2);
+    const top: string[] = [];
+    const bottom: string[] = [];
+    let idx = 0;
+    for (let i = 0; i < rest.length; i++) {
+      if (i < seatsPerSide) top.push(rest[i]);
+      else if (i < seatsPerSide * 2) bottom.push(rest[i]);
+    }
     setAssignment({ top, bottom, headLeft, headRight });
     setSeated(true);
   };
@@ -101,6 +122,11 @@ export default function ConferenceRoom({ students }: Props) {
           <Input type="number" min={2} max={20} value={seatGap}
             onChange={e => setSeatGap(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          组数
+          <Input type="number" min={1} max={20} value={groupCount}
+            onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
         {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -109,6 +135,7 @@ export default function ConferenceRoom({ students }: Props) {
           <Button onClick={() => autoSeat(false)} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
+          <Button variant="ghost" onClick={groupSeat} className="gap-2">分组排座</Button>
         </div>
       </div>
 

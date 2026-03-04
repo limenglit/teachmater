@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -12,6 +13,7 @@ export default function ConcertHall({ students }: Props) {
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(5);
   const [seatGap, setSeatGap] = useState(50); // radius step
+  const [groupCount, setGroupCount] = useState(4);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -34,6 +36,28 @@ export default function ConcertHall({ students }: Props) {
       rows.push(row);
     }
     setAssignment(rows);
+  };
+
+  const groupSeat = () => {
+    const names = students.map(s => s.name);
+    const groups = splitIntoGroups(names, groupCount);
+    // assign each group contiguously across rows
+    const rowsArr: string[][] = [];
+    let idx = 0;
+    for (let r = 0; r < rowCount; r++) {
+      const count = seatsPerRow + r * 2;
+      const row: string[] = [];
+      for (let c = 0; c < count; c++) {
+        const groupIndex = Math.floor(idx / (Math.ceil(names.length / groupCount) || 1));
+        const group = groups[Math.min(groupIndex, groups.length - 1)];
+        const name = group && (idx - groupIndex * Math.ceil(names.length / groupCount)) < (group.length) ?
+          group[(idx - groupIndex * Math.ceil(names.length / groupCount)) % group.length] : '';
+        if (name) row.push(name);
+        idx++;
+      }
+      if (row.length) rowsArr.push(row);
+    }
+    setAssignment(rowsArr);
   };
 
   const svgW = 700;
@@ -90,6 +114,11 @@ export default function ConcertHall({ students }: Props) {
           <Input type="number" min={20} max={100} value={seatGap}
             onChange={e => setSeatGap(Math.max(20, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          组数
+          <Input type="number" min={1} max={20} value={groupCount}
+            onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -98,6 +127,7 @@ export default function ConcertHall({ students }: Props) {
           <Button onClick={() => autoSeat(false)} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
+          <Button variant="ghost" onClick={groupSeat} className="gap-2">分组排座</Button>
         </div>
       </div>
 
