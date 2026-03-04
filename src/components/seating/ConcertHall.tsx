@@ -59,8 +59,10 @@ export default function ConcertHall({ students }: Props) {
     setAssignment(rowsArr);
   };
 
-  const svgW = 700;
-  const svgH = 420;
+  const baseSvgW = 700;
+  const baseSvgH = 420;
+  const svgW = freeCanvasMode ? 1200 : baseSvgW;
+  const svgH = freeCanvasMode ? 760 : baseSvgH;
   const cx = svgW / 2 + offset.x;
   const stageY = 60 + offset.y;
   const stageW = 160;
@@ -167,6 +169,7 @@ export default function ConcertHall({ students }: Props) {
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto">
             <div className="inline-block border border-border rounded-lg bg-card/40 p-2 overflow-hidden">
+            <div className={freeCanvasMode ? 'rounded-md border border-dashed border-border/70 bg-muted/20' : ''}>
             <svg
               width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
               className="font-sans" style={{ fontFamily: 'var(--font-family)' }}
@@ -205,6 +208,7 @@ export default function ConcertHall({ students }: Props) {
                 });
               })}
             </svg>
+            </div>
             </div>
           </div>
         ) : (
