@@ -19,3 +19,11 @@ export function splitIntoGroups(names: string[], count: number): string[][] {
 export function shuffleArray<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5);
 }
+
+/**
+ * Clamp value in [min, max].
+ */
+export function clampValue(value: number, min: number, max: number): number {
+  if (min > max) return value;
+  return Math.min(Math.max(value, min), max);
+}

@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
-import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
+import { clampValue, splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -14,15 +14,14 @@ export default function ConcertHall({ students }: Props) {
   const [rowCount, setRowCount] = useState(5);
   const [seatGap, setSeatGap] = useState(50); // radius step
   const [groupCount, setGroupCount] = useState(4);
+  const [freeCanvasMode, setFreeCanvasMode] = useState(false);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
-    const names = shuffle
-      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
-      : students.map(s => s.name);
+    const names = shuffle ? shuffleArray(students.map(s => s.name)) : students.map(s => s.name);
 
     const rows: string[][] = [];
     let idx = 0;
@@ -68,14 +67,35 @@ export default function ConcertHall({ students }: Props) {
   const startRadius = 100;
   const radiusStep = seatGap;
   const seatR = 14;
+  const shownRows = Math.max(assignment.length, rowCount);
+  const maxRadius = startRadius + Math.max(0, shownRows - 1) * radiusStep + seatR;
+  const padding = 10;
+
+  const xBounds = {
+    min: padding + maxRadius - svgW / 2,
+    max: svgW - padding - maxRadius - svgW / 2,
+  };
+  const yBounds = {
+    min: padding - 40,
+    max: svgH - padding - 80 - maxRadius,
+  };
 
   // dragging logic for concert hall
+  useEffect(() => {
+    if (!freeCanvasMode) {
+      setOffset({ x: 0, y: 0 });
+    }
+  }, [freeCanvasMode]);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (draggingRef.current) {
         const dx = e.clientX - draggingRef.current.startX;
         const dy = e.clientY - draggingRef.current.startY;
-        setOffset({ x: draggingRef.current.origX + dx, y: draggingRef.current.origY + dy });
+        setOffset({
+          x: clampValue(draggingRef.current.origX + dx, xBounds.min, xBounds.max),
+          y: clampValue(draggingRef.current.origY + dy, yBounds.min, yBounds.max),
+        });
       }
     };
     const handleMouseUp = () => { draggingRef.current = null; };
@@ -85,8 +105,9 @@ export default function ConcertHall({ students }: Props) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [xBounds.max, xBounds.min, yBounds.max, yBounds.min]);
   const startDrag = (e: React.MouseEvent) => {
+    if (!freeCanvasMode) return;
     e.stopPropagation();
     draggingRef.current = {
       startX: e.clientX,
@@ -119,6 +140,10 @@ export default function ConcertHall({ students }: Props) {
           <Input type="number" min={1} max={20} value={groupCount}
             onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input type="checkbox" checked={freeCanvasMode} onChange={e => setFreeCanvasMode(e.target.checked)} className="accent-primary" />
+          自由画布
+        </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -134,10 +159,11 @@ export default function ConcertHall({ students }: Props) {
       <div ref={printRef}>
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto">
+            <div className="inline-block border border-border rounded-lg bg-card/40 p-2 overflow-hidden">
             <svg
               width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`}
               className="font-sans" style={{ fontFamily: 'var(--font-family)' }}
-              onMouseDown={startDrag}
+              onMouseDown={freeCanvasMode ? startDrag : undefined}
             >
               {/* Stage */}
               <rect x={cx - stageW / 2} y={stageY - 20} width={stageW} height={36} rx={8}
@@ -172,6 +198,7 @@ export default function ConcertHall({ students }: Props) {
                 });
               })}
             </svg>
+            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">

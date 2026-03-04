@@ -803,23 +803,25 @@ export default function SeatChart() {
         <div ref={printRef}>
           {/* Seat Grid with side markers */}
           {seats.length > 0 ? (
-            <div className="flex justify-center items-stretch gap-2">
-              <div className="flex items-center text-sm text-muted-foreground">
-                <span className="[writing-mode:vertical-rl] tracking-widest">{(() => {
-                    const windowObj = refs.find(o => o.type === 'window');
-                    const doorObj = refs.find(o => o.type === 'door');
-                    const leftIsWindow = windowObj && doorObj ? windowObj.x < doorObj.x : true;
-                    return leftIsWindow ? '▢ 窗户侧' : '🚪 门侧';
-                  })()}</span>
-              </div>
-              {buildVisualGrid()}
-              <div className="flex items-center text-sm text-muted-foreground">
-                <span className="[writing-mode:vertical-rl] tracking-widest">{(() => {
-                    const windowObj = refs.find(o => o.type === 'window');
-                    const doorObj = refs.find(o => o.type === 'door');
-                    const leftIsWindow = windowObj && doorObj ? windowObj.x < doorObj.x : true;
-                    return leftIsWindow ? '🚪 门侧' : '▢ 窗户侧';
-                  })()}</span>
+            <div className="flex justify-center">
+              <div className="inline-flex items-stretch gap-2 border border-border rounded-lg bg-card/40 p-3 overflow-auto">
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <span className="[writing-mode:vertical-rl] tracking-widest">{(() => {
+                      const windowObj = refs.find(o => o.type === 'window');
+                      const doorObj = refs.find(o => o.type === 'door');
+                      const leftIsWindow = windowObj && doorObj ? windowObj.x < doorObj.x : true;
+                      return leftIsWindow ? '▢ 窗户侧' : '🚪 门侧';
+                    })()}</span>
+                </div>
+                {buildVisualGrid()}
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <span className="[writing-mode:vertical-rl] tracking-widest">{(() => {
+                      const windowObj = refs.find(o => o.type === 'window');
+                      const doorObj = refs.find(o => o.type === 'door');
+                      const leftIsWindow = windowObj && doorObj ? windowObj.x < doorObj.x : true;
+                      return leftIsWindow ? '🚪 门侧' : '▢ 窗户侧';
+                    })()}</span>
+                </div>
               </div>
             </div>
           ) : (

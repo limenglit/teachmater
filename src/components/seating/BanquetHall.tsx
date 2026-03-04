@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { useRoundTableDrag } from './useRoundTableDrag';
-import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
+import { clampValue, splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -16,15 +16,14 @@ export default function BanquetHall({ students }: Props) {
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [tableGap, setTableGap] = useState(24);
   const [groupCount, setGroupCount] = useState(4);
+  const [freeCanvasMode, setFreeCanvasMode] = useState(false);
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const autoSeat = (shuffle = false) => {
-    const names = shuffle
-      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
-      : students.map(s => s.name);
+    const names = shuffle ? shuffleArray(students.map(s => s.name)) : students.map(s => s.name);
     const groups = splitIntoGroups(names, tableCount);
     const tables = groups.map(g => g.slice(0, seatsPerTable));
     setAssignment(tables);
@@ -39,21 +38,50 @@ export default function BanquetHall({ students }: Props) {
   };
 
   const tableCols = Math.ceil(Math.sqrt(tableCount));
+  const tableRows = Math.ceil(tableCount / tableCols);
+  const tableSize = 170;
+  const canvasPadding = 16;
+  const canvasWidth = Math.max(760, tableCols * tableSize + Math.max(0, tableCols - 1) * tableGap + canvasPadding * 2);
+  const canvasHeight = Math.max(500, tableRows * tableSize + Math.max(0, tableRows - 1) * tableGap + canvasPadding * 2);
 
   useEffect(() => {
-    setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
-  }, [tableCount]);
+    if (freeCanvasMode) {
+      setTablePositions(
+        Array.from({ length: tableCount }, (_, index) => {
+          const col = index % tableCols;
+          const row = Math.floor(index / tableCols);
+          return {
+            x: canvasPadding + col * (tableSize + tableGap),
+            y: canvasPadding + row * (tableSize + tableGap),
+          };
+        }),
+      );
+      return;
+    }
+    setTablePositions(Array.from({ length: tableCount }, () => ({ x: 0, y: 0 })));
+  }, [canvasPadding, freeCanvasMode, tableCols, tableCount, tableGap, tableSize]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (draggingRef.current) {
         const dx = e.clientX - draggingRef.current.startX;
         const dy = e.clientY - draggingRef.current.startY;
-        setTablePositions(pos => pos.map((p, i) =>
-          i === draggingRef.current!.index
-            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
-            : p
-        ));
+        setTablePositions(pos => pos.map((p, i) => {
+          if (i !== draggingRef.current!.index) return p;
+          const nextX = draggingRef.current!.origX + dx;
+          const nextY = draggingRef.current!.origY + dy;
+          if (freeCanvasMode) {
+            return {
+              x: clampValue(nextX, 0, canvasWidth - tableSize),
+              y: clampValue(nextY, 0, canvasHeight - tableSize),
+            };
+          }
+          const maxOffset = 120;
+          return {
+            x: clampValue(nextX, -maxOffset, maxOffset),
+            y: clampValue(nextY, -maxOffset, maxOffset),
+          };
+        }));
       }
     };
     const handleMouseUp = () => { draggingRef.current = null; };
@@ -63,7 +91,7 @@ export default function BanquetHall({ students }: Props) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [canvasHeight, canvasWidth, freeCanvasMode, tableSize]);
 
   const startTableDrag = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
@@ -87,7 +115,11 @@ export default function BanquetHall({ students }: Props) {
       <div
         key={tableIndex}
         className="flex flex-col items-center cursor-move"
-        style={{ transform: `translate(${pos.x}px,${pos.y}px)` }}
+        style={
+          freeCanvasMode
+            ? { position: 'absolute', left: `${pos.x}px`, top: `${pos.y}px` }
+            : { transform: `translate(${pos.x}px,${pos.y}px)` }
+        }
         onMouseDown={e => startTableDrag(e, tableIndex)}
       >
         <svg width={170} height={170} viewBox="0 0 170 170" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
@@ -162,6 +194,10 @@ export default function BanquetHall({ students }: Props) {
           <Input type="number" min={1} max={20} value={groupCount}
             onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input type="checkbox" checked={freeCanvasMode} onChange={e => setFreeCanvasMode(e.target.checked)} className="accent-primary" />
+          自由画布
+        </label>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -183,8 +219,16 @@ export default function BanquetHall({ students }: Props) {
 
         {assignment.length > 0 ? (
           <div className="flex justify-center">
-            <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
-              {assignment.map((people, i) => renderBanquetTable(i, people))}
+            <div className="border border-border rounded-lg bg-card/40 p-3 overflow-hidden" style={{ width: freeCanvasMode ? `${canvasWidth + 24}px` : 'auto' }}>
+              {freeCanvasMode ? (
+                <div className="relative mx-auto rounded-md border border-dashed border-border/70 bg-muted/20" style={{ width: `${canvasWidth}px`, height: `${canvasHeight}px` }}>
+                  {assignment.map((people, i) => renderBanquetTable(i, people))}
+                </div>
+              ) : (
+                <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
+                  {assignment.map((people, i) => renderBanquetTable(i, people))}
+                </div>
+              )}
             </div>
           </div>
         ) : (

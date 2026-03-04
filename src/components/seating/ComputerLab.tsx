@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
-import { splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
+import { clampValue, splitIntoGroups, shuffleArray } from '@/lib/seatingUtils';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -18,13 +18,12 @@ export default function ComputerLab({ students }: Props) {
   const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
   const [groupCount, setGroupCount] = useState(4);
+  const [freeCanvasMode, setFreeCanvasMode] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
   const autoSeat = (shuffle = false) => {
-    const names = shuffle
-      ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
-      : students.map(s => s.name);
+    const names = shuffle ? shuffleArray(students.map(s => s.name)) : students.map(s => s.name);
 
     const result: typeof assignment = [];
     let idx = 0;
@@ -101,21 +100,39 @@ export default function ComputerLab({ students }: Props) {
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
   const svgW = tableW + tableMargin * 2 + 100;
   const svgH = maxRows * rowGap + 120;
+  const baseTableX = (svgW - tableW) / 2;
+  const canvasPadding = 10;
 
   useEffect(() => {
     setRowOffsets(Array(rowCount).fill({ x: 0, y: 0 }));
   }, [rowCount]);
 
   useEffect(() => {
+    if (!freeCanvasMode) {
+      setRowOffsets(Array(rowCount).fill({ x: 0, y: 0 }));
+    }
+  }, [freeCanvasMode, rowCount]);
+
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (draggingRef.current) {
         const dx = e.clientX - draggingRef.current.startX;
         const dy = e.clientY - draggingRef.current.startY;
-        setRowOffsets(offs => offs.map((p,i) =>
-          i === draggingRef.current!.row
-            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
-            : p
-        ));
+        const row = draggingRef.current.row;
+        const baseY = 60 + row * rowGap;
+        const rowBottom = dualSide ? baseY + 28 + seatH : baseY + 88 + seatH;
+        const minY = canvasPadding - (baseY - seatH - 8);
+        const maxY = svgH - canvasPadding - rowBottom;
+        const minX = canvasPadding - baseTableX;
+        const maxX = svgW - canvasPadding - tableW - baseTableX;
+
+        setRowOffsets(offs => offs.map((p, i) => {
+          if (i !== row) return p;
+          return {
+            x: clampValue(draggingRef.current!.origX + dx, minX, maxX),
+            y: clampValue(draggingRef.current!.origY + dy, minY, maxY),
+          };
+        }));
       }
     };
     const handleMouseUp = () => { draggingRef.current = null; };
@@ -125,9 +142,10 @@ export default function ComputerLab({ students }: Props) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [baseTableX, canvasPadding, dualSide, rowGap, seatH, svgH, svgW, tableW]);
 
   const startRowDrag = (e: React.MouseEvent, row: number) => {
+    if (!freeCanvasMode) return;
     e.stopPropagation();
     draggingRef.current = {
       row,
@@ -177,6 +195,10 @@ export default function ComputerLab({ students }: Props) {
           <Input type="number" min={1} max={20} value={groupCount}
             onChange={e => setGroupCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input type="checkbox" checked={freeCanvasMode} onChange={e => setFreeCanvasMode(e.target.checked)} className="accent-primary" />
+          自由画布
+        </label>
         {seated && <ExportButtons targetRef={printRef} filename="机房座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -192,6 +214,7 @@ export default function ComputerLab({ students }: Props) {
       <div ref={printRef}>
         {seated ? (
           <div className="flex justify-center overflow-auto">
+            <div className="inline-block border border-border rounded-lg bg-card/40 p-2 overflow-hidden">
             <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
               {/* Render each row of long desks */}
               {Array.from({ length: maxRows }).map((_, rowIdx) => {
@@ -244,6 +267,7 @@ export default function ComputerLab({ students }: Props) {
                 );
               })}
             </svg>
+            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
