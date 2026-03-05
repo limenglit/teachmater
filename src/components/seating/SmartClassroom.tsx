@@ -10,6 +10,16 @@ interface Props {
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+type RefKey = 'screen' | 'podium' | 'door' | 'window';
+type RefPositions = Record<RefKey, { x: number; y: number }>;
+type RefVisible = Record<RefKey, boolean>;
+
+const defaultRefPositions: RefPositions = {
+  screen: { x: 360, y: 24 },
+  podium: { x: 390, y: 80 },
+  door: { x: 780, y: 520 },
+  window: { x: 28, y: 220 },
+};
 
 export default function SmartClassroom({ students }: Props) {
   const [seatsPerTable, setSeatsPerTable] = useState(6);
@@ -20,9 +30,20 @@ export default function SmartClassroom({ students }: Props) {
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [tableGap, setTableGap] = useState(20);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
+  const [refPositions, setRefPositions] = useState<RefPositions>(defaultRefPositions);
+  const [refVisible, setRefVisible] = useState<RefVisible>({
+    screen: true,
+    podium: true,
+    door: true,
+    window: true,
+  });
+  const [refLocked, setRefLocked] = useState(false);
+
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const seatDraggingRef = useRef(false);
+
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const seatKey = (tableIndex: number, seatIndex: number) => `${tableIndex}-${seatIndex}`;
@@ -35,6 +56,10 @@ export default function SmartClassroom({ students }: Props) {
       else next.add(key);
       return next;
     });
+  };
+
+  const toggleRefVisible = (key: RefKey) => {
+    setRefVisible(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const placeName = (tables: string[][], preferred: number, name: string) => {
@@ -107,6 +132,9 @@ export default function SmartClassroom({ students }: Props) {
   };
 
   const tableCols = Math.ceil(Math.sqrt(tableCount));
+  const tableRows = Math.ceil(tableCount / tableCols);
+  const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
+  const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
 
   useEffect(() => {
     setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
@@ -136,8 +164,26 @@ export default function SmartClassroom({ students }: Props) {
             : p
         ));
       }
+
+      if (refDraggingRef.current) {
+        const dx = e.clientX - refDraggingRef.current.startX;
+        const dy = e.clientY - refDraggingRef.current.startY;
+        const key = refDraggingRef.current.key;
+        setRefPositions(prev => ({
+          ...prev,
+          [key]: {
+            x: refDraggingRef.current!.origX + dx,
+            y: refDraggingRef.current!.origY + dy,
+          },
+        }));
+      }
     };
-    const handleMouseUp = () => { draggingRef.current = null; };
+
+    const handleMouseUp = () => {
+      draggingRef.current = null;
+      refDraggingRef.current = null;
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -155,6 +201,19 @@ export default function SmartClassroom({ students }: Props) {
       startY: e.clientY,
       origX: tablePositions[index]?.x || 0,
       origY: tablePositions[index]?.y || 0,
+    };
+  };
+
+  const startRefDrag = (e: React.MouseEvent, key: RefKey) => {
+    if (refLocked) return;
+    e.preventDefault();
+    e.stopPropagation();
+    refDraggingRef.current = {
+      key,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: refPositions[key].x,
+      origY: refPositions[key].y,
     };
   };
 
@@ -237,10 +296,12 @@ export default function SmartClassroom({ students }: Props) {
       onMouseUp={() => {
         handleDragEnd();
         seatDraggingRef.current = false;
+        refDraggingRef.current = null;
       }}
       onMouseLeave={() => {
         handleDragEnd();
         seatDraggingRef.current = false;
+        refDraggingRef.current = null;
       }}
     >
       <div className="flex flex-wrap items-center gap-3 mb-5">
@@ -279,6 +340,26 @@ export default function SmartClassroom({ students }: Props) {
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
+          重置参照物
+        </Button>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.door} onChange={() => toggleRefVisible('door')} className="accent-primary" /> 门
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+          </label>
+        </div>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
@@ -292,9 +373,56 @@ export default function SmartClassroom({ students }: Props) {
 
       <div ref={printRef}>
         {assignment.length > 0 ? (
-          <div className="flex justify-center">
-            <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
-              {assignment.map((people, i) => renderRoundTable(i, people))}
+          <div className="flex justify-center overflow-auto">
+            <div
+              className="relative rounded-xl border border-border bg-card/40"
+              style={{ width: roomWidth, height: roomHeight }}
+            >
+              {refVisible.screen && (
+                <div
+                  className="absolute rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary cursor-move select-none"
+                  style={{ left: refPositions.screen.x, top: refPositions.screen.y }}
+                  onMouseDown={e => startRefDrag(e, 'screen')}
+                >
+                  幕布
+                </div>
+              )}
+
+              {refVisible.podium && (
+                <div
+                  className="absolute rounded-md border border-amber-300 bg-amber-100 px-3 py-1 text-xs text-amber-800 cursor-move select-none"
+                  style={{ left: refPositions.podium.x, top: refPositions.podium.y }}
+                  onMouseDown={e => startRefDrag(e, 'podium')}
+                >
+                  讲台
+                </div>
+              )}
+
+              {refVisible.door && (
+                <div
+                  className="absolute rounded-md border border-emerald-400 bg-emerald-100 px-3 py-1 text-xs text-emerald-800 cursor-move select-none"
+                  style={{ left: refPositions.door.x, top: refPositions.door.y }}
+                  onMouseDown={e => startRefDrag(e, 'door')}
+                >
+                  门
+                </div>
+              )}
+
+              {refVisible.window && (
+                <div
+                  className="absolute rounded-md border border-sky-400 bg-sky-100 px-3 py-1 text-xs text-sky-800 cursor-move select-none"
+                  style={{ left: refPositions.window.x, top: refPositions.window.y }}
+                  onMouseDown={e => startRefDrag(e, 'window')}
+                >
+                  窗
+                </div>
+              )}
+
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
+                  {assignment.map((people, i) => renderRoundTable(i, people))}
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -307,9 +435,10 @@ export default function SmartClassroom({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可交换座位；点击空座位可关闭/开放使用
+          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/门/窗支持显隐与拖拽
         </p>
       )}
     </div>
   );
 }
+
