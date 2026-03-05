@@ -244,6 +244,62 @@ export type Database = {
         }
         Relationships: []
       }
+      seat_checkin_records: {
+        Row: {
+          checked_in_at: string
+          id: string
+          session_id: string
+          student_name: string
+        }
+        Insert: {
+          checked_in_at?: string
+          id?: string
+          session_id: string
+          student_name: string
+        }
+        Update: {
+          checked_in_at?: string
+          id?: string
+          session_id?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_checkin_records_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "seat_checkin_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seat_checkin_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          scene_config: Json
+          seat_data: Json
+          status: string
+          student_names: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scene_config?: Json
+          seat_data?: Json
+          status?: string
+          student_names?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scene_config?: Json
+          seat_data?: Json
+          status?: string
+          student_names?: Json
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
