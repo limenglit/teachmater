@@ -483,6 +483,7 @@ export default function SeatChart() {
     const doorOnRight = windowOnLeft;
     const seatAreaStartCol = doorOnRight ? 1 : 2;
     const rowLabelCol = doorOnRight ? totalVisualCols + 1 : 1;
+    const seatAreaStartRow = 2;
 
     // Map real col index to visual col index
     const realToVisualCol = (realCol: number) => {
@@ -495,6 +496,30 @@ export default function SeatChart() {
 
     const toGridCol = (visualCol: number) => seatAreaStartCol + visualCol;
 
+    // Top header row: column labels
+    for (let ci = 0; ci < cols; ci++) {
+      const visualCol = realToVisualCol(ci);
+      const displayCol = doorOnRight ? cols - ci : ci + 1;
+      const colDisabled = isColFullyDisabled(ci);
+
+      elements.push(
+        <div
+          key={`col-label-${ci}`}
+          style={{ gridRow: 1, gridColumn: toGridCol(visualCol) }}
+          className="w-16 h-12 flex items-center justify-center"
+        >
+          <button
+            type="button"
+            onClick={() => toggleColDisabled(ci)}
+            className={`h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            title={colDisabled ? '点击开放本列座位' : '点击禁用本列座位'}
+          >
+            第{displayCol}列
+          </button>
+        </div>
+      );
+    }
+
     // Render rows with row aisles
     for (let ri = 0; ri < rows; ri++) {
       // Render seat cells for this row
@@ -504,8 +529,6 @@ export default function SeatChart() {
         const isDragging = dragFrom?.r === ri && dragFrom?.c === ci;
         const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
         const isDisabled = disabledSeats.has(seatKey(ri, ci));
-        const displayCol = doorOnRight ? cols - ci : ci + 1;
-        const colDisabled = isColFullyDisabled(ci);
 
         elements.push(
           <div
@@ -548,8 +571,8 @@ export default function SeatChart() {
             }}
             onDragEnd={handleDragEnd}
             onClick={() => !name && toggleDisabled(ri, ci)}
-            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: toGridCol(visualCol) }}
-            className={`relative w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none overflow-visible
+            style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: toGridCol(visualCol) }}
+            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
               ${isDisabled
                 ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
                 : name
@@ -560,19 +583,6 @@ export default function SeatChart() {
                      ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`
               }`}
           >
-            {ri === 0 && (
-              <button
-                type="button"
-                onClick={e => {
-                  e.stopPropagation();
-                  toggleColDisabled(ci);
-                }}
-                className={`absolute -top-2 left-1/2 -translate-x-1/2 h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap pointer-events-auto border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
-                title={colDisabled ? '点击开放本列座位' : '点击禁用本列座位'}
-              >
-                第{displayCol}列
-              </button>
-            )}
             {isDisabled ? <X className="w-4 h-4" /> : name || '空'}
           </div>
         );
@@ -582,7 +592,7 @@ export default function SeatChart() {
       elements.push(
         <div
           key={`row-label-${ri}`}
-          style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: rowLabelCol }}
+          style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: rowLabelCol }}
           className="w-16 h-12 flex items-center justify-center"
         >
           <button
@@ -605,7 +615,7 @@ export default function SeatChart() {
           <div
             key={`col-aisle-${ri}-${aisleAfterCol}`}
             onMouseDown={e => startColAislePointerDrag(e, aisleAfterCol)}
-            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: toGridCol(visualCol) }}
+            style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: toGridCol(visualCol) }}
             className={`w-16 h-12 flex items-center justify-center transition-colors ${isPointerDraggingThis ? 'cursor-grabbing' : 'cursor-grab'} group`}
             title="按住并拖动调整过道位置，双击删除"
             onDoubleClick={e => handleColAisleDoubleClick(e, aisleAfterCol)}
@@ -617,7 +627,7 @@ export default function SeatChart() {
 
       // If there's a row aisle after this row, render the aisle row
       if (rowAisles.includes(ri)) {
-        const aisleVisualRow = getVisualRow(ri, rowAisles) + 2; // +1 for current row, +1 for 1-indexed
+        const aisleVisualRow = getVisualRow(ri, rowAisles) + seatAreaStartRow + 1;
         for (let ci = 0; ci < totalVisualCols; ci++) {
           elements.push(
             <div
@@ -659,7 +669,7 @@ export default function SeatChart() {
               finishColAislePointerDrag(ci);
             }}
             style={{
-              gridRow: `1 / -1`,
+              gridRow: `${seatAreaStartRow} / -1`,
               gridColumn: toGridCol(colAisles.includes(ci) ? visualCol + 1 : visualCol),
               pointerEvents: 'all',
             }}
@@ -679,7 +689,7 @@ export default function SeatChart() {
             onDragOver={handleAisleDragOver}
             onDrop={e => handleAisleDropOnGap(e, 'row', ri)}
             style={{
-              gridRow: visualRow + 1,
+              gridRow: visualRow + seatAreaStartRow,
               gridColumn: `${seatAreaStartCol} / ${seatAreaStartCol + totalVisualCols}`,
               pointerEvents: 'all',
             }}
@@ -689,7 +699,7 @@ export default function SeatChart() {
       }
     }
 
-    const totalVisualRows = rows + rowAisles.length;
+    const totalVisualRows = rows + rowAisles.length + 1;
 
     return (
       <div
