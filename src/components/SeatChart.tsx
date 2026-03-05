@@ -418,6 +418,9 @@ export default function SeatChart() {
     const elements: React.ReactNode[] = [];
     // Total visual columns = cols + colAisles.length
     const totalVisualCols = cols + colAisles.length;
+    const doorOnRight = windowOnLeft;
+    const seatAreaStartCol = doorOnRight ? 1 : 2;
+    const rowLabelCol = doorOnRight ? totalVisualCols + 1 : 1;
 
     // Map real col index to visual col index
     const realToVisualCol = (realCol: number) => {
@@ -428,6 +431,8 @@ export default function SeatChart() {
       return realCol + offset;
     };
 
+    const toGridCol = (visualCol: number) => seatAreaStartCol + visualCol;
+
     // Render rows with row aisles
     for (let ri = 0; ri < rows; ri++) {
       // Render seat cells for this row
@@ -437,6 +442,7 @@ export default function SeatChart() {
         const isDragging = dragFrom?.r === ri && dragFrom?.c === ci;
         const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
         const isDisabled = disabledSeats.has(seatKey(ri, ci));
+        const displayCol = doorOnRight ? cols - ci : ci + 1;
 
         elements.push(
           <div
@@ -479,8 +485,8 @@ export default function SeatChart() {
             }}
             onDragEnd={handleDragEnd}
             onClick={() => !name && toggleDisabled(ri, ci)}
-            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
-            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
+            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: toGridCol(visualCol) }}
+            className={`relative w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none overflow-visible
               ${isDisabled
                 ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
                 : name
@@ -491,10 +497,25 @@ export default function SeatChart() {
                      ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`
               }`}
           >
+            {ri === 0 && (
+              <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1 py-0.5 rounded bg-primary/10 text-[10px] leading-none text-primary whitespace-nowrap pointer-events-none">
+                第{displayCol}列
+              </span>
+            )}
             {isDisabled ? <X className="w-4 h-4" /> : name || '空'}
           </div>
         );
       }
+
+      elements.push(
+        <div
+          key={`row-label-${ri}`}
+          style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: rowLabelCol }}
+          className="w-16 h-12 flex items-center justify-center text-xs text-muted-foreground select-none"
+        >
+          第{ri + 1}行
+        </div>
+      );
 
       // Render column aisle cells for this row
       for (const aisleAfterCol of colAisles) {
@@ -505,7 +526,7 @@ export default function SeatChart() {
           <div
             key={`col-aisle-${ri}-${aisleAfterCol}`}
             onMouseDown={e => startColAislePointerDrag(e, aisleAfterCol)}
-            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: visualCol + 1 }}
+            style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: toGridCol(visualCol) }}
             className={`w-16 h-12 flex items-center justify-center transition-colors ${isPointerDraggingThis ? 'cursor-grabbing' : 'cursor-grab'} group`}
             title="按住并拖动调整过道位置，双击删除"
             onDoubleClick={e => handleColAisleDoubleClick(e, aisleAfterCol)}
@@ -525,7 +546,7 @@ export default function SeatChart() {
               draggable={ci === 0}
               onDragStart={ci === 0 ? (e => handleAisleDragStart(e, 'row', ri)) : undefined}
               onDragEnd={ci === 0 ? handleAisleDragEnd : undefined}
-              style={{ gridRow: aisleVisualRow, gridColumn: ci + 1 }}
+              style={{ gridRow: aisleVisualRow, gridColumn: toGridCol(ci) }}
               className={`w-16 h-12 flex items-center justify-center ${ci === 0 ? 'cursor-grab active:cursor-grabbing' : ''} group`}
               title={ci === 0 ? '拖动调整过道位置，双击删除' : undefined}
               onDoubleClick={ci === 0 ? () => removeRowAisle(ri) : undefined}
@@ -560,7 +581,7 @@ export default function SeatChart() {
             }}
             style={{
               gridRow: `1 / -1`,
-              gridColumn: colAisles.includes(ci) ? visualCol + 2 : visualCol + 1,
+              gridColumn: toGridCol(colAisles.includes(ci) ? visualCol + 1 : visualCol),
               pointerEvents: 'all',
             }}
             className={`w-16 z-10 relative ${isPointerTarget ? 'bg-primary/20 border-2 border-dashed border-primary/60 rounded-lg' : ci === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
@@ -580,7 +601,7 @@ export default function SeatChart() {
             onDrop={e => handleAisleDropOnGap(e, 'row', ri)}
             style={{
               gridRow: visualRow + 1,
-              gridColumn: `1 / -1`,
+              gridColumn: `${seatAreaStartCol} / ${seatAreaStartCol + totalVisualCols}`,
               pointerEvents: 'all',
             }}
             className={`h-12 z-10 relative ${ri === draggingAisle.index ? '' : 'bg-primary/10 border-2 border-dashed border-primary/30 rounded-lg'}`}
@@ -595,7 +616,7 @@ export default function SeatChart() {
       <div
         className="inline-grid gap-1.5 relative"
         style={{
-          gridTemplateColumns: `repeat(${totalVisualCols}, 4rem)`,
+          gridTemplateColumns: `repeat(${totalVisualCols + 1}, 4rem)`,
           gridTemplateRows: `repeat(${totalVisualRows}, 3rem)`,
         }}
       >
