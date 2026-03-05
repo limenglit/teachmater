@@ -23,11 +23,12 @@ export default function SeatCheckinDialog({ open, onOpenChange, seats, studentNa
   const createSession = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('seat_checkin_sessions').insert([{
-        seat_data: seats as unknown as Record<string, unknown>,
-        student_names: studentNames as unknown as Record<string, unknown>,
-        scene_config: sceneConfig,
-      }]).select('id').single();
+      const insertData = {
+        seat_data: JSON.parse(JSON.stringify(seats)),
+        student_names: JSON.parse(JSON.stringify(studentNames)),
+        scene_config: JSON.parse(JSON.stringify(sceneConfig)),
+      };
+      const { data, error } = await supabase.from('seat_checkin_sessions').insert([insertData]).select('id').single();
 
       if (error) throw error;
       setSessionId(data.id);
