@@ -788,6 +788,19 @@ export default function SeatChart() {
             💡 拖拽学生交换座位 · 点击空座位可禁用/启用 · 拖动过道线可调整位置 · 双击过道线可删除
           </p>
         )}
+        <SeatCheckinDialog
+          open={checkinOpen}
+          onOpenChange={setCheckinOpen}
+          seats={seats}
+          studentNames={students.map(s => s.name)}
+          sceneConfig={{
+            rows,
+            cols,
+            windowOnLeft,
+            colAisles,
+            rowAisles,
+          }}
+        />
         </>)}
       </div>
     </div>
