@@ -2,8 +2,9 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SmartClassroom from '@/components/seating/SmartClassroom';
 import ConferenceRoom from '@/components/seating/ConferenceRoom';
 import ConcertHall from '@/components/seating/ConcertHall';
@@ -35,6 +36,7 @@ const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string 
 
 export default function SeatChart() {
   const { students } = useStudents();
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const [scene, setScene] = useState<SceneType>('classroom');
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(8);
@@ -712,6 +714,11 @@ export default function SeatChart() {
           </div>
 
           {seats.length > 0 && <ExportButtons targetRef={printRef} filename="座位表" />}
+          {seats.length > 0 && (
+            <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
+              <QrCode className="w-4 h-4" /> 签到
+            </Button>
+          )}
           <Button onClick={autoSeat} className="gap-2 ml-auto">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
@@ -781,6 +788,19 @@ export default function SeatChart() {
             💡 拖拽学生交换座位 · 点击空座位可禁用/启用 · 拖动过道线可调整位置 · 双击过道线可删除
           </p>
         )}
+        <SeatCheckinDialog
+          open={checkinOpen}
+          onOpenChange={setCheckinOpen}
+          seats={seats}
+          studentNames={students.map(s => s.name)}
+          sceneConfig={{
+            rows,
+            cols,
+            windowOnLeft,
+            colAisles,
+            rowAisles,
+          }}
+        />
         </>)}
       </div>
     </div>
