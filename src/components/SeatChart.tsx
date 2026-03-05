@@ -714,6 +714,11 @@ export default function SeatChart() {
           </div>
 
           {seats.length > 0 && <ExportButtons targetRef={printRef} filename="座位表" />}
+          {seats.length > 0 && (
+            <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
+              <QrCode className="w-4 h-4" /> 签到
+            </Button>
+          )}
           <Button onClick={autoSeat} className="gap-2 ml-auto">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
