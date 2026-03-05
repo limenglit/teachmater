@@ -79,6 +79,68 @@ export default function SeatChart() {
     });
   };
 
+  const isRowFullyDisabled = useCallback((row: number) => {
+    for (let c = 0; c < cols; c++) {
+      if (!disabledSeats.has(seatKey(row, c))) return false;
+    }
+    return true;
+  }, [cols, disabledSeats]);
+
+  const isColFullyDisabled = useCallback((col: number) => {
+    for (let r = 0; r < rows; r++) {
+      if (!disabledSeats.has(seatKey(r, col))) return false;
+    }
+    return true;
+  }, [rows, disabledSeats]);
+
+  const toggleRowDisabled = useCallback((row: number) => {
+    const closeAll = !isRowFullyDisabled(row);
+    setDisabledSeats(prev => {
+      const next = new Set(prev);
+      for (let c = 0; c < cols; c++) {
+        const key = seatKey(row, c);
+        if (closeAll) next.add(key);
+        else next.delete(key);
+      }
+      return next;
+    });
+
+    if (closeAll) {
+      setSeats(prev => {
+        const next = prev.map(r => [...r]);
+        if (next[row]) {
+          for (let c = 0; c < cols; c++) {
+            next[row][c] = null;
+          }
+        }
+        return next;
+      });
+    }
+  }, [cols, isRowFullyDisabled]);
+
+  const toggleColDisabled = useCallback((col: number) => {
+    const closeAll = !isColFullyDisabled(col);
+    setDisabledSeats(prev => {
+      const next = new Set(prev);
+      for (let r = 0; r < rows; r++) {
+        const key = seatKey(r, col);
+        if (closeAll) next.add(key);
+        else next.delete(key);
+      }
+      return next;
+    });
+
+    if (closeAll) {
+      setSeats(prev => {
+        const next = prev.map(r => [...r]);
+        for (let r = 0; r < rows; r++) {
+          if (next[r]) next[r][col] = null;
+        }
+        return next;
+      });
+    }
+  }, [isColFullyDisabled, rows]);
+
   const makeGrid = (): (string | null)[][] =>
     Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
 
@@ -443,6 +505,7 @@ export default function SeatChart() {
         const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
         const isDisabled = disabledSeats.has(seatKey(ri, ci));
         const displayCol = doorOnRight ? cols - ci : ci + 1;
+        const colDisabled = isColFullyDisabled(ci);
 
         elements.push(
           <div
@@ -498,23 +561,35 @@ export default function SeatChart() {
               }`}
           >
             {ri === 0 && (
-              <span className="absolute -top-2 left-1/2 -translate-x-1/2 px-1 py-0.5 rounded bg-primary/10 text-[10px] leading-none text-primary whitespace-nowrap pointer-events-none">
+              <button
+                type="button"
+                onClick={e => {
+                  e.stopPropagation();
+                  toggleColDisabled(ci);
+                }}
+                className={`absolute -top-2 left-1/2 -translate-x-1/2 px-1 py-0.5 rounded text-[10px] leading-none whitespace-nowrap pointer-events-auto border transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+                title={colDisabled ? '点击开放本列座位' : '点击禁用本列座位'}
+              >
                 第{displayCol}列
-              </span>
+              </button>
             )}
             {isDisabled ? <X className="w-4 h-4" /> : name || '空'}
           </div>
         );
       }
 
+      const rowDisabled = isRowFullyDisabled(ri);
       elements.push(
-        <div
+        <button
+          type="button"
           key={`row-label-${ri}`}
+          onClick={() => toggleRowDisabled(ri)}
           style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: rowLabelCol }}
-          className="w-16 h-12 flex items-center justify-center text-xs text-muted-foreground select-none"
+          className={`w-16 h-12 flex items-center justify-center text-xs select-none border rounded-md transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-muted/40 text-muted-foreground border-border hover:bg-muted'}`}
+          title={rowDisabled ? '点击开放本行座位' : '点击禁用本行座位'}
         >
           第{ri + 1}行
-        </div>
+        </button>
       );
 
       // Render column aisle cells for this row
