@@ -14,6 +14,7 @@ const AuthPage = lazy(() => import("./pages/AuthPage"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const GoRedirect = lazy(() => import("./pages/GoRedirect"));
+const SeatCheckinPage = lazy(() => import("./pages/SeatCheckinPage"));
 
 const queryClient = new QueryClient();
 
