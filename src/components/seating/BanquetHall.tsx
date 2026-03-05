@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -22,6 +22,7 @@ export default function BanquetHall({ students }: Props) {
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
+  const seatDraggingRef = useRef(false);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const seatKey = (tableIndex: number, seatIndex: number) => `${tableIndex}-${seatIndex}`;
@@ -147,6 +148,7 @@ export default function BanquetHall({ students }: Props) {
 
   const startTableDrag = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
+    if (seatDraggingRef.current) return;
     draggingRef.current = {
       index,
       startX: e.clientX,
@@ -174,10 +176,10 @@ export default function BanquetHall({ students }: Props) {
           <circle cx={cx} cy={cy} r={42} className="fill-primary/5 stroke-primary/20" strokeWidth={1} strokeDasharray="4 2" />
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
           <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-sm font-medium">
-            {tableIndex + 1}桌
+            {tableIndex + 1}妗?
           </text>
           <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className="fill-primary/60 text-xs">
-            {people.length}人
+            {people.length}浜?
           </text>
           {Array.from({ length: totalSlots }).map((_, i) => {
             const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
@@ -191,9 +193,17 @@ export default function BanquetHall({ students }: Props) {
               <g
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
-                onMouseDown={name && !isClosed ? (e) => { e.preventDefault(); handleDragStart(tableIndex, i); } : undefined}
+                onMouseDown={name && !isClosed ? (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  seatDraggingRef.current = true;
+                  handleDragStart(tableIndex, i);
+                } : undefined}
                 onMouseEnter={() => { if (dragFrom && !isClosed) handleDragOver(tableIndex, i); }}
-                onMouseUp={() => { if (dragFrom && !isClosed) handleDrop(tableIndex, i); }}
+                onMouseUp={() => {
+                  if (dragFrom && !isClosed) handleDrop(tableIndex, i);
+                  seatDraggingRef.current = false;
+                }}
                 onClick={() => { if (!name) toggleSeatOpen(tableIndex, i); }}
               >
                 <circle cx={sx} cy={sy} r={seatRadius}
@@ -208,7 +218,7 @@ export default function BanquetHall({ students }: Props) {
                 />
                 {isClosed && (
                   <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
-                    关
+                    鍏?
                   </text>
                 )}
                 {name && !isDragging && (
@@ -225,53 +235,62 @@ export default function BanquetHall({ students }: Props) {
   };
 
   return (
-    <div onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd}>
+    <div
+      onMouseUp={() => {
+        handleDragEnd();
+        seatDraggingRef.current = false;
+      }}
+      onMouseLeave={() => {
+        handleDragEnd();
+        seatDraggingRef.current = false;
+      }}
+    >
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每桌人数
+          姣忔浜烘暟
           <Input type="number" min={6} max={16} value={seatsPerTable}
             onChange={e => setSeatsPerTable(Math.max(6, Math.min(16, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌数
+          妗屾暟
           <Input type="number" min={1} max={30} value={tableCount}
             onChange={e => setTableCount(Math.max(1, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          妯″紡
           <select
             value={mode}
             onChange={e => setMode(e.target.value as BanquetSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="tableRoundRobin">每桌轮转</option>
-            <option value="tableGrouped">每组一桌</option>
-            <option value="verticalS">竖S桌序</option>
-            <option value="horizontalS">横S桌序</option>
+            <option value="tableRoundRobin">姣忔杞浆</option>
+            <option value="tableGrouped">姣忕粍涓€妗?/option>
+            <option value="verticalS">绔朣妗屽簭</option>
+            <option value="horizontalS">妯猄妗屽簭</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            组数
+            缁勬暟
             <Input type="number" min={2} max={30} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌子间距
+          妗屽瓙闂磋窛
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <span className="text-xs text-muted-foreground">
-          共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
+          鍏卞彲瀹圭撼 {seatsPerTable * tableCount} 浜?| 褰撳墠 {students.length} 浜?
         </span>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" />}
+        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="瀹翠細鍘呭骇浣? />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> 闅忔満鎺掑骇
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> 鑷姩鎺掑骇
           </Button>
         </div>
       </div>
@@ -279,7 +298,7 @@ export default function BanquetHall({ students }: Props) {
       <div ref={printRef}>
         <div className="text-center mb-4">
           <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-medium border border-primary/20">
-            🎪 宴会厅
+            馃帾 瀹翠細鍘?
           </div>
         </div>
 
@@ -291,17 +310,18 @@ export default function BanquetHall({ students }: Props) {
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
-            <p className="text-sm">宴会厅圆桌，{seatsPerTable} 人一桌，根据人数自动分配</p>
+            <p className="text-lg mb-2">鐐瑰嚮銆岃嚜鍔ㄦ帓搴с€嶅紑濮嬪畨鎺?/p>
+            <p className="text-sm">瀹翠細鍘呭渾妗岋紝{seatsPerTable} 浜轰竴妗岋紝鏍规嵁浜烘暟鑷姩鍒嗛厤</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 拖拽姓名可交换座位；点击空座位可关闭/开放使用
+          馃挕 鎷栨嫿濮撳悕鍙氦鎹㈠骇浣嶏紱鐐瑰嚮绌哄骇浣嶅彲鍏抽棴/寮€鏀句娇鐢?
         </p>
       )}
     </div>
   );
 }
+

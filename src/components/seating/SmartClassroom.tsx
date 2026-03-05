@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle } from 'lucide-react';
@@ -22,6 +22,7 @@ export default function SmartClassroom({ students }: Props) {
   const [tablePositions, setTablePositions] = useState<{x:number,y:number}[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{index:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
+  const seatDraggingRef = useRef(false);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const seatKey = (tableIndex: number, seatIndex: number) => `${tableIndex}-${seatIndex}`;
@@ -149,6 +150,7 @@ export default function SmartClassroom({ students }: Props) {
 
   const startTableDrag = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
+    if (seatDraggingRef.current) return;
     draggingRef.current = {
       index,
       startX: e.clientX,
@@ -175,7 +177,7 @@ export default function SmartClassroom({ students }: Props) {
         <svg width={160} height={160} viewBox="0 0 160 160" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
           <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-medium">
-            {tableIndex + 1}桌
+            {tableIndex + 1}妗?
           </text>
           {Array.from({ length: totalSlots }).map((_, i) => {
             const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
@@ -189,9 +191,17 @@ export default function SmartClassroom({ students }: Props) {
               <g
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
-                onMouseDown={name && !isClosed ? (e) => { e.preventDefault(); handleDragStart(tableIndex, i); } : undefined}
+                onMouseDown={name && !isClosed ? (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  seatDraggingRef.current = true;
+                  handleDragStart(tableIndex, i);
+                } : undefined}
                 onMouseEnter={() => { if (dragFrom && !isClosed) handleDragOver(tableIndex, i); }}
-                onMouseUp={() => { if (dragFrom && !isClosed) handleDrop(tableIndex, i); }}
+                onMouseUp={() => {
+                  if (dragFrom && !isClosed) handleDrop(tableIndex, i);
+                  seatDraggingRef.current = false;
+                }}
                 onClick={() => { if (!name) toggleSeatOpen(tableIndex, i); }}
               >
                 <circle
@@ -207,7 +217,7 @@ export default function SmartClassroom({ students }: Props) {
                 />
                 {isClosed && (
                   <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
-                    关
+                    鍏?
                   </text>
                 )}
                 {name && !isDragging && (
@@ -224,50 +234,59 @@ export default function SmartClassroom({ students }: Props) {
   };
 
   return (
-    <div onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd}>
+    <div
+      onMouseUp={() => {
+        handleDragEnd();
+        seatDraggingRef.current = false;
+      }}
+      onMouseLeave={() => {
+        handleDragEnd();
+        seatDraggingRef.current = false;
+      }}
+    >
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每桌人数
+          姣忔浜烘暟
           <Input type="number" min={3} max={12} value={seatsPerTable}
             onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌数
+          妗屾暟
           <Input type="number" min={1} max={20} value={tableCount}
             onChange={e => setTableCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          妯″紡
           <select
             value={mode}
             onChange={e => setMode(e.target.value as SmartSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="tableRoundRobin">每桌轮转</option>
-            <option value="tableGrouped">每组一桌</option>
-            <option value="verticalS">竖S桌序</option>
-            <option value="horizontalS">横S桌序</option>
+            <option value="tableRoundRobin">姣忔杞浆</option>
+            <option value="tableGrouped">姣忕粍涓€妗?/option>
+            <option value="verticalS">绔朣妗屽簭</option>
+            <option value="horizontalS">妯猄妗屽簭</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            组数
+            缁勬暟
             <Input type="number" min={2} max={20} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌子间距
+          妗屽瓙闂磋窛
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
+        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="鏅鸿兘鏁欏搴т綅" />}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> 闅忔満鎺掑骇
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> 鑷姩鎺掑骇
           </Button>
         </div>
       </div>
@@ -281,17 +300,18 @@ export default function SmartClassroom({ students }: Props) {
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
-            <p className="text-sm">圆形桌智能教室，每桌 {seatsPerTable} 人，共 {tableCount} 桌</p>
+            <p className="text-lg mb-2">鐐瑰嚮銆岃嚜鍔ㄦ帓搴с€嶅紑濮嬪畨鎺?/p>
+            <p className="text-sm">鍦嗗舰妗屾櫤鑳芥暀瀹わ紝姣忔 {seatsPerTable} 浜猴紝鍏?{tableCount} 妗?/p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 拖拽姓名可交换座位；点击空座位可关闭/开放使用
+          馃挕 鎷栨嫿濮撳悕鍙氦鎹㈠骇浣嶏紱鐐瑰嚮绌哄骇浣嶅彲鍏抽棴/寮€鏀句娇鐢?
         </p>
       )}
     </div>
   );
 }
+
