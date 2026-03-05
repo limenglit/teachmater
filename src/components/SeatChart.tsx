@@ -36,6 +36,7 @@ const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string 
 
 export default function SeatChart() {
   const { students } = useStudents();
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const [scene, setScene] = useState<SceneType>('classroom');
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(8);
