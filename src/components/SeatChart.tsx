@@ -567,7 +567,7 @@ export default function SeatChart() {
                   e.stopPropagation();
                   toggleColDisabled(ci);
                 }}
-                className={`absolute -top-2 left-1/2 -translate-x-1/2 px-1 py-0.5 rounded text-[10px] leading-none whitespace-nowrap pointer-events-auto border transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+                className={`absolute -top-2 left-1/2 -translate-x-1/2 h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap pointer-events-auto border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
                 title={colDisabled ? '点击开放本列座位' : '点击禁用本列座位'}
               >
                 第{displayCol}列
@@ -580,16 +580,20 @@ export default function SeatChart() {
 
       const rowDisabled = isRowFullyDisabled(ri);
       elements.push(
-        <button
-          type="button"
+        <div
           key={`row-label-${ri}`}
-          onClick={() => toggleRowDisabled(ri)}
           style={{ gridRow: getVisualRow(ri, rowAisles) + 1, gridColumn: rowLabelCol }}
-          className={`w-16 h-12 flex items-center justify-center text-xs select-none border rounded-md transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-muted/40 text-muted-foreground border-border hover:bg-muted'}`}
-          title={rowDisabled ? '点击开放本行座位' : '点击禁用本行座位'}
+          className="w-16 h-12 flex items-center justify-center"
         >
-          第{ri + 1}行
-        </button>
+          <button
+            type="button"
+            onClick={() => toggleRowDisabled(ri)}
+            className={`h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            title={rowDisabled ? '点击开放本行座位' : '点击禁用本行座位'}
+          >
+            第{ri + 1}行
+          </button>
+        </div>
       );
 
       // Render column aisle cells for this row
