@@ -20,6 +20,7 @@ export default function BanquetHall({ students }: Props) {
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [tableGap, setTableGap] = useState(24);
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
