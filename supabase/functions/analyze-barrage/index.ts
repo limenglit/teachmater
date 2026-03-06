@@ -30,7 +30,7 @@ serve(async (req) => {
 
     // Validate type
     if (!type || !['report', 'wordcloud'].includes(type)) {
-      return errorResponse('Invalid type. Must be "report" or "wordcloud"', 400);
+      return errorResponse(req, 'Invalid type. Must be "report" or "wordcloud"', 400);
     }
 
     // Validate topic_id
