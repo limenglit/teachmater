@@ -9,12 +9,13 @@ import { toast } from '@/hooks/use-toast';
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  seats: (string | null)[][];
+  seatData: unknown;
   studentNames: string[];
   sceneConfig: Record<string, unknown>;
+  sceneType: string;
 }
 
-export default function SeatCheckinDialog({ open, onOpenChange, seats, studentNames, sceneConfig }: Props) {
+export default function SeatCheckinDialog({ open, onOpenChange, seatData, studentNames, sceneConfig, sceneType }: Props) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -24,17 +25,17 @@ export default function SeatCheckinDialog({ open, onOpenChange, seats, studentNa
     setLoading(true);
     try {
       const insertData = {
-        seat_data: JSON.parse(JSON.stringify(seats)),
+        seat_data: JSON.parse(JSON.stringify(seatData)),
         student_names: JSON.parse(JSON.stringify(studentNames)),
         scene_config: JSON.parse(JSON.stringify(sceneConfig)),
+        scene_type: sceneType,
       };
       const { data, error } = await supabase.from('seat_checkin_sessions').insert([insertData]).select('id').single();
 
       if (error) throw error;
       setSessionId(data.id);
 
-      // Start polling for check-in records
-      const channel = supabase
+      supabase
         .channel(`seat-checkin-${data.id}`)
         .on('postgres_changes', {
           event: 'INSERT',
@@ -46,9 +47,6 @@ export default function SeatCheckinDialog({ open, onOpenChange, seats, studentNa
           setCheckedIn(prev => [...prev, record.student_name]);
         })
         .subscribe();
-
-      // Cleanup on close
-      return () => supabase.removeChannel(channel);
     } catch (err) {
       toast({ title: '创建签到失败', variant: 'destructive' });
     } finally {
@@ -78,7 +76,7 @@ export default function SeatCheckinDialog({ open, onOpenChange, seats, studentNa
         {!sessionId ? (
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              生成签到二维码后，学生扫码输入姓名即可查看自己的座位位置，并获得从门到座位的导航指引。
+              生成签到二维码后，学生扫码输入姓名即可查看自己的座位位置，并获得导航指引。
             </p>
             <Button onClick={createSession} disabled={loading} className="w-full">
               {loading ? '生成中...' : '生成签到码'}

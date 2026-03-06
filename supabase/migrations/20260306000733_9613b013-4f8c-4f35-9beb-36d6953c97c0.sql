@@ -1,0 +1,1 @@
+ALTER TABLE public.seat_checkin_sessions ADD COLUMN scene_type text NOT NULL DEFAULT 'classroom';

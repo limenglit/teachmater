@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -22,6 +23,7 @@ export default function ConferenceRoom({ students }: Props) {
   const [dragFrom, setDragFrom] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [seated, setSeated] = useState(false);
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const [tableOffset, setTableOffset] = useState({ x: 0, y: 0 });
   const draggingRef = useRef<{startX:number,startY:number,origX:number,origY:number} | null>(null);
@@ -273,6 +275,11 @@ export default function ConferenceRoom({ students }: Props) {
             onChange={e => setCanvasHeight(Math.max(800, Number(e.target.value) || 800))} className="w-20 h-8 text-center" />
         </label>
         {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
+        {seated && (
+          <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
+            <QrCode className="w-4 h-4" /> 签到
+          </Button>
+        )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
@@ -335,6 +342,14 @@ export default function ConferenceRoom({ students }: Props) {
           💡 拖拽姓名可换座；点击空座位可关闭/开放使用
         </p>
       )}
+      <SeatCheckinDialog
+        open={checkinOpen}
+        onOpenChange={setCheckinOpen}
+        seatData={assignment}
+        studentNames={students.map(s => s.name)}
+        sceneType="conference"
+        sceneConfig={{ seatsPerSide }}
+      />
     </div>
   );
 }

@@ -1,8 +1,9 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 
 interface Props {
@@ -19,6 +20,7 @@ export default function BanquetHall({ students }: Props) {
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [tableGap, setTableGap] = useState(24);
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -289,6 +291,11 @@ export default function BanquetHall({ students }: Props) {
           共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
         </span>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" />}
+        {assignment.length > 0 && (
+          <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
+            <QrCode className="w-4 h-4" /> 签到
+          </Button>
+        )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
@@ -325,6 +332,14 @@ export default function BanquetHall({ students }: Props) {
           拖拽姓名可交换座位；点击空座位可关闭/开放使用
         </p>
       )}
+      <SeatCheckinDialog
+        open={checkinOpen}
+        onOpenChange={setCheckinOpen}
+        seatData={assignment}
+        studentNames={students.map(s => s.name)}
+        sceneType="banquet"
+        sceneConfig={{ seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) }}
+      />
     </div>
   );
 }

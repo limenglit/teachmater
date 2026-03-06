@@ -278,6 +278,7 @@ export type Database = {
           created_at: string
           id: string
           scene_config: Json
+          scene_type: string
           seat_data: Json
           status: string
           student_names: Json
@@ -286,6 +287,7 @@ export type Database = {
           created_at?: string
           id?: string
           scene_config?: Json
+          scene_type?: string
           seat_data?: Json
           status?: string
           student_names?: Json
@@ -294,6 +296,7 @@ export type Database = {
           created_at?: string
           id?: string
           scene_config?: Json
+          scene_type?: string
           seat_data?: Json
           status?: string
           student_names?: Json
