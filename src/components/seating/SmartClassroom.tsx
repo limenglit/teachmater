@@ -137,6 +137,9 @@ export default function SmartClassroom({ students }: Props) {
   const tableRows = Math.ceil(tableCount / tableCols);
   const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
   const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
+  const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
+  const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
+  const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
   useEffect(() => {
     setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
@@ -387,41 +390,45 @@ export default function SmartClassroom({ students }: Props) {
             >
               {refVisible.screen && (
                 <div
-                  className="absolute rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary cursor-move select-none"
+                  className={refBadgeClass}
                   style={{ left: refPositions.screen.x, top: refPositions.screen.y }}
                   onMouseDown={e => startRefDrag(e, 'screen')}
                 >
-                  幕布
+                  <span className={refIconClass}>🖥️</span>
+                  <span className={refTextClass}>幕布</span>
                 </div>
               )}
 
               {refVisible.podium && (
                 <div
-                  className="absolute rounded-md border border-amber-300 bg-amber-100 px-3 py-1 text-xs text-amber-800 cursor-move select-none"
+                  className={refBadgeClass}
                   style={{ left: refPositions.podium.x, top: refPositions.podium.y }}
                   onMouseDown={e => startRefDrag(e, 'podium')}
                 >
-                  讲台
+                  <span className={refIconClass}>🏫</span>
+                  <span className={refTextClass}>讲台</span>
                 </div>
               )}
 
               {refVisible.door && (
                 <div
-                  className="absolute rounded-md border border-emerald-400 bg-emerald-100 px-3 py-1 text-xs text-emerald-800 cursor-move select-none"
+                  className={refBadgeClass}
                   style={{ left: refPositions.door.x, top: refPositions.door.y }}
                   onMouseDown={e => startRefDrag(e, 'door')}
                 >
-                  门
+                  <span className={refIconClass}>🚪</span>
+                  <span className={refTextClass}>门</span>
                 </div>
               )}
 
               {refVisible.window && (
                 <div
-                  className="absolute rounded-md border border-sky-400 bg-sky-100 px-3 py-1 text-xs text-sky-800 cursor-move select-none"
+                  className={refBadgeClass}
                   style={{ left: refPositions.window.x, top: refPositions.window.y }}
                   onMouseDown={e => startRefDrag(e, 'window')}
                 >
-                  窗
+                  <span className={refIconClass}>🪟</span>
+                  <span className={refTextClass}>窗</span>
                 </div>
               )}
 
