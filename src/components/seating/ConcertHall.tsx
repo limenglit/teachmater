@@ -14,6 +14,16 @@ type RefKey = 'screen' | 'podium' | 'window' | 'frontDoor' | 'backDoor';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
 
+function getAutoRowCount(totalStudents: number, baseSeatsPerRow: number, minRows = 2, maxRows = 10) {
+  if (totalStudents <= 0) return minRows;
+  for (let rows = minRows; rows <= maxRows; rows++) {
+    // Capacity with arithmetic growth: base, base+2, ...
+    const capacity = rows * (baseSeatsPerRow + rows - 1);
+    if (capacity >= totalStudents) return rows;
+  }
+  return maxRows;
+}
+
 function splitIntoGroups(names: string[], count: number) {
   const groups: string[][] = Array.from({ length: count }, () => []);
   names.forEach((n, i) => groups[i % count].push(n));
@@ -36,10 +46,10 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 
 export default function ConcertHall({ students }: Props) {
   const [seatsPerRow, setSeatsPerRow] = useState(12);
-  const [rowCount, setRowCount] = useState(5);
+  const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 12));
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<ConcertSeatMode>('arcBalanced');
-  const [seatGap, setSeatGap] = useState(50);
+  const [seatGap, setSeatGap] = useState(62);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
@@ -64,14 +74,26 @@ export default function ConcertHall({ students }: Props) {
   );
   const seatKey = (row: number, col: number) => `${row}-${col}`;
 
-  const seatR = 16;
+  const seatR = 18;
   const stageW = 180;
   const stageH = 40;
-  const stageY = 150;
-  const startRadius = 110;
+  const stageY = 156;
+  const startRadius = 118;
   const radiusStep = seatGap;
+  const arcAngle = Math.PI * 0.94;
 
-  const maxRadius = startRadius + (Math.max(0, rowCount - 1) * radiusStep);
+  const rowRadii = useMemo(() => {
+    const minCenterDistance = seatR * 2 + 10;
+    return seatCaps.map((seatCount, ri) => {
+      const baseRadius = startRadius + ri * radiusStep;
+      if (seatCount <= 1) return baseRadius;
+      const theta = arcAngle / (seatCount - 1);
+      const spacingRadius = minCenterDistance / (2 * Math.sin(theta / 2));
+      return Math.max(baseRadius, spacingRadius);
+    });
+  }, [arcAngle, radiusStep, seatCaps, seatR, startRadius]);
+
+  const maxRadius = rowRadii[rowRadii.length - 1] || startRadius;
   const maxArcWidth = Math.max(520, maxRadius * 2 + seatR * 2);
   const roomWidth = Math.max(960, Math.round(maxArcWidth + 220));
   const lowestSeatY = stageY + 20 + maxRadius + seatR;
@@ -89,6 +111,11 @@ export default function ConcertHall({ students }: Props) {
   const refIconClass =
     'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
+
+  useEffect(() => {
+    const nextRows = getAutoRowCount(students.length, seatsPerRow);
+    setRowCount(prev => (prev === nextRows ? prev : nextRows));
+  }, [students.length, seatsPerRow]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -221,7 +248,8 @@ export default function ConcertHall({ students }: Props) {
     setAssignment(rows);
   };
 
-  const nameTextLength = Math.max(18, seatR * 1.65);
+  const nameTextLength = Math.max(28, seatR * 1.95);
+  const totalCapacity = rowCount * (seatsPerRow + rowCount - 1);
 
   return (
     <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
@@ -231,16 +259,18 @@ export default function ConcertHall({ students }: Props) {
           <Input type="number" min={6} max={24} value={seatsPerRow}
             onChange={e => setSeatsPerRow(Math.max(6, Math.min(24, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          排数
-          <Input type="number" min={2} max={10} value={rowCount}
-            onChange={e => setRowCount(Math.max(2, Math.min(10, Number(e.target.value))))} className="w-16 h-8 text-center" />
-        </label>
+        <div className="inline-flex items-center gap-2 text-sm text-muted-foreground px-2.5 h-8 rounded-md border border-border bg-muted/40">
+          自动排数
+          <span className="text-foreground font-medium">{rowCount}</span>
+        </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           排间距
           <Input type="number" min={20} max={100} value={seatGap}
             onChange={e => setSeatGap(Math.max(20, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <div className="inline-flex items-center gap-2 text-xs text-muted-foreground px-2.5 h-8 rounded-md border border-border bg-muted/40">
+          容量 {totalCapacity} 人
+        </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           模式
           <select
@@ -343,9 +373,9 @@ export default function ConcertHall({ students }: Props) {
                 </text>
 
                 {assignment.map((row, ri) => {
-                  const r = startRadius + ri * radiusStep;
+                  const r = rowRadii[ri] || startRadius + ri * radiusStep;
                   const seatCount = row.length;
-                  const totalAngle = Math.min(Math.PI * 0.9, Math.PI * (0.55 + ri * 0.05));
+                  const totalAngle = arcAngle;
                   const startAngle = Math.PI - (Math.PI - totalAngle) / 2;
                   const endAngle = (Math.PI - totalAngle) / 2;
 

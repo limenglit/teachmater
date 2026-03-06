@@ -103,12 +103,12 @@ const Index = () => {
             {/* Sidebar area */}
             {activeTab !== 'checkin' || isApproved ? (
               <div className={`
-                fixed lg:relative z-50 lg:z-auto h-full
+                fixed lg:relative z-50 lg:z-auto h-full min-h-0
                 transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
               `}>
             {isApproved && sidebarMode === 'library' ? (
-                  <div className="h-full flex flex-col w-[500px] lg:w-[560px]">
+                  <div className="h-full min-h-0 flex flex-col w-[500px] lg:w-[560px]">
                     <div className="flex border-b border-border bg-card">
                       <button
                         onClick={() => setSidebarMode('list')}
@@ -126,7 +126,7 @@ const Index = () => {
                     <ClassLibrary />
                   </div>
                 ) : (
-                  <div className="h-full flex flex-col">
+                  <div className="h-full min-h-0 flex flex-col">
                     {isApproved && (
                       <div className="flex border-b border-border bg-card">
                         <button

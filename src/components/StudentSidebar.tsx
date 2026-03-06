@@ -62,7 +62,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
   }
 
   return (
-    <div className="w-64 border-r border-border bg-card flex flex-col h-full">
+    <div className="w-64 border-r border-border bg-card flex flex-col h-full min-h-0 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
@@ -93,7 +93,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
       </div>
 
       {/* Student List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 pb-24">
         {students.map((student) => (
           <div
             key={student.id}
@@ -117,23 +117,23 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
       </div>
 
       {/* Add Student */}
-      <div className="p-3 border-t border-border space-y-2">
+      <div className="sticky bottom-0 p-3 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 space-y-2 shadow-[0_-6px_16px_-12px_hsl(var(--foreground)/0.35)] pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
         <div className="flex gap-1.5">
           <Input
             value={newName}
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
             placeholder="添加学生..."
-            className="h-8 text-sm"
+            className="h-9 text-sm"
           />
-          <Button size="sm" variant="ghost" onClick={handleAdd} className="h-8 px-2">
+          <Button size="sm" variant="ghost" onClick={handleAdd} className="h-9 px-2.5">
             <Plus className="w-4 h-4" />
           </Button>
         </div>
         <div className="flex gap-1.5">
           <Dialog open={importOpen} onOpenChange={setImportOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1 h-7 text-xs">
+              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs font-medium">
                 <Upload className="w-3 h-3 mr-1" /> 导入
               </Button>
             </DialogTrigger>
@@ -159,7 +159,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" size="sm" onClick={clearAll} className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/5">
+          <Button variant="outline" size="sm" onClick={clearAll} className="h-8 text-xs font-medium text-destructive border-destructive/30 hover:bg-destructive/5">
             <Trash2 className="w-3 h-3 mr-1" /> 清空
           </Button>
         </div>
