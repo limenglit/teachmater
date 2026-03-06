@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
@@ -11,6 +11,23 @@ interface Props {
 }
 
 type BanquetSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+type RefKey = 'screen' | 'podium' | 'window' | 'frontDoor' | 'backDoor';
+type RefPositions = Record<RefKey, { x: number; y: number }>;
+type RefVisible = Record<RefKey, boolean>;
+
+function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
+  const badgeW = 94;
+  const centerX = Math.round((roomWidth - badgeW) / 2);
+  const rightX = Math.max(24, roomWidth - badgeW - 24);
+  const midY = Math.max(20, Math.round((roomHeight - 32) / 2));
+  return {
+    screen: { x: centerX, y: 22 },
+    podium: { x: centerX, y: 74 },
+    window: { x: 24, y: midY },
+    frontDoor: { x: rightX, y: 120 },
+    backDoor: { x: rightX, y: Math.max(180, roomHeight - 56) },
+  };
+}
 
 export default function BanquetHall({ students }: Props) {
   const [seatsPerTable, setSeatsPerTable] = useState(10);
@@ -22,8 +39,17 @@ export default function BanquetHall({ students }: Props) {
   const [tableGap, setTableGap] = useState(24);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
+  const [refVisible, setRefVisible] = useState<RefVisible>({
+    screen: true,
+    podium: true,
+    window: true,
+    frontDoor: true,
+    backDoor: true,
+  });
+  const [refLocked, setRefLocked] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const seatDraggingRef = useRef(false);
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
@@ -40,6 +66,14 @@ export default function BanquetHall({ students }: Props) {
   };
 
   const tableCols = Math.ceil(Math.sqrt(tableCount));
+  const tableRows = Math.ceil(tableCount / tableCols);
+  const roomWidth = Math.max(980, tableCols * 180 + Math.max(0, tableCols - 1) * tableGap + 260);
+  const roomHeight = Math.max(720, tableRows * 180 + Math.max(0, tableRows - 1) * tableGap + 280);
+  const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
+  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 720));
+  const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
+  const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
+  const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
   const placeName = (tables: string[][], preferred: number, name: string) => {
     const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)];
@@ -115,6 +149,15 @@ export default function BanquetHall({ students }: Props) {
   }, [tableCount]);
 
   useEffect(() => {
+    const matchedTableCount = Math.max(1, Math.ceil(students.length / Math.max(1, seatsPerTable)));
+    setTableCount(matchedTableCount);
+  }, [students.length, seatsPerTable]);
+
+  useEffect(() => {
+    setRefPositions(defaultRefPositions);
+  }, [defaultRefPositions]);
+
+  useEffect(() => {
     setClosedSeats(prev => {
       const next = new Set<string>();
       prev.forEach(key => {
@@ -138,8 +181,24 @@ export default function BanquetHall({ students }: Props) {
             : p
         ));
       }
+
+      if (refDraggingRef.current) {
+        const dx = e.clientX - refDraggingRef.current.startX;
+        const dy = e.clientY - refDraggingRef.current.startY;
+        const key = refDraggingRef.current.key;
+        setRefPositions(prev => ({
+          ...prev,
+          [key]: {
+            x: refDraggingRef.current!.origX + dx,
+            y: refDraggingRef.current!.origY + dy,
+          },
+        }));
+      }
     };
-    const handleMouseUp = () => { draggingRef.current = null; };
+    const handleMouseUp = () => {
+      draggingRef.current = null;
+      refDraggingRef.current = null;
+    };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -157,6 +216,23 @@ export default function BanquetHall({ students }: Props) {
       startY: e.clientY,
       origX: tablePositions[index]?.x || 0,
       origY: tablePositions[index]?.y || 0,
+    };
+  };
+
+  const toggleRefVisible = (key: RefKey) => {
+    setRefVisible(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const startRefDrag = (e: ReactMouseEvent, key: RefKey) => {
+    if (refLocked) return;
+    e.preventDefault();
+    e.stopPropagation();
+    refDraggingRef.current = {
+      key,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: refPositions[key].x,
+      origY: refPositions[key].y,
     };
   };
 
@@ -258,9 +334,10 @@ export default function BanquetHall({ students }: Props) {
             onChange={e => setSeatsPerTable(Math.max(6, Math.min(16, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌数
-          <Input type="number" min={1} max={30} value={tableCount}
-            onChange={e => setTableCount(Math.max(1, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          自动桌数
+          <span className="inline-flex items-center justify-center min-w-10 h-8 px-2 rounded-md border border-border bg-muted/40 text-foreground font-medium">
+            {tableCount}
+          </span>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           模式
@@ -287,6 +364,29 @@ export default function BanquetHall({ students }: Props) {
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
+          重置参照物
+        </Button>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> 后门
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+          </label>
+        </div>
         <span className="text-xs text-muted-foreground">
           共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
         </span>
@@ -314,9 +414,44 @@ export default function BanquetHall({ students }: Props) {
         </div>
 
         {assignment.length > 0 ? (
-          <div className="flex justify-center">
-            <div className="inline-grid" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
-              {assignment.map((people, i) => renderBanquetTable(i, people))}
+          <div className="flex justify-center overflow-auto">
+            <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
+              {refVisible.screen && (
+                <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
+                  <span className={refIconClass}>🖥️</span>
+                  <span className={refTextClass}>幕布</span>
+                </div>
+              )}
+              {refVisible.podium && (
+                <div className={refBadgeClass} style={{ left: refPositions.podium.x, top: refPositions.podium.y }} onMouseDown={e => startRefDrag(e, 'podium')}>
+                  <span className={refIconClass}>🏫</span>
+                  <span className={refTextClass}>讲台</span>
+                </div>
+              )}
+              {refVisible.window && (
+                <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
+                  <span className={refIconClass}>🪟</span>
+                  <span className={refTextClass}>窗</span>
+                </div>
+              )}
+              {refVisible.frontDoor && (
+                <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
+                  <span className={refIconClass}>🚪</span>
+                  <span className={refTextClass}>前门</span>
+                </div>
+              )}
+              {refVisible.backDoor && (
+                <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
+                  <span className={refIconClass}>🚪</span>
+                  <span className={refTextClass}>后门</span>
+                </div>
+              )}
+
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
+                  {assignment.map((people, i) => renderBanquetTable(i, people))}
+                </div>
+              </div>
             </div>
           </div>
         ) : (
@@ -329,7 +464,7 @@ export default function BanquetHall({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可交换座位；点击空座位可关闭/开放使用
+          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/窗/前后门支持显隐与拖拽
         </p>
       )}
       <SeatCheckinDialog
