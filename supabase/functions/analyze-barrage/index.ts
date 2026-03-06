@@ -45,7 +45,7 @@ serve(async (req) => {
 
     // Validate messages array
     if (!Array.isArray(messages) || messages.length === 0) {
-      return errorResponse('Messages must be a non-empty array', 400);
+      return errorResponse(req, 'Messages must be a non-empty array', 400);
     }
     if (messages.length > 1000) {
       return errorResponse('Too many messages (max 1000)', 400);
