@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
@@ -10,25 +10,66 @@ interface Props {
 }
 
 type LabSeatMode = 'balanced' | 'groupRow' | 'verticalS' | 'horizontalS';
+type RefKey = 'window' | 'door';
+type RefPositions = Record<RefKey, { x: number; y: number }>;
+type RefVisible = Record<RefKey, boolean>;
+
+function getAutoRowCount(totalStudents: number, seatsPerSide: number) {
+  const capacityPerRow = Math.max(1, seatsPerSide * 2);
+  return Math.max(1, Math.ceil(totalStudents / capacityPerRow));
+}
+
+function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
+  const badgeW = 90;
+  const rightX = Math.max(24, roomWidth - badgeW - 24);
+  const midY = Math.max(20, Math.round((roomHeight - 32) / 2));
+  return {
+    window: { x: 24, y: midY },
+    door: { x: rightX, y: Math.max(140, roomHeight - 64) },
+  };
+}
 
 export default function ComputerLab({ students }: Props) {
-  const [rowCount, setRowCount] = useState(5);
+  const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 8));
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<LabSeatMode>('balanced');
-  const [dualSide, setDualSide] = useState(true); // 是否两侧坐学生
+  const [dualSide, setDualSide] = useState(true);
   const [tableGap, setTableGap] = useState(80);
-  const [canvasWidth, setCanvasWidth] = useState(1200);
-  const [canvasHeight, setCanvasHeight] = useState(800);
   const [assignment, setAssignment] = useState<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }[]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [dragFrom, setDragFrom] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
-  const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
+
+  const [refVisible, setRefVisible] = useState<RefVisible>({
+    window: true,
+    door: true,
+  });
+  const [refLocked, setRefLocked] = useState(false);
+
   const printRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
+  const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  const seatW = 56;
+  const seatH = 36;
+  const gap = 4;
+  const tableMargin = 20;
+  const tableW = seatsPerSide * (seatW + gap) + gap;
+
+  const minRowGap = dualSide ? 128 : 188;
+  const rowGap = Math.max(tableGap, minRowGap);
+  const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
+
+  const roomWidth = Math.max(980, tableW + tableMargin * 2 + 220);
+  const roomHeight = Math.max(760, maxRows * rowGap + 220);
+  const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
+  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 760));
+
+  const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
+  const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
+  const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
   const seatKey = (row: number, side: 'top' | 'bottom', col: number) => `${row}-${side}-${col}`;
 
@@ -115,11 +156,8 @@ export default function ComputerLab({ students }: Props) {
         group.forEach(n => {
           const slot = rowSlots.shift();
           if (!slot) return;
-          if (slot.side === 'top') {
-            matrix[row].top[slot.col] = n;
-          } else {
-            matrix[row].bottom[slot.col] = n;
-          }
+          if (slot.side === 'top') matrix[row].top[slot.col] = n;
+          else matrix[row].bottom[slot.col] = n;
         });
       });
     } else {
@@ -140,21 +178,14 @@ export default function ComputerLab({ students }: Props) {
     setSeated(true);
   };
 
-  const seatW = 56;
-  const seatH = 36;
-  const gap = 4;
-  const tableMargin = 20;
-  const rowGap = tableGap; // controlled by state
-
-  // 计算 SVG 尺寸
-  const tableW = seatsPerSide * (seatW + gap) + gap;
-  const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
-  const svgW = Math.max(tableW + tableMargin * 2 + 100, canvasWidth);
-  const svgH = Math.max(maxRows * rowGap + 120, canvasHeight);
+  useEffect(() => {
+    const nextRows = getAutoRowCount(students.length, seatsPerSide);
+    setRowCount(prev => (prev === nextRows ? prev : nextRows));
+  }, [students.length, seatsPerSide]);
 
   useEffect(() => {
-    setRowOffsets(Array(rowCount).fill({ x: 0, y: 0 }));
-  }, [rowCount]);
+    setRefPositions(defaultRefPositions);
+  }, [defaultRefPositions]);
 
   useEffect(() => {
     setClosedSeats(prev => {
@@ -171,17 +202,23 @@ export default function ComputerLab({ students }: Props) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (draggingRef.current) {
-        const dx = e.clientX - draggingRef.current.startX;
-        const dy = e.clientY - draggingRef.current.startY;
-        setRowOffsets(offs => offs.map((p,i) =>
-          i === draggingRef.current!.row
-            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
-            : p
-        ));
-      }
+      if (!refDraggingRef.current) return;
+      const dx = e.clientX - refDraggingRef.current.startX;
+      const dy = e.clientY - refDraggingRef.current.startY;
+      const key = refDraggingRef.current.key;
+      setRefPositions(prev => ({
+        ...prev,
+        [key]: {
+          x: refDraggingRef.current!.origX + dx,
+          y: refDraggingRef.current!.origY + dy,
+        },
+      }));
     };
-    const handleMouseUp = () => { draggingRef.current = null; };
+
+    const handleMouseUp = () => {
+      refDraggingRef.current = null;
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -190,14 +227,20 @@ export default function ComputerLab({ students }: Props) {
     };
   }, []);
 
-  const startRowDrag = (e: React.MouseEvent, row: number) => {
+  const toggleRefVisible = (key: RefKey) => {
+    setRefVisible(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const startRefDrag = (e: ReactMouseEvent, key: RefKey) => {
+    if (refLocked) return;
+    e.preventDefault();
     e.stopPropagation();
-    draggingRef.current = {
-      row,
+    refDraggingRef.current = {
+      key,
       startX: e.clientX,
       startY: e.clientY,
-      origX: rowOffsets[row]?.x || 0,
-      origY: rowOffsets[row]?.y || 0,
+      origX: refPositions[key].x,
+      origY: refPositions[key].y,
     };
   };
 
@@ -206,80 +249,81 @@ export default function ComputerLab({ students }: Props) {
     const isDragging = dragFrom === slot;
     const isOver = dropTarget === slot;
     return (
-    <g
-      key={slot}
-      style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
-      onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
-      onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
-      onMouseUp={() => {
-        if (!dragFrom || !dropTarget) return;
-        const from = dragFrom;
-        const to = dropTarget;
-        if (from === to || closedSeats.has(from) || closedSeats.has(to)) {
+      <g
+        key={slot}
+        style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
+        onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
+        onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
+        onMouseUp={() => {
+          if (!dragFrom || !dropTarget) return;
+          const from = dragFrom;
+          const to = dropTarget;
+          if (from === to || closedSeats.has(from) || closedSeats.has(to)) {
+            setDragFrom(null);
+            setDropTarget(null);
+            return;
+          }
+
+          setAssignment(prev => {
+            const next = prev.map(group => ({ ...group, students: [...group.students] }));
+            const [fr, fs, fc] = from.split('-');
+            const [tr, ts, tc] = to.split('-');
+            const fromRow = Number(fr);
+            const toRow = Number(tr);
+            const fromCol = Number(fc);
+            const toCol = Number(tc);
+
+            const fromGroup = next.find(g => g.rowIndex === fromRow && g.side === fs);
+            const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
+            if (!fromGroup || !toGroup) return prev;
+
+            const temp = fromGroup.students[fromCol] || '';
+            fromGroup.students[fromCol] = toGroup.students[toCol] || '';
+            toGroup.students[toCol] = temp;
+            return next;
+          });
+
           setDragFrom(null);
           setDropTarget(null);
-          return;
-        }
-
-        setAssignment(prev => {
-          const next = prev.map(group => ({ ...group, students: [...group.students] }));
-          const [fr, fs, fc] = from.split('-');
-          const [tr, ts, tc] = to.split('-');
-          const fromRow = Number(fr);
-          const toRow = Number(tr);
-          const fromCol = Number(fc);
-          const toCol = Number(tc);
-
-          const fromGroup = next.find(g => g.rowIndex === fromRow && g.side === fs);
-          const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
-          if (!fromGroup || !toGroup) return prev;
-
-          const temp = fromGroup.students[fromCol] || '';
-          fromGroup.students[fromCol] = toGroup.students[toCol] || '';
-          toGroup.students[toCol] = temp;
-          return next;
-        });
-
-        setDragFrom(null);
-        setDropTarget(null);
-      }}
-      onClick={() => {
-        if (!name) {
-          const [rStr, side, cStr] = slot.split('-');
-          toggleSeatOpen(Number(rStr), side as 'top' | 'bottom', Number(cStr));
-        }
-      }}
-    >
-      <rect x={x} y={y} width={seatW} height={seatH} rx={4}
-        className={
-          isClosed ? 'fill-muted stroke-destructive/60' :
-          isDragging ? 'fill-primary/20 stroke-primary' :
-          isOver ? 'fill-accent stroke-primary' :
-          name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'
-        }
-        strokeWidth={isOver ? 2.5 : 1.5}
-      />
-      {isClosed && (
-        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
-          关
-        </text>
-      )}
-      {name && !isDragging && (
-        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
-          {name.length > 3 ? name.slice(0, 3) : name}
-        </text>
-      )}
-    </g>
-  );
+        }}
+        onClick={() => {
+          if (!name) {
+            const [rStr, side, cStr] = slot.split('-');
+            toggleSeatOpen(Number(rStr), side as 'top' | 'bottom', Number(cStr));
+          }
+        }}
+      >
+        <rect x={x} y={y} width={seatW} height={seatH} rx={4}
+          className={
+            isClosed ? 'fill-muted stroke-destructive/60' :
+            isDragging ? 'fill-primary/20 stroke-primary' :
+            isOver ? 'fill-accent stroke-primary' :
+            name ? 'fill-card stroke-border' : 'fill-muted/50 stroke-border/50'
+          }
+          strokeWidth={isOver ? 2.5 : 1.5}
+        />
+        {isClosed && (
+          <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
+            关
+          </text>
+        )}
+        {name && !isDragging && (
+          <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs">
+            {name.length > 3 ? name.slice(0, 3) : name}
+          </text>
+        )}
+      </g>
+    );
   };
 
   return (
     <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          排数
-          <Input type="number" min={1} max={15} value={rowCount}
-            onChange={e => setRowCount(Math.max(1, Math.min(15, Number(e.target.value))))} className="w-14 h-8 text-center" />
+          自动排数
+          <span className="inline-flex items-center justify-center min-w-10 h-8 px-2 rounded-md border border-border bg-muted/40 text-foreground font-medium">
+            {rowCount}
+          </span>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每侧座位数
@@ -308,23 +352,28 @@ export default function ComputerLab({ students }: Props) {
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           行间距
-          <Input type="number" min={20} max={200} value={tableGap}
-            onChange={e => setTableGap(Math.max(20, Math.min(200, Number(e.target.value))))} className="w-14 h-8 text-center" />
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          画布宽
-          <Input type="number" min={1200} value={canvasWidth}
-            onChange={e => setCanvasWidth(Math.max(1200, Number(e.target.value) || 1200))} className="w-20 h-8 text-center" />
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          画布高
-          <Input type="number" min={800} value={canvasHeight}
-            onChange={e => setCanvasHeight(Math.max(800, Number(e.target.value) || 800))} className="w-20 h-8 text-center" />
+          <Input type="number" min={80} max={260} value={tableGap}
+            onChange={e => setTableGap(Math.max(80, Math.min(260, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
           <input type="checkbox" checked={dualSide} onChange={e => setDualSide(e.target.checked)} className="accent-primary" />
           长桌两侧
         </label>
+        <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
+          重置参照物
+        </Button>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.door} onChange={() => toggleRefVisible('door')} className="accent-primary" /> 门
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+          </label>
+        </div>
+        <span className="text-xs text-muted-foreground">可容纳 {rowCount * seatsPerSide * 2} 人 | 当前 {students.length} 人</span>
         {seated && <ExportButtons targetRef={printRef} filename="机房座位" />}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
@@ -344,66 +393,72 @@ export default function ComputerLab({ students }: Props) {
       <div ref={printRef}>
         {seated ? (
           <div className="flex justify-center overflow-auto">
-            <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
-              {/* Render each row of long desks */}
-              {Array.from({ length: maxRows }).map((_, rowIdx) => {
-                const offset = rowOffsets[rowIdx] || { x: 0, y: 0 };
-                const baseY = 60 + rowIdx * rowGap + offset.y;
-                const centerX = svgW / 2 + offset.x;
-                const tableX = (svgW - tableW) / 2 + offset.x;
+            <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
+              {refVisible.window && (
+                <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
+                  <span className={refIconClass}>🪟</span>
+                  <span className={refTextClass}>窗</span>
+                </div>
+              )}
+              {refVisible.door && (
+                <div className={refBadgeClass} style={{ left: refPositions.door.x, top: refPositions.door.y }} onMouseDown={e => startRefDrag(e, 'door')}>
+                  <span className={refIconClass}>🚪</span>
+                  <span className={refTextClass}>门</span>
+                </div>
+              )}
 
-                // Get students for this row
-                const topGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'top');
-                const bottomGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'bottom');
+              <svg width={roomWidth} height={roomHeight} viewBox={`0 0 ${roomWidth} ${roomHeight}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
+                {Array.from({ length: maxRows }).map((_, rowIdx) => {
+                  const baseY = 120 + rowIdx * rowGap;
+                  const centerX = roomWidth / 2;
+                  const tableX = (roomWidth - tableW) / 2;
 
-                return (
-                  <g key={`row-${rowIdx}`} onMouseDown={e => startRowDrag(e, rowIdx)} style={{ cursor: 'move' }}>
-                    {/* Top side of the desk */}
-                    {topGroup && (
-                      <>
-                        {/* Desk */}
-                        <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
-                          className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
-                        <text x={centerX} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-xs">
-                          ━━━ 长桌 ━━━
-                        </text>
-                        {/* Seats on top */}
-                        {topGroup.students.map((name, i) => {
-                          const x = tableX + gap + i * (seatW + gap);
-                          const y = baseY - seatH - 8;
-                          return renderSeat(x, y, name, seatKey(rowIdx, 'top', i));
-                        })}
-                      </>
-                    )}
+                  const topGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'top');
+                  const bottomGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'bottom');
 
-                    {/* Bottom side of the desk */}
-                    {bottomGroup && (
-                      <>
-                        {/* Desk */}
-                        {!dualSide && (
-                          <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
+                  return (
+                    <g key={`row-${rowIdx}`}>
+                      {topGroup && (
+                        <>
+                          <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
                             className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
-                        )}
-                        {/* Seats on bottom */}
-                        {bottomGroup.students.map((name, i) => {
-                          const x = tableX + gap + i * (seatW + gap);
-                          const y = dualSide ? baseY + 28 : baseY + 88;
-                          return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', i));
-                        })}
-                      </>
-                    )}
-                  </g>
-                );
-              })}
-            </svg>
+                          <text x={centerX} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-xs">
+                            ━━━ 长桌 ━━━
+                          </text>
+                          {topGroup.students.map((name, i) => {
+                            const x = tableX + gap + i * (seatW + gap);
+                            const y = baseY - seatH - 8;
+                            return renderSeat(x, y, name, seatKey(rowIdx, 'top', i));
+                          })}
+                        </>
+                      )}
+
+                      {bottomGroup && (
+                        <>
+                          {!dualSide && (
+                            <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
+                              className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
+                          )}
+                          {bottomGroup.students.map((name, i) => {
+                            const x = tableX + gap + i * (seatW + gap);
+                            const y = dualSide ? baseY + 28 : baseY + 88;
+                            return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', i));
+                          })}
+                        </>
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>
             <p className="text-sm">
               {dualSide
-                ? `长桌长边两侧，${rowCount} 排，每侧 ${seatsPerSide} 个座位`
-                : `长桌单侧，${rowCount} 排，每排 ${seatsPerSide * 2} 个座位`}
+                ? `长桌长边两侧，自动 ${rowCount} 排，每侧 ${seatsPerSide} 个座位`
+                : `长桌单侧，自动 ${rowCount} 排，每排 ${seatsPerSide * 2} 个座位`}
             </p>
           </div>
         )}
@@ -411,7 +466,7 @@ export default function ComputerLab({ students }: Props) {
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          💡 拖拽姓名可换座；点击空座位可关闭/开放使用
+          拖拽姓名可换座；点击空座位可关闭/开放使用；门窗支持显隐与拖拽
         </p>
       )}
       <SeatCheckinDialog
