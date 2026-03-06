@@ -49,7 +49,6 @@ export default function ConcertHall({ students }: Props) {
   const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 12));
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<ConcertSeatMode>('arcBalanced');
-  const [seatGap, setSeatGap] = useState(62);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
@@ -79,19 +78,70 @@ export default function ConcertHall({ students }: Props) {
   const stageH = 40;
   const stageY = 156;
   const startRadius = 118;
-  const radiusStep = seatGap;
   const arcAngle = Math.PI * 0.94;
 
   const rowRadii = useMemo(() => {
     const minCenterDistance = seatR * 2 + 10;
-    return seatCaps.map((seatCount, ri) => {
-      const baseRadius = startRadius + ri * radiusStep;
-      if (seatCount <= 1) return baseRadius;
-      const theta = arcAngle / (seatCount - 1);
-      const spacingRadius = minCenterDistance / (2 * Math.sin(theta / 2));
-      return Math.max(baseRadius, spacingRadius);
+    const minCenterDistanceSq = minCenterDistance * minCenterDistance;
+    const minRowStep = seatR * 2 + 6;
+
+    const getAngles = (seatCount: number) => {
+      if (seatCount <= 1) return [Math.PI / 2];
+      const startAngle = Math.PI - (Math.PI - arcAngle) / 2;
+      const endAngle = (Math.PI - arcAngle) / 2;
+      return Array.from({ length: seatCount }, (_, ci) => {
+        const frac = ci / (seatCount - 1);
+        return startAngle - frac * (startAngle - endAngle);
+      });
+    };
+
+    const radii: number[] = [];
+    const angleRows = seatCaps.map(cap => getAngles(cap));
+
+    seatCaps.forEach((seatCount, ri) => {
+      let radius = startRadius;
+
+      if (seatCount > 1) {
+        const theta = arcAngle / (seatCount - 1);
+        const spacingRadius = minCenterDistance / (2 * Math.sin(theta / 2));
+        radius = Math.max(radius, spacingRadius);
+      }
+
+      if (ri > 0) {
+        const prevRadius = radii[ri - 1];
+        const prevAngles = angleRows[ri - 1];
+        const currAngles = angleRows[ri];
+        radius = Math.max(radius, prevRadius + minRowStep);
+
+        // Ensure the new row is far enough from the previous row at every seat angle pair.
+        while (true) {
+          let hasOverlap = false;
+
+          for (const currAngle of currAngles) {
+            for (const prevAngle of prevAngles) {
+              const delta = currAngle - prevAngle;
+              const distSq =
+                prevRadius * prevRadius +
+                radius * radius -
+                2 * prevRadius * radius * Math.cos(delta);
+              if (distSq < minCenterDistanceSq) {
+                hasOverlap = true;
+                break;
+              }
+            }
+            if (hasOverlap) break;
+          }
+
+          if (!hasOverlap) break;
+          radius += 1;
+        }
+      }
+
+      radii.push(radius);
     });
-  }, [arcAngle, radiusStep, seatCaps, seatR, startRadius]);
+
+    return radii;
+  }, [arcAngle, seatCaps, seatR, startRadius]);
 
   const maxRadius = rowRadii[rowRadii.length - 1] || startRadius;
   const maxArcWidth = Math.max(520, maxRadius * 2 + seatR * 2);
@@ -263,11 +313,6 @@ export default function ConcertHall({ students }: Props) {
           自动排数
           <span className="text-foreground font-medium">{rowCount}</span>
         </div>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          排间距
-          <Input type="number" min={20} max={100} value={seatGap}
-            onChange={e => setSeatGap(Math.max(20, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
-        </label>
         <div className="inline-flex items-center gap-2 text-xs text-muted-foreground px-2.5 h-8 rounded-md border border-border bg-muted/40">
           容量 {totalCapacity} 人
         </div>
@@ -373,7 +418,7 @@ export default function ConcertHall({ students }: Props) {
                 </text>
 
                 {assignment.map((row, ri) => {
-                  const r = rowRadii[ri] || startRadius + ri * radiusStep;
+                  const r = rowRadii[ri] || startRadius;
                   const seatCount = row.length;
                   const totalAngle = arcAngle;
                   const startAngle = Math.PI - (Math.PI - totalAngle) / 2;
