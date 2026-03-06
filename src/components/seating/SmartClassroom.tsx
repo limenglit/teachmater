@@ -445,6 +445,14 @@ export default function SmartClassroom({ students }: Props) {
           拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/门/窗支持显隐与拖拽
         </p>
       )}
+      <SeatCheckinDialog
+        open={checkinOpen}
+        onOpenChange={setCheckinOpen}
+        seatData={assignment}
+        studentNames={students.map(s => s.name)}
+        sceneType="smartClassroom"
+        sceneConfig={{ seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) }}
+      />
     </div>
   );
 }
