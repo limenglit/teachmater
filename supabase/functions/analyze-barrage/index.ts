@@ -131,14 +131,14 @@ ${allText}`;
     if (!response.ok) {
       const status = response.status;
       if (status === 429) {
-        return errorResponse("请求过于频繁，请稍后再试", 429);
+        return errorResponse(req, "请求过于频繁，请稍后再试", 429);
       }
       if (status === 402) {
-        return errorResponse("AI 额度不足，请充值", 402);
+        return errorResponse(req, "AI 额度不足，请充值", 402);
       }
       const t = await response.text();
       console.error("AI gateway error:", status, t);
-      return errorResponse("AI 分析失败", 500);
+      return errorResponse(req, "AI 分析失败", 500);
     }
 
     const data = await response.json();
