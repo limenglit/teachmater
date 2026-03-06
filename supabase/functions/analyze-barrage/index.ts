@@ -74,7 +74,7 @@ serve(async (req) => {
       .single();
 
     if (topicError || !topic) {
-      return errorResponse('Topic not found', 404);
+      return errorResponse(req, 'Topic not found', 404);
     }
 
     if (topic.creator_token !== creator_token) {
