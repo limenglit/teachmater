@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 
 interface Props {
   students: { id: string; name: string }[];
