@@ -26,6 +26,7 @@ export default function ComputerLab({ students }: Props) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [rowOffsets, setRowOffsets] = useState<{x:number,y:number}[]>([]);
   const [seated, setSeated] = useState(false);
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{row:number,startX:number,startY:number,origX:number,origY:number} | null>(null);
 
