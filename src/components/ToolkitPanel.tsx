@@ -128,8 +128,10 @@ function CommandCards() {
     return collected;
   };
 
-  const addCustomCommand = (topic: string, iconUrl: string) => {
-    const next: CommandItem = { text: topic, iconUrl };
+  const addCustomCommand = (topic: string, iconUrl?: string) => {
+    const next: CommandItem = iconUrl
+      ? { text: topic, iconUrl }
+      : { text: topic, emoji: '？' };
     setCustomCommands(prev => {
       const deduped = prev.filter(item => item.text !== topic);
       return [next, ...deduped].slice(0, 8);
@@ -148,12 +150,17 @@ function CommandCards() {
       const candidates = await searchTopicBadgeCandidates(topic);
       const picked = candidates.slice(0, 6);
       if (picked.length < 3) {
-        throw new Error('候选图标不足');
+        addCustomCommand(topic);
+        setCustomTopic('');
+        setSearchError('图标候选不足，已使用默认“？”图标发布该指令');
+        return;
       }
       setCandidateTopic(topic);
       setIconCandidates(picked);
     } catch (error) {
-      setSearchError('联网检索图标失败或候选不足，请换个主题重试');
+      addCustomCommand(topic);
+      setCustomTopic('');
+      setSearchError('联网检索图标失败，已使用默认“？”图标发布该指令');
     } finally {
       setLoadingTopic(false);
     }
