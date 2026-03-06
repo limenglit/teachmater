@@ -37,7 +37,7 @@ function saveHistory(session: SessionData, records: CheckinRecord[], studentName
       savedAt: new Date().toISOString(),
     });
     // Keep last 50
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
+    sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
   } catch { }
 }
 
