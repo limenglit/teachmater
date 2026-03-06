@@ -40,7 +40,7 @@ serve(async (req) => {
 
     // Validate creator_token
     if (!creator_token || typeof creator_token !== 'string') {
-      return errorResponse('creator_token is required', 403);
+      return errorResponse(req, 'creator_token is required', 403);
     }
 
     // Validate messages array
