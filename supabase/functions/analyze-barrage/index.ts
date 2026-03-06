@@ -35,7 +35,7 @@ serve(async (req) => {
 
     // Validate topic_id
     if (!topic_id || typeof topic_id !== 'string') {
-      return errorResponse('topic_id is required', 400);
+      return errorResponse(req, 'topic_id is required', 400);
     }
 
     // Validate creator_token
