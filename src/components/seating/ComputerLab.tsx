@@ -211,17 +211,18 @@ export default function ComputerLab({ students }: Props) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!refDraggingRef.current) return;
-      const dx = e.clientX - refDraggingRef.current.startX;
-      const dy = e.clientY - refDraggingRef.current.startY;
-      const key = refDraggingRef.current.key;
-      setRefPositions(prev => ({
-        ...prev,
-        [key]: {
-          x: refDraggingRef.current!.origX + dx,
-          y: refDraggingRef.current!.origY + dy,
-        },
-      }));
+      if (refDraggingRef.current) {
+        const dx = e.clientX - refDraggingRef.current.startX;
+        const dy = e.clientY - refDraggingRef.current.startY;
+        const key = refDraggingRef.current.key;
+        setRefPositions(prev => ({
+          ...prev,
+          [key]: {
+            x: refDraggingRef.current!.origX + dx,
+            y: refDraggingRef.current!.origY + dy,
+          },
+        }));
+      }
 
       if (rowDraggingRef.current) {
         const dx = e.clientX - rowDraggingRef.current.startX;
