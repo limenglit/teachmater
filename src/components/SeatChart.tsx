@@ -901,8 +901,9 @@ export default function SeatChart() {
         <SeatCheckinDialog
           open={checkinOpen}
           onOpenChange={setCheckinOpen}
-          seats={seats}
+          seatData={seats}
           studentNames={students.map(s => s.name)}
+          sceneType="classroom"
           sceneConfig={{
             rows,
             cols,
