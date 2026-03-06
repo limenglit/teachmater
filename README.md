@@ -77,3 +77,8 @@ Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/c
 For pre-release quality checks, test matrix, and usability validation, see:
 
 - `docs/testing-and-release.md`
+
+## Documentation
+
+- Developer Guide: `docs/developer-guide.md`
+- User Manual: `docs/user-manual.md`
