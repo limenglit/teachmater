@@ -29,7 +29,7 @@ const HISTORY_KEY = 'teachmate_checkin_history';
 
 function saveHistory(session: SessionData, records: CheckinRecord[], studentNames: string[]) {
   try {
-    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const history = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
     history.unshift({
       session,
       records,
