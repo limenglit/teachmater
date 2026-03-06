@@ -4,15 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  type CommandItem,
+  buildCustomCommand,
+  searchTopicBadgeCandidates,
+  shouldFallbackToDefault,
+} from '@/lib/command-cards';
 
 import BarrageDiscussion from './BarrageDiscussion';
 import CountdownTimer from './CountdownTimer';
-
-type CommandItem = {
-  text: string;
-  emoji?: string;
-  iconUrl?: string;
-};
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
@@ -98,40 +98,8 @@ function CommandCards() {
 
   const allCommands = [...customCommands, ...commands];
 
-  const toIconUrl = (iconName: string) => {
-    const [prefix, name] = iconName.split(':');
-    if (!prefix || !name) return '';
-    return `https://api.iconify.design/${prefix}/${name}.svg`;
-  };
-
-  const searchTopicBadgeCandidates = async (topic: string) => {
-    const terms = [topic, `${topic} education`, `${topic} class`, 'education badge'];
-    const collected: string[] = [];
-
-    for (const term of terms) {
-      const resp = await fetch(`https://api.iconify.design/search?query=${encodeURIComponent(term)}&limit=10`);
-      if (!resp.ok) continue;
-      const data = await resp.json();
-      const icons = Array.isArray(data?.icons) ? data.icons : [];
-      for (const icon of icons) {
-        const iconName = String(icon);
-        const iconUrl = toIconUrl(iconName);
-        if (!iconUrl) continue;
-        if (!collected.includes(iconUrl)) {
-          collected.push(iconUrl);
-        }
-        if (collected.length >= 6) {
-          return collected;
-        }
-      }
-    }
-    return collected;
-  };
-
   const addCustomCommand = (topic: string, iconUrl?: string) => {
-    const next: CommandItem = iconUrl
-      ? { text: topic, iconUrl }
-      : { text: topic, emoji: '？' };
+    const next = buildCustomCommand(topic, iconUrl);
     setCustomCommands(prev => {
       const deduped = prev.filter(item => item.text !== topic);
       return [next, ...deduped].slice(0, 8);
@@ -147,9 +115,9 @@ function CommandCards() {
     setIconCandidates([]);
 
     try {
-      const candidates = await searchTopicBadgeCandidates(topic);
+      const candidates = await searchTopicBadgeCandidates(topic, (input) => fetch(input));
       const picked = candidates.slice(0, 6);
-      if (picked.length < 3) {
+      if (shouldFallbackToDefault(picked)) {
         addCustomCommand(topic);
         setCustomTopic('');
         setSearchError('图标候选不足，已使用默认“？”图标发布该指令');
