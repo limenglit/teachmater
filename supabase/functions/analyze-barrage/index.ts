@@ -54,7 +54,7 @@ serve(async (req) => {
     // Validate each message
     for (let i = 0; i < messages.length; i++) {
       if (typeof messages[i] !== 'string') {
-        return errorResponse(`Message at index ${i} must be a string`, 400);
+        return errorResponse(req, `Message at index ${i} must be a string`, 400);
       }
       if (messages[i].length > 500) {
         return errorResponse(`Message at index ${i} exceeds max length`, 400);
