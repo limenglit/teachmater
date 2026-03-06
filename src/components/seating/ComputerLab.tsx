@@ -40,6 +40,7 @@ export default function ComputerLab({ students }: Props) {
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [dragFrom, setDragFrom] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [rowTransforms, setRowTransforms] = useState<{ x: number; y: number; rotation: number }[]>([]);
   const [seated, setSeated] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
 
@@ -51,6 +52,8 @@ export default function ComputerLab({ students }: Props) {
 
   const printRef = useRef<HTMLDivElement>(null);
   const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const rowDraggingRef = useRef<{ row: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const seatDraggingRef = useRef(false);
 
   const seatW = 56;
   const seatH = 36;
@@ -201,6 +204,12 @@ export default function ComputerLab({ students }: Props) {
   }, [rowCount, seatsPerSide]);
 
   useEffect(() => {
+    setRowTransforms(prev =>
+      Array.from({ length: rowCount }, (_, i) => prev[i] || { x: 0, y: 0, rotation: 0 })
+    );
+  }, [rowCount]);
+
+  useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!refDraggingRef.current) return;
       const dx = e.clientX - refDraggingRef.current.startX;
@@ -213,10 +222,22 @@ export default function ComputerLab({ students }: Props) {
           y: refDraggingRef.current!.origY + dy,
         },
       }));
+
+      if (rowDraggingRef.current) {
+        const dx = e.clientX - rowDraggingRef.current.startX;
+        const dy = e.clientY - rowDraggingRef.current.startY;
+        setRowTransforms(prev => prev.map((t, i) =>
+          i === rowDraggingRef.current!.row
+            ? { ...t, x: rowDraggingRef.current!.origX + dx, y: rowDraggingRef.current!.origY + dy }
+            : t
+        ));
+      }
     };
 
     const handleMouseUp = () => {
       refDraggingRef.current = null;
+      rowDraggingRef.current = null;
+      seatDraggingRef.current = false;
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -242,6 +263,29 @@ export default function ComputerLab({ students }: Props) {
       origX: refPositions[key].x,
       origY: refPositions[key].y,
     };
+  };
+
+  const startRowDrag = (e: ReactMouseEvent, row: number) => {
+    if (seatDraggingRef.current) return;
+    e.stopPropagation();
+    const current = rowTransforms[row] || { x: 0, y: 0, rotation: 0 };
+    rowDraggingRef.current = {
+      row,
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: current.x,
+      origY: current.y,
+    };
+  };
+
+  const rotateRow = (row: number) => {
+    setRowTransforms(prev => prev.map((t, i) =>
+      i === row ? { ...t, rotation: ((t.rotation + 90) % 360 + 360) % 360 } : t
+    ));
+  };
+
+  const resetRowTransforms = () => {
+    setRowTransforms(Array.from({ length: rowCount }, () => ({ x: 0, y: 0, rotation: 0 })));
   };
 
   const renderSeat = (x: number, y: number, name: string, slot: string) => {
@@ -362,6 +406,9 @@ export default function ComputerLab({ students }: Props) {
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
           重置参照物
         </Button>
+        <Button variant="outline" onClick={resetRowTransforms}>
+          重置桌位位置
+        </Button>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
@@ -412,12 +459,20 @@ export default function ComputerLab({ students }: Props) {
                   const baseY = 120 + rowIdx * rowGap;
                   const centerX = roomWidth / 2;
                   const tableX = (roomWidth - tableW) / 2;
+                  const transform = rowTransforms[rowIdx] || { x: 0, y: 0, rotation: 0 };
+                  const rowCenterY = dualSide ? baseY + 20 : baseY + 52;
 
                   const topGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'top');
                   const bottomGroup = assignment.find(a => a.rowIndex === rowIdx && a.side === 'bottom');
 
                   return (
-                    <g key={`row-${rowIdx}`}>
+                    <g
+                      key={`row-${rowIdx}`}
+                      transform={`translate(${transform.x} ${transform.y})`}
+                      onMouseDown={e => startRowDrag(e, rowIdx)}
+                      style={{ cursor: 'move' }}
+                    >
+                      <g transform={`rotate(${transform.rotation} ${centerX} ${rowCenterY})`}>
                       {topGroup && (
                         <>
                           <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
@@ -446,6 +501,12 @@ export default function ComputerLab({ students }: Props) {
                           })}
                         </>
                       )}
+
+                      <g onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); rotateRow(rowIdx); }} style={{ cursor: 'pointer' }}>
+                        <rect x={tableX + tableW + 12} y={baseY + 2} width={30} height={20} rx={5} className="fill-card stroke-border hover:stroke-primary/60" strokeWidth={1.2} />
+                        <text x={tableX + tableW + 27} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[10px]">90°</text>
+                      </g>
+                      </g>
                     </g>
                   );
                 })}
@@ -466,7 +527,7 @@ export default function ComputerLab({ students }: Props) {
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可换座；点击空座位可关闭/开放使用；门窗支持显隐与拖拽
+          拖拽姓名可换座；点击空座位可关闭/开放使用；每排长桌可拖拽与旋转90°；门窗支持显隐与拖拽
         </p>
       )}
       <SeatCheckinDialog
