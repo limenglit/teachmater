@@ -39,6 +39,7 @@ export default function SmartClassroom({ students }: Props) {
     window: true,
   });
   const [refLocked, setRefLocked] = useState(false);
+  const [checkinOpen, setCheckinOpen] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
