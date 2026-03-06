@@ -195,7 +195,7 @@ export default function BarrageDiscussion() {
         p_token: creatorToken,
       } as any);
       if (error) throw error;
-      localStorage.removeItem(`topic_token_${topicId}`);
+      sessionStorage.removeItem(`topic_token_${topicId}`);
       handleReset();
       toast({ title: '话题已删除' });
     } catch (e: any) {
