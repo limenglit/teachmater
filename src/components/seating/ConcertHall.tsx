@@ -20,6 +20,7 @@ export default function ConcertHall({ students }: Props) {
   const [canvasWidth, setCanvasWidth] = useState(1200);
   const [canvasHeight, setCanvasHeight] = useState(800);
   const [assignment, setAssignment] = useState<string[][]>([]);
+  const [checkinOpen, setCheckinOpen] = useState(false);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [dragFrom, setDragFrom] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
