@@ -473,6 +473,7 @@ export default function SeatChart() {
   const isExamMode = mode === 'exam';
   const printRef = useRef<HTMLDivElement>(null);
   const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-sm';
+  const sideMarkerIconClass = 'inline-flex items-center justify-center w-6 h-6 rounded-md border border-primary/30 bg-primary/10 text-sm leading-none';
 
   // Build the visual grid with aisles inserted
   const buildVisualGrid = () => {
@@ -877,12 +878,18 @@ export default function SeatChart() {
           {/* Seat Grid with side markers */}
           {seats.length > 0 ? (
             <div className="flex justify-center items-stretch gap-2">
-              <div className="flex items-center text-sm text-muted-foreground">
-                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '▢ 窗户侧' : '🚪 门侧'}</span>
+              <div className="flex items-center">
+                <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                  <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>
+                  <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '窗户侧' : '门侧'}</span>
+                </div>
               </div>
               {buildVisualGrid()}
-              <div className="flex items-center text-sm text-muted-foreground">
-                <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '🚪 门侧' : '▢ 窗户侧'}</span>
+              <div className="flex items-center">
+                <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                  <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
+                  <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? '门侧' : '窗户侧'}</span>
+                </div>
               </div>
             </div>
           ) : (
