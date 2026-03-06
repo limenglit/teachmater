@@ -78,7 +78,7 @@ serve(async (req) => {
     }
 
     if (topic.creator_token !== creator_token) {
-      return errorResponse('Unauthorized', 403);
+      return errorResponse(req, 'Unauthorized', 403);
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
