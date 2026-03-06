@@ -15,14 +15,14 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-function errorResponse(message: string, status: number) {
+function errorResponse(req: Request, message: string, status: number) {
   return new Response(JSON.stringify({ error: message }), {
-    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response(null, { headers: getCorsHeaders(req) });
 
   try {
     const body = await req.json();
