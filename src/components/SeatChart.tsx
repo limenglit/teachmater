@@ -472,6 +472,7 @@ export default function SeatChart() {
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
   const isExamMode = mode === 'exam';
   const printRef = useRef<HTMLDivElement>(null);
+  const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-sm';
 
   // Build the visual grid with aisles inserted
   const buildVisualGrid = () => {
@@ -855,14 +856,14 @@ export default function SeatChart() {
         <div ref={printRef}>
           {/* Podium with window/door */}
           <div className="mb-4 flex items-center justify-center gap-3">
-            <div className="text-lg cursor-default select-none" title={windowOnLeft ? '窗户' : '门'}>
-              {windowOnLeft ? <span className="inline-flex items-center justify-center w-7 h-7 border-2 border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span> : '🚪'}
+            <div className="cursor-default select-none" title={windowOnLeft ? '窗户' : '门'}>
+              {windowOnLeft ? <span className={sideIconClass}>🪟</span> : <span className={sideIconClass}>🚪</span>}
             </div>
             <div className="bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
               🏫 讲 台
             </div>
-            <div className="text-lg cursor-default select-none" title={windowOnLeft ? '门' : '窗户'}>
-              {windowOnLeft ? '🚪' : <span className="inline-flex items-center justify-center w-7 h-7 border-2 border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span>}
+            <div className="cursor-default select-none" title={windowOnLeft ? '门' : '窗户'}>
+              {windowOnLeft ? <span className={sideIconClass}>🚪</span> : <span className={sideIconClass}>🪟</span>}
             </div>
             <button
               onClick={() => setWindowOnLeft(prev => !prev)}
