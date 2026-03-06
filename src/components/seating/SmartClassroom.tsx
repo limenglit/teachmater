@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
@@ -11,16 +11,23 @@ interface Props {
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
-type RefKey = 'screen' | 'podium' | 'door' | 'window';
+type RefKey = 'screen' | 'podium' | 'frontDoor' | 'backDoor' | 'window';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
 
-const defaultRefPositions: RefPositions = {
-  screen: { x: 360, y: 24 },
-  podium: { x: 390, y: 80 },
-  door: { x: 780, y: 520 },
-  window: { x: 28, y: 220 },
-};
+function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
+  const badgeW = 94;
+  const centeredX = Math.round((roomWidth - badgeW) / 2);
+  const rightX = Math.max(24, roomWidth - badgeW - 24);
+  const centerY = Math.max(20, Math.round((roomHeight - 32) / 2));
+  return {
+    screen: { x: centeredX, y: 22 },
+    podium: { x: centeredX, y: 74 },
+    frontDoor: { x: rightX, y: 120 },
+    backDoor: { x: rightX, y: Math.max(160, roomHeight - 56) },
+    window: { x: 24, y: centerY },
+  };
+}
 
 export default function SmartClassroom({ students }: Props) {
   const [seatsPerTable, setSeatsPerTable] = useState(6);
@@ -31,11 +38,12 @@ export default function SmartClassroom({ students }: Props) {
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [tableGap, setTableGap] = useState(20);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
-  const [refPositions, setRefPositions] = useState<RefPositions>(defaultRefPositions);
+  const [refPositions, setRefPositions] = useState<RefPositions>(() => getDefaultRefPositions(920, 640));
   const [refVisible, setRefVisible] = useState<RefVisible>({
     screen: true,
     podium: true,
-    door: true,
+    frontDoor: true,
+    backDoor: true,
     window: true,
   });
   const [refLocked, setRefLocked] = useState(false);
@@ -137,9 +145,19 @@ export default function SmartClassroom({ students }: Props) {
   const tableRows = Math.ceil(tableCount / tableCols);
   const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
   const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
+  const defaultRefPositions = useMemo(() => getDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
+
+  useEffect(() => {
+    const matchedTableCount = Math.max(1, Math.ceil(students.length / Math.max(1, seatsPerTable)));
+    setTableCount(matchedTableCount);
+  }, [students.length, seatsPerTable]);
+
+  useEffect(() => {
+    setRefPositions(defaultRefPositions);
+  }, [defaultRefPositions]);
 
   useEffect(() => {
     setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
@@ -356,7 +374,10 @@ export default function SmartClassroom({ students }: Props) {
             <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.door} onChange={() => toggleRefVisible('door')} className="accent-primary" /> 门
+            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> 后门
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
@@ -410,14 +431,25 @@ export default function SmartClassroom({ students }: Props) {
                 </div>
               )}
 
-              {refVisible.door && (
+              {refVisible.frontDoor && (
                 <div
                   className={refBadgeClass}
-                  style={{ left: refPositions.door.x, top: refPositions.door.y }}
-                  onMouseDown={e => startRefDrag(e, 'door')}
+                  style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }}
+                  onMouseDown={e => startRefDrag(e, 'frontDoor')}
                 >
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>门</span>
+                  <span className={refTextClass}>前门</span>
+                </div>
+              )}
+
+              {refVisible.backDoor && (
+                <div
+                  className={refBadgeClass}
+                  style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }}
+                  onMouseDown={e => startRefDrag(e, 'backDoor')}
+                >
+                  <span className={refIconClass}>🚪</span>
+                  <span className={refTextClass}>后门</span>
                 </div>
               )}
 
@@ -449,7 +481,7 @@ export default function SmartClassroom({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/门/窗支持显隐与拖拽
+          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/前后门/窗支持显隐与拖拽
         </p>
       )}
       <SeatCheckinDialog
