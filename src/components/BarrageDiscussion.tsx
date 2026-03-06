@@ -161,7 +161,7 @@ export default function BarrageDiscussion() {
     setTopicId(id);
     setCreatorToken(token);
     // Persist token for this topic
-    localStorage.setItem(`topic_token_${id}`, token);
+    sessionStorage.setItem(`topic_token_${id}`, token);
     setMessages([]);
     setVisibleMessages([]);
     toast({ title: '话题已创建', description: '展示二维码让学生扫码参与' });
@@ -195,7 +195,7 @@ export default function BarrageDiscussion() {
         p_token: creatorToken,
       } as any);
       if (error) throw error;
-      localStorage.removeItem(`topic_token_${topicId}`);
+      sessionStorage.removeItem(`topic_token_${topicId}`);
       handleReset();
       toast({ title: '话题已删除' });
     } catch (e: any) {
