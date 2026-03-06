@@ -363,6 +363,11 @@ export default function SmartClassroom({ students }: Props) {
           </label>
         </div>
         {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
+        {assignment.length > 0 && (
+          <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
+            <QrCode className="w-4 h-4" /> 签到
+          </Button>
+        )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
