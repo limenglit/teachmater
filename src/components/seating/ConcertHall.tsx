@@ -321,6 +321,14 @@ export default function ConcertHall({ students }: Props) {
           💡 拖拽姓名可换座；点击空座位可关闭/开放使用
         </p>
       )}
+      <SeatCheckinDialog
+        open={checkinOpen}
+        onOpenChange={setCheckinOpen}
+        seatData={assignment}
+        studentNames={students.map(s => s.name)}
+        sceneType="concertHall"
+        sceneConfig={{ seatsPerRow, rowCount }}
+      />
     </div>
   );
 }
