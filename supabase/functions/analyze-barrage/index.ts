@@ -86,7 +86,7 @@ serve(async (req) => {
 
     const allText = messages.join('\n');
     if (allText.length > 50000) {
-      return errorResponse('Total message content too large', 400);
+      return errorResponse(req, 'Total message content too large', 400);
     }
 
     let systemPrompt = '';
