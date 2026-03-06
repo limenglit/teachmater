@@ -69,6 +69,16 @@ export default function BanquetHall({ students }: Props) {
   const tableRows = Math.ceil(tableCount / tableCols);
   const roomWidth = Math.max(980, tableCols * 180 + Math.max(0, tableCols - 1) * tableGap + 260);
   const roomHeight = Math.max(720, tableRows * 180 + Math.max(0, tableRows - 1) * tableGap + 280);
+  const tableCellSize = 170;
+  const tStageRunwayWidth = 56;
+  const hasTStage = refVisible.podium;
+  const splitIndex = Math.ceil(tableCols / 2);
+  const tStageTopWidth = Math.max(320, Math.min(roomWidth * 0.56, tableCols * 180));
+  const tStageTopY = 116;
+  const tStageTopHeight = 28;
+  const tStageRunwayTop = tStageTopY + tStageTopHeight - 2;
+  const tStageRunwayBottom = roomHeight - 64;
+  const tStageRunwayHeight = Math.max(120, tStageRunwayBottom - tStageRunwayTop);
   const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 720));
   const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
@@ -372,7 +382,7 @@ export default function BanquetHall({ students }: Props) {
             <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> T型舞台
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
@@ -422,11 +432,33 @@ export default function BanquetHall({ students }: Props) {
                   <span className={refTextClass}>幕布</span>
                 </div>
               )}
-              {refVisible.podium && (
-                <div className={refBadgeClass} style={{ left: refPositions.podium.x, top: refPositions.podium.y }} onMouseDown={e => startRefDrag(e, 'podium')}>
-                  <span className={refIconClass}>🏫</span>
-                  <span className={refTextClass}>讲台</span>
-                </div>
+              {hasTStage && (
+                <>
+                  <div
+                    className="absolute rounded-xl border border-primary/35 bg-primary/12 shadow-sm pointer-events-none"
+                    style={{
+                      left: `calc(50% - ${tStageTopWidth / 2}px)`,
+                      top: tStageTopY,
+                      width: tStageTopWidth,
+                      height: tStageTopHeight,
+                    }}
+                  />
+                  <div
+                    className="absolute rounded-xl border border-primary/35 bg-primary/12 shadow-sm pointer-events-none"
+                    style={{
+                      left: `calc(50% - ${tStageRunwayWidth / 2}px)`,
+                      top: tStageRunwayTop,
+                      width: tStageRunwayWidth,
+                      height: tStageRunwayHeight,
+                    }}
+                  />
+                  <div
+                    className="absolute text-[11px] font-medium text-primary/80 select-none pointer-events-none"
+                    style={{ left: '50%', top: tStageTopY + 6, transform: 'translateX(-50%)' }}
+                  >
+                    T型舞台
+                  </div>
+                </>
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
@@ -448,8 +480,26 @@ export default function BanquetHall({ students }: Props) {
               )}
 
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
-                  {assignment.map((people, i) => renderBanquetTable(i, people))}
+                <div
+                  className="inline-grid pointer-events-auto"
+                  style={{
+                    gridTemplateColumns: hasTStage && tableCols > 1
+                      ? `repeat(${splitIndex}, ${tableCellSize}px) ${tStageRunwayWidth}px repeat(${tableCols - splitIndex}, ${tableCellSize}px)`
+                      : `repeat(${tableCols}, ${tableCellSize}px)`,
+                    columnGap: `${tableGap}px`,
+                    rowGap: `${tableGap}px`,
+                  }}
+                >
+                  {assignment.map((people, i) => {
+                    const col = i % tableCols;
+                    const row = Math.floor(i / tableCols);
+                    const visualCol = hasTStage && tableCols > 1 && col >= splitIndex ? col + 2 : col + 1;
+                    return (
+                      <div key={`banquet-table-cell-${i}`} style={{ gridColumn: visualCol, gridRow: row + 1 }}>
+                        {renderBanquetTable(i, people)}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -464,7 +514,7 @@ export default function BanquetHall({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/窗/前后门支持显隐与拖拽
+          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/T型舞台/窗/前后门支持显隐与拖拽
         </p>
       )}
       <SeatCheckinDialog
