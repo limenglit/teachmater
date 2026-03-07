@@ -106,15 +106,13 @@ afterEach(() => {
 describe('RandomPicker', () => {
   // Case 1: 无可用学生时，按钮禁用
   it('disables roll button when no students available', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-    render(
-      <StudentProvider>
-        <RandomPicker />
-      </StudentProvider>
-    );
-    // 0 students → roller mode (not wheel), "滚动" button should be disabled
-    const rollBtn = screen.getByText('滚动').closest('button')!;
-    expect(rollBtn).toBeDisabled();
+    // Use 1 student (wheel mode), pick it, then button should be disabled
+    renderPickerWithWheel(1);
+    // noRepeat is on by default — pick the only student
+    fireEvent.click(screen.getByTestId('wheel-spin'));
+    // Now available = 0, button should be disabled
+    const spinBtn = screen.getByTestId('wheel-spin');
+    expect(spinBtn).toBeDisabled();
     // Dice button also disabled
     const diceBtn = screen.getByText('投掷').closest('button')!;
     expect(diceBtn).toBeDisabled();
