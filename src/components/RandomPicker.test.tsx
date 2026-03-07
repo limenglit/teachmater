@@ -112,9 +112,12 @@ describe('RandomPicker', () => {
         <RandomPicker />
       </StudentProvider>
     );
-    // Wheel mode with 0 students — the wheel spin button should be disabled
+    // 0 students → wheel mode mock renders disabled button
     const spinBtn = screen.getByTestId('wheel-spin');
     expect(spinBtn).toBeDisabled();
+    // Also check dice button
+    const diceBtn = screen.getByText('投掷').closest('button')!;
+    expect(diceBtn).toBeDisabled();
   });
 
   // Case 2: 开启"不重复"时，连续抽取不会重复直到池耗尽
