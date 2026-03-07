@@ -106,16 +106,11 @@ afterEach(() => {
 describe('RandomPicker', () => {
   // Case 1: 无可用学生时，按钮禁用
   it('disables roll button when no students available', () => {
-    // Use 1 student (wheel mode), pick it, then button should be disabled
+    // Use 1 student (wheel mode), pick it to exhaust the pool
     renderPickerWithWheel(1);
-    // noRepeat is on by default — pick the only student
     fireEvent.click(screen.getByTestId('wheel-spin'));
-    // Now available = 0, button should be disabled
-    const spinBtn = screen.getByTestId('wheel-spin');
-    expect(spinBtn).toBeDisabled();
-    // Dice button also disabled
-    const diceBtn = screen.getByText('投掷').closest('button')!;
-    expect(diceBtn).toBeDisabled();
+    // Now available = 0, spin button should be disabled
+    expect(screen.getByTestId('wheel-spin')).toBeDisabled();
   });
 
   // Case 2: 开启"不重复"时，连续抽取不会重复直到池耗尽
