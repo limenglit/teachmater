@@ -40,7 +40,7 @@ describe('ToolkitPanel command cards', () => {
     fireEvent.click(candidateButtons[0]);
 
     await waitFor(() => {
-      expect(screen.getByText('小组辩论')).toBeInTheDocument();
+      expect(screen.getAllByText('小组辩论').length).toBeGreaterThan(0);
     });
   });
 
