@@ -112,10 +112,10 @@ describe('RandomPicker', () => {
         <RandomPicker />
       </StudentProvider>
     );
-    // 0 students → wheel mode mock renders disabled button
-    const spinBtn = screen.getByTestId('wheel-spin');
-    expect(spinBtn).toBeDisabled();
-    // Also check dice button
+    // 0 students → roller mode (not wheel), "滚动" button should be disabled
+    const rollBtn = screen.getByText('滚动').closest('button')!;
+    expect(rollBtn).toBeDisabled();
+    // Dice button also disabled
     const diceBtn = screen.getByText('投掷').closest('button')!;
     expect(diceBtn).toBeDisabled();
   });
