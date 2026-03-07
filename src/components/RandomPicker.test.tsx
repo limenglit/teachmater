@@ -81,6 +81,14 @@ global.ResizeObserver = class {
   disconnect() {}
 } as any;
 
+// SpeechSynthesisUtterance polyfill
+global.SpeechSynthesisUtterance = class {
+  lang = '';
+  rate = 1;
+  text = '';
+  constructor(text?: string) { this.text = text || ''; }
+} as any;
+
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
