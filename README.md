@@ -82,3 +82,4 @@ For pre-release quality checks, test matrix, and usability validation, see:
 
 - Developer Guide: `docs/developer-guide.md`
 - User Manual: `docs/user-manual.md`
+- Lovable Unit Test Prompts: `docs/lovable-unit-test-prompts.md`

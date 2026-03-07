@@ -17,6 +17,10 @@ Recommended test focus:
 - Candidate list boundaries (3-6)
 - Existing utility tests and smoke tests
 
+For module-level unit-test cases and Lovable prompts, see:
+
+- `docs/lovable-unit-test-prompts.md`
+
 ## 2) Edge test matrix
 
 ### Command card icon retrieval
