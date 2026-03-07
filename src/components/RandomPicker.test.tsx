@@ -74,11 +74,17 @@ function renderPickerWithWheel(studentCount = 5) {
 // Must import after mocks
 import RandomPicker from './RandomPicker';
 
+// ResizeObserver polyfill for Radix Slider
+global.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as any;
+
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
   vi.useFakeTimers({ shouldAdvanceTime: true });
-  // Mock speechSynthesis
   Object.defineProperty(window, 'speechSynthesis', {
     writable: true,
     value: { speak: vi.fn(), cancel: vi.fn() },
