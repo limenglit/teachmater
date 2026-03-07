@@ -15,51 +15,6 @@ type RefKey = 'screen' | 'podium' | 'window' | 'frontDoor' | 'backDoor';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
 
-function StageGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="3" y="4" width="18" height="5" rx="1.6" className="fill-current" />
-      <rect x="10" y="9" width="4" height="12" rx="1.4" className="fill-current" />
-    </svg>
-  );
-}
-
-function ScreenGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="4" y="4" width="16" height="11" rx="2" className="fill-current" />
-      <rect x="10" y="15" width="4" height="2" rx="1" className="fill-current" />
-      <rect x="8" y="17" width="8" height="2.5" rx="1.2" className="fill-current" />
-    </svg>
-  );
-}
-
-function WindowGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <rect x="4" y="4" width="16" height="16" rx="2" className="fill-current" />
-      <rect x="11.25" y="4" width="1.5" height="16" className="fill-background" />
-      <rect x="4" y="11.25" width="16" height="1.5" className="fill-background" />
-    </svg>
-  );
-}
-
-function DoorGlyph({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <path d="M7 3.5A1.5 1.5 0 0 1 8.5 2h7A1.5 1.5 0 0 1 17 3.5V22h-2V4H9v18H7V3.5z" className="fill-current" />
-      <circle cx="12.3" cy="12" r="1" className="fill-current" />
-    </svg>
-  );
-}
-
-function RefGlyph({ refKey, className }: { refKey: RefKey; className?: string }) {
-  if (refKey === 'screen') return <ScreenGlyph className={className} />;
-  if (refKey === 'podium') return <StageGlyph className={className} />;
-  if (refKey === 'window') return <WindowGlyph className={className} />;
-  return <DoorGlyph className={className} />;
-}
-
 function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
   const badgeW = 94;
   const centerX = Math.round((roomWidth - badgeW) / 2);
@@ -126,8 +81,8 @@ export default function BanquetHall({ students }: Props) {
   const tStageRunwayHeight = Math.max(120, tStageRunwayBottom - tStageRunwayTop);
   const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 720));
-  const refBadgeClass = 'absolute h-9 pl-2.5 pr-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/18 to-primary/10 text-primary shadow-md shadow-primary/10 cursor-move select-none inline-flex items-center gap-1.5 backdrop-blur-sm';
-  const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/25 bg-background/85 text-primary';
+  const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
+  const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
   const placeName = (tables: string[][], preferred: number, name: string) => {
@@ -470,33 +425,10 @@ export default function BanquetHall({ students }: Props) {
 
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto">
-            <div
-              className="relative rounded-2xl border border-primary/20 bg-gradient-to-b from-card via-card/95 to-primary/5 shadow-lg shadow-primary/5"
-              style={{ width: roomWidth, height: roomHeight }}
-            >
-              <div className="absolute inset-0 pointer-events-none opacity-55" style={{
-                backgroundImage: 'radial-gradient(circle at 1px 1px, hsl(var(--primary) / 0.1) 1px, transparent 0)',
-                backgroundSize: '20px 20px',
-              }} />
-              <div className="absolute right-4 top-4 z-20 rounded-xl border border-primary/20 bg-background/85 px-3 py-2 shadow-sm backdrop-blur-sm pointer-events-none">
-                <div className="text-[10px] tracking-[0.14em] text-primary/80 font-semibold">舞台示意</div>
-                <div className="mt-1 inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/10 px-2 py-1 text-[11px] text-primary">
-                  <StageGlyph className="h-3.5 w-3.5" />
-                  <span className="font-medium">T型舞台</span>
-                </div>
-                <svg viewBox="0 0 168 86" className="mt-2 h-16 w-32">
-                  <rect x="1" y="1" width="166" height="84" rx="10" className="fill-background/80 stroke-primary/20" />
-                  <rect x="39" y="12" width="90" height="12" rx="4" className="fill-primary/20 stroke-primary/35" />
-                  <rect x="78" y="24" width="12" height="40" rx="4" className="fill-primary/20 stroke-primary/35" />
-                  <circle cx="36" cy="53" r="8" className="fill-muted stroke-primary/20" />
-                  <circle cx="64" cy="62" r="8" className="fill-muted stroke-primary/20" />
-                  <circle cx="104" cy="62" r="8" className="fill-muted stroke-primary/20" />
-                  <circle cx="132" cy="53" r="8" className="fill-muted stroke-primary/20" />
-                </svg>
-              </div>
+            <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
-                  <span className={refIconClass}><RefGlyph refKey="screen" className="h-3.5 w-3.5" /></span>
+                  <span className={refIconClass}>🖥️</span>
                   <span className={refTextClass}>幕布</span>
                 </div>
               )}
@@ -530,19 +462,19 @@ export default function BanquetHall({ students }: Props) {
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
-                  <span className={refIconClass}><RefGlyph refKey="window" className="h-3.5 w-3.5" /></span>
+                  <span className={refIconClass}>🪟</span>
                   <span className={refTextClass}>窗</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
-                  <span className={refIconClass}><RefGlyph refKey="frontDoor" className="h-3.5 w-3.5" /></span>
+                  <span className={refIconClass}>🚪</span>
                   <span className={refTextClass}>前门</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
-                  <span className={refIconClass}><RefGlyph refKey="backDoor" className="h-3.5 w-3.5" /></span>
+                  <span className={refIconClass}>🚪</span>
                   <span className={refTextClass}>后门</span>
                 </div>
               )}
