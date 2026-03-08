@@ -445,6 +445,9 @@ export default function BoardPanel() {
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowWordCloud(true)}>
                   <CloudIcon className="w-3 h-3" /> {t('board.wordCloud')}
                 </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowReport(true)}>
+                  <FileText className="w-3 h-3" /> {t('board.smartReport')}
+                </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
                   <Download className="w-3 h-3" /> {t('board.exportCSV')}
                 </Button>
