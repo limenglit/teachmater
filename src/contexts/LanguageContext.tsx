@@ -1462,6 +1462,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.reportPromptSub': 'Анализ содержимого {0} карточек',
     'board.reportCardCount': 'карточек',
     'board.reportStreaming': 'Генерация...',
+    'ai.guestLimitReached': 'Дневной лимит ИИ исчерпан. Войдите для неограниченного доступа',
+    'ai.guestRemaining': 'Гостевой ИИ: {0}/{1} осталось сегодня. Войдите для безлимита',
     'board.pptPrev': 'Назад',
     'board.pptNext': 'Далее',
     'board.pptExit': 'Выйти',
