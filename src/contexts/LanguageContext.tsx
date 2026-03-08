@@ -1041,6 +1041,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.reportPrompt': 'Click "Generate Report" to start AI analysis',
     'board.reportPromptSub': 'Analyze content from {0} cards',
     'board.reportCardCount': 'cards',
+    'board.reportStreaming': 'Generating...',
     'board.pptPrev': 'Previous',
     'board.pptNext': 'Next',
     'board.pptExit': 'Exit Slideshow',
