@@ -18,6 +18,7 @@ import NoiseDetector from './toolkit/NoiseDetector';
 import RandomAssigner from './toolkit/RandomAssigner';
 import Scoreboard from './toolkit/Scoreboard';
 import LotteryDrawer from './toolkit/LotteryDrawer';
+import PollManager from './toolkit/PollManager';
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
