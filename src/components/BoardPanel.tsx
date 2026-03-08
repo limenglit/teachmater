@@ -485,13 +485,13 @@ export default function BoardPanel() {
         {/* Board content */}
         <div className="flex-1 overflow-auto p-4">
           {activeBoard.view_mode === 'wall' && (
-            <BoardWallView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
+            <BoardWallView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
           )}
           {activeBoard.view_mode === 'kanban' && (
-            <BoardKanbanView cards={sortedCards} columns={activeBoard.columns} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
+            <BoardKanbanView cards={sortedCards} columns={activeBoard.columns} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
           )}
           {activeBoard.view_mode === 'timeline' && (
-            <BoardTimelineView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
+            <BoardTimelineView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
           )}
           {activeBoard.view_mode === 'canvas' && (
             <BoardCanvasView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
