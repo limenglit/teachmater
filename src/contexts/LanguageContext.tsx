@@ -1736,6 +1736,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.prev': 'Назад', 'quiz.next': 'Далее', 'quiz.submit': 'Отправить', 'quiz.multiHint': 'Можно выбрать несколько',
     'quiz.shortPlaceholder': 'Введите ответ...', 'quiz.submitSuccess': 'Отправлено!', 'quiz.waitForResult': 'Ждите результатов',
     'quiz.sessionNotFound': 'Тест не найден', 'quiz.sessionEnded': 'Тест завершён', 'quiz.loginRequired': 'Войдите для использования',
+    'quiz.localMode': 'Локальный', 'quiz.cloudMode': 'Облако', 'quiz.loginToPublish': 'Войдите, чтобы начать тест', 'quiz.loginForSessions': 'Войдите для онлайн-тестов', 'quiz.localModeHint': 'Вопросы сохранены локально',
   },
   ja: {
     'app.title': 'TeachMate',
