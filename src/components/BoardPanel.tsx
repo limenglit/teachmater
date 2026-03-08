@@ -382,6 +382,11 @@ export default function BoardPanel() {
     return <BoardWordCloud cards={sortedCards} onClose={() => setShowWordCloud(false)} />;
   }
 
+  // Smart report mode
+  if (showReport && activeBoard) {
+    return <BoardReport cards={sortedCards} boardTitle={activeBoard.title} onClose={() => setShowReport(false)} />;
+  }
+
   // PPT mode
   if (showPPT && activeBoard) {
     return <BoardPPTMode cards={sortedCards} onExit={() => setShowPPT(false)} />;
