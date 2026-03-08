@@ -19,6 +19,7 @@ const SeatCheckinPage = lazy(() => import("./pages/SeatCheckinPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const BoardSubmitPage = lazy(() => import("./pages/BoardSubmitPage"));
 const QuizSubmitPage = lazy(() => import("./pages/QuizSubmitPage"));
+const PollVotePage = lazy(() => import("./pages/PollVotePage"));
 
 const queryClient = new QueryClient();
 
