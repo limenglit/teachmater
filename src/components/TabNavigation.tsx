@@ -1,4 +1,4 @@
-import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck, BotMessageSquare, Lightbulb, PenBox } from 'lucide-react';
+import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck, BotMessageSquare, Lightbulb, PenBox, FileQuestion } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'checkin' | 'board' | 'toolkit';
