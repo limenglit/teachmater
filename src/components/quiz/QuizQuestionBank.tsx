@@ -21,6 +21,13 @@ import {
   getLocalQuestions, saveLocalQuestions,
   getLocalCategories, saveLocalCategories,
 } from './quizTypes';
+import {
+  filterQuestions,
+  addLocalQuestion,
+  updateLocalQuestion,
+  deleteLocalQuestion,
+  toggleStarQuestion,
+} from '@/lib/quiz-utils';
 
 interface Props {
   questions: QuizQuestion[];
