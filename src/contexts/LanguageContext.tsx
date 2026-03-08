@@ -1499,6 +1499,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.teams': 'チーム',
     'tab.seats': '座席',
     'tab.checkin': '出席確認',
+    'tab.board': 'ボード',
     'tab.toolkit': 'ツールボックス',
     'ext.ai': 'AIアシスタント',
     'ext.idea': 'IdeaVas',
