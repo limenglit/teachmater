@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import QuizStatsView from '@/components/quiz/QuizStatsView';
+import QuizImporter from '@/components/quiz/QuizImporter';
 
 export interface QuizQuestion {
   id: string;
