@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Lock, Send, User } from 'lucide-react';
+import { CheckCircle2, Lock, Send, User, ImagePlus } from 'lucide-react';
 import type { Board } from '@/components/BoardPanel';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
@@ -24,11 +24,14 @@ export default function BoardSubmitPage() {
   const [columnId, setColumnId] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!boardId) return;
     supabase.from('boards').select('*').eq('id', boardId).single()
-      .then(({ data, error }) => {
+      .then(({ data }) => {
         if (data) {
           setBoard(data as any);
           const cols = (data as any).columns;
@@ -50,11 +53,23 @@ export default function BoardSubmitPage() {
     localStorage.setItem(`board-nick-${boardId}`, nickname.trim());
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !boardId) return;
+    setUploading(true);
+    const ext = file.name.split('.').pop();
+    const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
+    const { data, error } = await supabase.storage.from('board-media').upload(path, file);
+    if (error) { setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(data.path);
+    setMediaUrl(urlData.publicUrl);
+    setUploading(false);
+  };
+
   const handleSubmit = async () => {
-    if (!content.trim() || !boardId || !board) return;
+    if ((!content.trim() && !mediaUrl) || !boardId || !board) return;
     setSubmitting(true);
 
-    // Check banned words
     let isApproved = !board.moderation_enabled;
     if (board.banned_words) {
       const words = board.banned_words.split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
@@ -66,12 +81,13 @@ export default function BoardSubmitPage() {
     const { error } = await supabase.from('board_cards').insert({
       board_id: boardId,
       content: content.trim(),
-      card_type: url.trim() ? 'url' : 'text',
+      card_type: mediaUrl ? 'image' : url.trim() ? 'url' : 'text',
       url: url.trim(),
       color,
       author_nickname: nickname.trim() || t('board.anonymous'),
       is_approved: isApproved,
       column_id: columnId,
+      media_url: mediaUrl,
       position_x: Math.random() * 600,
       position_y: Math.random() * 400,
       sort_order: 0,
@@ -85,11 +101,8 @@ export default function BoardSubmitPage() {
       setSubmitted(true);
       setContent('');
       setUrl('');
-      if (!isApproved) {
-        toast({ title: t('board.blockedWord') });
-      } else {
-        toast({ title: t('board.submitSuccess') });
-      }
+      setMediaUrl('');
+      toast({ title: !isApproved ? t('board.blockedWord') : t('board.submitSuccess') });
       setTimeout(() => setSubmitted(false), 2000);
     }
   };
@@ -114,7 +127,6 @@ export default function BoardSubmitPage() {
     );
   }
 
-  // Nickname entry
   if (!nicknameConfirmed) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -146,7 +158,6 @@ export default function BoardSubmitPage() {
     );
   }
 
-  // Submit form
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -168,11 +179,26 @@ export default function BoardSubmitPage() {
             rows={4}
           />
 
-          <Input
-            value={url}
-            onChange={e => setUrl(e.target.value)}
-            placeholder={t('board.cardUrl')}
-          />
+          {mediaUrl && (
+            <div className="relative inline-block">
+              <img src={mediaUrl} alt="" className="h-24 rounded-lg object-cover" />
+              <button onClick={() => setMediaUrl('')} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">×</button>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Input
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder={t('board.cardUrl')}
+              className="flex-1"
+            />
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+            <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-1">
+              <ImagePlus className="w-4 h-4" />
+              {uploading ? t('board.uploading') : t('board.uploadImage')}
+            </Button>
+          </div>
 
           {board.view_mode === 'kanban' && Array.isArray(board.columns) && board.columns.length > 0 && (
             <select
@@ -198,7 +224,7 @@ export default function BoardSubmitPage() {
             ))}
           </div>
 
-          <Button onClick={handleSubmit} disabled={!content.trim() || submitting} className="w-full h-12 text-base gap-2">
+          <Button onClick={handleSubmit} disabled={(!content.trim() && !mediaUrl) || submitting} className="w-full h-12 text-base gap-2">
             <Send className="w-4 h-4" />
             {submitting ? t('board.submitting') : t('board.submit')}
           </Button>

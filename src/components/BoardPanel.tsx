@@ -546,6 +546,9 @@ export default function BoardPanel() {
       {!isCloud && (
         <p className="text-xs text-muted-foreground mb-3">💡 {t('settings.localOnly')}</p>
       )}
+      {isCloud && (
+        <p className="text-xs text-muted-foreground mb-3">{t('board.cloudSync')}</p>
+      )}
 
       {/* Board list */}
       <div className="space-y-2">
