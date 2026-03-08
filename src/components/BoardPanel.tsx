@@ -545,62 +545,70 @@ export default function BoardPanel() {
   // Board list view
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6">
-      <div className="max-w-3xl mx-auto bg-card rounded-2xl border border-border shadow-card p-6">
-      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-        🎨 {t('board.title')}
-      </h3>
+      <div className="max-w-4xl mx-auto">
+        <h3 className="font-semibold text-foreground mb-5 flex items-center gap-2 text-lg">
+          🎨 {t('board.title')}
+        </h3>
 
-      {/* Create new board */}
-      <div className="flex gap-2 mb-4">
-        <Input
-          value={newTitle}
-          onChange={e => setNewTitle(e.target.value)}
-          placeholder={t('board.boardTitle')}
-          className="h-9"
-          onKeyDown={e => e.key === 'Enter' && createBoard()}
-        />
-        <Button size="sm" onClick={createBoard} className="h-9 gap-1">
-          <Plus className="w-4 h-4" /> {t('board.create')}
-        </Button>
-      </div>
+        {/* Create new board */}
+        <div className="flex gap-3 mb-4">
+          <Input
+            value={newTitle}
+            onChange={e => setNewTitle(e.target.value)}
+            placeholder={t('board.boardTitle')}
+            className="h-10"
+            onKeyDown={e => e.key === 'Enter' && createBoard()}
+          />
+          <Button onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
+            <Plus className="w-4 h-4" /> {t('board.create')}
+          </Button>
+        </div>
 
-      {!isCloud && (
-        <p className="text-xs text-muted-foreground mb-3">💡 {t('settings.localOnly')}</p>
-      )}
-      {isCloud && (
-        <p className="text-xs text-muted-foreground mb-3">{t('board.cloudSync')}</p>
-      )}
-
-      {/* Board list */}
-      <div className="space-y-2">
-        {boards.length === 0 && (
-          <p className="text-center text-sm text-muted-foreground py-6">{t('board.noBoards')}</p>
+        {!isCloud && (
+          <p className="text-xs text-muted-foreground mb-4">💡 {t('settings.localOnly')}</p>
         )}
-        {boards.map(board => (
-          <div
-            key={board.id}
-            className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-            onClick={() => openBoard(board)}
-          >
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-foreground truncate">{board.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {new Date(board.created_at).toLocaleDateString()}
-                {board.is_locked && <span className="ml-2">🔒</span>}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs opacity-0 group-hover:opacity-100 text-destructive"
-              onClick={(e) => { e.stopPropagation(); deleteBoard(board); }}
-            >
-              <Trash2 className="w-3 h-3" />
-            </Button>
+        {isCloud && (
+          <p className="text-xs text-muted-foreground mb-4">{t('board.cloudSync')}</p>
+        )}
+
+        {/* Board list - grid layout */}
+        {boards.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <div className="text-4xl mb-3">📋</div>
+            <p className="text-sm">{t('board.noBoards')}</p>
           </div>
-        ))}
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {boards.map(board => (
+              <div
+                key={board.id}
+                className="flex flex-col justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group"
+                onClick={() => openBoard(board)}
+              >
+                <div className="min-w-0 mb-3">
+                  <div className="text-sm font-medium text-foreground truncate mb-1">{board.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(board.created_at).toLocaleDateString()}
+                    {board.is_locked && <span className="ml-2">🔒</span>}
+                    {board.moderation_enabled && <span className="ml-1">👁</span>}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground capitalize">{board.view_mode}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive"
+                    onClick={(e) => { e.stopPropagation(); deleteBoard(board); }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
     </div>
   );
 }
