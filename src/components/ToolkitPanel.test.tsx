@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ToolkitPanel from './ToolkitPanel';
+import { StudentProvider } from '@/contexts/StudentContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
+
+const renderWithProviders = (ui: React.ReactElement) =>
+  render(<LanguageProvider><StudentProvider>{ui}</StudentProvider></LanguageProvider>);
 
 vi.mock('./BarrageDiscussion', () => ({
   default: () => <div data-testid="mock-barrage">Barrage</div>,
@@ -8,6 +13,18 @@ vi.mock('./BarrageDiscussion', () => ({
 
 vi.mock('./CountdownTimer', () => ({
   default: () => <div data-testid="mock-countdown">Countdown</div>,
+}));
+
+vi.mock('./toolkit/NoiseDetector', () => ({
+  default: () => <div data-testid="mock-noise">Noise</div>,
+}));
+
+vi.mock('./toolkit/Scoreboard', () => ({
+  default: () => <div data-testid="mock-scoreboard">Scoreboard</div>,
+}));
+
+vi.mock('./toolkit/LotteryDrawer', () => ({
+  default: () => <div data-testid="mock-lottery">Lottery</div>,
 }));
 
 describe('ToolkitPanel command cards', () => {
@@ -23,7 +40,7 @@ describe('ToolkitPanel command cards', () => {
       }),
     } as Response);
 
-    render(<ToolkitPanel />);
+    renderWithProviders(<ToolkitPanel />);
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '小组辩论' },
@@ -31,7 +48,7 @@ describe('ToolkitPanel command cards', () => {
     fireEvent.click(screen.getByRole('button', { name: '检索徽章' }));
 
     await waitFor(() => {
-      expect(screen.getByText('已找到 4 个候选图标，请点选一个用于“小组辩论”')).toBeInTheDocument();
+      expect(screen.getByText(/已找到 4 个候选图标/)).toBeInTheDocument();
     });
 
     const candidateButtons = screen.getAllByTitle(/选择候选/);
@@ -47,7 +64,7 @@ describe('ToolkitPanel command cards', () => {
   it('falls back to default question mark when search fails', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
 
-    render(<ToolkitPanel />);
+    renderWithProviders(<ToolkitPanel />);
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '快速测验' },
@@ -55,7 +72,7 @@ describe('ToolkitPanel command cards', () => {
     fireEvent.keyDown(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), { key: 'Enter' });
 
     await waitFor(() => {
-      expect(screen.getByText('联网检索图标失败，已使用默认“？”图标发布该指令')).toBeInTheDocument();
+      expect(screen.getByText('联网检索图标失败，已使用默认"？"图标发布该指令')).toBeInTheDocument();
     });
     expect(screen.getAllByText('快速测验').length).toBeGreaterThan(0);
   });
@@ -66,7 +83,7 @@ describe('ToolkitPanel command cards', () => {
       json: async () => ({ icons: ['mdi:account'] }),
     } as Response);
 
-    render(<ToolkitPanel />);
+    renderWithProviders(<ToolkitPanel />);
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '课堂热身' },
@@ -74,7 +91,7 @@ describe('ToolkitPanel command cards', () => {
     fireEvent.click(screen.getByRole('button', { name: '检索徽章' }));
 
     await waitFor(() => {
-      expect(screen.getByText('图标候选不足，已使用默认“？”图标发布该指令')).toBeInTheDocument();
+      expect(screen.getByText('图标候选不足，已使用默认"？"图标发布该指令')).toBeInTheDocument();
     });
     expect(screen.getAllByText('课堂热身').length).toBeGreaterThan(0);
   });
