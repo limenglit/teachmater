@@ -34,7 +34,6 @@ serve(async (req) => {
       return errorResponse(req, 'Too many cards (max 500)', 400);
     }
 
-    // Build analysis text from cards
     const lines: string[] = [];
     for (const card of cards) {
       if (typeof card.content === 'string' && card.content.trim()) {
@@ -97,6 +96,7 @@ ${allText}`;
           { role: "system", content: systemPrompt },
           { role: "user", content: "请分析以上白板卡片内容，生成智能报告。" },
         ],
+        stream: true,
       }),
     });
 
@@ -109,11 +109,9 @@ ${allText}`;
       return errorResponse(req, "AI 分析失败", 500);
     }
 
-    const data = await response.json();
-    const result = data.choices?.[0]?.message?.content || '';
-
-    return new Response(JSON.stringify({ result }), {
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    // Pass through the SSE stream directly
+    return new Response(response.body, {
+      headers: { ...getCorsHeaders(req), "Content-Type": "text/event-stream" },
     });
   } catch (e) {
     console.error("analyze-board error:", e);
