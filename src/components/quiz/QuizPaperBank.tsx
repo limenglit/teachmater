@@ -17,6 +17,17 @@ import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
 } from './quizTypes';
 import { getLocalPapers, saveLocalPapers } from './quizTypes';
+import {
+  addQuestionToPaper as addQToPaper,
+  removeFromPaper as removeQFromPaper,
+  movePaperQuestion,
+  updatePaperQuestionScore,
+  computePaperTotalScore,
+  autoGeneratePaper,
+  computeAutoTotalScore,
+  deleteLocalPaper,
+  duplicateLocalPaper,
+} from '@/lib/quiz-utils';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 
