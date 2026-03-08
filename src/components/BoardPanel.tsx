@@ -145,7 +145,9 @@ export default function BoardPanel() {
   const createBoard = async () => {
     const title = newTitle.trim() || t('board.title');
     if (isCloud) {
-      const { data, error } = await supabase.from('boards').insert({ title }).select().single();
+      const insertData: any = { title };
+      if (user) insertData.user_id = user.id;
+      const { data, error } = await supabase.from('boards').insert(insertData).select().single();
       if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
       const board = data as any as Board;
       saveCreatorToken(board.id, board.creator_token);
