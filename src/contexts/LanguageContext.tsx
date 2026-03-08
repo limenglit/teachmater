@@ -27,6 +27,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.teams': '建队',
     'tab.seats': '座位',
     'tab.checkin': '签到',
+    'tab.board': '白板',
     'tab.toolkit': '工具箱',
     // External links
     'ext.ai': 'AI助手',
