@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ToolkitPanel from './ToolkitPanel';
+import { StudentProvider } from '@/contexts/StudentContext';
+
+const renderWithProviders = (ui: React.ReactElement) =>
+  render(<StudentProvider>{ui}</StudentProvider>);
 
 vi.mock('./BarrageDiscussion', () => ({
   default: () => <div data-testid="mock-barrage">Barrage</div>,
