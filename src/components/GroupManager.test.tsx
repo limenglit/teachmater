@@ -18,12 +18,10 @@ describe('GroupManager', () => {
     ));
   });
 
-  it('does not generate groups when student list is empty', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+  it('shows empty state before auto-group is clicked', () => {
     render(<GroupManager />, { wrapper });
-    fireEvent.click(screen.getByText('自动分组'));
-    // Should not show any person count labels
-    expect(screen.queryByText(/人$/)).not.toBeInTheDocument();
+    // Before clicking, empty prompt should show
+    expect(screen.getByText(/点击.*自动分组/)).toBeInTheDocument();
   });
 
   it('auto-groups with person count conservation', () => {

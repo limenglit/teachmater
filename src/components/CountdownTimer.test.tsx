@@ -56,7 +56,7 @@ describe('CountdownTimer', () => {
     expect(screen.getByText('05:00')).toBeInTheDocument();
   });
 
-  it('shows time up when countdown reaches 0', () => {
+  it('shows 00:00 and disables start when countdown reaches 0', () => {
     render(<CountdownTimer />, { wrapper });
     // Set to 3 seconds using the number inputs
     const inputs = screen.getAllByRole('spinbutton');
@@ -67,6 +67,9 @@ describe('CountdownTimer', () => {
 
     fireEvent.click(screen.getByText('开始'));
     act(() => { vi.advanceTimersByTime(3000); });
-    expect(screen.getByText('时间到！')).toBeInTheDocument();
+    expect(screen.getByText('00:00')).toBeInTheDocument();
+    // Start button should be disabled
+    const startBtn = screen.getByText('开始').closest('button')!;
+    expect(startBtn).toBeDisabled();
   });
 });

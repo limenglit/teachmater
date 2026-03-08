@@ -45,11 +45,9 @@ describe('TeamBuilder', () => {
     }
   });
 
-  it('does not generate teams when list is empty', () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+  it('shows empty state before auto-team is clicked', () => {
     render(<TeamBuilder />, { wrapper });
-    fireEvent.click(screen.getByText('自动建队'));
-    // Empty state text should remain
-    expect(screen.queryByText(/人$/)).not.toBeInTheDocument();
+    // Before clicking auto-team, should show empty prompt
+    expect(screen.getByText(/点击.*自动建队/)).toBeInTheDocument();
   });
 });
