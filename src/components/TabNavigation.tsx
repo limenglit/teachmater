@@ -1,34 +1,35 @@
 import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck, BotMessageSquare, Lightbulb } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'toolkit' | 'checkin';
 
 interface TabItem {
   id: TabId;
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   emoji: string;
   requiresAuth?: boolean;
 }
 
 interface ExternalLink {
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   emoji: string;
   url: string;
 }
 
 const tabs: TabItem[] = [
-  { id: 'random', label: '随机选人', emoji: '🎲', icon: <Dices className="w-4 h-4" /> },
-  { id: 'groups', label: '分组', emoji: '👥', icon: <Users className="w-4 h-4" /> },
-  { id: 'teams', label: '建队', emoji: '⚡', icon: <Zap className="w-4 h-4" /> },
-  { id: 'seats', label: '座位', emoji: '🏫', icon: <LayoutGrid className="w-4 h-4" /> },
-  { id: 'checkin', label: '签到', emoji: '📋', icon: <ClipboardCheck className="w-4 h-4" />, requiresAuth: true },
-  { id: 'toolkit', label: '工具箱', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
+  { id: 'random', labelKey: 'tab.random', emoji: '🎲', icon: <Dices className="w-4 h-4" /> },
+  { id: 'groups', labelKey: 'tab.groups', emoji: '👥', icon: <Users className="w-4 h-4" /> },
+  { id: 'teams', labelKey: 'tab.teams', emoji: '⚡', icon: <Zap className="w-4 h-4" /> },
+  { id: 'seats', labelKey: 'tab.seats', emoji: '🏫', icon: <LayoutGrid className="w-4 h-4" /> },
+  { id: 'checkin', labelKey: 'tab.checkin', emoji: '📋', icon: <ClipboardCheck className="w-4 h-4" />, requiresAuth: true },
+  { id: 'toolkit', labelKey: 'tab.toolkit', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
 ];
 
 const externalLinks: ExternalLink[] = [
-  { label: 'AI助手', emoji: '🤖', icon: <BotMessageSquare className="w-4 h-4" />, url: 'https://mcuai.lovable.app/' },
-  { label: '思享岛', emoji: '💡', icon: <Lightbulb className="w-4 h-4" />, url: 'https://ideavas.lovable.app/' },
+  { labelKey: 'ext.ai', emoji: '🤖', icon: <BotMessageSquare className="w-4 h-4" />, url: 'https://mcuai.lovable.app/' },
+  { labelKey: 'ext.idea', emoji: '💡', icon: <Lightbulb className="w-4 h-4" />, url: 'https://ideavas.lovable.app/' },
 ];
 
 interface Props {
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, userEmail }: Props) {
+  const { t } = useLanguage();
   const visibleTabs = tabs.filter(t => !t.requiresAuth || isLoggedIn);
 
   return (
@@ -54,7 +56,7 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
             }`}
         >
           <span>{tab.emoji}</span>
-          <span>{tab.label}</span>
+          <span>{t(tab.labelKey)}</span>
         </button>
       ))}
 
@@ -70,11 +72,11 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
             href={targetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            title="与本平台使用同一邮箱即可登录"
+            title={t('ext.tip')}
             className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
           >
             <span>{link.emoji}</span>
-            <span>{link.label}</span>
+            <span>{t(link.labelKey)}</span>
           </a>
         );
       })}
