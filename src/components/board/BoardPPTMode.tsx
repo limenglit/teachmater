@@ -91,9 +91,19 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
           </a>
         )}
 
-        {card.media_url && (
-          <img src={card.media_url} alt="" className="rounded-2xl max-h-[40vh] mx-auto object-contain" />
-        )}
+        {card.media_url && (() => {
+          const cat = (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image')
+            ? card.card_type as string : getFileCategoryFromUrl(card.media_url);
+          if (cat === 'image') return <img src={card.media_url} alt="" className="rounded-2xl max-h-[40vh] mx-auto object-contain" />;
+          if (cat === 'video') return <video src={card.media_url} controls className="rounded-2xl max-h-[40vh] mx-auto" />;
+          return (
+            <a href={card.media_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 transition-colors">
+              <span className="text-3xl">{getDocIcon(getFileExtFromUrl(card.media_url))}</span>
+              <span className="text-lg text-foreground">{getFileNameFromUrl(card.media_url)}</span>
+              <Download className="w-5 h-5 text-muted-foreground" />
+            </a>
+          );
+        })()}
 
         <div className="flex items-center justify-center gap-4 text-muted-foreground text-sm">
           <span className="font-medium">{card.author_nickname}</span>
