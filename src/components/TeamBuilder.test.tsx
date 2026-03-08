@@ -20,11 +20,11 @@ describe('TeamBuilder', () => {
 
   it('team count = ceil(total / membersPerTeam)', () => {
     render(<TeamBuilder />, { wrapper });
-    // Default membersPerTeam=4, 9 students => 3 teams
+    // Default membersPerTeam=4, 9 students => ceil(9/4) = 3 teams
     fireEvent.click(screen.getByText('自动建队'));
-    // Should have 3 teams
-    const teamHeaders = screen.getAllByText(/队$/);
-    expect(teamHeaders.length).toBe(3);
+    // Count team name inputs or person count labels
+    const personLabels = screen.getAllByText(/人$/);
+    expect(personLabels.length).toBe(3);
   });
 
   it('membersPerTeam input is clamped 2-10', () => {
@@ -49,6 +49,7 @@ describe('TeamBuilder', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     render(<TeamBuilder />, { wrapper });
     fireEvent.click(screen.getByText('自动建队'));
-    expect(screen.queryByText(/队$/)).not.toBeInTheDocument();
+    // Empty state text should remain
+    expect(screen.queryByText(/人$/)).not.toBeInTheDocument();
   });
 });

@@ -13,7 +13,6 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('GroupManager', () => {
   beforeEach(() => {
     localStorage.clear();
-    // Seed 10 students
     localStorage.setItem(STORAGE_KEY, JSON.stringify(
       Array.from({ length: 10 }, (_, i) => ({ id: `s_${i}`, name: `学生${i + 1}` }))
     ));
@@ -23,13 +22,12 @@ describe('GroupManager', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
     render(<GroupManager />, { wrapper });
     fireEvent.click(screen.getByText('自动分组'));
-    // Should still show empty state
-    expect(screen.getByText(/点击.*自动分组/i).textContent || screen.queryByText('第一组')).toBeTruthy();
+    // Should not show any person count labels
+    expect(screen.queryByText(/人$/)).not.toBeInTheDocument();
   });
 
   it('auto-groups with person count conservation', () => {
     render(<GroupManager />, { wrapper });
-    // Default groupCount=4
     fireEvent.click(screen.getByText('自动分组'));
     // All 10 students should appear
     for (let i = 1; i <= 10; i++) {
@@ -49,11 +47,19 @@ describe('GroupManager', () => {
   it('groups are balanced (difference <= 1)', () => {
     render(<GroupManager />, { wrapper });
     fireEvent.click(screen.getByText('自动分组'));
-    // 10 students / 4 groups => 2+2+3+3 or 3+3+2+2
+    // 10 students / 4 groups => counts should differ by at most 1
     const personCounts = screen.getAllByText(/人$/).map(el => parseInt(el.textContent || '0'));
     const min = Math.min(...personCounts);
     const max = Math.max(...personCounts);
     expect(max - min).toBeLessThanOrEqual(1);
     expect(personCounts.reduce((a, b) => a + b, 0)).toBe(10);
+  });
+
+  it('no duplicate students across groups', () => {
+    render(<GroupManager />, { wrapper });
+    fireEvent.click(screen.getByText('自动分组'));
+    for (let i = 1; i <= 10; i++) {
+      expect(screen.getAllByText(`学生${i}`)).toHaveLength(1);
+    }
   });
 });

@@ -44,7 +44,6 @@ describe('CountdownTimer', () => {
     act(() => { vi.advanceTimersByTime(2000); });
     fireEvent.click(screen.getByText('暂停'));
     act(() => { vi.advanceTimersByTime(5000); });
-    // Should still show 04:58 (paused after 2s)
     expect(screen.getByText('04:58')).toBeInTheDocument();
   });
 
@@ -59,10 +58,11 @@ describe('CountdownTimer', () => {
 
   it('shows time up when countdown reaches 0', () => {
     render(<CountdownTimer />, { wrapper });
-    // Set to 3 seconds
-    const minInput = screen.getByDisplayValue('5');
+    // Set to 3 seconds using the number inputs
+    const inputs = screen.getAllByRole('spinbutton');
+    const minInput = inputs.find(i => (i as HTMLInputElement).max === '99')!;
+    const secInput = inputs.find(i => (i as HTMLInputElement).max === '59')!;
     fireEvent.change(minInput, { target: { value: '0' } });
-    const secInput = screen.getByDisplayValue('0');
     fireEvent.change(secInput, { target: { value: '3' } });
 
     fireEvent.click(screen.getByText('开始'));
