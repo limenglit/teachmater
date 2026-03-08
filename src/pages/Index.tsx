@@ -105,7 +105,7 @@ const Index = () => {
             )}
 
             {/* Sidebar area */}
-            {activeTab !== 'checkin' || true ? (
+            {true ? (
               <div className={`
                 fixed lg:relative z-50 lg:z-auto h-full min-h-0
                 transition-transform duration-300 ease-in-out
