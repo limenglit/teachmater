@@ -533,6 +533,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.reportPrompt': '点击"生成报告"开始 AI 分析',
     'board.reportPromptSub': '将对 {0} 张卡片内容进行汇总分析',
     'board.reportCardCount': '张卡片',
+    'board.reportStreaming': '正在生成中...',
     'board.pptPrev': '上一张',
     'board.pptNext': '下一张',
     'board.pptExit': '退出播放',
