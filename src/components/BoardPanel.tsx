@@ -117,13 +117,28 @@ export default function BoardPanel() {
 
   const loadCloudBoards = async () => {
     setLoading(true);
-    const { data } = await supabase.from('boards').select('*').order('created_at', { ascending: false });
-    if (data) {
-      // Only show boards where we have the creator_token
-      const tokens = getCreatorTokens();
-      const myBoards = (data as any[]).filter(b => tokens[b.id]);
-      setBoards(myBoards as Board[]);
+    // For logged-in users, load boards by user_id; also load boards by creator_token for backwards compat
+    const tokens = getCreatorTokens();
+    const tokenValues = Object.values(tokens);
+    
+    let allBoards: Board[] = [];
+    
+    if (user) {
+      const { data } = await supabase.from('boards').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      if (data) allBoards = data as any[];
     }
+    
+    // Also load boards matched by creator_token (for migration)
+    if (tokenValues.length > 0) {
+      const { data } = await supabase.from('boards').select('*').in('creator_token', tokenValues).order('created_at', { ascending: false });
+      if (data) {
+        for (const b of data as any[]) {
+          if (!allBoards.find(ab => ab.id === b.id)) allBoards.push(b);
+        }
+      }
+    }
+    
+    setBoards(allBoards as Board[]);
     setLoading(false);
   };
 
