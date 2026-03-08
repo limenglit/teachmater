@@ -2237,6 +2237,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.wordCloud': '워드 클라우드',
     'board.wordCloudRefresh': '다시 생성',
     'board.wordCloudEmpty': '워드 클라우드를 생성할 콘텐츠가 부족합니다',
+    'board.wordCloudTheme': '테마',
     'board.pptPrev': '이전',
     'board.pptNext': '다음',
     'board.pptExit': '종료',
