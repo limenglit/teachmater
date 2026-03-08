@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send } from 'lucide-react';
+import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
+import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon } from '@/lib/board-file-utils';
 
 interface Comment {
   id: string;
@@ -73,6 +74,13 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     setNewComment('');
   };
 
+  // Determine media type from card_type or URL
+  const mediaCategory = card.media_url
+    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image')
+      ? card.card_type as 'image' | 'video' | 'document'
+      : getFileCategoryFromUrl(card.media_url)
+    : null;
+
   return (
     <div
       className="rounded-xl border border-border shadow-sm p-4 transition-all hover:shadow-md group relative"
@@ -92,8 +100,31 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         </a>
       )}
 
-      {card.media_url && (
+      {/* Media rendering based on type */}
+      {card.media_url && mediaCategory === 'image' && (
         <img src={card.media_url} alt="" className="rounded-lg w-full max-h-40 object-cover mb-2" />
+      )}
+
+      {card.media_url && mediaCategory === 'video' && (
+        <video
+          src={card.media_url}
+          controls
+          className="rounded-lg w-full max-h-48 mb-2"
+          preload="metadata"
+        />
+      )}
+
+      {card.media_url && mediaCategory === 'document' && (
+        <a
+          href={card.media_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 p-3 rounded-lg bg-muted/60 border border-border/50 mb-2 hover:bg-muted transition-colors group/doc"
+        >
+          <span className="text-xl">{getDocIcon(getFileExtFromUrl(card.media_url))}</span>
+          <span className="flex-1 text-xs text-foreground truncate">{getFileNameFromUrl(card.media_url)}</span>
+          <Download className="w-3.5 h-3.5 text-muted-foreground group-hover/doc:text-primary transition-colors" />
+        </a>
       )}
 
       <div className="flex items-center justify-between mt-2">

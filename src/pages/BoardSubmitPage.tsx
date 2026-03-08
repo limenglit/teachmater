@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Lock, Send, User, ImagePlus } from 'lucide-react';
+import { CheckCircle2, Lock, Send, User, Paperclip, X } from 'lucide-react';
 import type { Board } from '@/components/BoardPanel';
+import { getFileCategory, getCardType, getDocIcon, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 
@@ -25,6 +26,8 @@ export default function BoardSubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'document'>('image');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -57,14 +60,20 @@ export default function BoardSubmitPage() {
     const file = e.target.files?.[0];
     if (!file || !boardId) return;
     setUploading(true);
-    const ext = file.name.split('.').pop();
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
+    const category = getFileCategory(ext);
+
     const { data, error } = await supabase.storage.from('board-media').upload(path, file);
     if (error) { setUploading(false); return; }
     const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(data.path);
     setMediaUrl(urlData.publicUrl);
+    setFileName(file.name);
+    setFileCategory(category);
     setUploading(false);
   };
+
+  const clearMedia = () => { setMediaUrl(''); setFileName(''); };
 
   const handleSubmit = async () => {
     if ((!content.trim() && !mediaUrl) || !boardId || !board) return;
@@ -81,7 +90,7 @@ export default function BoardSubmitPage() {
     const { error } = await supabase.from('board_cards').insert({
       board_id: boardId,
       content: content.trim(),
-      card_type: mediaUrl ? 'image' : url.trim() ? 'url' : 'text',
+      card_type: mediaUrl ? getCardType(fileCategory) : url.trim() ? 'url' : 'text',
       url: url.trim(),
       color,
       author_nickname: nickname.trim() || t('board.anonymous'),
@@ -101,7 +110,7 @@ export default function BoardSubmitPage() {
       setSubmitted(true);
       setContent('');
       setUrl('');
-      setMediaUrl('');
+      clearMedia();
       toast({ title: !isApproved ? t('board.blockedWord') : t('board.submitSuccess') });
       setTimeout(() => setSubmitted(false), 2000);
     }
@@ -181,8 +190,21 @@ export default function BoardSubmitPage() {
 
           {mediaUrl && (
             <div className="relative inline-block">
-              <img src={mediaUrl} alt="" className="h-24 rounded-lg object-cover" />
-              <button onClick={() => setMediaUrl('')} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">×</button>
+              {fileCategory === 'image' && (
+                <img src={mediaUrl} alt="" className="h-24 rounded-lg object-cover" />
+              )}
+              {fileCategory === 'video' && (
+                <video src={mediaUrl} className="h-24 rounded-lg object-cover" controls={false} />
+              )}
+              {fileCategory === 'document' && (
+                <div className="h-16 px-4 rounded-lg bg-muted flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="text-lg">{getDocIcon(fileName.split('.').pop() || '')}</span>
+                  <span className="truncate max-w-[200px]">{fileName}</span>
+                </div>
+              )}
+              <button onClick={clearMedia} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center">
+                <X className="w-3 h-3" />
+              </button>
             </div>
           )}
 
@@ -193,10 +215,10 @@ export default function BoardSubmitPage() {
               placeholder={t('board.cardUrl')}
               className="flex-1"
             />
-            <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+            <input ref={fileRef} type="file" accept={ACCEPT_ALL_MEDIA} onChange={handleUpload} className="hidden" />
             <Button variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-1">
-              <ImagePlus className="w-4 h-4" />
-              {uploading ? t('board.uploading') : t('board.uploadImage')}
+              <Paperclip className="w-4 h-4" />
+              {uploading ? t('board.uploading') : t('board.uploadFile')}
             </Button>
           </div>
 
