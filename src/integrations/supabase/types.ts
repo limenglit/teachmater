@@ -46,6 +46,174 @@ export type Database = {
           },
         ]
       }
+      board_cards: {
+        Row: {
+          author_nickname: string
+          board_id: string
+          card_type: string
+          color: string
+          column_id: string
+          content: string
+          created_at: string
+          id: string
+          is_approved: boolean
+          is_pinned: boolean
+          likes_count: number
+          media_url: string
+          position_x: number
+          position_y: number
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          author_nickname?: string
+          board_id: string
+          card_type?: string
+          color?: string
+          column_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          is_pinned?: boolean
+          likes_count?: number
+          media_url?: string
+          position_x?: number
+          position_y?: number
+          sort_order?: number
+          url?: string
+        }
+        Update: {
+          author_nickname?: string
+          board_id?: string
+          card_type?: string
+          color?: string
+          column_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_approved?: boolean
+          is_pinned?: boolean
+          likes_count?: number
+          media_url?: string
+          position_x?: number
+          position_y?: number
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_cards_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_comments: {
+        Row: {
+          author_nickname: string
+          card_id: string
+          content: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          author_nickname?: string
+          card_id: string
+          content?: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          author_nickname?: string
+          card_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_comments_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "board_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      board_likes: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          liker_token: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          liker_token?: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          liker_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_likes_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "board_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      boards: {
+        Row: {
+          background_color: string
+          banned_words: string
+          columns: Json
+          created_at: string
+          creator_token: string
+          description: string
+          id: string
+          is_locked: boolean
+          moderation_enabled: boolean
+          title: string
+          view_mode: string
+        }
+        Insert: {
+          background_color?: string
+          banned_words?: string
+          columns?: Json
+          created_at?: string
+          creator_token?: string
+          description?: string
+          id?: string
+          is_locked?: boolean
+          moderation_enabled?: boolean
+          title?: string
+          view_mode?: string
+        }
+        Update: {
+          background_color?: string
+          banned_words?: string
+          columns?: Json
+          created_at?: string
+          creator_token?: string
+          description?: string
+          id?: string
+          is_locked?: boolean
+          moderation_enabled?: boolean
+          title?: string
+          view_mode?: string
+        }
+        Relationships: []
+      }
       checkin_records: {
         Row: {
           checked_in_at: string
@@ -327,6 +495,10 @@ export type Database = {
     }
     Functions: {
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
+      delete_board: {
+        Args: { p_board_id: string; p_token: string }
+        Returns: undefined
+      }
       delete_topic: {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
@@ -349,7 +521,31 @@ export type Database = {
         }
         Returns: boolean
       }
+      manage_board_card: {
+        Args: {
+          p_action: string
+          p_board_id: string
+          p_card_id: string
+          p_token: string
+        }
+        Returns: undefined
+      }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
+      update_board: {
+        Args: {
+          p_background_color?: string
+          p_banned_words?: string
+          p_board_id: string
+          p_columns?: Json
+          p_description?: string
+          p_is_locked?: boolean
+          p_moderation_enabled?: boolean
+          p_title?: string
+          p_token: string
+          p_view_mode?: string
+        }
+        Returns: undefined
+      }
       update_topic: {
         Args: { p_title: string; p_token: string; p_topic_id: string }
         Returns: undefined
