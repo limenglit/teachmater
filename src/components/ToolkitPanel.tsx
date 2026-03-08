@@ -14,7 +14,6 @@ import {
 
 import BarrageDiscussion from './BarrageDiscussion';
 import CountdownTimer from './CountdownTimer';
-import BoardPanel from './BoardPanel';
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
