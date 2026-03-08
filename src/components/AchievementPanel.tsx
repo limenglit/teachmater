@@ -637,16 +637,16 @@ export default function AchievementPanel() {
 
               <div className="max-h-40 overflow-auto border border-border rounded-lg p-2 space-y-1">
                 {students.map(s => (
-                  <label key={s} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/50 rounded px-2 py-1">
+                  <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/50 rounded px-2 py-1">
                     <input
                       type="checkbox"
-                      checked={awardStudents.includes(s)}
+                      checked={awardStudents.includes(s.name)}
                       onChange={e => {
-                        setAwardStudents(prev => e.target.checked ? [...prev, s] : prev.filter(n => n !== s));
+                        setAwardStudents(prev => e.target.checked ? [...prev, s.name] : prev.filter(n => n !== s.name));
                       }}
                       className="rounded"
                     />
-                    {s}
+                    {s.name}
                   </label>
                 ))}
               </div>
