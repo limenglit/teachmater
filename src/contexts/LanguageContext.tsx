@@ -2170,6 +2170,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.checkin': '출석',
     'tab.board': '보드',
     'tab.toolkit': '도구함',
+    'tab.quiz': '퀴즈',
     'ext.ai': 'AI 어시스턴트',
     'ext.idea': 'IdeaVas',
     'ext.tip': '같은 이메일로 로그인하세요',
