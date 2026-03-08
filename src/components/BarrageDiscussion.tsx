@@ -262,6 +262,10 @@ export default function BarrageDiscussion() {
       toast({ title: t('barrage.noData'), variant: 'destructive' });
       return;
     }
+    if (!recordGuestAIUsage(isLoggedIn)) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
+      return;
+    }
     setAnalyzing(true);
     setView('wordcloud');
     try {
