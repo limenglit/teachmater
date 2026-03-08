@@ -14,6 +14,7 @@ import {
 
 import BarrageDiscussion from './BarrageDiscussion';
 import CountdownTimer from './CountdownTimer';
+import BoardPanel from './BoardPanel';
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
@@ -74,6 +75,10 @@ export default function ToolkitPanel() {
           <CountdownTimer />
           <CommandCards />
           <QRCodeGenerator />
+        </div>
+        {/* Board Panel - full width below the grid */}
+        <div className="mt-6">
+          <BoardPanel />
         </div>
       </div>
     </div>
