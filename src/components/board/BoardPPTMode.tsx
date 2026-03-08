@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { tFormat } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,39 @@ interface Props {
 export default function BoardPPTMode({ cards, onExit }: Props) {
   const { t } = useLanguage();
   const [index, setIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const exitFullscreenAndClose = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().then(onExit).catch(onExit);
+    } else {
+      onExit();
+    }
+  }, [onExit]);
+
+  // Enter fullscreen on mount
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el && !document.fullscreenElement) {
+      el.requestFullscreen?.().catch(() => {});
+    }
+  }, []);
+
+  // Listen for fullscreen exit (e.g. pressing Escape natively)
+  useEffect(() => {
+    const handler = () => {
+      if (!document.fullscreenElement) onExit();
+    };
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, [onExit]);
 
   if (cards.length === 0) {
     return (
-      <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center">
+      <div ref={containerRef} className="fixed inset-0 z-[100] bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-muted-foreground">No cards to display</p>
-          <Button onClick={onExit}>{t('board.pptExit')}</Button>
+          <Button onClick={exitFullscreenAndClose}>{t('board.pptExit')}</Button>
         </div>
       </div>
     );
@@ -31,18 +57,19 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
 
   return (
     <div
+      ref={containerRef}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-8"
       style={{ backgroundColor: card.color || 'hsl(var(--background))' }}
       onKeyDown={e => {
         if (e.key === 'ArrowLeft') prev();
         if (e.key === 'ArrowRight') next();
-        if (e.key === 'Escape') onExit();
+        if (e.key === 'Escape') exitFullscreenAndClose();
       }}
       tabIndex={0}
       autoFocus
     >
       {/* Close button */}
-      <button onClick={onExit} className="absolute top-4 right-4 p-2 rounded-full hover:bg-foreground/10 transition-colors">
+      <button onClick={exitFullscreenAndClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-foreground/10 transition-colors">
         <X className="w-6 h-6 text-foreground" />
       </button>
 
