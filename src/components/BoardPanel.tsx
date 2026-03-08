@@ -457,6 +457,8 @@ export default function BoardPanel() {
               onSubmit={addCard}
               columns={activeBoard.columns}
               viewMode={activeBoard.view_mode}
+              isCloud={isCloud}
+              boardId={activeBoard.id}
             />
           </div>
         )}
