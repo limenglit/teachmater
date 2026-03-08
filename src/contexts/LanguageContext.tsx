@@ -1832,6 +1832,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.wordCloud': 'ワードクラウド',
     'board.wordCloudRefresh': '再生成',
     'board.wordCloudEmpty': 'ワードクラウドを生成するコンテンツが不足しています',
+    'board.wordCloudTheme': 'テーマ',
     'board.pptPrev': '前へ',
     'board.pptNext': '次へ',
     'board.pptExit': '終了',
