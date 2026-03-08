@@ -14,6 +14,10 @@ import {
 
 import BarrageDiscussion from './BarrageDiscussion';
 import CountdownTimer from './CountdownTimer';
+import NoiseDetector from './toolkit/NoiseDetector';
+import RandomAssigner from './toolkit/RandomAssigner';
+import Scoreboard from './toolkit/Scoreboard';
+import LotteryDrawer from './toolkit/LotteryDrawer';
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
