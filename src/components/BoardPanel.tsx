@@ -544,7 +544,8 @@ export default function BoardPanel() {
 
   // Board list view
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-card p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <div className="max-w-3xl mx-auto bg-card rounded-2xl border border-border shadow-card p-6">
       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
         🎨 {t('board.title')}
       </h3>
@@ -599,6 +600,7 @@ export default function BoardPanel() {
           </div>
         ))}
       </div>
+    </div>
     </div>
   );
 }
