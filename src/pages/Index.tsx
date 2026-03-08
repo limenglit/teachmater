@@ -91,7 +91,7 @@ const Index = () => {
           </header>
 
           {/* Tab Navigation */}
-          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!isApproved} />
+          <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!isApproved} userEmail={user?.email} />
 
           {/* Main Content */}
           <div className="flex flex-1 overflow-hidden relative">
