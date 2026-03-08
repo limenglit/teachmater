@@ -655,6 +655,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.sessionNotFound': '测验不存在',
     'quiz.sessionEnded': '测验已结束',
     'quiz.loginRequired': '请登录后使用测验功能',
+    'quiz.localMode': '本地模式',
+    'quiz.cloudMode': '云端同步',
+    'quiz.loginToPublish': '登录后才能发起测验',
+    'quiz.loginForSessions': '登录后可发起在线测验',
+    'quiz.localModeHint': '题目已保存在本地，登录后可同步至云端',
   },
   en: {
     'app.title': 'TeachMate',
