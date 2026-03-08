@@ -453,38 +453,126 @@ export type Database = {
           },
         ]
       }
+      quiz_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_categories_parent_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_papers: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_template: boolean
+          questions: Json
+          template: Json | null
+          title: string
+          total_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_template?: boolean
+          questions?: Json
+          template?: Json | null
+          title?: string
+          total_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_template?: boolean
+          questions?: Json
+          template?: Json | null
+          title?: string
+          total_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       quiz_questions: {
         Row: {
+          category_id: string | null
           content: string
           correct_answer: Json
           created_at: string
           id: string
+          is_starred: boolean
           options: Json
           tags: string
           type: string
           user_id: string
         }
         Insert: {
+          category_id?: string | null
           content?: string
           correct_answer?: Json
           created_at?: string
           id?: string
+          is_starred?: boolean
           options?: Json
           tags?: string
           type?: string
           user_id: string
         }
         Update: {
+          category_id?: string | null
           content?: string
           correct_answer?: Json
           created_at?: string
           id?: string
+          is_starred?: boolean
           options?: Json
           tags?: string
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_category_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quiz_sessions: {
         Row: {
