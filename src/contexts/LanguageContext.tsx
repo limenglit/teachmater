@@ -2204,6 +2204,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.prev': '前へ', 'quiz.next': '次へ', 'quiz.submit': '提出', 'quiz.multiHint': '複数選択可',
     'quiz.shortPlaceholder': '回答を入力...', 'quiz.submitSuccess': '提出しました！', 'quiz.waitForResult': '結果発表をお待ちください',
     'quiz.sessionNotFound': 'テストが見つかりません', 'quiz.sessionEnded': 'テストは終了しました', 'quiz.loginRequired': 'ログインしてください',
+    'quiz.localMode': 'ローカル', 'quiz.cloudMode': 'クラウド同期', 'quiz.loginToPublish': 'ログインしてテストを開始', 'quiz.loginForSessions': 'ログインしてオンラインテスト', 'quiz.localModeHint': '問題はローカルに保存されています',
   },
   ko: {
     'app.title': 'TeachMate',
