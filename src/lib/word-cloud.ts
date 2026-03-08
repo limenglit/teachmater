@@ -129,6 +129,7 @@ export function layoutWordCloud(
   height: number,
   minFont = 14,
   maxFont = 72,
+  themeId = 'classic',
 ): PositionedWord[] {
   if (items.length === 0) return [];
 
