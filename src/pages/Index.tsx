@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StudentProvider } from '@/contexts/StudentContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import StudentSidebar from '@/components/StudentSidebar';
 import TabNavigation, { TabId } from '@/components/TabNavigation';
 import RandomPicker from '@/components/RandomPicker';
@@ -13,11 +14,13 @@ import CheckInPanel from '@/components/CheckInPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
-import { LogIn, User } from 'lucide-react';
+import LanguageSelector from '@/components/LanguageSelector';
+import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
   const { user, approvalStatus, isAdmin } = useAuth();
+  const { t } = useLanguage();
   const isApproved = user && approvalStatus === 'approved';
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('random');
@@ -52,8 +55,8 @@ const Index = () => {
           {/* Header */}
           <header className="flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 bg-card border-b border-border">
             <div className="flex items-center gap-2 sm:gap-3">
-              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">互动课堂派</h1>
-              <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">TeachMate |--洛阳理工学院--| limeng@lit.edu.cn</span>
+              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">{t('app.title')}</h1>
+              <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">{t('app.subtitle')}</span>
             </div>
             <div className="flex items-center gap-1">
               {/* Mobile sidebar toggle */}
@@ -68,7 +71,7 @@ const Index = () => {
                 <button
                   onClick={() => navigate('/admin')}
                   className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-                  title="用户管理"
+                  title={t('header.admin')}
                 >
                   🛡️
                 </button>
@@ -81,12 +84,13 @@ const Index = () => {
                 <button
                   onClick={() => navigate('/auth')}
                   className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-                  title="登录"
+                  title={t('header.login')}
                 >
                   <LogIn className="w-5 h-5" />
                 </button>
               )}
               <SettingsPanel />
+              <LanguageSelector />
             </div>
           </header>
 
@@ -114,13 +118,13 @@ const Index = () => {
                         onClick={() => setSidebarMode('list')}
                         className="flex-1 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        📋 当前名单
+                        {t('sidebar.current')}
                       </button>
                       <button
                         onClick={() => setSidebarMode('library')}
                         className="flex-1 px-3 py-2 text-xs font-medium text-primary border-b-2 border-primary"
                       >
-                        🏫 班级库
+                        {t('sidebar.library')}
                       </button>
                     </div>
                     <ClassLibrary />
@@ -133,13 +137,13 @@ const Index = () => {
                           onClick={() => setSidebarMode('list')}
                           className="flex-1 px-3 py-2 text-xs font-medium text-primary border-b-2 border-primary"
                         >
-                          📋 当前名单
+                          {t('sidebar.current')}
                         </button>
                         <button
                           onClick={() => setSidebarMode('library')}
                           className="flex-1 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          🏫 班级库
+                          {t('sidebar.library')}
                         </button>
                       </div>
                     )}
