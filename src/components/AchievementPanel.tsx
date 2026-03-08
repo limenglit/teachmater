@@ -114,7 +114,7 @@ export default function AchievementPanel() {
     }
     // Include students from sidebar that may have 0 points
     for (const s of students) {
-      if (!(s in map)) map[s] = 0;
+      if (!(s.name in map)) map[s.name] = 0;
     }
     return Object.entries(map)
       .map(([name, totalPoints]) => ({
