@@ -369,7 +369,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
                 <p className="text-xs text-muted-foreground text-center py-6">{t('quiz.paper.noAvailable')}</p>
               ) : availableForPicker.map(q => (
                 <div key={q.id} className="flex items-center gap-2 p-2 rounded-md border border-border hover:bg-muted/50 cursor-pointer text-xs"
-                  onClick={() => addQuestionToPaper(q)}>
+                  onClick={() => addQuestionToPaperHandler(q)}>
                   {typeIcon(q.type)}
                   <span className="flex-1 truncate text-foreground">{q.content}</span>
                   <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
