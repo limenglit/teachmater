@@ -38,7 +38,7 @@ interface Props {
   userEmail?: string;
 }
 
-export default function TabNavigation({ activeTab, onTabChange, isLoggedIn }: Props) {
+export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, userEmail }: Props) {
   const visibleTabs = tabs.filter(t => !t.requiresAuth || isLoggedIn);
 
   return (
