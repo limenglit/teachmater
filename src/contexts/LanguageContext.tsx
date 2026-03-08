@@ -1823,6 +1823,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.blockedWord': '審査待ち',
     'board.lockedMsg': 'ボードはロック中です',
     'board.back': 'ボード一覧へ',
+    'board.uploadImage': '画像アップロード',
+    'board.uploading': 'アップロード中...',
+    'board.commentSend': '送信',
+    'board.noComments': 'コメントなし',
+    'board.cloudSync': '☁️ クラウド同期済み',
   },
   ko: {
     'app.title': 'TeachMate',
