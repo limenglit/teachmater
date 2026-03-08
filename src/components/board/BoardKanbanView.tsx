@@ -7,9 +7,10 @@ interface Props {
   onManage: (id: string, action: 'pin' | 'unpin' | 'delete') => void;
   onLike: (id: string) => void;
   isCreator: boolean;
+  isCloud?: boolean;
 }
 
-export default function BoardKanbanView({ cards, columns, onManage, onLike, isCreator }: Props) {
+export default function BoardKanbanView({ cards, columns, onManage, onLike, isCreator, isCloud }: Props) {
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 min-h-[400px]">
       {columns.map(col => {
@@ -22,19 +23,18 @@ export default function BoardKanbanView({ cards, columns, onManage, onLike, isCr
             </div>
             <div className="space-y-3">
               {colCards.map(card => (
-                <BoardCardItem key={card.id} card={card} onManage={onManage} onLike={onLike} isCreator={isCreator} />
+                <BoardCardItem key={card.id} card={card} onManage={onManage} onLike={onLike} isCreator={isCreator} isCloud={isCloud} />
               ))}
             </div>
           </div>
         );
       })}
-      {/* Unassigned cards */}
       {cards.filter(c => !columns.includes(c.column_id)).length > 0 && (
         <div className="flex-shrink-0 w-72 bg-muted/30 rounded-xl border border-border p-3">
           <h4 className="text-sm font-semibold text-muted-foreground mb-3">—</h4>
           <div className="space-y-3">
             {cards.filter(c => !columns.includes(c.column_id)).map(card => (
-              <BoardCardItem key={card.id} card={card} onManage={onManage} onLike={onLike} isCreator={isCreator} />
+              <BoardCardItem key={card.id} card={card} onManage={onManage} onLike={onLike} isCreator={isCreator} isCloud={isCloud} />
             ))}
           </div>
         </div>

@@ -117,20 +117,37 @@ export default function BoardPanel() {
 
   const loadCloudBoards = async () => {
     setLoading(true);
-    const { data } = await supabase.from('boards').select('*').order('created_at', { ascending: false });
-    if (data) {
-      // Only show boards where we have the creator_token
-      const tokens = getCreatorTokens();
-      const myBoards = (data as any[]).filter(b => tokens[b.id]);
-      setBoards(myBoards as Board[]);
+    // For logged-in users, load boards by user_id; also load boards by creator_token for backwards compat
+    const tokens = getCreatorTokens();
+    const tokenValues = Object.values(tokens);
+    
+    let allBoards: Board[] = [];
+    
+    if (user) {
+      const { data } = await (supabase.from('boards').select('*') as any).eq('user_id', user.id).order('created_at', { ascending: false });
+      if (data) allBoards = data as any[];
     }
+    
+    // Also load boards matched by creator_token (for migration)
+    if (tokenValues.length > 0) {
+      const { data } = await supabase.from('boards').select('*').in('creator_token', tokenValues).order('created_at', { ascending: false });
+      if (data) {
+        for (const b of data as any[]) {
+          if (!allBoards.find(ab => ab.id === b.id)) allBoards.push(b);
+        }
+      }
+    }
+    
+    setBoards(allBoards as Board[]);
     setLoading(false);
   };
 
   const createBoard = async () => {
     const title = newTitle.trim() || t('board.title');
     if (isCloud) {
-      const { data, error } = await supabase.from('boards').insert({ title }).select().single();
+      const insertData: any = { title };
+      if (user) insertData.user_id = user.id;
+      const { data, error } = await supabase.from('boards').insert(insertData).select().single();
       if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
       const board = data as any as Board;
       saveCreatorToken(board.id, board.creator_token);
@@ -440,6 +457,8 @@ export default function BoardPanel() {
               onSubmit={addCard}
               columns={activeBoard.columns}
               viewMode={activeBoard.view_mode}
+              isCloud={isCloud}
+              boardId={activeBoard.id}
             />
           </div>
         )}
@@ -466,13 +485,13 @@ export default function BoardPanel() {
         {/* Board content */}
         <div className="flex-1 overflow-auto p-4">
           {activeBoard.view_mode === 'wall' && (
-            <BoardWallView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
+            <BoardWallView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
           )}
           {activeBoard.view_mode === 'kanban' && (
-            <BoardKanbanView cards={sortedCards} columns={activeBoard.columns} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
+            <BoardKanbanView cards={sortedCards} columns={activeBoard.columns} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
           )}
           {activeBoard.view_mode === 'timeline' && (
-            <BoardTimelineView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
+            <BoardTimelineView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
           )}
           {activeBoard.view_mode === 'canvas' && (
             <BoardCanvasView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
@@ -526,6 +545,9 @@ export default function BoardPanel() {
 
       {!isCloud && (
         <p className="text-xs text-muted-foreground mb-3">💡 {t('settings.localOnly')}</p>
+      )}
+      {isCloud && (
+        <p className="text-xs text-muted-foreground mb-3">{t('board.cloudSync')}</p>
       )}
 
       {/* Board list */}
