@@ -18,6 +18,7 @@ const GoRedirect = lazy(() => import("./pages/GoRedirect"));
 const SeatCheckinPage = lazy(() => import("./pages/SeatCheckinPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const BoardSubmitPage = lazy(() => import("./pages/BoardSubmitPage"));
+const QuizSubmitPage = lazy(() => import("./pages/QuizSubmitPage"));
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/seat-checkin/:sessionId" element={<Suspense fallback={<Loading />}><SeatCheckinPage /></Suspense>} />
               <Route path="/board/:boardId" element={<Suspense fallback={<Loading />}><BoardPage /></Suspense>} />
               <Route path="/board/:boardId/submit" element={<Suspense fallback={<Loading />}><BoardSubmitPage /></Suspense>} />
+              <Route path="/quiz/:sessionId" element={<Suspense fallback={<Loading />}><QuizSubmitPage /></Suspense>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

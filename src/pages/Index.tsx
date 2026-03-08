@@ -12,6 +12,7 @@ import SeatChart from '@/components/SeatChart';
 import ToolkitPanel from '@/components/ToolkitPanel';
 import CheckInPanel from '@/components/CheckInPanel';
 import BoardPanel from '@/components/BoardPanel';
+import QuizPanel from '@/components/QuizPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
@@ -31,7 +32,7 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    if (tab === 'checkin' || tab === 'board') {
+    if (tab === 'checkin' || tab === 'board' || tab === 'quiz') {
       setSidebarCollapsed(true);
     }
   };
@@ -44,6 +45,7 @@ const Index = () => {
       case 'seats': return <SeatChart />;
       case 'checkin': return <CheckInPanel />;
       case 'board': return <BoardPanel />;
+      case 'quiz': return <QuizPanel />;
       case 'toolkit': return <ToolkitPanel />;
     }
   };
