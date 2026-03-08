@@ -1457,6 +1457,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.reportPrompt': 'Нажмите «Создать отчёт» для начала ИИ-анализа',
     'board.reportPromptSub': 'Анализ содержимого {0} карточек',
     'board.reportCardCount': 'карточек',
+    'board.reportStreaming': 'Генерация...',
     'board.pptPrev': 'Назад',
     'board.pptNext': 'Далее',
     'board.pptExit': 'Выйти',
