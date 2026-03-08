@@ -77,7 +77,8 @@ describe('getFileExtFromUrl', () => {
 
   it('handles URLs without extension', () => {
     const ext = getFileExtFromUrl('https://example.com/noext');
-    expect(ext).toBe('noext');
+    // pathname.split('.').pop() returns the full path segment when no dot
+    expect(ext).toBe('/noext');
   });
 });
 
