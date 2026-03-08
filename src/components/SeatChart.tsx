@@ -11,6 +11,7 @@ import ConferenceRoom from '@/components/seating/ConferenceRoom';
 import ConcertHall from '@/components/seating/ConcertHall';
 import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
+import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -488,20 +489,4 @@ export default function SeatChart() {
   );
 }
 
-function getVisualRow(realRow: number, rowAisles: number[]): number {
-  let offset = 0;
-  for (const a of rowAisles) { if (realRow > a) offset++; }
-  return realRow + offset;
-}
-
-function findNextFree(start: number, max: number, existing: number[]): number | null {
-  for (let i = start; i < max; i++) { if (!existing.includes(i)) return i; }
-  for (let i = 0; i < start; i++) { if (!existing.includes(i)) return i; }
-  return null;
-}
-
-function splitIntoGroups(names: string[], count: number): string[][] {
-  const groups: string[][] = Array.from({ length: count }, () => []);
-  names.forEach((n, i) => groups[i % count].push(n));
-  return groups;
-}
+const getVisualRow = getVisualRowUtil;
