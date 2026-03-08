@@ -35,6 +35,7 @@ interface Props {
   activeTab: TabId;
   onTabChange: (id: TabId) => void;
   isLoggedIn?: boolean;
+  userEmail?: string;
 }
 
 export default function TabNavigation({ activeTab, onTabChange, isLoggedIn }: Props) {
