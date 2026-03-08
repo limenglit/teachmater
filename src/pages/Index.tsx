@@ -45,6 +45,7 @@ const Index = () => {
       case 'seats': return <SeatChart />;
       case 'checkin': return <CheckInPanel />;
       case 'board': return <BoardPanel />;
+      case 'quiz': return <QuizPanel />;
       case 'toolkit': return <ToolkitPanel />;
     }
   };
