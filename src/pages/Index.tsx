@@ -12,6 +12,7 @@ import SeatChart from '@/components/SeatChart';
 import ToolkitPanel from '@/components/ToolkitPanel';
 import CheckInPanel from '@/components/CheckInPanel';
 import BoardPanel from '@/components/BoardPanel';
+import QuizPanel from '@/components/QuizPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
