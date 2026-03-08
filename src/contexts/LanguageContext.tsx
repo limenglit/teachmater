@@ -1021,6 +1021,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.wordCloud': 'Word Cloud',
     'board.wordCloudRefresh': 'Regenerate',
     'board.wordCloudEmpty': 'Not enough card content to generate word cloud',
+    'board.wordCloudTheme': 'Theme',
     'board.pptPrev': 'Previous',
     'board.pptNext': 'Next',
     'board.pptExit': 'Exit Slideshow',
