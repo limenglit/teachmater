@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Clock, QrCode, StopCircle, Download, CheckCircle2, XCircle, UserX } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
+import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
 
 interface CheckinRecord {
   id: string;
