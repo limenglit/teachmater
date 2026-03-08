@@ -27,7 +27,7 @@ describe('ToolkitPanel command cards', () => {
       }),
     } as Response);
 
-    render(<ToolkitPanel />);
+    renderWithProviders(<ToolkitPanel />);
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '小组辩论' },
