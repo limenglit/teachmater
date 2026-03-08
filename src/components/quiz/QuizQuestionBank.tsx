@@ -104,18 +104,16 @@ export default function QuizQuestionBank({
     }
 
     if (isGuest) {
-      const newQ: QuizQuestion = {
-        id: view === 'edit' && editQ ? editQ.id : crypto.randomUUID(),
-        user_id: 'local', type: qType, content: qContent.trim(), options: opts,
+      const qData = {
+        type: qType, content: qContent.trim(), options: opts,
         correct_answer: qCorrect, tags: qTags.trim(),
         category_id: qCategoryId || null, is_starred: editQ?.is_starred || false,
-        created_at: editQ?.created_at || new Date().toISOString(),
       };
       let updated: QuizQuestion[];
       if (view === 'edit' && editQ) {
-        updated = questions.map(q => q.id === editQ.id ? newQ : q);
+        updated = updateLocalQuestion(questions, editQ.id, qData);
       } else {
-        updated = [newQ, ...questions];
+        updated = addLocalQuestion(questions, qData as any);
       }
       setQuestions(updated);
       saveLocalQuestions(updated);
