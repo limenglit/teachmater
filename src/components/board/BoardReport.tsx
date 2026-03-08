@@ -45,6 +45,12 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
       return;
     }
 
+    // Guest AI rate limit check
+    if (!recordGuestAIUsage(isLoggedIn)) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
+      return;
+    }
+
     // Abort previous request if any
     abortRef.current?.abort();
     const controller = new AbortController();
