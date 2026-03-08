@@ -24,6 +24,7 @@ const tabs: TabItem[] = [
   { id: 'teams', labelKey: 'tab.teams', emoji: '⚡', icon: <Zap className="w-4 h-4" /> },
   { id: 'seats', labelKey: 'tab.seats', emoji: '🏫', icon: <LayoutGrid className="w-4 h-4" /> },
   { id: 'checkin', labelKey: 'tab.checkin', emoji: '📋', icon: <ClipboardCheck className="w-4 h-4" /> },
+  { id: 'board', labelKey: 'tab.board', emoji: '🎨', icon: <PenBox className="w-4 h-4" /> },
   { id: 'toolkit', labelKey: 'tab.toolkit', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
 ];
 

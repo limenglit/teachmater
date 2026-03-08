@@ -42,8 +42,9 @@ const Index = () => {
       case 'groups': return <GroupManager />;
       case 'teams': return <TeamBuilder />;
       case 'seats': return <SeatChart />;
-      case 'toolkit': return <ToolkitPanel />;
       case 'checkin': return <CheckInPanel />;
+      case 'board': return <BoardPanel />;
+      case 'toolkit': return <ToolkitPanel />;
     }
   };
 
