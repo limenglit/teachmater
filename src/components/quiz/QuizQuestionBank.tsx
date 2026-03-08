@@ -21,6 +21,13 @@ import {
   getLocalQuestions, saveLocalQuestions,
   getLocalCategories, saveLocalCategories,
 } from './quizTypes';
+import {
+  filterQuestions,
+  addLocalQuestion,
+  updateLocalQuestion,
+  deleteLocalQuestion,
+  toggleStarQuestion,
+} from '@/lib/quiz-utils';
 
 interface Props {
   questions: QuizQuestion[];
@@ -65,15 +72,11 @@ export default function QuizQuestionBank({
   const [newCategoryName, setNewCategoryName] = useState('');
 
   const filteredQuestions = useMemo(() => {
-    return questions.filter(q => {
-      if (filterType !== 'all' && q.type !== filterType) return false;
-      if (filterCategoryId !== 'all' && (q.category_id || '') !== filterCategoryId) return false;
-      if (filterStarred && !q.is_starred) return false;
-      if (searchText.trim()) {
-        const s = searchText.trim().toLowerCase();
-        if (!q.content.toLowerCase().includes(s) && !q.tags.toLowerCase().includes(s)) return false;
-      }
-      return true;
+    return filterQuestions(questions, {
+      type: filterType,
+      categoryId: filterCategoryId,
+      starred: filterStarred,
+      search: searchText,
     });
   }, [questions, filterType, filterCategoryId, filterStarred, searchText]);
 
@@ -101,18 +104,16 @@ export default function QuizQuestionBank({
     }
 
     if (isGuest) {
-      const newQ: QuizQuestion = {
-        id: view === 'edit' && editQ ? editQ.id : crypto.randomUUID(),
-        user_id: 'local', type: qType, content: qContent.trim(), options: opts,
+      const qData = {
+        type: qType, content: qContent.trim(), options: opts,
         correct_answer: qCorrect, tags: qTags.trim(),
         category_id: qCategoryId || null, is_starred: editQ?.is_starred || false,
-        created_at: editQ?.created_at || new Date().toISOString(),
       };
       let updated: QuizQuestion[];
       if (view === 'edit' && editQ) {
-        updated = questions.map(q => q.id === editQ.id ? newQ : q);
+        updated = updateLocalQuestion(questions, editQ.id, qData);
       } else {
-        updated = [newQ, ...questions];
+        updated = addLocalQuestion(questions, qData as any);
       }
       setQuestions(updated);
       saveLocalQuestions(updated);
@@ -142,22 +143,22 @@ export default function QuizQuestionBank({
 
   const deleteQuestion = async (id: string) => {
     if (isGuest) {
-      const updated = questions.filter(q => q.id !== id);
+      const updated = deleteLocalQuestion(questions, id);
       setQuestions(updated); saveLocalQuestions(updated);
     } else {
       await supabase.from('quiz_questions').delete().eq('id', id) as any;
-      setQuestions(questions.filter(q => q.id !== id));
+      setQuestions(deleteLocalQuestion(questions, id));
     }
   };
 
   const toggleStar = async (q: QuizQuestion) => {
     const newVal = !q.is_starred;
     if (isGuest) {
-      const updated = questions.map(x => x.id === q.id ? { ...x, is_starred: newVal } : x);
+      const updated = toggleStarQuestion(questions, q.id);
       setQuestions(updated); saveLocalQuestions(updated);
     } else {
       await supabase.from('quiz_questions').update({ is_starred: newVal } as any).eq('id', q.id);
-      setQuestions(questions.map(x => x.id === q.id ? { ...x, is_starred: newVal } : x));
+      setQuestions(toggleStarQuestion(questions, q.id));
     }
   };
 

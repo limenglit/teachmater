@@ -17,6 +17,17 @@ import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
 } from './quizTypes';
 import { getLocalPapers, saveLocalPapers } from './quizTypes';
+import {
+  addQuestionToPaper as addQToPaper,
+  removeFromPaper as removeQFromPaper,
+  movePaperQuestion,
+  updatePaperQuestionScore,
+  computePaperTotalScore,
+  autoGeneratePaper,
+  computeAutoTotalScore,
+  deleteLocalPaper,
+  duplicateLocalPaper,
+} from '@/lib/quiz-utils';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 
@@ -66,7 +77,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
     });
   }, [questions, paperQs, pickerType, pickerSearch]);
 
-  const autoTotalScore = autoRules.reduce((s, r) => s + r.count * r.score_each, 0);
+  const autoTotalScore = computeAutoTotalScore(autoRules);
 
   const resetForm = () => {
     setTitle(''); setDesc(''); setPaperQs([]); setTotalScore(100); setIsTemplate(false); setEditPaper(null);
@@ -80,31 +91,23 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
     setView('edit');
   };
 
-  const addQuestionToPaper = (q: QuizQuestion) => {
-    setPaperQs(prev => [...prev, {
-      question_id: q.id, question: q,
-      score: q.type === 'short' ? 10 : q.type === 'multi' ? 4 : q.type === 'tf' ? 2 : 3,
-      order: prev.length,
-    }]);
+  const addQuestionToPaperHandler = (q: QuizQuestion) => {
+    setPaperQs(prev => addQToPaper(prev, q));
   };
 
   const removeFromPaper = (idx: number) => {
-    setPaperQs(prev => prev.filter((_, i) => i !== idx).map((pq, i) => ({ ...pq, order: i })));
+    setPaperQs(prev => removeQFromPaper(prev, idx));
   };
 
   const moveQuestion = (idx: number, dir: -1 | 1) => {
-    const arr = [...paperQs];
-    const target = idx + dir;
-    if (target < 0 || target >= arr.length) return;
-    [arr[idx], arr[target]] = [arr[target], arr[idx]];
-    setPaperQs(arr.map((pq, i) => ({ ...pq, order: i })));
+    setPaperQs(movePaperQuestion(paperQs, idx, dir));
   };
 
   const updateScore = (idx: number, score: number) => {
-    setPaperQs(prev => prev.map((pq, i) => i === idx ? { ...pq, score } : pq));
+    setPaperQs(updatePaperQuestionScore(paperQs, idx, score));
   };
 
-  const currentTotalScore = paperQs.reduce((s, pq) => s + pq.score, 0);
+  const currentTotalScore = computePaperTotalScore(paperQs);
 
   const savePaper = async () => {
     if (!title.trim()) { toast({ title: t('quiz.paper.needTitle'), variant: 'destructive' }); return; }
@@ -145,20 +148,20 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
 
   const deletePaper = async (id: string) => {
     if (isGuest) {
-      const updated = papers.filter(p => p.id !== id);
+      const updated = deleteLocalPaper(papers, id);
       setPapers(updated); saveLocalPapers(updated);
     } else {
       await supabase.from('quiz_papers').delete().eq('id', id) as any;
-      setPapers(papers.filter(p => p.id !== id));
+      setPapers(deleteLocalPaper(papers, id));
     }
   };
 
-  const duplicatePaper = async (p: QuizPaper) => {
-    const newPaper = { ...p, id: crypto.randomUUID(), title: p.title + ' (copy)', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  const duplicatePaperHandler = async (p: QuizPaper) => {
     if (isGuest) {
-      const updated = [newPaper, ...papers];
+      const updated = duplicateLocalPaper(papers, p);
       setPapers(updated); saveLocalPapers(updated);
     } else {
+      const newPaper = { ...p, id: crypto.randomUUID(), title: p.title + ' (copy)', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
       await supabase.from('quiz_papers').insert({ ...newPaper, user_id: user!.id } as any);
       const { data } = await supabase.from('quiz_papers').select('*').eq('user_id', user!.id).order('updated_at', { ascending: false }) as any;
       if (data) setPapers(data);
@@ -168,30 +171,16 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
 
   // Auto-generate
   const generatePaper = () => {
-    const result: PaperQuestion[] = [];
-    let order = 0;
-    for (const rule of autoRules) {
-      let pool = questions.filter(q => q.type === rule.type);
-      if (autoTags.trim()) {
-        const tags = autoTags.split(/[,，、]/).map(s => s.trim().toLowerCase()).filter(Boolean);
-        pool = pool.filter(q => tags.some(tag => q.tags.toLowerCase().includes(tag)));
-      }
-      // Shuffle and pick
-      const shuffled = [...pool].sort(() => Math.random() - 0.5);
-      const picked = shuffled.slice(0, rule.count);
-      if (picked.length < rule.count) {
-        toast({ title: `${t('quiz.' + rule.type)}: ${t('quiz.paper.insufficientQuestions')} (${picked.length}/${rule.count})`, variant: 'destructive' });
-      }
-      for (const q of picked) {
-        result.push({ question_id: q.id, question: q, score: rule.score_each, order: order++ });
-      }
-    }
+    const { questions: result, warnings } = autoGeneratePaper(questions, autoRules, autoTags);
+    warnings.forEach(w => {
+      toast({ title: `${t('quiz.paper.insufficientQuestions')} (${w})`, variant: 'destructive' });
+    });
     if (result.length === 0) { toast({ title: t('quiz.paper.noMatchingQuestions'), variant: 'destructive' }); return; }
 
     setTitle(autoTitle.trim() || t('quiz.paper.autoTitle'));
     setDesc('');
     setPaperQs(result);
-    setTotalScore(result.reduce((s, pq) => s + pq.score, 0));
+    setTotalScore(computePaperTotalScore(result));
     setView('create');
     toast({ title: `${t('quiz.paper.generated')} ${result.length} ${t('quiz.imp.questionsUnit')}` });
   };
@@ -366,7 +355,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
                 <p className="text-xs text-muted-foreground text-center py-6">{t('quiz.paper.noAvailable')}</p>
               ) : availableForPicker.map(q => (
                 <div key={q.id} className="flex items-center gap-2 p-2 rounded-md border border-border hover:bg-muted/50 cursor-pointer text-xs"
-                  onClick={() => addQuestionToPaper(q)}>
+                  onClick={() => addQuestionToPaperHandler(q)}>
                   {typeIcon(q.type)}
                   <span className="flex-1 truncate text-foreground">{q.content}</span>
                   <Plus className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -419,7 +408,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEdit(p)} title={t('quiz.editQuestion')}>
                       <Edit3 className="w-3 h-3 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => duplicatePaper(p)} title={t('quiz.paper.duplicate')}>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => duplicatePaperHandler(p)} title={t('quiz.paper.duplicate')}>
                       <Copy className="w-3 h-3 text-muted-foreground" />
                     </Button>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => exportPaperExcel(p)} title="Excel">
