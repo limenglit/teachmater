@@ -1425,6 +1425,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.blockedWord': 'Содержимое на проверке',
     'board.lockedMsg': 'Доска заблокирована',
     'board.back': 'К доскам',
+    'board.uploadImage': 'Загрузить',
+    'board.uploading': 'Загрузка...',
+    'board.commentSend': 'Отправить',
+    'board.noComments': 'Нет комментариев',
+    'board.cloudSync': '☁️ Синхронизировано',
   },
   ja: {
     'app.title': 'TeachMate',
