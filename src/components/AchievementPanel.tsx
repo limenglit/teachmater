@@ -452,21 +452,21 @@ export default function AchievementPanel() {
                 <div className="max-h-40 overflow-auto border border-border rounded-lg p-2 space-y-1">
                   {students.length === 0 && <p className="text-xs text-muted-foreground">{t('achieve.noStudentList')}</p>}
                   {students.map(s => (
-                    <label key={s} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/50 rounded px-2 py-1">
+                    <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/50 rounded px-2 py-1">
                       <input
                         type="checkbox"
-                        checked={selectedStudents.includes(s)}
+                        checked={selectedStudents.includes(s.name)}
                         onChange={e => {
-                          setSelectedStudents(prev => e.target.checked ? [...prev, s] : prev.filter(n => n !== s));
+                          setSelectedStudents(prev => e.target.checked ? [...prev, s.name] : prev.filter(n => n !== s.name));
                         }}
                         className="rounded"
                       />
-                      {s}
+                      {s.name}
                     </label>
                   ))}
                   {students.length > 0 && (
                     <div className="flex gap-2 pt-1">
-                      <button className="text-xs text-primary" onClick={() => setSelectedStudents([...students])}>
+                      <button className="text-xs text-primary" onClick={() => setSelectedStudents(students.map(s => s.name))}>
                         {t('achieve.selectAll')}
                       </button>
                       <button className="text-xs text-muted-foreground" onClick={() => setSelectedStudents([])}>
