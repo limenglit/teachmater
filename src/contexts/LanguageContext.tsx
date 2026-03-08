@@ -2320,7 +2320,13 @@ interface LanguageContextValue {
   t: (key: string) => string;
 }
 
-const LanguageContext = createContext<LanguageContextValue | null>(null);
+const fallbackLanguageContext: LanguageContextValue = {
+  lang: 'zh',
+  setLang: () => {},
+  t: (key: string) => translations.zh?.[key] ?? key,
+};
+
+const LanguageContext = createContext<LanguageContextValue>(fallbackLanguageContext);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<LangCode>(() => {
@@ -2345,8 +2351,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 }
 
 export function useLanguage() {
-  const ctx = useContext(LanguageContext);
-  if (!ctx) throw new Error('useLanguage must be used within LanguageProvider');
-  return ctx;
+  return useContext(LanguageContext);
 }
 
