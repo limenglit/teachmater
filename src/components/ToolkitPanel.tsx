@@ -81,6 +81,7 @@ export default function ToolkitPanel() {
           <Scoreboard />
           <RandomAssigner />
           <LotteryDrawer />
+          <PollManager />
           <CommandCards />
           <QRCodeGenerator />
         </div>
