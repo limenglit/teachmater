@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import QuizStatsView from '@/components/quiz/QuizStatsView';
+import QuizImporter from '@/components/quiz/QuizImporter';
 
 export interface QuizQuestion {
   id: string;
@@ -173,6 +174,36 @@ export default function QuizPanel() {
     } else {
       await supabase.from('quiz_questions').delete().eq('id', id) as any;
       setQuestions(prev => prev.filter(q => q.id !== id));
+    }
+  };
+
+  const handleImport = async (imported: { type: 'single' | 'multi' | 'tf' | 'short'; content: string; options: string[]; correct_answer: string | string[]; tags: string }[]) => {
+    if (isGuest) {
+      const newQs = imported.map(q => ({
+        id: crypto.randomUUID(),
+        user_id: 'local',
+        type: q.type,
+        content: q.content,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        tags: q.tags,
+        created_at: new Date().toISOString(),
+      }));
+      const updated = [...newQs, ...questions];
+      setQuestions(updated);
+      saveLocalQuestions(updated);
+    } else {
+      const rows = imported.map(q => ({
+        user_id: user!.id,
+        type: q.type,
+        content: q.content,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        tags: q.tags,
+      }));
+      const { error } = await supabase.from('quiz_questions').insert(rows as any);
+      if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+      loadQuestions();
     }
   };
 
@@ -485,6 +516,7 @@ export default function QuizPanel() {
                     {selectedIds.size === questions.length ? t('quiz.deselectAll') : t('quiz.selectAll')}
                   </Button>
                 )}
+                <QuizImporter onImport={handleImport} />
                 <Button size="sm" onClick={() => setView('add')} className="gap-1">
                   <Plus className="w-3.5 h-3.5" /> {t('quiz.addQuestion')}
                 </Button>
