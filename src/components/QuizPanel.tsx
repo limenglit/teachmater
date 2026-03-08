@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Play, StopCircle, QrCode, ArrowLeft, Download, CheckCircle2, XCircle, HelpCircle, ListChecks, ToggleLeft, FileText } from 'lucide-react';
+import { Plus, Trash2, Play, StopCircle, QrCode, ArrowLeft, Download, CheckCircle2, XCircle, HelpCircle, ListChecks, ToggleLeft, FileText, Cloud, HardDrive } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,6 +37,8 @@ export interface QuizSession {
 }
 
 const SESSION_TOKENS_KEY = 'quiz-session-tokens';
+const LOCAL_QUESTIONS_KEY = 'quiz-local-questions';
+const LOCAL_SESSIONS_KEY = 'quiz-local-sessions';
 
 function getSessionTokens(): Record<string, string> {
   try { return JSON.parse(localStorage.getItem(SESSION_TOKENS_KEY) || '{}'); } catch { return {}; }
@@ -50,11 +52,20 @@ function getSessionToken(sessionId: string): string | null {
   return getSessionTokens()[sessionId] || null;
 }
 
+// Local storage helpers for guest mode
+function getLocalQuestions(): QuizQuestion[] {
+  try { return JSON.parse(localStorage.getItem(LOCAL_QUESTIONS_KEY) || '[]'); } catch { return []; }
+}
+function saveLocalQuestions(questions: QuizQuestion[]) {
+  localStorage.setItem(LOCAL_QUESTIONS_KEY, JSON.stringify(questions));
+}
+
 type QuestionType = 'single' | 'multi' | 'tf' | 'short';
 
 export default function QuizPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const isGuest = !user;
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [sessions, setSessions] = useState<QuizSession[]>([]);
@@ -79,6 +90,10 @@ export default function QuizPanel() {
     if (user) {
       loadQuestions();
       loadSessions();
+    } else {
+      // Guest: load from localStorage
+      setQuestions(getLocalQuestions());
+      setSessions([]);
     }
   }, [user]);
 
@@ -106,39 +121,70 @@ export default function QuizPanel() {
   };
 
   const saveQuestion = async () => {
-    if (!user || !qContent.trim()) return;
+    if (!qContent.trim()) return;
     const opts = qType === 'tf' ? ['正确', '错误'] : qType === 'short' ? [] : qOptions.filter(o => o.trim());
     if ((qType === 'single' || qType === 'multi') && opts.length < 2) {
       toast({ title: t('quiz.needOptions'), variant: 'destructive' });
       return;
     }
-    const { error } = await supabase.from('quiz_questions').insert({
-      user_id: user.id,
-      type: qType,
-      content: qContent.trim(),
-      options: opts,
-      correct_answer: qCorrect,
-      tags: qTags.trim(),
-    } as any);
-    if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
-    toast({ title: t('quiz.saved') });
+
+    if (isGuest) {
+      // Save locally
+      const newQ: QuizQuestion = {
+        id: crypto.randomUUID(),
+        user_id: 'local',
+        type: qType,
+        content: qContent.trim(),
+        options: opts,
+        correct_answer: qCorrect,
+        tags: qTags.trim(),
+        created_at: new Date().toISOString(),
+      };
+      const updated = [newQ, ...questions];
+      setQuestions(updated);
+      saveLocalQuestions(updated);
+      toast({ title: t('quiz.saved') });
+    } else {
+      const { error } = await supabase.from('quiz_questions').insert({
+        user_id: user.id,
+        type: qType,
+        content: qContent.trim(),
+        options: opts,
+        correct_answer: qCorrect,
+        tags: qTags.trim(),
+      } as any);
+      if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+      toast({ title: t('quiz.saved') });
+      loadQuestions();
+    }
+
     setQContent('');
     setQOptions(['', '', '', '']);
     setQCorrect('A');
     setQTags('');
     setView('main');
-    loadQuestions();
   };
 
   const deleteQuestion = async (id: string) => {
-    await supabase.from('quiz_questions').delete().eq('id', id) as any;
-    setQuestions(prev => prev.filter(q => q.id !== id));
+    if (isGuest) {
+      const updated = questions.filter(q => q.id !== id);
+      setQuestions(updated);
+      saveLocalQuestions(updated);
+    } else {
+      await supabase.from('quiz_questions').delete().eq('id', id) as any;
+      setQuestions(prev => prev.filter(q => q.id !== id));
+    }
   };
 
   const startSession = async () => {
-    if (!user) return;
     const selected = questions.filter(q => selectedIds.has(q.id));
     if (selected.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
+
+    if (isGuest) {
+      toast({ title: t('quiz.loginToPublish'), variant: 'destructive' });
+      return;
+    }
+
     const title = sessionTitle.trim() || t('quiz.defaultTitle');
     const { data, error } = await supabase.from('quiz_sessions').insert({
       user_id: user.id,
@@ -416,130 +462,142 @@ export default function QuizPanel() {
       <div className="max-w-5xl mx-auto">
         <h3 className="font-semibold text-foreground mb-5 flex items-center gap-2 text-lg">
           📝 {t('quiz.title')}
+          {isGuest && (
+            <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              <HardDrive className="w-3 h-3" /> {t('quiz.localMode')}
+            </span>
+          )}
+          {!isGuest && (
+            <span className="inline-flex items-center gap-1 text-xs font-normal text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+              <Cloud className="w-3 h-3" /> {t('quiz.cloudMode')}
+            </span>
+          )}
         </h3>
 
-        {!user && (
-          <div className="text-center py-16 text-muted-foreground">
-            <p className="text-sm">{t('quiz.loginRequired')}</p>
-          </div>
-        )}
-
-        {user && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Question Bank */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium text-foreground">{t('quiz.questionBank')} ({questions.length})</h4>
-                <div className="flex gap-2">
-                  {questions.length > 0 && (
-                    <Button variant="outline" size="sm" className="text-xs" onClick={selectAll}>
-                      {selectedIds.size === questions.length ? t('quiz.deselectAll') : t('quiz.selectAll')}
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={() => setView('add')} className="gap-1">
-                    <Plus className="w-3.5 h-3.5" /> {t('quiz.addQuestion')}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Question Bank */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-foreground">{t('quiz.questionBank')} ({questions.length})</h4>
+              <div className="flex gap-2">
+                {questions.length > 0 && (
+                  <Button variant="outline" size="sm" className="text-xs" onClick={selectAll}>
+                    {selectedIds.size === questions.length ? t('quiz.deselectAll') : t('quiz.selectAll')}
                   </Button>
-                </div>
+                )}
+                <Button size="sm" onClick={() => setView('add')} className="gap-1">
+                  <Plus className="w-3.5 h-3.5" /> {t('quiz.addQuestion')}
+                </Button>
               </div>
+            </div>
 
-              {questions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/5 flex items-center justify-center">
-                    <HelpCircle className="w-10 h-10 text-primary/30" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground mb-1">{t('quiz.noQuestions')}</p>
-                  <p className="text-xs text-muted-foreground mb-4">{t('quiz.noQuestionsHint')}</p>
-                  <Button size="sm" onClick={() => setView('add')} className="gap-1">
-                    <Plus className="w-3.5 h-3.5" /> {t('quiz.addQuestion')}
-                  </Button>
+            {questions.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/5 flex items-center justify-center">
+                  <HelpCircle className="w-10 h-10 text-primary/30" />
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {questions.map((q, idx) => (
-                    <div key={q.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${selectedIds.has(q.id) ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
-                      onClick={() => toggleSelect(q.id)}
-                    >
-                      <Checkbox checked={selectedIds.has(q.id)} className="mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1">
-                          {typeIcon(q.type)}
-                          <span className="text-[10px] text-muted-foreground">{typeLabel(q.type)}</span>
-                          {q.tags && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{q.tags}</span>}
-                        </div>
-                        <p className="text-sm text-foreground line-clamp-2">{q.content}</p>
-                        {q.options.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {q.options.map((o: string, i: number) => {
-                              const letter = String.fromCharCode(65 + i);
-                              const isCorrect = Array.isArray(q.correct_answer)
-                                ? q.correct_answer.includes(letter)
-                                : q.correct_answer === letter;
-                              return (
-                                <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded ${isCorrect ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}>
-                                  {letter}. {o}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
+                <p className="text-sm font-medium text-foreground mb-1">{t('quiz.noQuestions')}</p>
+                <p className="text-xs text-muted-foreground mb-4">{t('quiz.noQuestionsHint')}</p>
+                <Button size="sm" onClick={() => setView('add')} className="gap-1">
+                  <Plus className="w-3.5 h-3.5" /> {t('quiz.addQuestion')}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {questions.map((q, idx) => (
+                  <div key={q.id}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${selectedIds.has(q.id) ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
+                    onClick={() => toggleSelect(q.id)}
+                  >
+                    <Checkbox checked={selectedIds.has(q.id)} className="mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        {typeIcon(q.type)}
+                        <span className="text-[10px] text-muted-foreground">{typeLabel(q.type)}</span>
+                        {q.tags && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{q.tags}</span>}
                       </div>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 shrink-0"
-                        onClick={e => { e.stopPropagation(); deleteQuestion(q.id); }}>
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                      <p className="text-sm text-foreground line-clamp-2">{q.content}</p>
+                      {q.options.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {q.options.map((o: string, i: number) => {
+                            const letter = String.fromCharCode(65 + i);
+                            const isCorrect = Array.isArray(q.correct_answer)
+                              ? q.correct_answer.includes(letter)
+                              : q.correct_answer === letter;
+                            return (
+                              <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded ${isCorrect ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}>
+                                {letter}. {o}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 shrink-0"
+                      onClick={e => { e.stopPropagation(); deleteQuestion(q.id); }}>
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Start session from selected */}
+            {selectedIds.size > 0 && (
+              <div className="sticky bottom-0 bg-card border border-border rounded-xl p-4 shadow-lg flex items-center gap-3">
+                <span className="text-sm text-foreground font-medium">{t('quiz.selected')}: {selectedIds.size}</span>
+                <Input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)}
+                  placeholder={t('quiz.sessionTitle')} className="flex-1 h-9" />
+                <Button onClick={startSession} disabled={isGuest} className="gap-1 shrink-0"
+                  title={isGuest ? t('quiz.loginToPublish') : ''}>
+                  <Play className="w-4 h-4" /> {t('quiz.startSession')}
+                </Button>
+                {isGuest && (
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">{t('quiz.loginToPublish')}</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Sessions sidebar */}
+          <div className="space-y-4">
+            <h4 className="font-medium text-foreground">{t('quiz.recentSessions')}</h4>
+            {isGuest ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Cloud className="w-8 h-8 mx-auto mb-2 text-primary/30" />
+                <p className="text-xs mb-1">{t('quiz.loginForSessions')}</p>
+                <p className="text-[10px] text-muted-foreground">{t('quiz.localModeHint')}</p>
+              </div>
+            ) : sessions.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">{t('quiz.noSessions')}</p>
+            ) : (
+              <div className="space-y-2">
+                {sessions.map(s => (
+                  <div key={s.id}
+                    className="p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer group"
+                    onClick={() => { setActiveSession(s); setView('session'); }}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-foreground truncate">{s.title}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                        {s.status === 'active' ? t('quiz.active') : t('quiz.ended')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">
+                        {(s.questions as any[]).length} {t('quiz.questionsCount')} · {new Date(s.created_at).toLocaleDateString()}
+                      </span>
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100"
+                        onClick={e => { e.stopPropagation(); deleteSession(s); }}>
+                        <Trash2 className="w-3 h-3 text-destructive" />
                       </Button>
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Start session from selected */}
-              {selectedIds.size > 0 && (
-                <div className="sticky bottom-0 bg-card border border-border rounded-xl p-4 shadow-lg flex items-center gap-3">
-                  <span className="text-sm text-foreground font-medium">{t('quiz.selected')}: {selectedIds.size}</span>
-                  <Input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)}
-                    placeholder={t('quiz.sessionTitle')} className="flex-1 h-9" />
-                  <Button onClick={startSession} className="gap-1 shrink-0">
-                    <Play className="w-4 h-4" /> {t('quiz.startSession')}
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Sessions sidebar */}
-            <div className="space-y-4">
-              <h4 className="font-medium text-foreground">{t('quiz.recentSessions')}</h4>
-              {sessions.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-4 text-center">{t('quiz.noSessions')}</p>
-              ) : (
-                <div className="space-y-2">
-                  {sessions.map(s => (
-                    <div key={s.id}
-                      className="p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer group"
-                      onClick={() => { setActiveSession(s); setView('session'); }}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-foreground truncate">{s.title}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
-                          {s.status === 'active' ? t('quiz.active') : t('quiz.ended')}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">
-                          {(s.questions as any[]).length} {t('quiz.questionsCount')} · {new Date(s.created_at).toLocaleDateString()}
-                        </span>
-                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100"
-                          onClick={e => { e.stopPropagation(); deleteSession(s); }}>
-                          <Trash2 className="w-3 h-3 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
