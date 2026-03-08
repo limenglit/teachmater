@@ -72,15 +72,11 @@ export default function QuizQuestionBank({
   const [newCategoryName, setNewCategoryName] = useState('');
 
   const filteredQuestions = useMemo(() => {
-    return questions.filter(q => {
-      if (filterType !== 'all' && q.type !== filterType) return false;
-      if (filterCategoryId !== 'all' && (q.category_id || '') !== filterCategoryId) return false;
-      if (filterStarred && !q.is_starred) return false;
-      if (searchText.trim()) {
-        const s = searchText.trim().toLowerCase();
-        if (!q.content.toLowerCase().includes(s) && !q.tags.toLowerCase().includes(s)) return false;
-      }
-      return true;
+    return filterQuestions(questions, {
+      type: filterType,
+      categoryId: filterCategoryId,
+      starred: filterStarred,
+      search: searchText,
     });
   }, [questions, filterType, filterCategoryId, filterStarred, searchText]);
 
