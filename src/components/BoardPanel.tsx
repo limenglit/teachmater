@@ -375,6 +375,11 @@ export default function BoardPanel() {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
+  // Word cloud mode
+  if (showWordCloud && activeBoard) {
+    return <BoardWordCloud cards={sortedCards} onClose={() => setShowWordCloud(false)} />;
+  }
+
   // PPT mode
   if (showPPT && activeBoard) {
     return <BoardPPTMode cards={sortedCards} onExit={() => setShowPPT(false)} />;
