@@ -116,9 +116,9 @@ export default function AuthPage() {
   };
 
   const modeLabels: Record<string, string> = {
-    login: t('auth.login'),
-    signup: t('auth.signup'),
-    forgot: t('auth.resetPassword'),
+    login: t('auth.loginTitle'),
+    signup: t('auth.signupTitle'),
+    forgot: t('auth.forgotTitle'),
   };
 
   return (
