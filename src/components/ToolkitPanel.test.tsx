@@ -70,7 +70,7 @@ describe('ToolkitPanel command cards', () => {
       json: async () => ({ icons: ['mdi:account'] }),
     } as Response);
 
-    render(<ToolkitPanel />);
+    renderWithProviders(<ToolkitPanel />);
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '课堂热身' },
