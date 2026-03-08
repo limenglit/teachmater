@@ -18,6 +18,8 @@ const STREAM_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-bo
 
 export default function BoardReport({ cards, boardTitle, onClose }: Props) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
