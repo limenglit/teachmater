@@ -145,7 +145,8 @@ export function layoutWordCloud(
     const t = (item.count - minCount) / range;
     const fontSize = Math.round(minFont + t * (maxFont - minFont));
     const rotation = Math.random() < 0.3 ? (Math.random() < 0.5 ? -90 : 90) : 0;
-    const color = CLOUD_COLORS[i % CLOUD_COLORS.length];
+    const colors = CLOUD_THEMES[themeId]?.colors || CLOUD_THEMES.classic.colors;
+    const color = colors[i % colors.length];
 
     // Estimate bounding box
     const charW = fontSize * 0.65;
