@@ -1720,6 +1720,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.checkin': '出席確認',
     'tab.board': 'ボード',
     'tab.toolkit': 'ツールボックス',
+    'tab.quiz': 'テスト',
     'ext.ai': 'AIアシスタント',
     'ext.idea': 'IdeaVas',
     'ext.tip': '同じメールでログイン',
