@@ -666,6 +666,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.checkin': 'Check-in',
     'tab.board': 'Board',
     'tab.toolkit': 'Toolkit',
+    'tab.quiz': 'Quiz',
     'ext.ai': 'AI Assistant',
     'ext.idea': 'IdeaVas',
     'ext.tip': 'Log in with the same email as this platform',
