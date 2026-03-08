@@ -515,6 +515,7 @@ export default function QuizPanel() {
                     {selectedIds.size === questions.length ? t('quiz.deselectAll') : t('quiz.selectAll')}
                   </Button>
                 )}
+                <QuizImporter onImport={handleImport} />
                 <Button size="sm" onClick={() => setView('add')} className="gap-1">
                   <Plus className="w-3.5 h-3.5" /> {t('quiz.addQuestion')}
                 </Button>
