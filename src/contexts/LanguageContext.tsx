@@ -1263,6 +1263,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.sessionNotFound': 'Quiz not found',
     'quiz.sessionEnded': 'Quiz has ended',
     'quiz.loginRequired': 'Please log in to use quiz features',
+    'quiz.localMode': 'Local Mode',
+    'quiz.cloudMode': 'Cloud Sync',
+    'quiz.loginToPublish': 'Log in to start a quiz session',
+    'quiz.loginForSessions': 'Log in to start online quizzes',
+    'quiz.localModeHint': 'Questions saved locally; log in to sync to cloud',
   },
   ru: {
     'app.title': 'TeachMate',
