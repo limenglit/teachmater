@@ -388,6 +388,77 @@ export type Database = {
         }
         Relationships: []
       }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          poll_id: string
+          selected_options: Json
+          voter_name: string
+          voter_token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          poll_id: string
+          selected_options?: Json
+          voter_name?: string
+          voter_token?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          poll_id?: string
+          selected_options?: Json
+          voter_name?: string
+          voter_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          created_at: string
+          creator_token: string
+          ended_at: string | null
+          id: string
+          options: Json
+          poll_type: string
+          status: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_token?: string
+          ended_at?: string | null
+          id?: string
+          options?: Json
+          poll_type?: string
+          status?: string
+          title?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_token?: string
+          ended_at?: string | null
+          id?: string
+          options?: Json
+          poll_type?: string
+          status?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -697,6 +768,10 @@ export type Database = {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
       }
+      delete_poll: {
+        Args: { p_poll_id: string; p_token: string }
+        Returns: undefined
+      }
       delete_quiz_session: {
         Args: { p_session_id: string; p_token: string }
         Returns: undefined
@@ -745,6 +820,15 @@ export type Database = {
           p_title?: string
           p_token: string
           p_view_mode?: string
+        }
+        Returns: undefined
+      }
+      update_poll: {
+        Args: {
+          p_poll_id: string
+          p_status?: string
+          p_title?: string
+          p_token: string
         }
         Returns: undefined
       }
