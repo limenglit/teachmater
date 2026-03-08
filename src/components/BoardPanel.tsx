@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, Columns3, LayoutGrid, Clock, PenBox } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, Columns3, LayoutGrid, Clock, PenBox, Cloud as CloudIcon } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
@@ -14,6 +14,7 @@ import BoardTimelineView from './board/BoardTimelineView';
 import BoardCanvasView from './board/BoardCanvasView';
 import BoardPPTMode from './board/BoardPPTMode';
 import BoardCardForm from './board/BoardCardForm';
+import BoardWordCloud from './board/BoardWordCloud';
 import { tFormat } from '@/contexts/LanguageContext';
 
 export interface Board {
@@ -103,6 +104,7 @@ export default function BoardPanel() {
   const [loading, setLoading] = useState(false);
   const [showPPT, setShowPPT] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [showWordCloud, setShowWordCloud] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [newTitle, setNewTitle] = useState('');
 
@@ -373,6 +375,11 @@ export default function BoardPanel() {
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
+  // Word cloud mode
+  if (showWordCloud && activeBoard) {
+    return <BoardWordCloud cards={sortedCards} onClose={() => setShowWordCloud(false)} />;
+  }
+
   // PPT mode
   if (showPPT && activeBoard) {
     return <BoardPPTMode cards={sortedCards} onExit={() => setShowPPT(false)} />;
@@ -427,6 +434,9 @@ export default function BoardPanel() {
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowPPT(true)}>
                   <Play className="w-3 h-3" /> {t('board.pptMode')}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowWordCloud(true)}>
+                  <CloudIcon className="w-3 h-3" /> {t('board.wordCloud')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
                   <Download className="w-3 h-3" /> {t('board.exportCSV')}
