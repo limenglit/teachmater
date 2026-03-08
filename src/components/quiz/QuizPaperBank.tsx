@@ -77,7 +77,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
     });
   }, [questions, paperQs, pickerType, pickerSearch]);
 
-  const autoTotalScore = autoRules.reduce((s, r) => s + r.count * r.score_each, 0);
+  const autoTotalScore = computeAutoTotalScore(autoRules);
 
   const resetForm = () => {
     setTitle(''); setDesc(''); setPaperQs([]); setTotalScore(100); setIsTemplate(false); setEditPaper(null);
