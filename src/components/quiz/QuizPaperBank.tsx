@@ -91,31 +91,23 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
     setView('edit');
   };
 
-  const addQuestionToPaper = (q: QuizQuestion) => {
-    setPaperQs(prev => [...prev, {
-      question_id: q.id, question: q,
-      score: q.type === 'short' ? 10 : q.type === 'multi' ? 4 : q.type === 'tf' ? 2 : 3,
-      order: prev.length,
-    }]);
+  const addQuestionToPaperHandler = (q: QuizQuestion) => {
+    setPaperQs(prev => addQToPaper(prev, q));
   };
 
   const removeFromPaper = (idx: number) => {
-    setPaperQs(prev => prev.filter((_, i) => i !== idx).map((pq, i) => ({ ...pq, order: i })));
+    setPaperQs(prev => removeQFromPaper(prev, idx));
   };
 
   const moveQuestion = (idx: number, dir: -1 | 1) => {
-    const arr = [...paperQs];
-    const target = idx + dir;
-    if (target < 0 || target >= arr.length) return;
-    [arr[idx], arr[target]] = [arr[target], arr[idx]];
-    setPaperQs(arr.map((pq, i) => ({ ...pq, order: i })));
+    setPaperQs(movePaperQuestion(paperQs, idx, dir));
   };
 
   const updateScore = (idx: number, score: number) => {
-    setPaperQs(prev => prev.map((pq, i) => i === idx ? { ...pq, score } : pq));
+    setPaperQs(updatePaperQuestionScore(paperQs, idx, score));
   };
 
-  const currentTotalScore = paperQs.reduce((s, pq) => s + pq.score, 0);
+  const currentTotalScore = computePaperTotalScore(paperQs);
 
   const savePaper = async () => {
     if (!title.trim()) { toast({ title: t('quiz.paper.needTitle'), variant: 'destructive' }); return; }
