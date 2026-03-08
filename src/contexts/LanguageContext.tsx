@@ -534,6 +534,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.reportPromptSub': '将对 {0} 张卡片内容进行汇总分析',
     'board.reportCardCount': '张卡片',
     'board.reportStreaming': '正在生成中...',
+    'ai.guestLimitReached': '今日 AI 使用次数已达上限，请登录后继续使用',
+    'ai.guestRemaining': '访客每日可使用 AI {0}/{1} 次，登录后无限制',
     'board.pptPrev': '上一张',
     'board.pptNext': '下一张',
     'board.pptExit': '退出播放',
