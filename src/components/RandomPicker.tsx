@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Play, Volume2, Mic, RotateCcw, Timer, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -10,6 +11,7 @@ import { playTick, playCelebration } from '@/lib/sounds';
 
 export default function RandomPicker() {
   const { students } = useStudents();
+  const { t } = useLanguage();
   const [isRolling, setIsRolling] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [noRepeat, setNoRepeat] = useState(true);
@@ -107,7 +109,7 @@ export default function RandomPicker() {
   useEffect(() => {
     const stopNow = () => {
       if (!isRollingRef.current) return;
-      if (Date.now() - rollStartTimeRef.current < 300) return; // ignore the starting click
+      if (Date.now() - rollStartTimeRef.current < 300) return;
       const chosen = currentRollingRef.current;
       if (chosen) finishRoll(chosen);
     };
@@ -128,7 +130,6 @@ export default function RandomPicker() {
     };
   }, []);
 
-  // Roller display - show scrolling names
   const displayNames = availableStudents.length > 0 ? availableStudents : students;
   const useWheel = students.length <= 20 && students.length > 0;
 
@@ -154,19 +155,19 @@ export default function RandomPicker() {
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3 sm:gap-6 mb-4">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Volume2 className="w-4 h-4" /> 音效
+          <Volume2 className="w-4 h-4" /> {t('random.sound')}
           <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Mic className="w-4 h-4" /> 语音
+          <Mic className="w-4 h-4" /> {t('random.voice')}
           <Switch checked={voiceEnabled} onCheckedChange={setVoiceEnabled} />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <RotateCcw className="w-4 h-4" /> 不重复
+          <RotateCcw className="w-4 h-4" /> {t('random.noRepeat')}
           <Switch checked={noRepeat} onCheckedChange={setNoRepeat} />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Sparkles className="w-4 h-4" /> 大字弹出
+          <Sparkles className="w-4 h-4" /> {t('random.popup')}
           <Switch checked={popupEnabled} onCheckedChange={setPopupEnabled} />
         </label>
       </div>
@@ -182,7 +183,7 @@ export default function RandomPicker() {
           disabled={isRolling}
           className="flex-1"
         />
-        <span className="text-sm text-muted-foreground tabular-nums w-10 text-right">{rollDuration}秒</span>
+        <span className="text-sm text-muted-foreground tabular-nums w-10 text-right">{rollDuration}{t('random.seconds')}</span>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-stretch w-full max-w-4xl">
@@ -202,30 +203,29 @@ export default function RandomPicker() {
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
                 {pickedNames.length > 0 && (
                   <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
-                    已选 {pickedNames.length} 人
+                    {t('random.picked')} {pickedNames.length} {t('random.persons')}
                   </button>
                 )}
-                <span>剩余 {availableStudents.length}/{students.length} 人</span>
+                <span>{t('random.remaining')} {availableStudents.length}/{students.length} {t('random.persons')}</span>
                 {usedIds.size > 0 && (
-                  <button onClick={resetPool} className="text-primary hover:underline">重置</button>
+                  <button onClick={resetPool} className="text-primary hover:underline">{t('random.reset')}</button>
                 )}
               </div>
             )}
             {!noRepeat && pickedNames.length > 0 && (
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
                 <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
-                  已选 {pickedNames.length} 人
+                  {t('random.picked')} {pickedNames.length} {t('random.persons')}
                 </button>
-                <button onClick={() => setPickedNames([])} className="text-primary hover:underline">清空</button>
+                <button onClick={() => setPickedNames([])} className="text-primary hover:underline">{t('random.clearList')}</button>
               </div>
             )}
           </div>
         ) : (
           <div className="flex-1 flex flex-col">
-            {/* Roller for >20 students */}
-              <h3 className="text-lg font-medium text-foreground mb-1">随机选人</h3>
+              <h3 className="text-lg font-medium text-foreground mb-1">{t('random.title')}</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                滚轮模式 ({students.length}人)
+                {t('random.rollerMode')} ({students.length}{t('random.persons')})
               </p>
 
               <div className="relative bg-card rounded-2xl border border-border shadow-card overflow-hidden flex-1 flex flex-col">
@@ -273,30 +273,30 @@ export default function RandomPicker() {
                     size="lg"
                   >
                     <Play className="w-4 h-4" />
-                    {isRolling ? '按任意键停止...' : '滚动'}
+                    {isRolling ? t('random.pressToStop') : t('random.roll')}
                   </Button>
                   {selectedStudent && !isRolling && (
-                    <p className="text-sm text-muted-foreground">选中：{selectedStudent}</p>
+                    <p className="text-sm text-muted-foreground">{t('random.selected')}：{selectedStudent}</p>
                   )}
                   {noRepeat && (
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       {pickedNames.length > 0 && (
                         <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
-                          已选 {pickedNames.length} 人
+                          {t('random.picked')} {pickedNames.length} {t('random.persons')}
                         </button>
                       )}
-                      <span>剩余 {availableStudents.length}/{students.length} 人</span>
+                      <span>{t('random.remaining')} {availableStudents.length}/{students.length} {t('random.persons')}</span>
                       {usedIds.size > 0 && (
-                        <button onClick={resetPool} className="text-primary hover:underline">重置</button>
+                        <button onClick={resetPool} className="text-primary hover:underline">{t('random.reset')}</button>
                       )}
                     </div>
                   )}
                   {!noRepeat && pickedNames.length > 0 && (
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <button onClick={() => setShowPickedList(true)} className="text-primary hover:underline font-medium">
-                        已选 {pickedNames.length} 人
+                        {t('random.picked')} {pickedNames.length} {t('random.persons')}
                       </button>
-                      <button onClick={() => setPickedNames([])} className="text-primary hover:underline">清空</button>
+                      <button onClick={() => setPickedNames([])} className="text-primary hover:underline">{t('random.clearList')}</button>
                     </div>
                   )}
                 </div>
@@ -328,7 +328,7 @@ export default function RandomPicker() {
               className="bg-card rounded-2xl border border-border shadow-elevated p-6 max-w-sm w-full mx-4 max-h-[70vh] overflow-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold text-foreground mb-3">已选名单 ({pickedNames.length}人)</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-3">{t('random.pickedList')} ({pickedNames.length}{t('random.persons')})</h3>
               <div className="flex flex-wrap gap-2">
                 {pickedNames.map((name, i) => (
                   <span key={i} className="px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium">
@@ -336,7 +336,7 @@ export default function RandomPicker() {
                   </span>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-4 text-center">点击空白处或按 ESC 关闭</p>
+              <p className="text-xs text-muted-foreground mt-4 text-center">{t('random.clickToClose')}</p>
             </motion.div>
           </motion.div>
         )}
@@ -372,7 +372,7 @@ export default function RandomPicker() {
                 transition={{ delay: 0.3 }}
                 className="mt-4 text-background/60 text-sm"
               >
-                点击任意处关闭
+                {t('random.clickAnywhereClose')}
               </motion.div>
             </motion.div>
           </motion.div>
@@ -385,6 +385,7 @@ export default function RandomPicker() {
 // Dice sub-component
 function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPopup, pickedNames, onPick, onShowList }: { soundEnabled: boolean; voiceEnabled: boolean; noRepeat: boolean; popupEnabled: boolean; showPopup: (name: string) => void; pickedNames: string[]; onPick: (name: string) => void; onShowList: () => void }) {
   const { students } = useStudents();
+  const { t } = useLanguage();
   const [isRolling, setIsRolling] = useState(false);
   const [diceValues, setDiceValues] = useState<number[]>([]);
   const [result, setResult] = useState<string | null>(null);
@@ -395,7 +396,6 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
     ? students.filter(s => !usedIds.has(s.id))
     : students;
 
-  // Simple dice: just pick a random student using dice visualization
   const groupCount = Math.min(6, Math.ceil(availableStudents.length / 4));
   const membersPerGroup = Math.ceil(availableStudents.length / groupCount);
 
@@ -422,12 +422,10 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
     setIsRolling(true);
     setResult(null);
 
-    // Determine dice needed
     const groupDiceCount = groupCount > 6 ? 2 : 1;
     const memberDiceCount = membersPerGroup > 6 ? 2 : 1;
     const totalDice = groupDiceCount + memberDiceCount;
 
-    // Animate
     let count = 0;
     const steps = 12;
     const interval = setInterval(() => {
@@ -437,17 +435,15 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
       if (count >= steps) {
         clearInterval(interval);
 
-        // Final values
         const finalValues = Array.from({ length: totalDice }, () => Math.floor(Math.random() * 6) + 1);
         setDiceValues(finalValues);
 
-        // Map to student
         const groupIndex = ((finalValues[0] - 1) % groupCount);
         const memberIndex = ((finalValues[groupDiceCount] - 1) % membersPerGroup);
         const studentIndex = groupIndex * membersPerGroup + memberIndex;
         const chosen = availableStudents[Math.min(studentIndex, availableStudents.length - 1)];
 
-        setResult(`第${groupIndex + 1}组 第${memberIndex + 1}人: ${chosen.name}`);
+        setResult(t('dice.groupResult').replace('{0}', String(groupIndex + 1)).replace('{1}', String(memberIndex + 1)) + `: ${chosen.name}`);
         setIsRolling(false);
         onPick(chosen.name);
 
@@ -458,7 +454,6 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         if (soundEnabled) playCelebration();
         if (popupEnabled) showPopup(chosen.name);
 
-        // Speak
         if (voiceEnabled) {
           const utterance = new SpeechSynthesisUtterance(chosen.name);
           utterance.lang = 'zh-CN';
@@ -466,20 +461,20 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         }
       }
     }, 80);
-  }, [availableStudents, isRolling, groupCount, membersPerGroup, soundEnabled, voiceEnabled, noRepeat]);
+  }, [availableStudents, isRolling, groupCount, membersPerGroup, soundEnabled, voiceEnabled, noRepeat, t]);
 
   const diceLabels = groupCount > 6
-    ? ['组十位', '组个位', '成员个位']
-    : ['组', '成员'];
+    ? [t('dice.groupTens'), t('dice.groupOnes'), t('dice.memberOnes')]
+    : [t('dice.group'), t('dice.member')];
 
   return (
     <div className="w-full lg:flex-1 flex flex-col">
       <h3 className="text-lg font-medium text-foreground mb-1 flex items-center gap-2">
-        🎲 智能骰子
-        <span className="text-xs text-muted-foreground font-normal">(基于分组/建队)</span>
+        {t('dice.title')}
+        <span className="text-xs text-muted-foreground font-normal">{t('dice.subtitle')}</span>
       </h3>
       <p className="text-sm text-muted-foreground mb-4">
-        骰子模式
+        {t('dice.mode')}
       </p>
 
       <div className="bg-card rounded-2xl border border-border shadow-card p-5 flex-1 flex flex-col">
@@ -491,7 +486,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
               mode === 'group' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted'
             }`}
           >
-            基于分组
+            {t('dice.basedOnGroup')}
           </button>
           <button
             onClick={() => setMode('team')}
@@ -499,7 +494,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
               mode === 'team' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted'
             }`}
           >
-            基于建队
+            {t('dice.basedOnTeam')}
           </button>
         </div>
 
@@ -521,7 +516,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         {/* Roll button */}
         <div className="flex justify-center mb-3">
           <Button onClick={rollDice} disabled={isRolling || availableStudents.length === 0} variant="outline" className="gap-2">
-            🎲 投掷
+            {t('dice.throw')}
           </Button>
         </div>
 
@@ -534,15 +529,15 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
           >
             <p className="font-semibold text-foreground">{result}</p>
             <p className="text-xs text-muted-foreground mt-1">
-              (组数{groupCount}→{groupCount > 6 ? '2' : '1'}个骰子定位组)
+              {t('dice.groupDice').replace('{0}', String(groupCount)).replace('{1}', groupCount > 6 ? '2' : '1')}
             </p>
           </motion.div>
         )}
         {noRepeat && (
           <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground mt-2">
-            <span>剩余 {availableStudents.length}/{students.length} 人</span>
+            <span>{t('random.remaining')} {availableStudents.length}/{students.length} {t('random.persons')}</span>
             {usedIds.size > 0 && (
-              <button onClick={() => setUsedIds(new Set())} className="text-primary hover:underline">重置</button>
+              <button onClick={() => setUsedIds(new Set())} className="text-primary hover:underline">{t('random.reset')}</button>
             )}
           </div>
         )}

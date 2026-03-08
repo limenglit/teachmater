@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
 import {
   type CommandItem,
   buildCustomCommand,
@@ -16,6 +17,7 @@ import CountdownTimer from './CountdownTimer';
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
+  const { t } = useLanguage();
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onDone();
@@ -55,17 +57,18 @@ function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: 
         transition={{ delay: 0.5 }}
         className="absolute bottom-8 text-sm text-muted-foreground"
       >
-        按 ESC 或点击任意处退出
+        {t('cmd.escOrClick')}
       </motion.p>
     </motion.div>
   );
 }
 
 export default function ToolkitPanel() {
+  const { t } = useLanguage();
   return (
     <div className="flex-1 p-4 sm:p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
-        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">课堂工具箱</h2>
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">{t('toolkit.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <BarrageDiscussion />
           <CountdownTimer />
@@ -79,6 +82,7 @@ export default function ToolkitPanel() {
 
 
 function CommandCards() {
+  const { t } = useLanguage();
   const [flashCommand, setFlashCommand] = useState<CommandItem | null>(null);
   const [customTopic, setCustomTopic] = useState('');
   const [loadingTopic, setLoadingTopic] = useState(false);
@@ -88,12 +92,12 @@ function CommandCards() {
   const [iconCandidates, setIconCandidates] = useState<string[]>([]);
 
   const commands: CommandItem[] = [
-    { text: '保持安静', emoji: '🤫' },
-    { text: '分组讨论', emoji: '👥' },
-    { text: '独立完成', emoji: '🧑‍🎓' },
-    { text: '同桌交流', emoji: '🤝' },
-    { text: '认真听讲', emoji: '👂' },
-    { text: '举手发言', emoji: '✋' },
+    { text: t('cmd.quiet'), emoji: '🤫' },
+    { text: t('cmd.discuss'), emoji: '👥' },
+    { text: t('cmd.independent'), emoji: '🧑‍🎓' },
+    { text: t('cmd.pairTalk'), emoji: '🤝' },
+    { text: t('cmd.listen'), emoji: '👂' },
+    { text: t('cmd.raiseHand'), emoji: '✋' },
   ];
 
   const allCommands = [...customCommands, ...commands];
@@ -120,7 +124,7 @@ function CommandCards() {
       if (shouldFallbackToDefault(picked)) {
         addCustomCommand(topic);
         setCustomTopic('');
-        setSearchError('图标候选不足，已使用默认“？”图标发布该指令');
+        setSearchError(t('cmd.noIcon'));
         return;
       }
       setCandidateTopic(topic);
@@ -128,7 +132,7 @@ function CommandCards() {
     } catch (error) {
       addCustomCommand(topic);
       setCustomTopic('');
-      setSearchError('联网检索图标失败，已使用默认“？”图标发布该指令');
+      setSearchError(t('cmd.searchFail'));
     } finally {
       setLoadingTopic(false);
     }
@@ -136,13 +140,13 @@ function CommandCards() {
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
-      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">📢 课堂指令卡</h3>
+      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">{t('cmd.title')}</h3>
       <div className="mb-3 space-y-2">
         <div className="flex gap-2">
           <Input
             value={customTopic}
             onChange={e => setCustomTopic(e.target.value)}
-            placeholder="输入课堂指令主题，如：小组辩论"
+            placeholder={t('cmd.inputPlaceholder')}
             onKeyDown={e => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -151,13 +155,13 @@ function CommandCards() {
             }}
           />
           <Button onClick={() => void loadIconCandidates()} disabled={loadingTopic || !customTopic.trim()}>
-            {loadingTopic ? '检索中...' : '检索徽章'}
+            {loadingTopic ? t('cmd.searching') : t('cmd.searchBadge')}
           </Button>
         </div>
         {searchError && <p className="text-xs text-destructive">{searchError}</p>}
         {iconCandidates.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">已找到 {iconCandidates.length} 个候选图标，请点选一个用于“{candidateTopic}”</p>
+            <p className="text-xs text-muted-foreground">{t('cmd.foundIcons').replace('{0}', String(iconCandidates.length)).replace('{1}', candidateTopic)}</p>
             <div className="grid grid-cols-3 gap-2">
               {iconCandidates.map((url, idx) => (
                 <button
@@ -169,10 +173,10 @@ function CommandCards() {
                     setCandidateTopic('');
                   }}
                   className="rounded-lg border border-border bg-background p-2 hover:border-primary/50 hover:bg-accent transition-all"
-                  title={`选择候选 ${idx + 1}`}
+                  title={`${t('cmd.selectCandidate')} ${idx + 1}`}
                 >
                   <span className="w-10 h-10 rounded-full bg-primary/10 border border-primary/30 inline-flex items-center justify-center mx-auto">
-                    <img src={url} alt={`候选图标${idx + 1}`} className="w-6 h-6" loading="lazy" />
+                    <img src={url} alt={`${t('cmd.candidateIcon')}${idx + 1}`} className="w-6 h-6" loading="lazy" />
                   </span>
                 </button>
               ))}
@@ -214,18 +218,19 @@ function CommandCards() {
 }
 
 function QRCodeGenerator() {
+  const { t } = useLanguage();
   const [url, setUrl] = useState('');
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-        <LinkIcon className="w-4 h-4" /> 二维码生成器
+        <LinkIcon className="w-4 h-4" /> {t('qr.title')}
       </h3>
 
       <Input
         value={url}
         onChange={e => setUrl(e.target.value)}
-        placeholder="输入网址..."
+        placeholder={t('qr.placeholder')}
         className="mb-4"
       />
 
@@ -235,13 +240,13 @@ function QRCodeGenerator() {
             <QRCodeSVG value={url.trim()} size={140} level="M" />
           </div>
           <p className="text-xs text-muted-foreground text-center break-all max-w-full">{url}</p>
-          <p className="text-xs text-muted-foreground text-center">📱 请用手机浏览器扫描访问</p>
+          <p className="text-xs text-muted-foreground text-center">{t('qr.scanTip')}</p>
         </div>
       )}
 
       {!url.trim() && (
         <div className="text-center py-6 text-muted-foreground text-sm">
-          输入网址即可实时生成二维码
+          {t('qr.emptyTip')}
         </div>
       )}
     </div>

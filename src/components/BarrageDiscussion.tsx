@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, FileText, Cloud, Download, Trash2, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface BarrageMessage {
   id: string;
@@ -19,7 +20,6 @@ interface WordCloudItem {
   count: number;
 }
 
-// --- Barrage animation item ---
 function BarrageItem({ text, index, speed }: { text: string; index: number; speed: number }) {
   const colors = [
     'text-primary', 'text-blue-500', 'text-green-500', 'text-orange-500',
@@ -43,8 +43,8 @@ function BarrageItem({ text, index, speed }: { text: string; index: number; spee
   );
 }
 
-// --- Word Cloud Canvas ---
 function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
+  const { t } = useLanguage();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -64,7 +64,6 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
     const maxSize = 56;
     const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
-    // Simple spiral placement
     const placed: { x: number; y: number; w: number; h: number }[] = [];
 
     words.forEach((item, i) => {
@@ -74,7 +73,6 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
       const textW = metrics.width;
       const textH = fontSize;
 
-      // Spiral search for non-overlapping position
       let px = w / 2, py = h / 2;
       let angle = 0, radius = 0;
       let found = false;
@@ -115,14 +113,14 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
     <div className="space-y-3">
       <canvas ref={canvasRef} className="w-full rounded-xl border border-border" style={{ maxHeight: 350 }} />
       <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
-        <Download className="w-3.5 h-3.5" /> 保存词云
+        <Download className="w-3.5 h-3.5" /> {t('barrage.saveCloud')}
       </Button>
     </div>
   );
 }
 
-// --- Main Component ---
 export default function BarrageDiscussion() {
+  const { t } = useLanguage();
   const [topicTitle, setTopicTitle] = useState('');
   const [topicId, setTopicId] = useState<string | null>(null);
   const [creatorToken, setCreatorToken] = useState<string | null>(null);
@@ -139,12 +137,8 @@ export default function BarrageDiscussion() {
   const barrageIndexRef = useRef(0);
   const reportRef = useRef<HTMLDivElement>(null);
 
-  // Generate published URL for QR code
-  const discussUrl = topicId
-    ? `${window.location.origin}/discuss/${topicId}`
-    : '';
+  const discussUrl = topicId ? `${window.location.origin}/discuss/${topicId}` : '';
 
-  // Create topic
   const handleCreateTopic = async () => {
     if (!topicTitle.trim()) return;
     const token = crypto.randomUUID();
@@ -154,20 +148,18 @@ export default function BarrageDiscussion() {
       .select('id')
       .single();
     if (error) {
-      toast({ title: '创建失败', description: error.message, variant: 'destructive' });
+      toast({ title: t('barrage.createFailed'), description: error.message, variant: 'destructive' });
       return;
     }
     const id = (data as any).id;
     setTopicId(id);
     setCreatorToken(token);
-    // Persist token for this topic
     sessionStorage.setItem(`topic_token_${id}`, token);
     setMessages([]);
     setVisibleMessages([]);
-    toast({ title: '话题已创建', description: '展示二维码让学生扫码参与' });
+    toast({ title: t('barrage.topicCreated'), description: t('barrage.topicCreatedDesc') });
   };
 
-  // Edit topic title
   const handleEditTopic = async () => {
     if (!editTitle.trim() || !topicId || !creatorToken) return;
     try {
@@ -179,16 +171,15 @@ export default function BarrageDiscussion() {
       if (error) throw error;
       setTopicTitle(editTitle.trim());
       setEditDialogOpen(false);
-      toast({ title: '话题已更新' });
+      toast({ title: t('barrage.topicUpdated') });
     } catch (e: any) {
-      toast({ title: '修改失败', description: e.message, variant: 'destructive' });
+      toast({ title: t('barrage.editFailed'), description: e.message, variant: 'destructive' });
     }
   };
 
-  // Delete topic
   const handleDeleteTopic = async () => {
     if (!topicId || !creatorToken) return;
-    if (!confirm('确定要删除该话题及所有弹幕数据吗？此操作不可撤销。')) return;
+    if (!confirm(t('barrage.deleteConfirm'))) return;
     try {
       const { error } = await supabase.rpc('delete_topic', {
         p_topic_id: topicId,
@@ -197,17 +188,14 @@ export default function BarrageDiscussion() {
       if (error) throw error;
       sessionStorage.removeItem(`topic_token_${topicId}`);
       handleReset();
-      toast({ title: '话题已删除' });
+      toast({ title: t('barrage.topicDeleted') });
     } catch (e: any) {
-      toast({ title: '删除失败', description: e.message, variant: 'destructive' });
+      toast({ title: t('barrage.deleteFailed'), description: e.message, variant: 'destructive' });
     }
   };
 
-  // Subscribe to realtime messages
   useEffect(() => {
     if (!topicId) return;
-
-    // Fetch existing messages
     supabase
       .from('barrage_messages' as any)
       .select('*')
@@ -220,7 +208,6 @@ export default function BarrageDiscussion() {
         }
       });
 
-    // Subscribe to new messages
     const channel = supabase
       .channel(`barrage-${topicId}`)
       .on(
@@ -236,18 +223,15 @@ export default function BarrageDiscussion() {
     return () => { supabase.removeChannel(channel); };
   }, [topicId]);
 
-  // Feed barrage animation
   useEffect(() => {
     if (!isPlaying || messages.length === 0) return;
-    // Show latest messages as barrage items
     const latest = messages.slice(-30);
     setVisibleMessages(latest);
   }, [messages, isPlaying]);
 
-  // AI Report
   const handleReport = async () => {
     if (messages.length === 0) {
-      toast({ title: '暂无弹幕数据', variant: 'destructive' });
+      toast({ title: t('barrage.noData'), variant: 'destructive' });
       return;
     }
     setAnalyzing(true);
@@ -259,16 +243,15 @@ export default function BarrageDiscussion() {
       if (res.error) throw res.error;
       setReportContent(res.data.result);
     } catch (e: any) {
-      toast({ title: '分析失败', description: e.message, variant: 'destructive' });
+      toast({ title: t('barrage.analyzeFailed'), description: e.message, variant: 'destructive' });
     } finally {
       setAnalyzing(false);
     }
   };
 
-  // AI Word Cloud
   const handleWordCloud = async () => {
     if (messages.length === 0) {
-      toast({ title: '暂无弹幕数据', variant: 'destructive' });
+      toast({ title: t('barrage.noData'), variant: 'destructive' });
       return;
     }
     setAnalyzing(true);
@@ -278,23 +261,21 @@ export default function BarrageDiscussion() {
         body: { messages: messages.map(m => m.content), type: 'wordcloud', topic_id: topicId, creator_token: creatorToken },
       });
       if (res.error) throw res.error;
-      // Parse JSON from AI response
       const text = res.data.result;
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]) as WordCloudItem[];
         setWordCloudData(parsed);
       } else {
-        toast({ title: '词云解析失败', variant: 'destructive' });
+        toast({ title: t('barrage.cloudParseFail'), variant: 'destructive' });
       }
     } catch (e: any) {
-      toast({ title: '分析失败', description: e.message, variant: 'destructive' });
+      toast({ title: t('barrage.analyzeFailed'), description: e.message, variant: 'destructive' });
     } finally {
       setAnalyzing(false);
     }
   };
 
-  // Export data
   const handleExportJSON = () => {
     const blob = new Blob([JSON.stringify(messages, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
@@ -314,34 +295,32 @@ export default function BarrageDiscussion() {
     setView('barrage');
   };
 
-  // --- Not started yet ---
   if (!topicId) {
     return (
       <div className="bg-card rounded-2xl border border-border shadow-card p-6">
-        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">💬 讨论弹幕</h3>
+        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">{t('barrage.title')}</h3>
         <div className="space-y-3">
           <Input
             value={topicTitle}
             onChange={e => setTopicTitle(e.target.value)}
-            placeholder="输入讨论话题..."
+            placeholder={t('barrage.inputTopic')}
             className="text-sm"
           />
           <Button onClick={handleCreateTopic} disabled={!topicTitle.trim()} className="w-full gap-2">
-            🚀 发布话题并生成二维码
+            {t('barrage.publish')}
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-3">🔒 所有数据仅存本地数据库，不上传第三方</p>
+        <p className="text-xs text-muted-foreground mt-3">{t('barrage.privacy')}</p>
       </div>
     );
   }
 
-  // --- Active session ---
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-4 sm:p-6 col-span-1 md:col-span-2 lg:col-span-3">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           💬 {topicTitle}
-          <span className="text-xs font-normal text-muted-foreground">({messages.length} 条弹幕)</span>
+          <span className="text-xs font-normal text-muted-foreground">({messages.length} {t('barrage.messages')})</span>
           {creatorToken && (
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setEditTitle(topicTitle); setEditDialogOpen(true); }}>
               <Pencil className="w-3.5 h-3.5" />
@@ -350,63 +329,53 @@ export default function BarrageDiscussion() {
         </h3>
         <div className="flex items-center gap-1.5 flex-wrap">
           <Button variant={view === 'barrage' ? 'default' : 'outline'} size="sm" onClick={() => setView('barrage')}>
-            弹幕墙
+            {t('barrage.wall')}
           </Button>
           <Button variant={view === 'report' ? 'default' : 'outline'} size="sm" onClick={handleReport} disabled={analyzing}>
             <FileText className="w-3.5 h-3.5 mr-1" />
-            {analyzing && view === 'report' ? '分析中...' : '智能报告'}
+            {analyzing && view === 'report' ? t('barrage.analyzing2') : t('barrage.report')}
           </Button>
           <Button variant={view === 'wordcloud' ? 'default' : 'outline'} size="sm" onClick={handleWordCloud} disabled={analyzing}>
             <Cloud className="w-3.5 h-3.5 mr-1" />
-            {analyzing && view === 'wordcloud' ? '生成中...' : '词云'}
+            {analyzing && view === 'wordcloud' ? t('barrage.generating') : t('barrage.wordcloud')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportJSON}>
             <Download className="w-3.5 h-3.5 mr-1" /> JSON
           </Button>
           {creatorToken && (
             <Button variant="outline" size="sm" onClick={handleDeleteTopic} className="text-destructive hover:text-destructive">
-              <Trash2 className="w-3.5 h-3.5 mr-1" /> 删除话题
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> {t('barrage.deleteTopic')}
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={handleReset}>
-            结束
+            {t('barrage.end')}
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* QR Code */}
         <div className="flex flex-col items-center gap-2 p-4 bg-background rounded-xl border border-border">
           <QRCodeSVG value={discussUrl} size={160} level="M" />
-          <p className="text-xs text-muted-foreground text-center">学生扫码参与讨论</p>
+          <p className="text-xs text-muted-foreground text-center">{t('barrage.scanToJoin')}</p>
           <p className="text-[10px] text-muted-foreground break-all text-center max-w-[180px]">{discussUrl}</p>
         </div>
 
-        {/* Content area */}
         <div className="lg:col-span-3">
           {view === 'barrage' && (
             <div className="space-y-3">
-              {/* Controls */}
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => setIsPlaying(!isPlaying)} className="gap-1">
                   {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  {isPlaying ? '暂停' : '播放'}
+                  {isPlaying ? t('barrage.end') : t('barrage.play')}
                 </Button>
-                <span className="text-xs text-muted-foreground">速度:</span>
+                <span className="text-xs text-muted-foreground">{t('barrage.speed')}</span>
                 {[0.5, 1, 1.5, 2].map(s => (
-                  <Button
-                    key={s}
-                    variant={speed === s ? 'default' : 'outline'}
-                    size="sm"
-                    className="h-7 px-2 text-xs"
-                    onClick={() => setSpeed(s)}
-                  >
+                  <Button key={s} variant={speed === s ? 'default' : 'outline'} size="sm" className="h-7 px-2 text-xs" onClick={() => setSpeed(s)}>
                     {s}x
                   </Button>
                 ))}
               </div>
 
-              {/* Barrage wall */}
               <div className="relative w-full h-64 sm:h-80 bg-foreground/5 rounded-xl overflow-hidden border border-border">
                 <AnimatePresence>
                   {isPlaying && visibleMessages.map((msg, i) => (
@@ -415,7 +384,7 @@ export default function BarrageDiscussion() {
                 </AnimatePresence>
                 {messages.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
-                    等待学生发送弹幕...
+                    {t('barrage.waiting')}
                   </div>
                 )}
               </div>
@@ -428,13 +397,13 @@ export default function BarrageDiscussion() {
                 <div className="flex items-center justify-center h-48 text-muted-foreground">
                   <div className="text-center">
                     <div className="text-3xl mb-2 animate-spin">🧠</div>
-                    <div>AI 正在分析弹幕内容...</div>
+                    <div>{t('barrage.analyzing')}</div>
                   </div>
                 </div>
               ) : (
                 <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-                  <h4 className="text-foreground mb-3">📊 智能分析报告</h4>
-                  {reportContent || '暂无报告'}
+                  <h4 className="text-foreground mb-3">{t('barrage.reportTitle')}</h4>
+                  {reportContent || t('barrage.noReport')}
                 </div>
               )}
             </div>
@@ -446,28 +415,27 @@ export default function BarrageDiscussion() {
                 <div className="flex items-center justify-center h-48 text-muted-foreground">
                   <div className="text-center">
                     <div className="text-3xl mb-2 animate-pulse">☁️</div>
-                    <div>AI 正在生成词云数据...</div>
+                    <div>{t('barrage.generatingCloud')}</div>
                   </div>
                 </div>
               ) : wordCloudData.length > 0 ? (
                 <WordCloudCanvas words={wordCloudData} />
               ) : (
-                <div className="text-center text-muted-foreground py-12">暂无词云数据</div>
+                <div className="text-center text-muted-foreground py-12">{t('barrage.noCloud')}</div>
               )}
             </div>
           )}
         </div>
       </div>
-      {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>修改话题标题</DialogTitle>
+            <DialogTitle>{t('barrage.editTitle')}</DialogTitle>
           </DialogHeader>
-          <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder="输入新标题..." />
+          <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} placeholder={t('barrage.newTitlePlaceholder')} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>取消</Button>
-            <Button onClick={handleEditTopic} disabled={!editTitle.trim()}>保存</Button>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>{t('barrage.cancel')}</Button>
+            <Button onClick={handleEditTopic} disabled={!editTitle.trim()}>{t('settings.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
