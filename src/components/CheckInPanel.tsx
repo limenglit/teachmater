@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
@@ -36,13 +37,13 @@ function saveHistory(session: SessionData, records: CheckinRecord[], studentName
       unchecked: studentNames.filter(n => !records.some(r => r.student_name === n && r.status === 'matched')),
       savedAt: new Date().toISOString(),
     });
-    // Keep last 50
     sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
   } catch { }
 }
 
 export default function CheckInPanel() {
   const { students } = useStudents();
+  const { t } = useLanguage();
   const [session, setSession] = useState<SessionData | null>(null);
   const [records, setRecords] = useState<CheckinRecord[]>([]);
   const [duration, setDuration] = useState(5);
@@ -59,7 +60,6 @@ export default function CheckInPanel() {
   useEffect(() => {
     if (!session || session.status !== 'active') return;
 
-    // First, load existing records for this session
     const loadExisting = async () => {
       const { data } = await supabase
         .from('checkin_records')
@@ -110,14 +110,12 @@ export default function CheckInPanel() {
   // Timer countdown
   useEffect(() => {
     if (!session || session.status !== 'active' || timeLeft === null || timeLeft <= 0) return;
-
     const id = setInterval(() => {
       setTimeLeft(prev => {
         if (prev === null || prev <= 1) return 0;
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(id);
   }, [session?.id, session?.status, timeLeft]);
 
@@ -136,7 +134,7 @@ export default function CheckInPanel() {
       .single();
 
     if (error || !data) {
-      toast({ title: '创建签到失败', variant: 'destructive' });
+      toast({ title: t('checkin.createFailed'), variant: 'destructive' });
       return;
     }
 
@@ -144,7 +142,7 @@ export default function CheckInPanel() {
     setRecords([]);
     setLeaveSet(new Set());
     setTimeLeft(duration * 60);
-    toast({ title: '签到已开始', description: `时长 ${duration} 分钟` });
+    toast({ title: t('checkin.started'), description: t('checkin.startedDesc').replace('{0}', String(duration)) });
   };
 
   const handleEnd = async () => {
@@ -160,7 +158,7 @@ export default function CheckInPanel() {
     setSession(ended);
     setTimeLeft(null);
     saveHistory(ended, records, studentNames);
-    toast({ title: '签到已结束' });
+    toast({ title: t('checkin.ended') });
   };
 
   const toggleLeave = (name: string) => {
@@ -187,21 +185,26 @@ export default function CheckInPanel() {
     : '';
 
   const exportCSV = () => {
-    const lines = ['姓名,状态,时间'];
+    const lines = [`${t('checkin.csvName')},${t('checkin.csvStatus')},${t('checkin.csvTime')}`];
     records.filter(r => r.status === 'matched').forEach(r => {
-      lines.push(`${r.student_name},已签到,${new Date(r.checked_in_at).toLocaleString()}`);
+      lines.push(`${r.student_name},${t('checkin.csvChecked')},${new Date(r.checked_in_at).toLocaleString()}`);
     });
     uncheckedStudents.forEach(n => {
-      lines.push(`${n},${leaveSet.has(n) ? '请假' : '未签到'},`);
+      lines.push(`${n},${leaveSet.has(n) ? t('checkin.csvLeave') : t('checkin.csvUnchecked')},`);
     });
     unknownRecords.forEach(r => {
-      lines.push(`${r.student_name},未知,${new Date(r.checked_in_at).toLocaleString()}`);
+      lines.push(`${r.student_name},${t('checkin.csvUnknown')},${new Date(r.checked_in_at).toLocaleString()}`);
     });
     const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `签到记录_${new Date().toLocaleDateString()}.csv`;
+    link.download = `${t('checkin.exportName')}_${new Date().toLocaleDateString()}.csv`;
     link.click();
+  };
+
+  const formatDuration = (s: number) => {
+    if (s < 60) return `${s}${t('checkin.secondsUnit')}`;
+    return t('checkin.minuteSecond').replace('{0}', String(Math.floor(s / 60))).replace('{1}', String(s % 60));
   };
 
   // History view
@@ -211,11 +214,11 @@ export default function CheckInPanel() {
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-foreground">签到历史</h2>
-            <Button variant="outline" size="sm" onClick={() => setShowHistory(false)}>返回</Button>
+            <h2 className="text-lg font-bold text-foreground">{t('checkin.historyTitle')}</h2>
+            <Button variant="outline" size="sm" onClick={() => setShowHistory(false)}>{t('checkin.back')}</Button>
           </div>
           {history.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-8">暂无签到记录</p>
+            <p className="text-muted-foreground text-sm text-center py-8">{t('checkin.noHistory')}</p>
           ) : (
             <div className="space-y-3">
               {history.map((h: any, i: number) => (
@@ -224,11 +227,11 @@ export default function CheckInPanel() {
                     <span className="text-sm font-medium text-foreground">
                       {new Date(h.session.created_at).toLocaleString()}
                     </span>
-                    <span className="text-xs text-muted-foreground">{h.session.duration_minutes}分钟</span>
+                    <span className="text-xs text-muted-foreground">{h.session.duration_minutes}{t('checkin.minutes')}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    已签到: {h.records.filter((r: any) => r.status === 'matched').length} 人 ·
-                    未签到: {h.unchecked?.length || 0} 人
+                    {t('checkin.checkedIn')}: {h.records.filter((r: any) => r.status === 'matched').length} {t('random.persons')} ·
+                    {t('checkin.unchecked')}: {h.unchecked?.length || 0} {t('random.persons')}
                   </div>
                 </div>
               ))}
@@ -245,11 +248,11 @@ export default function CheckInPanel() {
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-md mx-auto text-center space-y-6 pt-12">
           <div className="text-6xl">📋</div>
-          <h2 className="text-xl font-bold text-foreground">课堂签到</h2>
-          <p className="text-sm text-muted-foreground">发起签到后，学生扫码即可完成签到</p>
+          <h2 className="text-xl font-bold text-foreground">{t('checkin.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('checkin.desc')}</p>
 
           <div className="flex items-center justify-center gap-3">
-            <label className="text-sm text-muted-foreground">签到时长</label>
+            <label className="text-sm text-muted-foreground">{t('checkin.duration')}</label>
             <Input
               type="number"
               min={1}
@@ -258,16 +261,16 @@ export default function CheckInPanel() {
               onChange={e => setDuration(Math.max(1, Math.min(30, Number(e.target.value))))}
               className="w-20 h-9 text-center"
             />
-            <span className="text-sm text-muted-foreground">分钟</span>
+            <span className="text-sm text-muted-foreground">{t('checkin.minutes')}</span>
           </div>
 
           <Button onClick={handleStart} size="lg" className="gap-2">
-            <QrCode className="w-5 h-5" /> 发起签到
+            <QrCode className="w-5 h-5" /> {t('checkin.start')}
           </Button>
 
           <div className="pt-4">
             <Button variant="ghost" size="sm" onClick={() => setShowHistory(true)} className="text-muted-foreground">
-              查看签到历史
+              {t('checkin.history')}
             </Button>
           </div>
 
@@ -278,55 +281,51 @@ export default function CheckInPanel() {
             const leaveCount = uncheckedStudents.filter(n => leaveSet.has(n)).length;
             const absentCount = uncheckedStudents.length - leaveCount;
 
-            // Average check-in time (seconds from session start)
             const sessionStart = new Date(session.created_at).getTime();
             const checkinTimes = matchedRecords.map(r => (new Date(r.checked_in_at).getTime() - sessionStart) / 1000);
             const avgTime = checkinTimes.length > 0 ? Math.round(checkinTimes.reduce((a, b) => a + b, 0) / checkinTimes.length) : 0;
             const fastestTime = checkinTimes.length > 0 ? Math.round(Math.min(...checkinTimes)) : 0;
             const slowestTime = checkinTimes.length > 0 ? Math.round(Math.max(...checkinTimes)) : 0;
-            const formatDuration = (s: number) => s < 60 ? `${s}秒` : `${Math.floor(s / 60)}分${s % 60}秒`;
 
             return (
             <div className="border border-border rounded-lg p-4 bg-card text-left space-y-4 mt-6">
               <div ref={resultExportRef} className="space-y-4 p-2">
-                <h3 className="font-semibold text-foreground text-base">签到统计</h3>
+                <h3 className="font-semibold text-foreground text-base">{t('checkin.stats')}</h3>
 
-                {/* Stats cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="rounded-lg bg-primary/10 p-3 text-center">
                     <div className="text-2xl font-bold text-primary">{checkinRate}%</div>
-                    <div className="text-xs text-muted-foreground mt-1">签到率</div>
+                    <div className="text-xs text-muted-foreground mt-1">{t('checkin.rate')}</div>
                   </div>
                   <div className="rounded-lg bg-accent p-3 text-center">
                     <div className="text-2xl font-bold text-accent-foreground">{matchedRecords.length}<span className="text-sm font-normal text-muted-foreground">/{totalStudents}</span></div>
-                    <div className="text-xs text-muted-foreground mt-1">已签到</div>
+                    <div className="text-xs text-muted-foreground mt-1">{t('checkin.checkedIn')}</div>
                   </div>
                   <div className="rounded-lg bg-destructive/10 p-3 text-center">
                     <div className="text-2xl font-bold text-destructive">{absentCount}</div>
-                    <div className="text-xs text-muted-foreground mt-1">缺勤</div>
+                    <div className="text-xs text-muted-foreground mt-1">{t('checkin.absent')}</div>
                   </div>
                   <div className="rounded-lg bg-muted p-3 text-center">
                     <div className="text-2xl font-bold text-foreground">{leaveCount}</div>
-                    <div className="text-xs text-muted-foreground mt-1">请假</div>
+                    <div className="text-xs text-muted-foreground mt-1">{t('checkin.leave')}</div>
                   </div>
                 </div>
 
-                {/* Time stats */}
                 {matchedRecords.length > 0 && (
                   <div className="rounded-lg border border-border p-3 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">签到用时统计</p>
+                    <p className="text-xs font-medium text-muted-foreground">{t('checkin.timeStats')}</p>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
                         <div className="text-sm font-semibold text-foreground">{formatDuration(avgTime)}</div>
-                        <div className="text-xs text-muted-foreground">平均用时</div>
+                        <div className="text-xs text-muted-foreground">{t('checkin.avgTime')}</div>
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-primary">{formatDuration(fastestTime)}</div>
-                        <div className="text-xs text-muted-foreground">最快</div>
+                        <div className="text-xs text-muted-foreground">{t('checkin.fastest')}</div>
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-destructive">{formatDuration(slowestTime)}</div>
-                        <div className="text-xs text-muted-foreground">最慢</div>
+                        <div className="text-xs text-muted-foreground">{t('checkin.slowest')}</div>
                       </div>
                     </div>
                   </div>
@@ -334,15 +333,14 @@ export default function CheckInPanel() {
 
                 {unknownRecords.length > 0 && (
                   <div className="rounded-lg border border-border p-3">
-                    <p className="text-xs font-medium text-muted-foreground mb-1">未知签到 ({unknownRecords.length}人)</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1">{t('checkin.unknownCheckin')} ({unknownRecords.length}{t('random.persons')})</p>
                     <div className="text-sm text-muted-foreground">{unknownRecords.map(r => r.student_name).join('、')}</div>
                   </div>
                 )}
 
-                {/* Detail lists */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-primary flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> 已签到 ({matchedRecords.length})</p>
+                    <p className="text-xs font-medium text-primary flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {t('checkin.checkedIn')} ({matchedRecords.length})</p>
                     {matchedRecords.map(r => (
                       <div key={r.id} className="flex items-center justify-between text-sm pl-4">
                         <span className="text-foreground">{r.student_name}</span>
@@ -352,10 +350,10 @@ export default function CheckInPanel() {
                   </div>
                   {uncheckedStudents.length > 0 && (
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-destructive flex items-center gap-1"><XCircle className="w-3 h-3" /> 未签到 ({uncheckedStudents.length})</p>
+                      <p className="text-xs font-medium text-destructive flex items-center gap-1"><XCircle className="w-3 h-3" /> {t('checkin.unchecked')} ({uncheckedStudents.length})</p>
                       {uncheckedStudents.map(n => (
                         <div key={n} className="text-sm pl-4 text-muted-foreground">
-                          {n}{leaveSet.has(n) ? <span className="text-xs ml-1 bg-accent text-accent-foreground px-1 py-0.5 rounded">请假</span> : ''}
+                          {n}{leaveSet.has(n) ? <span className="text-xs ml-1 bg-accent text-accent-foreground px-1 py-0.5 rounded">{t('checkin.leave')}</span> : ''}
                         </div>
                       ))}
                     </div>
@@ -363,7 +361,7 @@ export default function CheckInPanel() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <ExportButtons targetRef={resultExportRef as React.RefObject<HTMLElement>} filename="签到记录" />
+                <ExportButtons targetRef={resultExportRef as React.RefObject<HTMLElement>} filename={t('checkin.exportName')} />
                 <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5 h-8 text-xs">
                   <Download className="w-3.5 h-3.5" /> CSV
                 </Button>
@@ -379,7 +377,6 @@ export default function CheckInPanel() {
   // Active session
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
@@ -389,33 +386,29 @@ export default function CheckInPanel() {
             </span>
           </div>
           <span className="text-xs text-muted-foreground">
-            已签到 {checkedNames.length}/{studentNames.length}
+            {t('checkin.checkedIn')} {checkedNames.length}/{studentNames.length}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1 h-8 text-xs">
             <Download className="w-3.5 h-3.5" /> CSV
           </Button>
-          <ExportButtons targetRef={exportRef as React.RefObject<HTMLElement>} filename="签到记录" />
+          <ExportButtons targetRef={exportRef as React.RefObject<HTMLElement>} filename={t('checkin.exportName')} />
           <Button variant="destructive" size="sm" onClick={handleEnd} className="gap-1 h-8">
-            <StopCircle className="w-3.5 h-3.5" /> 结束签到
+            <StopCircle className="w-3.5 h-3.5" /> {t('checkin.endCheckin')}
           </Button>
         </div>
       </div>
 
-      {/* QR Code + Lists */}
       <div className="flex-1 flex overflow-hidden" ref={exportRef}>
-        {/* Left: QR + unchecked */}
         <div className="w-1/2 border-r border-border flex flex-col overflow-hidden">
-          {/* QR Code */}
           <div className="p-4 border-b border-border bg-card flex flex-col items-center gap-2">
             <QRCodeSVG value={checkinUrl} size={160} />
-            <p className="text-xs text-muted-foreground">学生扫码签到</p>
+            <p className="text-xs text-muted-foreground">{t('checkin.scanToCheckin')}</p>
           </div>
-          {/* Unchecked */}
           <div className="flex-1 overflow-y-auto p-3">
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
-              <XCircle className="w-4 h-4 text-destructive" /> 未签到 ({uncheckedStudents.length})
+              <XCircle className="w-4 h-4 text-destructive" /> {t('checkin.unchecked')} ({uncheckedStudents.length})
             </h3>
             <div className="space-y-1">
               {uncheckedStudents.map(name => (
@@ -428,7 +421,7 @@ export default function CheckInPanel() {
                     {name}
                   </span>
                   {leaveSet.has(name) && (
-                    <span className="text-xs bg-accent text-accent-foreground px-1.5 py-0.5 rounded">请假</span>
+                    <span className="text-xs bg-accent text-accent-foreground px-1.5 py-0.5 rounded">{t('checkin.leave')}</span>
                   )}
                 </div>
               ))}
@@ -436,7 +429,7 @@ export default function CheckInPanel() {
             {unknownRecords.length > 0 && (
               <>
                 <h3 className="text-sm font-semibold text-foreground mt-4 mb-2 flex items-center gap-1.5">
-                  <UserX className="w-4 h-4 text-muted-foreground" /> 未知 ({unknownRecords.length})
+                  <UserX className="w-4 h-4 text-muted-foreground" /> {t('checkin.unknown')} ({unknownRecords.length})
                 </h3>
                 <div className="space-y-1">
                   {unknownRecords.map(r => (
@@ -451,11 +444,10 @@ export default function CheckInPanel() {
           </div>
         </div>
 
-        {/* Right: checked */}
         <div className="w-1/2 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-3">
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-primary" /> 已签到 ({checkedNames.length})
+              <CheckCircle2 className="w-4 h-4 text-primary" /> {t('checkin.checkedIn')} ({checkedNames.length})
             </h3>
             <div className="space-y-1">
               {records.filter(r => r.status === 'matched').map(r => (

@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ interface Props {
 
 export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }: Props) {
   const { students, addStudent, removeStudent, clearAll, importFromText } = useStudents();
+  const { t } = useLanguage();
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
   const [importOpen, setImportOpen] = useState(false);
@@ -52,11 +54,11 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
         <button
           onClick={onToggleCollapse}
           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-          title="展开名单栏"
+          title={t('sidebar.expandPanel')}
         >
           <PanelLeftOpen className="w-4 h-4" />
         </button>
-        <span className="text-xs text-muted-foreground font-medium writing-vertical">{students.length}人</span>
+        <span className="text-xs text-muted-foreground font-medium writing-vertical">{students.length}{t('sidebar.persons')}</span>
       </div>
     );
   }
@@ -68,17 +70,17 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">📋</span>
-            <h2 className="font-semibold text-foreground">学生名单</h2>
+            <h2 className="font-semibold text-foreground">{t('sidebar.studentList')}</h2>
           </div>
           <div className="flex items-center gap-1">
             <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
-              {students.length} 人
+              {students.length} {t('sidebar.persons')}
             </span>
             {onToggleCollapse && (
               <button
                 onClick={onToggleCollapse}
                 className="hidden lg:flex p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
-                title="折叠名单栏"
+                title={t('sidebar.collapsePanel')}
               >
                 <PanelLeftClose className="w-4 h-4" />
               </button>
@@ -111,7 +113,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
         ))}
         {students.length === 0 && (
           <div className="text-center py-8 text-muted-foreground text-sm">
-            暂无学生，请导入名单
+            {t('sidebar.noStudents')}
           </div>
         )}
       </div>
@@ -123,7 +125,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
             value={newName}
             onChange={e => setNewName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
-            placeholder="添加学生..."
+            placeholder={t('sidebar.addStudent')}
             className="h-9 text-sm"
           />
           <Button size="sm" variant="ghost" onClick={handleAdd} className="h-9 px-2.5">
@@ -134,33 +136,33 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
           <Dialog open={importOpen} onOpenChange={setImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="flex-1 h-8 text-xs font-medium">
-                <Upload className="w-3 h-3 mr-1" /> 导入
+                <Upload className="w-3 h-3 mr-1" /> {t('sidebar.import')}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>导入学生名单</DialogTitle>
+                <DialogTitle>{t('sidebar.importTitle')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">粘贴姓名（每行一个）：</p>
+                  <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importPaste')}</p>
                   <Textarea
                     value={importText}
                     onChange={e => setImportText(e.target.value)}
                     placeholder="张三&#10;李四&#10;王五"
                     rows={8}
                   />
-                  <Button onClick={handleImport} className="mt-2 w-full" size="sm">确认导入</Button>
+                  <Button onClick={handleImport} className="mt-2 w-full" size="sm">{t('sidebar.importConfirm')}</Button>
                 </div>
                 <div className="border-t border-border pt-4">
-                  <p className="text-sm text-muted-foreground mb-2">或上传 TXT 文件：</p>
+                  <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importFile')}</p>
                   <input ref={fileRef} type="file" accept=".txt" onChange={handleFileUpload} className="text-sm" />
                 </div>
               </div>
             </DialogContent>
           </Dialog>
           <Button variant="outline" size="sm" onClick={clearAll} className="h-8 text-xs font-medium text-destructive border-destructive/30 hover:bg-destructive/5">
-            <Trash2 className="w-3 h-3 mr-1" /> 清空
+            <Trash2 className="w-3 h-3 mr-1" /> {t('sidebar.clear')}
           </Button>
         </div>
       </div>
