@@ -15,6 +15,7 @@ import BoardCanvasView from './board/BoardCanvasView';
 import BoardPPTMode from './board/BoardPPTMode';
 import BoardCardForm from './board/BoardCardForm';
 import BoardWordCloud from './board/BoardWordCloud';
+import BoardReport from './board/BoardReport';
 import { tFormat } from '@/contexts/LanguageContext';
 
 export interface Board {
