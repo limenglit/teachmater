@@ -123,6 +123,8 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
 
 export default function BarrageDiscussion() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const [topicTitle, setTopicTitle] = useState('');
   const [topicId, setTopicId] = useState<string | null>(null);
   const [creatorToken, setCreatorToken] = useState<string | null>(null);
