@@ -26,6 +26,7 @@ const tabs: TabItem[] = [
   { id: 'checkin', labelKey: 'tab.checkin', emoji: '📋', icon: <ClipboardCheck className="w-4 h-4" /> },
   { id: 'board', labelKey: 'tab.board', emoji: '🎨', icon: <PenBox className="w-4 h-4" /> },
   { id: 'quiz', labelKey: 'tab.quiz', emoji: '📝', icon: <FileQuestion className="w-4 h-4" /> },
+  { id: 'achieve', labelKey: 'tab.achieve', emoji: '🏆', icon: <Dices className="w-4 h-4" /> },
   { id: 'toolkit', labelKey: 'tab.toolkit', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
 ];
 
