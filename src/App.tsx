@@ -22,9 +22,9 @@ const queryClient = new QueryClient();
 const Loading = () => <div className="flex items-center justify-center min-h-screen text-muted-foreground">加载中...</div>;
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <LanguageProvider>
+  <LanguageProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -42,9 +42,9 @@ const App = () => (
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
-      </LanguageProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </LanguageProvider>
 );
 
 export default App;
