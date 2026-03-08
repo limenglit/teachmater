@@ -148,20 +148,20 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
 
   const deletePaper = async (id: string) => {
     if (isGuest) {
-      const updated = papers.filter(p => p.id !== id);
+      const updated = deleteLocalPaper(papers, id);
       setPapers(updated); saveLocalPapers(updated);
     } else {
       await supabase.from('quiz_papers').delete().eq('id', id) as any;
-      setPapers(papers.filter(p => p.id !== id));
+      setPapers(deleteLocalPaper(papers, id));
     }
   };
 
-  const duplicatePaper = async (p: QuizPaper) => {
-    const newPaper = { ...p, id: crypto.randomUUID(), title: p.title + ' (copy)', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  const duplicatePaperHandler = async (p: QuizPaper) => {
     if (isGuest) {
-      const updated = [newPaper, ...papers];
+      const updated = duplicateLocalPaper(papers, p);
       setPapers(updated); saveLocalPapers(updated);
     } else {
+      const newPaper = { ...p, id: crypto.randomUUID(), title: p.title + ' (copy)', created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
       await supabase.from('quiz_papers').insert({ ...newPaper, user_id: user!.id } as any);
       const { data } = await supabase.from('quiz_papers').select('*').eq('user_id', user!.id).order('updated_at', { ascending: false }) as any;
       if (data) setPapers(data);
@@ -171,30 +171,16 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
 
   // Auto-generate
   const generatePaper = () => {
-    const result: PaperQuestion[] = [];
-    let order = 0;
-    for (const rule of autoRules) {
-      let pool = questions.filter(q => q.type === rule.type);
-      if (autoTags.trim()) {
-        const tags = autoTags.split(/[,，、]/).map(s => s.trim().toLowerCase()).filter(Boolean);
-        pool = pool.filter(q => tags.some(tag => q.tags.toLowerCase().includes(tag)));
-      }
-      // Shuffle and pick
-      const shuffled = [...pool].sort(() => Math.random() - 0.5);
-      const picked = shuffled.slice(0, rule.count);
-      if (picked.length < rule.count) {
-        toast({ title: `${t('quiz.' + rule.type)}: ${t('quiz.paper.insufficientQuestions')} (${picked.length}/${rule.count})`, variant: 'destructive' });
-      }
-      for (const q of picked) {
-        result.push({ question_id: q.id, question: q, score: rule.score_each, order: order++ });
-      }
-    }
+    const { questions: result, warnings } = autoGeneratePaper(questions, autoRules, autoTags);
+    warnings.forEach(w => {
+      toast({ title: `${t('quiz.paper.insufficientQuestions')} (${w})`, variant: 'destructive' });
+    });
     if (result.length === 0) { toast({ title: t('quiz.paper.noMatchingQuestions'), variant: 'destructive' }); return; }
 
     setTitle(autoTitle.trim() || t('quiz.paper.autoTitle'));
     setDesc('');
     setPaperQs(result);
-    setTotalScore(result.reduce((s, pq) => s + pq.score, 0));
+    setTotalScore(computePaperTotalScore(result));
     setView('create');
     toast({ title: `${t('quiz.paper.generated')} ${result.length} ${t('quiz.imp.questionsUnit')}` });
   };
