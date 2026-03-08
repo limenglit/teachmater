@@ -1879,6 +1879,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.reportPromptSub': '{0}枚のカード内容を分析します',
     'board.reportCardCount': '枚のカード',
     'board.reportStreaming': '生成中...',
+    'ai.guestLimitReached': '本日のAI使用回数が上限に達しました。ログインすると無制限に利用できます',
+    'ai.guestRemaining': 'ゲストAI使用: 本日残り{0}/{1}回。ログインで無制限',
     'board.pptPrev': '前へ',
     'board.pptNext': '次へ',
     'board.pptExit': '終了',
