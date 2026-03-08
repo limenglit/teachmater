@@ -13,6 +13,7 @@ import ToolkitPanel from '@/components/ToolkitPanel';
 import CheckInPanel from '@/components/CheckInPanel';
 import BoardPanel from '@/components/BoardPanel';
 import QuizPanel from '@/components/QuizPanel';
+import AchievementPanel from '@/components/AchievementPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
@@ -32,7 +33,7 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    if (tab === 'checkin' || tab === 'board' || tab === 'quiz') {
+    if (tab === 'checkin' || tab === 'board' || tab === 'quiz' || tab === 'achieve') {
       setSidebarCollapsed(true);
     }
   };
@@ -46,6 +47,7 @@ const Index = () => {
       case 'checkin': return <CheckInPanel />;
       case 'board': return <BoardPanel />;
       case 'quiz': return <QuizPanel />;
+      case 'achieve': return <AchievementPanel />;
       case 'toolkit': return <ToolkitPanel />;
     }
   };

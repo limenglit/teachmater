@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      badges: {
+        Row: {
+          condition_type: string
+          condition_value: number
+          created_at: string
+          creator_token: string
+          description: string
+          emoji: string
+          id: string
+          is_system: boolean
+          name: string
+        }
+        Insert: {
+          condition_type?: string
+          condition_value?: number
+          created_at?: string
+          creator_token?: string
+          description?: string
+          emoji?: string
+          id?: string
+          is_system?: boolean
+          name?: string
+        }
+        Update: {
+          condition_type?: string
+          condition_value?: number
+          created_at?: string
+          creator_token?: string
+          description?: string
+          emoji?: string
+          id?: string
+          is_system?: boolean
+          name?: string
+        }
+        Relationships: []
+      }
       barrage_messages: {
         Row: {
           content: string
@@ -740,6 +776,68 @@ export type Database = {
         }
         Relationships: []
       }
+      student_badges: {
+        Row: {
+          badge_id: string
+          creator_token: string
+          earned_at: string
+          id: string
+          student_name: string
+        }
+        Insert: {
+          badge_id: string
+          creator_token?: string
+          earned_at?: string
+          id?: string
+          student_name: string
+        }
+        Update: {
+          badge_id?: string
+          creator_token?: string
+          earned_at?: string
+          id?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_points: {
+        Row: {
+          created_at: string
+          creator_token: string
+          description: string
+          id: string
+          points: number
+          source: string
+          student_name: string
+        }
+        Insert: {
+          created_at?: string
+          creator_token?: string
+          description?: string
+          id?: string
+          points?: number
+          source?: string
+          student_name: string
+        }
+        Update: {
+          created_at?: string
+          creator_token?: string
+          description?: string
+          id?: string
+          points?: number
+          source?: string
+          student_name?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -764,6 +862,10 @@ export type Database = {
     }
     Functions: {
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
+      delete_badge: {
+        Args: { p_badge_id: string; p_token: string }
+        Returns: undefined
+      }
       delete_board: {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
@@ -774,6 +876,10 @@ export type Database = {
       }
       delete_quiz_session: {
         Args: { p_session_id: string; p_token: string }
+        Returns: undefined
+      }
+      delete_student_points: {
+        Args: { p_point_id: string; p_token: string }
         Returns: undefined
       }
       delete_topic: {
