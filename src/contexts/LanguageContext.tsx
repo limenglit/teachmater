@@ -1026,6 +1026,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.blockedWord': 'Content flagged for review',
     'board.lockedMsg': 'Board is locked. No new posts allowed.',
     'board.back': 'Back to boards',
+    'board.uploadImage': 'Upload Image',
+    'board.uploading': 'Uploading...',
+    'board.commentSend': 'Send',
+    'board.noComments': 'No comments yet',
+    'board.cloudSync': '☁️ Synced to cloud',
   },
   ru: {
     'app.title': 'TeachMate',
