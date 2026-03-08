@@ -11,6 +11,7 @@ import TeamBuilder from '@/components/TeamBuilder';
 import SeatChart from '@/components/SeatChart';
 import ToolkitPanel from '@/components/ToolkitPanel';
 import CheckInPanel from '@/components/CheckInPanel';
+import BoardPanel from '@/components/BoardPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
@@ -41,8 +42,9 @@ const Index = () => {
       case 'groups': return <GroupManager />;
       case 'teams': return <TeamBuilder />;
       case 'seats': return <SeatChart />;
-      case 'toolkit': return <ToolkitPanel />;
       case 'checkin': return <CheckInPanel />;
+      case 'board': return <BoardPanel />;
+      case 'toolkit': return <ToolkitPanel />;
     }
   };
 
