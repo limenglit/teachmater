@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { X, Download, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
+import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
 import type { BoardCard } from '@/components/BoardPanel';
 
 interface Props {
@@ -16,6 +18,8 @@ const STREAM_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-bo
 
 export default function BoardReport({ cards, boardTitle, onClose }: Props) {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -38,6 +42,12 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
   const generateReport = useCallback(async () => {
     if (cards.length === 0) {
       toast({ title: t('board.reportNoCards'), variant: 'destructive' });
+      return;
+    }
+
+    // Guest AI rate limit check
+    if (!recordGuestAIUsage(isLoggedIn)) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }
 
@@ -254,6 +264,11 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
             <FileText className="w-16 h-16 mb-4 opacity-30" />
             <p className="text-lg mb-2">{t('board.reportPrompt')}</p>
             <p className="text-sm">{t('board.reportPromptSub').replace('{0}', String(cards.length))}</p>
+            {!isLoggedIn && (
+              <p className="text-xs text-muted-foreground mt-3">
+                {t('ai.guestRemaining').replace('{0}', String(getGuestAIRemaining(false))).replace('{1}', String(GUEST_AI_DAILY_MAX))}
+              </p>
+            )}
           </div>
         )}
 

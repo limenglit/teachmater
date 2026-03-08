@@ -8,6 +8,8 @@ import { Play, Pause, FileText, Cloud, Download, Trash2, Pencil } from 'lucide-r
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { recordGuestAIUsage } from '@/lib/guest-ai-limit';
 
 interface BarrageMessage {
   id: string;
@@ -121,6 +123,8 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
 
 export default function BarrageDiscussion() {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isLoggedIn = !!user;
   const [topicTitle, setTopicTitle] = useState('');
   const [topicId, setTopicId] = useState<string | null>(null);
   const [creatorToken, setCreatorToken] = useState<string | null>(null);
@@ -234,6 +238,10 @@ export default function BarrageDiscussion() {
       toast({ title: t('barrage.noData'), variant: 'destructive' });
       return;
     }
+    if (!recordGuestAIUsage(isLoggedIn)) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
+      return;
+    }
     setAnalyzing(true);
     setView('report');
     try {
@@ -252,6 +260,10 @@ export default function BarrageDiscussion() {
   const handleWordCloud = async () => {
     if (messages.length === 0) {
       toast({ title: t('barrage.noData'), variant: 'destructive' });
+      return;
+    }
+    if (!recordGuestAIUsage(isLoggedIn)) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }
     setAnalyzing(true);

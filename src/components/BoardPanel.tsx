@@ -97,7 +97,7 @@ function saveLocalCards(boardId: string, cards: BoardCard[]) {
 export default function BoardPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const isCloud = !!user;
+  const isCloud = true; // All users use cloud for collaboration features
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [activeBoard, setActiveBoard] = useState<Board | null>(null);
