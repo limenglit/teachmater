@@ -9,22 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Clock, QrCode, StopCircle, Download, CheckCircle2, XCircle, UserX } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
-
-interface CheckinRecord {
-  id: string;
-  student_name: string;
-  checked_in_at: string;
-  status: string;
-}
-
-interface SessionData {
-  id: string;
-  created_at: string;
-  duration_minutes: number;
-  status: string;
-  ended_at: string | null;
-  creator_token: string;
-}
+import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
 
 const HISTORY_KEY = 'teachmate_checkin_history';
 
