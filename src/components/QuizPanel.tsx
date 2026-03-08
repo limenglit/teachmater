@@ -177,7 +177,36 @@ export default function QuizPanel() {
     }
   };
 
-  const startSession = async () => {
+  const handleImport = async (imported: { type: 'single' | 'multi' | 'tf' | 'short'; content: string; options: string[]; correct_answer: string | string[]; tags: string }[]) => {
+    if (isGuest) {
+      const newQs = imported.map(q => ({
+        id: crypto.randomUUID(),
+        user_id: 'local',
+        type: q.type,
+        content: q.content,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        tags: q.tags,
+        created_at: new Date().toISOString(),
+      }));
+      const updated = [...newQs, ...questions];
+      setQuestions(updated);
+      saveLocalQuestions(updated);
+    } else {
+      const rows = imported.map(q => ({
+        user_id: user!.id,
+        type: q.type,
+        content: q.content,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        tags: q.tags,
+      }));
+      const { error } = await supabase.from('quiz_questions').insert(rows as any);
+      if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+      loadQuestions();
+    }
+  };
+
     const selected = questions.filter(q => selectedIds.has(q.id));
     if (selected.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
 
