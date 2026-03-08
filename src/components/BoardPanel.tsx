@@ -106,6 +106,7 @@ export default function BoardPanel() {
   const [showPPT, setShowPPT] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [showWordCloud, setShowWordCloud] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [newTitle, setNewTitle] = useState('');
 
