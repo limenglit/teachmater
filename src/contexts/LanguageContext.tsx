@@ -2532,6 +2532,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.board': '보드',
     'tab.toolkit': '도구함',
     'tab.quiz': '퀴즈',
+    'tab.achieve': '포인트',
     'ext.ai': 'AI 어시스턴트',
     'ext.idea': 'IdeaVas',
     'ext.tip': '같은 이메일로 로그인하세요',
