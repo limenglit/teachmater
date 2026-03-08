@@ -535,6 +535,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.blockedWord': '内容包含敏感词，已进入待审核',
     'board.lockedMsg': '白板已锁定，无法发布新内容',
     'board.back': '返回白板列表',
+    'board.uploadImage': '上传图片',
+    'board.uploading': '上传中...',
+    'board.commentSend': '发送',
+    'board.noComments': '暂无评论',
+    'board.cloudSync': '☁️ 数据已同步到云端',
   },
   en: {
     'app.title': 'TeachMate',
