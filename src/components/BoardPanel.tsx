@@ -573,9 +573,26 @@ export default function BoardPanel() {
 
         {/* Board list - grid layout */}
         {boards.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            <div className="text-4xl mb-3">📋</div>
-            <p className="text-sm">{t('board.noBoards')}</p>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-28 h-28 mb-6 rounded-full bg-primary/5 flex items-center justify-center">
+              <svg viewBox="0 0 80 80" className="w-16 h-16 text-primary/40">
+                <rect x="10" y="14" width="24" height="30" rx="4" fill="currentColor" opacity="0.3" />
+                <rect x="40" y="8" width="24" height="36" rx="4" fill="currentColor" opacity="0.5" />
+                <rect x="25" y="28" width="24" height="28" rx="4" fill="currentColor" opacity="0.4" />
+                <circle cx="22" cy="24" r="3" fill="currentColor" opacity="0.7" />
+                <circle cx="52" cy="18" r="3" fill="currentColor" opacity="0.7" />
+                <line x1="16" y1="34" x2="28" y2="34" stroke="currentColor" strokeWidth="2" opacity="0.5" />
+                <line x1="46" y1="28" x2="58" y2="28" stroke="currentColor" strokeWidth="2" opacity="0.5" />
+                <line x1="46" y1="33" x2="55" y2="33" stroke="currentColor" strokeWidth="2" opacity="0.4" />
+              </svg>
+            </div>
+            <p className="text-base font-medium text-foreground mb-2">{t('board.noBoards')}</p>
+            <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+              {t('board.emptyHint')}
+            </p>
+            <Button onClick={createBoard} className="gap-1.5 px-6">
+              <Plus className="w-4 h-4" /> {t('board.create')}
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
