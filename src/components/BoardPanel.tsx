@@ -601,5 +601,6 @@ export default function BoardPanel() {
         ))}
       </div>
     </div>
+    </div>
   );
 }
