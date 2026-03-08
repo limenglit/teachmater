@@ -523,6 +523,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.wordCloud': '词云',
     'board.wordCloudRefresh': '重新生成',
     'board.wordCloudEmpty': '卡片内容不足，无法生成词云',
+    'board.wordCloudTheme': '配色主题',
     'board.pptPrev': '上一张',
     'board.pptNext': '下一张',
     'board.pptExit': '退出播放',
