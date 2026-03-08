@@ -2272,6 +2272,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.shortPlaceholder': '回答を入力...', 'quiz.submitSuccess': '提出しました！', 'quiz.waitForResult': '結果発表をお待ちください',
     'quiz.sessionNotFound': 'テストが見つかりません', 'quiz.sessionEnded': 'テストは終了しました', 'quiz.loginRequired': 'ログインしてください',
     'quiz.localMode': 'ローカル', 'quiz.cloudMode': 'クラウド同期', 'quiz.loginToPublish': 'ログインしてテストを開始', 'quiz.loginForSessions': 'ログインしてオンラインテスト', 'quiz.localModeHint': '問題はローカルに保存されています',
+    'quiz.imp.import': 'インポート', 'quiz.imp.title': 'Excel/CSVからインポート', 'quiz.imp.desc': 'テンプレートをダウンロードして記入後アップロード', 'quiz.imp.step1': 'テンプレートDL', 'quiz.imp.step1Hint': 'フォーマットに従って記入', 'quiz.imp.step2': 'ファイルアップロード', 'quiz.imp.step2Hint': '.xlsx, .xls, .csv対応', 'quiz.imp.downloadTemplate': 'ダウンロード', 'quiz.imp.selectFile': 'ファイル選択', 'quiz.imp.preview': 'プレビュー', 'quiz.imp.questionsUnit': '問', 'quiz.imp.confirmImport': 'インポート', 'quiz.imp.reselect': '再選択', 'quiz.imp.imported': 'インポート完了', 'quiz.imp.templateDownloaded': 'テンプレートDL完了', 'quiz.imp.errors': 'エラー', 'quiz.imp.emptyFile': 'ファイルが空です', 'quiz.imp.row': '行', 'quiz.imp.unknownType': '不明な種類', 'quiz.imp.emptyContent': '問題文が空', 'quiz.imp.fewOptions': '選択肢が不足', 'quiz.imp.noAnswer': '正解なし', 'quiz.imp.parseError': '解析エラー', 'quiz.imp.unsupportedFormat': '非対応形式', 'quiz.imp.colType': '種類', 'quiz.imp.colContent': '問題文', 'quiz.imp.colA': '選択肢A', 'quiz.imp.colB': '選択肢B', 'quiz.imp.colC': '選択肢C', 'quiz.imp.colD': '選択肢D', 'quiz.imp.colAnswer': '正解', 'quiz.imp.colTags': 'タグ', 'quiz.imp.sheetName': 'テンプレート',
   },
   ko: {
     'app.title': 'TeachMate',
