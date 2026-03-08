@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Shuffle, Star, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +10,11 @@ import ExportButtons from '@/components/ExportButtons';
 interface GroupMember { id: string; name: string; isLeader: boolean }
 interface Group { id: string; name: string; members: GroupMember[] }
 
+const GROUP_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','十'];
+
 export default function GroupManager() {
   const { students } = useStudents();
+  const { t } = useLanguage();
   const [groupCount, setGroupCount] = useState(4);
   const [groups, setGroups] = useState<Group[]>([]);
   const [dragItem, setDragItem] = useState<{ groupId: string; memberIdx: number } | null>(null);
@@ -21,14 +25,14 @@ export default function GroupManager() {
     const shuffled = [...students].sort(() => Math.random() - 0.5);
     const newGroups: Group[] = Array.from({ length: groupCount }, (_, i) => ({
       id: `g_${i}`,
-      name: `第${['一','二','三','四','五','六','七','八','九','十'][i] || i + 1}组`,
+      name: t('group.namePrefix').replace('{0}', GROUP_NAMES_ZH[i] || String(i + 1)),
       members: [],
     }));
     shuffled.forEach((s, i) => {
       newGroups[i % groupCount].members.push({ ...s, isLeader: false });
     });
     setGroups(newGroups);
-  }, [students, groupCount]);
+  }, [students, groupCount, t]);
 
   const toggleLeader = (groupId: string, memberId: string) => {
     setGroups(prev => prev.map(g => {
@@ -41,52 +45,28 @@ export default function GroupManager() {
     setGroups(prev => prev.map(g => g.id === groupId ? { ...g, name } : g));
   };
 
-  // Drag handlers
-  const handleDragStart = (groupId: string, memberIdx: number) => {
-    setDragItem({ groupId, memberIdx });
-  };
-
-  const handleDragOver = (e: React.DragEvent, groupId: string, memberIdx: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDropTarget({ groupId, memberIdx });
-  };
-
-  const handleDragOverGroup = (e: React.DragEvent, groupId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const group = groups.find(g => g.id === groupId);
-    if (group) setDropTarget({ groupId, memberIdx: group.members.length });
-  };
+  const handleDragStart = (groupId: string, memberIdx: number) => { setDragItem({ groupId, memberIdx }); };
+  const handleDragOver = (e: React.DragEvent, groupId: string, memberIdx: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ groupId, memberIdx }); };
+  const handleDragOverGroup = (e: React.DragEvent, groupId: string) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const group = groups.find(g => g.id === groupId); if (group) setDropTarget({ groupId, memberIdx: group.members.length }); };
 
   const handleDrop = (e: React.DragEvent, targetGroupId: string, targetIdx: number) => {
     e.preventDefault();
     if (!dragItem) return;
-
     setGroups(prev => {
       const next = prev.map(g => ({ ...g, members: [...g.members] }));
       const srcGroup = next.find(g => g.id === dragItem.groupId)!;
       const dstGroup = next.find(g => g.id === targetGroupId)!;
       const [moved] = srcGroup.members.splice(dragItem.memberIdx, 1);
-
-      // Adjust target index if same group and source is before target
       let insertIdx = targetIdx;
-      if (dragItem.groupId === targetGroupId && dragItem.memberIdx < targetIdx) {
-        insertIdx = Math.max(0, insertIdx - 1);
-      }
+      if (dragItem.groupId === targetGroupId && dragItem.memberIdx < targetIdx) { insertIdx = Math.max(0, insertIdx - 1); }
       dstGroup.members.splice(insertIdx, 0, moved);
       return next;
     });
-
     setDragItem(null);
     setDropTarget(null);
   };
 
-  const handleDragEnd = () => {
-    setDragItem(null);
-    setDropTarget(null);
-  };
-
+  const handleDragEnd = () => { setDragItem(null); setDropTarget(null); };
   const printRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -94,27 +74,27 @@ export default function GroupManager() {
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground">人员分组</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">将 {students.length} 名学生随机分成若干组</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">{t('group.title')}</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t('group.subtitle').replace('{0}', String(students.length))}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {groups.length > 0 && <ExportButtons targetRef={printRef} filename="分组结果" />}
+            {groups.length > 0 && <ExportButtons targetRef={printRef} filename={t('group.exportName')} />}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              组数
+              {t('group.count')}
               <Input type="number" min={2} max={10} value={groupCount}
                 onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))}
                 className="w-16 h-8 text-center" />
             </label>
             <Button onClick={autoGroup} className="gap-2">
-              <Shuffle className="w-4 h-4" /> 自动分组
+              <Shuffle className="w-4 h-4" /> {t('group.autoGroup')}
             </Button>
           </div>
         </div>
 
         {groups.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动分组」开始分配学生</p>
-            <p className="text-sm">支持 2-10 组，可自定义组名、指定组长、拖拽调整</p>
+            <p className="text-lg mb-2">{t('group.emptyTitle')}</p>
+            <p className="text-sm">{t('group.emptyDesc')}</p>
           </div>
         ) : (
           <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -132,7 +112,7 @@ export default function GroupManager() {
                   <div className="flex items-center gap-2 mb-3">
                     <Input value={group.name} onChange={e => updateGroupName(group.id, e.target.value)}
                       className="h-7 text-sm font-semibold border-none shadow-none px-0 focus-visible:ring-0" />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{group.members.length}人</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{group.members.length}{t('random.persons')}</span>
                   </div>
                   <div className="space-y-0.5 min-h-[2rem]">
                     {group.members.map((member, mi) => {

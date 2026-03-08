@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Shuffle, Crown, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +10,11 @@ import ExportButtons from '@/components/ExportButtons';
 interface TeamMember { id: string; name: string; isCaptain: boolean }
 interface Team { id: string; name: string; members: TeamMember[] }
 
+const TEAM_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','十'];
+
 export default function TeamBuilder() {
   const { students } = useStudents();
+  const { t } = useLanguage();
   const [membersPerTeam, setMembersPerTeam] = useState(4);
   const [teams, setTeams] = useState<Team[]>([]);
   const [dragItem, setDragItem] = useState<{ teamId: string; memberIdx: number } | null>(null);
@@ -22,7 +26,7 @@ export default function TeamBuilder() {
     const teamCount = Math.ceil(shuffled.length / membersPerTeam);
     const newTeams: Team[] = Array.from({ length: teamCount }, (_, i) => ({
       id: `t_${i}`,
-      name: `第${['一','二','三','四','五','六','七','八','九','十'][i] || i + 1}队`,
+      name: t('team.namePrefix').replace('{0}', TEAM_NAMES_ZH[i] || String(i + 1)),
       members: [],
     }));
     shuffled.forEach((s, i) => {
@@ -30,7 +34,7 @@ export default function TeamBuilder() {
       if (teamIdx < newTeams.length) newTeams[teamIdx].members.push({ ...s, isCaptain: false });
     });
     setTeams(newTeams);
-  }, [students, membersPerTeam]);
+  }, [students, membersPerTeam, t]);
 
   const toggleCaptain = (teamId: string, memberId: string) => {
     setTeams(prev => prev.map(t => {
@@ -43,49 +47,28 @@ export default function TeamBuilder() {
     setTeams(prev => prev.map(t => t.id === teamId ? { ...t, name } : t));
   };
 
-  const handleDragStart = (teamId: string, memberIdx: number) => {
-    setDragItem({ teamId, memberIdx });
-  };
-
-  const handleDragOver = (e: React.DragEvent, teamId: string, memberIdx: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDropTarget({ teamId, memberIdx });
-  };
-
-  const handleDragOverTeam = (e: React.DragEvent, teamId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const team = teams.find(t => t.id === teamId);
-    if (team) setDropTarget({ teamId, memberIdx: team.members.length });
-  };
+  const handleDragStart = (teamId: string, memberIdx: number) => { setDragItem({ teamId, memberIdx }); };
+  const handleDragOver = (e: React.DragEvent, teamId: string, memberIdx: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ teamId, memberIdx }); };
+  const handleDragOverTeam = (e: React.DragEvent, teamId: string) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const team = teams.find(t => t.id === teamId); if (team) setDropTarget({ teamId, memberIdx: team.members.length }); };
 
   const handleDrop = (e: React.DragEvent, targetTeamId: string, targetIdx: number) => {
     e.preventDefault();
     if (!dragItem) return;
-
     setTeams(prev => {
       const next = prev.map(t => ({ ...t, members: [...t.members] }));
       const srcTeam = next.find(t => t.id === dragItem.teamId)!;
       const dstTeam = next.find(t => t.id === targetTeamId)!;
       const [moved] = srcTeam.members.splice(dragItem.memberIdx, 1);
       let insertIdx = targetIdx;
-      if (dragItem.teamId === targetTeamId && dragItem.memberIdx < targetIdx) {
-        insertIdx = Math.max(0, insertIdx - 1);
-      }
+      if (dragItem.teamId === targetTeamId && dragItem.memberIdx < targetIdx) { insertIdx = Math.max(0, insertIdx - 1); }
       dstTeam.members.splice(insertIdx, 0, moved);
       return next;
     });
-
     setDragItem(null);
     setDropTarget(null);
   };
 
-  const handleDragEnd = () => {
-    setDragItem(null);
-    setDropTarget(null);
-  };
-
+  const handleDragEnd = () => { setDragItem(null); setDropTarget(null); };
   const printRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -93,27 +76,27 @@ export default function TeamBuilder() {
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground">建队</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">按每队人数自动建队，可拖拽调整</p>
+            <h2 className="text-lg sm:text-xl font-semibold text-foreground">{t('team.title')}</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t('team.subtitle')}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            {teams.length > 0 && <ExportButtons targetRef={printRef} filename="建队结果" />}
+            {teams.length > 0 && <ExportButtons targetRef={printRef} filename={t('team.exportName')} />}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              每队人数
+              {t('team.perTeam')}
               <Input type="number" min={2} max={10} value={membersPerTeam}
                 onChange={e => setMembersPerTeam(Math.max(2, Math.min(10, Number(e.target.value))))}
                 className="w-16 h-8 text-center" />
             </label>
             <Button onClick={autoTeam} className="gap-2">
-              <Shuffle className="w-4 h-4" /> 自动建队
+              <Shuffle className="w-4 h-4" /> {t('team.autoTeam')}
             </Button>
           </div>
         </div>
 
         {teams.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动建队」开始组队</p>
-            <p className="text-sm">设定每队人数后随机分配，支持拖拽调整</p>
+            <p className="text-lg mb-2">{t('team.emptyTitle')}</p>
+            <p className="text-sm">{t('team.emptyDesc')}</p>
           </div>
         ) : (
           <div ref={printRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
@@ -131,7 +114,7 @@ export default function TeamBuilder() {
                   <div className="flex items-center gap-2 mb-3">
                     <Input value={team.name} onChange={e => updateTeamName(team.id, e.target.value)}
                       className="h-7 text-sm font-semibold border-none shadow-none px-0 focus-visible:ring-0" />
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">{team.members.length}人</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{team.members.length}{t('random.persons')}</span>
                   </div>
                   <div className="space-y-0.5 min-h-[2rem]">
                     {team.members.map((member, mi) => {
