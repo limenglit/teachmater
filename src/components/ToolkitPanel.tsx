@@ -76,6 +76,10 @@ export default function ToolkitPanel() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <BarrageDiscussion />
           <CountdownTimer />
+          <NoiseDetector />
+          <Scoreboard />
+          <RandomAssigner />
+          <LotteryDrawer />
           <CommandCards />
           <QRCodeGenerator />
         </div>
