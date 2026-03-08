@@ -1,16 +1,77 @@
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Heart, Pin, Trash2, ExternalLink } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
+
+interface Comment {
+  id: string;
+  card_id: string;
+  content: string;
+  author_nickname: string;
+  created_at: string;
+}
 
 interface Props {
   card: BoardCard;
   onManage: (id: string, action: 'pin' | 'unpin' | 'delete') => void;
   onLike: (id: string) => void;
   isCreator: boolean;
+  isCloud?: boolean;
 }
 
-export default function BoardCardItem({ card, onManage, onLike, isCreator }: Props) {
+export default function BoardCardItem({ card, onManage, onLike, isCreator, isCloud }: Props) {
   const { t } = useLanguage();
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const loadComments = async () => {
+    if (!isCloud) return;
+    setLoadingComments(true);
+    const { data } = await supabase
+      .from('board_comments')
+      .select('*')
+      .eq('card_id', card.id)
+      .order('created_at', { ascending: true });
+    if (data) setComments(data as Comment[]);
+    setLoadingComments(false);
+  };
+
+  useEffect(() => {
+    if (!showComments || !isCloud) return;
+    loadComments();
+
+    const channel = supabase
+      .channel(`comments-${card.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'board_comments',
+        filter: `card_id=eq.${card.id}`,
+      }, (payload) => {
+        setComments(prev => {
+          if (prev.find(c => c.id === (payload.new as any).id)) return prev;
+          return [...prev, payload.new as Comment];
+        });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [showComments, card.id, isCloud]);
+
+  const submitComment = async () => {
+    if (!newComment.trim() || !isCloud) return;
+    const nickname = localStorage.getItem(`board-nick-${card.board_id}`) || t('board.anonymous');
+    await supabase.from('board_comments').insert({
+      card_id: card.id,
+      content: newComment.trim(),
+      author_nickname: nickname,
+    });
+    setNewComment('');
+  };
 
   return (
     <div
@@ -48,6 +109,14 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator }: Pro
           >
             <Heart className="w-3 h-3" /> {card.likes_count > 0 && card.likes_count}
           </button>
+          {isCloud && (
+            <button
+              onClick={() => setShowComments(!showComments)}
+              className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-primary transition-colors px-1.5 py-0.5 rounded hover:bg-primary/5"
+            >
+              <MessageCircle className="w-3 h-3" />
+            </button>
+          )}
           {isCreator && (
             <>
               <button
@@ -66,6 +135,40 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator }: Pro
           )}
         </div>
       </div>
+
+      {/* Comments section */}
+      {showComments && isCloud && (
+        <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+          {loadingComments && <p className="text-xs text-muted-foreground">...</p>}
+          {!loadingComments && comments.length === 0 && (
+            <p className="text-xs text-muted-foreground">{t('board.noComments')}</p>
+          )}
+          {comments.map(c => (
+            <div key={c.id} className="text-xs">
+              <span className="font-medium text-foreground">{c.author_nickname}</span>
+              <span className="text-muted-foreground mx-1">·</span>
+              <span className="text-muted-foreground">{new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <p className="text-foreground mt-0.5">{c.content}</p>
+            </div>
+          ))}
+          <div className="flex gap-1.5">
+            <Input
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              placeholder={t('board.addComment')}
+              className="h-7 text-xs"
+              onKeyDown={e => e.key === 'Enter' && submitComment()}
+            />
+            <button
+              onClick={submitComment}
+              disabled={!newComment.trim()}
+              className="text-primary hover:text-primary/80 disabled:text-muted-foreground"
+            >
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
