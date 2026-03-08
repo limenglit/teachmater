@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabChecki
 
 export default function SeatCheckinPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const { t } = useLanguage();
   const [session, setSession] = useState<{
     seat_data: unknown;
     student_names: string[];
@@ -30,7 +32,7 @@ export default function SeatCheckinPage() {
     supabase.from('seat_checkin_sessions').select('*').eq('id', sessionId).single()
       .then(({ data, error }) => {
         if (error || !data) {
-          toast({ title: '签到会话不存在', variant: 'destructive' });
+          toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
           setLoading(false);
           return;
         }
@@ -56,7 +58,7 @@ export default function SeatCheckinPage() {
   const handleSubmit = async () => {
     if (!name.trim() || !sessionId || !session) return;
     if (!session.student_names.includes(name.trim())) {
-      toast({ title: '未找到该姓名', description: '请检查姓名是否正确', variant: 'destructive' });
+      toast({ title: t('seatCheckin.nameNotFound'), description: t('seatCheckin.checkName'), variant: 'destructive' });
       return;
     }
     setSubmitting(true);
@@ -67,18 +69,18 @@ export default function SeatCheckinPage() {
       });
       setCheckedIn(true);
     } catch {
-      toast({ title: '签到失败', variant: 'destructive' });
+      toast({ title: t('seatCheckin.failed'), variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen text-muted-foreground">加载中...</div>;
+    return <div className="flex items-center justify-center min-h-screen text-muted-foreground">{t('seatCheckin.loading')}</div>;
   }
 
   if (!session) {
-    return <div className="flex items-center justify-center min-h-screen text-muted-foreground">签到会话不存在或已过期</div>;
+    return <div className="flex items-center justify-center min-h-screen text-muted-foreground">{t('seatCheckin.notFound')}</div>;
   }
 
   if (!checkedIn) {
@@ -87,25 +89,21 @@ export default function SeatCheckinPage() {
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
             <MapPin className="w-12 h-12 mx-auto text-primary" />
-            <h1 className="text-xl font-bold text-foreground">座位签到</h1>
-            <p className="text-sm text-muted-foreground">输入姓名查看你的座位位置</p>
+            <h1 className="text-xl font-bold text-foreground">{t('seatCheckin.title')}</h1>
+            <p className="text-sm text-muted-foreground">{t('seatCheckin.desc')}</p>
           </div>
           <div className="relative">
             <Input
               value={name}
               onChange={e => handleNameInput(e.target.value)}
-              placeholder="请输入你的姓名"
+              placeholder={t('seatCheckin.namePlaceholder')}
               className="text-center text-lg h-12"
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
             {suggestions.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
                 {suggestions.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => { setName(s); setSuggestions([]); }}
-                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors"
-                  >
+                  <button key={s} onClick={() => { setName(s); setSuggestions([]); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors">
                     {s}
                   </button>
                 ))}
@@ -113,14 +111,13 @@ export default function SeatCheckinPage() {
             )}
           </div>
           <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-12 text-base">
-            {submitting ? '签到中...' : '确认签到'}
+            {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
           </Button>
         </div>
       </div>
     );
   }
 
-  // Checked in — render scene-specific view
   const sceneType = session.scene_type;
   const studentName = name.trim();
 
@@ -130,7 +127,7 @@ export default function SeatCheckinPage() {
         <div className="text-center space-y-1">
           <div className="flex items-center justify-center gap-2 text-primary">
             <CheckCircle2 className="w-6 h-6" />
-            <span className="text-lg font-bold">签到成功！</span>
+            <span className="text-lg font-bold">{t('seatCheckin.success')}</span>
           </div>
         </div>
 
