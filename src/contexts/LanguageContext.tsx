@@ -1080,6 +1080,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.teams': 'Команды',
     'tab.seats': 'Места',
     'tab.checkin': 'Отметка',
+    'tab.board': 'Доска',
     'tab.toolkit': 'Инструменты',
     'ext.ai': 'ИИ Помощник',
     'ext.idea': 'IdeaVas',
