@@ -655,6 +655,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.sessionNotFound': '测验不存在',
     'quiz.sessionEnded': '测验已结束',
     'quiz.loginRequired': '请登录后使用测验功能',
+    'quiz.localMode': '本地模式',
+    'quiz.cloudMode': '云端同步',
+    'quiz.loginToPublish': '登录后才能发起测验',
+    'quiz.loginForSessions': '登录后可发起在线测验',
+    'quiz.localModeHint': '题目已保存在本地，登录后可同步至云端',
   },
   en: {
     'app.title': 'TeachMate',
@@ -1258,6 +1263,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.sessionNotFound': 'Quiz not found',
     'quiz.sessionEnded': 'Quiz has ended',
     'quiz.loginRequired': 'Please log in to use quiz features',
+    'quiz.localMode': 'Local Mode',
+    'quiz.cloudMode': 'Cloud Sync',
+    'quiz.loginToPublish': 'Log in to start a quiz session',
+    'quiz.loginForSessions': 'Log in to start online quizzes',
+    'quiz.localModeHint': 'Questions saved locally; log in to sync to cloud',
   },
   ru: {
     'app.title': 'TeachMate',
@@ -1726,6 +1736,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.prev': 'Назад', 'quiz.next': 'Далее', 'quiz.submit': 'Отправить', 'quiz.multiHint': 'Можно выбрать несколько',
     'quiz.shortPlaceholder': 'Введите ответ...', 'quiz.submitSuccess': 'Отправлено!', 'quiz.waitForResult': 'Ждите результатов',
     'quiz.sessionNotFound': 'Тест не найден', 'quiz.sessionEnded': 'Тест завершён', 'quiz.loginRequired': 'Войдите для использования',
+    'quiz.localMode': 'Локальный', 'quiz.cloudMode': 'Облако', 'quiz.loginToPublish': 'Войдите, чтобы начать тест', 'quiz.loginForSessions': 'Войдите для онлайн-тестов', 'quiz.localModeHint': 'Вопросы сохранены локально',
   },
   ja: {
     'app.title': 'TeachMate',
@@ -2193,6 +2204,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.prev': '前へ', 'quiz.next': '次へ', 'quiz.submit': '提出', 'quiz.multiHint': '複数選択可',
     'quiz.shortPlaceholder': '回答を入力...', 'quiz.submitSuccess': '提出しました！', 'quiz.waitForResult': '結果発表をお待ちください',
     'quiz.sessionNotFound': 'テストが見つかりません', 'quiz.sessionEnded': 'テストは終了しました', 'quiz.loginRequired': 'ログインしてください',
+    'quiz.localMode': 'ローカル', 'quiz.cloudMode': 'クラウド同期', 'quiz.loginToPublish': 'ログインしてテストを開始', 'quiz.loginForSessions': 'ログインしてオンラインテスト', 'quiz.localModeHint': '問題はローカルに保存されています',
   },
   ko: {
     'app.title': 'TeachMate',
@@ -2660,6 +2672,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.prev': '이전', 'quiz.next': '다음', 'quiz.submit': '제출', 'quiz.multiHint': '여러 개 선택 가능',
     'quiz.shortPlaceholder': '답변을 입력하세요...', 'quiz.submitSuccess': '제출 완료!', 'quiz.waitForResult': '결과 발표를 기다려주세요',
     'quiz.sessionNotFound': '퀴즈를 찾을 수 없습니다', 'quiz.sessionEnded': '퀴즈가 종료되었습니다', 'quiz.loginRequired': '로그인이 필요합니다',
+    'quiz.localMode': '로컬 모드', 'quiz.cloudMode': '클라우드 동기화', 'quiz.loginToPublish': '로그인 후 퀴즈를 시작하세요', 'quiz.loginForSessions': '로그인 후 온라인 퀴즈 가능', 'quiz.localModeHint': '문제가 로컬에 저장되었습니다',
   },
 };
 
