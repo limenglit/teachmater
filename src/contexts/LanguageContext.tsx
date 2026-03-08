@@ -2221,6 +2221,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.blockedWord': '검토 대기 중',
     'board.lockedMsg': '보드가 잠겨 있습니다',
     'board.back': '보드 목록으로',
+    'board.uploadImage': '이미지 업로드',
+    'board.uploading': '업로드 중...',
+    'board.commentSend': '전송',
+    'board.noComments': '댓글 없음',
+    'board.cloudSync': '☁️ 클라우드 동기화됨',
   },
 };
 
