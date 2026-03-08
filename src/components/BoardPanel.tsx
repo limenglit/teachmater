@@ -14,6 +14,7 @@ import BoardTimelineView from './board/BoardTimelineView';
 import BoardCanvasView from './board/BoardCanvasView';
 import BoardPPTMode from './board/BoardPPTMode';
 import BoardCardForm from './board/BoardCardForm';
+import BoardWordCloud from './board/BoardWordCloud';
 import { tFormat } from '@/contexts/LanguageContext';
 
 export interface Board {
