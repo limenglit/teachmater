@@ -35,9 +35,10 @@ interface Props {
   activeTab: TabId;
   onTabChange: (id: TabId) => void;
   isLoggedIn?: boolean;
+  userEmail?: string;
 }
 
-export default function TabNavigation({ activeTab, onTabChange, isLoggedIn }: Props) {
+export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, userEmail }: Props) {
   const visibleTabs = tabs.filter(t => !t.requiresAuth || isLoggedIn);
 
   return (
@@ -59,18 +60,24 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn }: Pr
 
       <div className="w-px h-5 bg-border mx-1 shrink-0" />
 
-      {externalLinks.map(link => (
-        <a
-          key={link.url}
-          href={link.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-        >
-          <span>{link.emoji}</span>
-          <span>{link.label}</span>
-        </a>
-      ))}
+      {externalLinks.map(link => {
+        const targetUrl = userEmail
+          ? `${link.url}?email=${encodeURIComponent(userEmail)}`
+          : link.url;
+        return (
+          <a
+            key={link.url}
+            href={targetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="与本平台使用同一邮箱即可登录"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            <span>{link.emoji}</span>
+            <span>{link.label}</span>
+          </a>
+        );
+      })}
     </nav>
   );
 }
