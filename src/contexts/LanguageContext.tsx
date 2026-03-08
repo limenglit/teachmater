@@ -1427,6 +1427,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.wordCloud': 'Облако слов',
     'board.wordCloudRefresh': 'Обновить',
     'board.wordCloudEmpty': 'Недостаточно контента для облака слов',
+    'board.wordCloudTheme': 'Тема',
     'board.pptPrev': 'Назад',
     'board.pptNext': 'Далее',
     'board.pptExit': 'Выйти',
