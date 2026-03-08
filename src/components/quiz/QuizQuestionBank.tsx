@@ -154,11 +154,11 @@ export default function QuizQuestionBank({
   const toggleStar = async (q: QuizQuestion) => {
     const newVal = !q.is_starred;
     if (isGuest) {
-      const updated = questions.map(x => x.id === q.id ? { ...x, is_starred: newVal } : x);
+      const updated = toggleStarQuestion(questions, q.id);
       setQuestions(updated); saveLocalQuestions(updated);
     } else {
       await supabase.from('quiz_questions').update({ is_starred: newVal } as any).eq('id', q.id);
-      setQuestions(questions.map(x => x.id === q.id ? { ...x, is_starred: newVal } : x));
+      setQuestions(toggleStarQuestion(questions, q.id));
     }
   };
 
