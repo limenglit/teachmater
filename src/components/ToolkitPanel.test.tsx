@@ -51,7 +51,7 @@ describe('ToolkitPanel command cards', () => {
   it('falls back to default question mark when search fails', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
 
-    render(<ToolkitPanel />);
+    renderWithProviders(<ToolkitPanel />);
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '快速测验' },
