@@ -31,7 +31,7 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    if (tab === 'checkin') {
+    if (tab === 'checkin' || tab === 'board') {
       setSidebarCollapsed(true);
     }
   };
