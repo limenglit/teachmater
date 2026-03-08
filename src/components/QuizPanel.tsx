@@ -207,6 +207,7 @@ export default function QuizPanel() {
     }
   };
 
+  const startSession = async () => {
     const selected = questions.filter(q => selectedIds.has(q.id));
     if (selected.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
 
