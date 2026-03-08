@@ -2741,6 +2741,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.shortPlaceholder': '답변을 입력하세요...', 'quiz.submitSuccess': '제출 완료!', 'quiz.waitForResult': '결과 발표를 기다려주세요',
     'quiz.sessionNotFound': '퀴즈를 찾을 수 없습니다', 'quiz.sessionEnded': '퀴즈가 종료되었습니다', 'quiz.loginRequired': '로그인이 필요합니다',
     'quiz.localMode': '로컬 모드', 'quiz.cloudMode': '클라우드 동기화', 'quiz.loginToPublish': '로그인 후 퀴즈를 시작하세요', 'quiz.loginForSessions': '로그인 후 온라인 퀴즈 가능', 'quiz.localModeHint': '문제가 로컬에 저장되었습니다',
+    'quiz.imp.import': '일괄 가져오기', 'quiz.imp.title': 'Excel/CSV에서 가져오기', 'quiz.imp.desc': '템플릿을 다운로드하고 작성 후 업로드', 'quiz.imp.step1': '템플릿 다운로드', 'quiz.imp.step1Hint': '형식에 맞게 작성', 'quiz.imp.step2': '파일 업로드', 'quiz.imp.step2Hint': '.xlsx, .xls, .csv 지원', 'quiz.imp.downloadTemplate': '다운로드', 'quiz.imp.selectFile': '파일 선택', 'quiz.imp.preview': '미리보기', 'quiz.imp.questionsUnit': '문제', 'quiz.imp.confirmImport': '가져오기', 'quiz.imp.reselect': '다시 선택', 'quiz.imp.imported': '가져오기 완료', 'quiz.imp.templateDownloaded': '템플릿 다운로드 완료', 'quiz.imp.errors': '오류', 'quiz.imp.emptyFile': '파일이 비어 있습니다', 'quiz.imp.row': '행', 'quiz.imp.unknownType': '알 수 없는 유형', 'quiz.imp.emptyContent': '문제 내용 비어 있음', 'quiz.imp.fewOptions': '선택지 부족', 'quiz.imp.noAnswer': '정답 없음', 'quiz.imp.parseError': '파싱 오류', 'quiz.imp.unsupportedFormat': '지원하지 않는 형식', 'quiz.imp.colType': '유형', 'quiz.imp.colContent': '문제', 'quiz.imp.colA': '선택지A', 'quiz.imp.colB': '선택지B', 'quiz.imp.colC': '선택지C', 'quiz.imp.colD': '선택지D', 'quiz.imp.colAnswer': '정답', 'quiz.imp.colTags': '태그', 'quiz.imp.sheetName': '템플릿',
   },
 };
 
