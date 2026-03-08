@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,37 +13,15 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-interface College {
-  id: string;
-  name: string;
-  user_id: string;
-}
-
-interface ClassItem {
-  id: string;
-  college_id: string;
-  name: string;
-  user_id: string;
-}
-
-interface ClassStudent {
-  id: string;
-  class_id: string;
-  name: string;
-  student_number: string;
-  user_id: string;
-}
-
-interface PreviewRow {
-  college: string;
-  className: string;
-  studentNumber: string;
-  name: string;
-}
+interface College { id: string; name: string; user_id: string; }
+interface ClassItem { id: string; college_id: string; name: string; user_id: string; }
+interface ClassStudent { id: string; class_id: string; name: string; student_number: string; user_id: string; }
+interface PreviewRow { college: string; className: string; studentNumber: string; name: string; }
 
 export default function ClassLibrary() {
   const { user } = useAuth();
   const { importFromText } = useStudents();
+  const { t } = useLanguage();
 
   const [colleges, setColleges] = useState<College[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -52,7 +31,6 @@ export default function ClassLibrary() {
   const [expandedColleges, setExpandedColleges] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
-  // Edit states
   const [newCollegeName, setNewCollegeName] = useState('');
   const [newClassName, setNewClassName] = useState('');
   const [newStudentName, setNewStudentName] = useState('');
@@ -62,7 +40,6 @@ export default function ClassLibrary() {
   const [editingStudent, setEditingStudent] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
 
-  // Excel import
   const [importOpen, setImportOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importMode, setImportMode] = useState<'overwrite' | 'append'>('append');
@@ -70,7 +47,6 @@ export default function ClassLibrary() {
 
   const userId = user?.id;
 
-  // Load data
   useEffect(() => {
     if (!userId) return;
     loadAll();
@@ -89,19 +65,11 @@ export default function ClassLibrary() {
     setLoading(false);
   };
 
-  // College CRUD
   const addCollege = async () => {
     if (!newCollegeName.trim() || !userId) return;
-    const { data, error } = await supabase
-      .from('colleges')
-      .insert({ name: newCollegeName.trim(), user_id: userId })
-      .select()
-      .single();
-    if (data) {
-      setColleges(prev => [...prev, data as College]);
-      setNewCollegeName('');
-    }
-    if (error) toast({ title: '添加失败', variant: 'destructive' });
+    const { data, error } = await supabase.from('colleges').insert({ name: newCollegeName.trim(), user_id: userId }).select().single();
+    if (data) { setColleges(prev => [...prev, data as College]); setNewCollegeName(''); }
+    if (error) toast({ title: t('library.addFailed'), variant: 'destructive' });
   };
 
   const deleteCollege = async (id: string) => {
@@ -118,18 +86,10 @@ export default function ClassLibrary() {
     setEditingCollege(null);
   };
 
-  // Class CRUD
   const addClass = async () => {
     if (!newClassName.trim() || !selectedCollege || !userId) return;
-    const { data } = await supabase
-      .from('classes')
-      .insert({ name: newClassName.trim(), college_id: selectedCollege, user_id: userId })
-      .select()
-      .single();
-    if (data) {
-      setClasses(prev => [...prev, data as ClassItem]);
-      setNewClassName('');
-    }
+    const { data } = await supabase.from('classes').insert({ name: newClassName.trim(), college_id: selectedCollege, user_id: userId }).select().single();
+    if (data) { setClasses(prev => [...prev, data as ClassItem]); setNewClassName(''); }
   };
 
   const deleteClass = async (id: string) => {
@@ -146,19 +106,10 @@ export default function ClassLibrary() {
     setEditingClass(null);
   };
 
-  // Student CRUD
   const addStudent = async () => {
     if (!newStudentName.trim() || !selectedClass || !userId) return;
-    const { data } = await supabase
-      .from('class_students')
-      .insert({ name: newStudentName.trim(), student_number: newStudentNumber.trim(), class_id: selectedClass, user_id: userId })
-      .select()
-      .single();
-    if (data) {
-      setStudents(prev => [...prev, data as ClassStudent]);
-      setNewStudentName('');
-      setNewStudentNumber('');
-    }
+    const { data } = await supabase.from('class_students').insert({ name: newStudentName.trim(), student_number: newStudentNumber.trim(), class_id: selectedClass, user_id: userId }).select().single();
+    if (data) { setStudents(prev => [...prev, data as ClassStudent]); setNewStudentName(''); setNewStudentNumber(''); }
   };
 
   const deleteStudent = async (id: string) => {
@@ -173,19 +124,17 @@ export default function ClassLibrary() {
     setEditingStudent(null);
   };
 
-  // Load to workspace
   const loadToWorkspace = () => {
     if (!selectedClass) return;
     const classStudents = students.filter(s => s.class_id === selectedClass);
     if (classStudents.length === 0) {
-      toast({ title: '该班级暂无学生', variant: 'destructive' });
+      toast({ title: t('library.noStudentsInClass'), variant: 'destructive' });
       return;
     }
     importFromText(classStudents.map(s => s.name).join('\n'));
-    toast({ title: '已加载到当前名单', description: `${classStudents.length} 名学生` });
+    toast({ title: t('library.loadedToList'), description: `${classStudents.length} ${t('library.students')}` });
   };
 
-  // Excel import
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -198,37 +147,25 @@ export default function ClassLibrary() {
         const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
         
         if (rows.length < 2) {
-          toast({ title: '文件为空或格式不正确', variant: 'destructive' });
+          toast({ title: t('library.fileEmpty'), variant: 'destructive' });
           return;
         }
 
-        // Skip header row, parse data
         const preview: PreviewRow[] = [];
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || row.length < 3) continue;
-          // Support: college, class, student_number, name OR college, class, name
           if (row.length >= 4) {
-            preview.push({
-              college: String(row[0] || '').trim(),
-              className: String(row[1] || '').trim(),
-              studentNumber: String(row[2] || '').trim(),
-              name: String(row[3] || '').trim(),
-            });
+            preview.push({ college: String(row[0] || '').trim(), className: String(row[1] || '').trim(), studentNumber: String(row[2] || '').trim(), name: String(row[3] || '').trim() });
           } else {
-            preview.push({
-              college: String(row[0] || '').trim(),
-              className: String(row[1] || '').trim(),
-              studentNumber: '',
-              name: String(row[2] || '').trim(),
-            });
+            preview.push({ college: String(row[0] || '').trim(), className: String(row[1] || '').trim(), studentNumber: '', name: String(row[2] || '').trim() });
           }
         }
 
         setPreviewData(preview.filter(r => r.name && r.college && r.className));
         setImportOpen(true);
       } catch {
-        toast({ title: '文件解析失败', variant: 'destructive' });
+        toast({ title: t('library.parseFailed'), variant: 'destructive' });
       }
     };
     reader.readAsArrayBuffer(file);
@@ -239,7 +176,6 @@ export default function ClassLibrary() {
     if (!userId || previewData.length === 0) return;
     setLoading(true);
 
-    // Group by college → class
     const grouped = new Map<string, Map<string, PreviewRow[]>>();
     for (const row of previewData) {
       if (!grouped.has(row.college)) grouped.set(row.college, new Map());
@@ -249,43 +185,26 @@ export default function ClassLibrary() {
     }
 
     for (const [collegeName, classMap] of grouped) {
-      // Find or create college
       let college = colleges.find(c => c.name === collegeName);
       if (!college) {
-        const { data } = await supabase
-          .from('colleges')
-          .insert({ name: collegeName, user_id: userId })
-          .select()
-          .single();
+        const { data } = await supabase.from('colleges').insert({ name: collegeName, user_id: userId }).select().single();
         if (data) college = data as College;
       }
       if (!college) continue;
 
       for (const [className, rows] of classMap) {
-        // Find or create class
         let cls = classes.find(c => c.college_id === college!.id && c.name === className);
         if (!cls) {
-          const { data } = await supabase
-            .from('classes')
-            .insert({ name: className, college_id: college.id, user_id: userId })
-            .select()
-            .single();
+          const { data } = await supabase.from('classes').insert({ name: className, college_id: college.id, user_id: userId }).select().single();
           if (data) cls = data as ClassItem;
         }
         if (!cls) continue;
 
         if (importMode === 'overwrite') {
-          // Delete existing students in this class
           await supabase.from('class_students').delete().eq('class_id', cls.id);
         }
 
-        // Insert students
-        const inserts = rows.map(r => ({
-          class_id: cls!.id,
-          user_id: userId,
-          name: r.name,
-          student_number: r.studentNumber,
-        }));
+        const inserts = rows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
         await supabase.from('class_students').insert(inserts);
       }
     }
@@ -293,10 +212,9 @@ export default function ClassLibrary() {
     await loadAll();
     setImportOpen(false);
     setPreviewData([]);
-    toast({ title: '导入成功', description: `${previewData.length} 名学生` });
+    toast({ title: t('library.importSuccess'), description: `${previewData.length} ${t('library.students')}` });
   };
 
-  // Export
   const exportClassToExcel = () => {
     if (!selectedClass) return;
     const cls = classes.find(c => c.id === selectedClass);
@@ -304,17 +222,17 @@ export default function ClassLibrary() {
     const classStudents = students.filter(s => s.class_id === selectedClass);
 
     const data = [
-      ['学院', '班级', '学号', '姓名'],
+      [t('library.college'), t('library.class'), t('library.studentNumber'), t('library.studentName')],
       ...classStudents.map(s => [college?.name || '', cls?.name || '', s.student_number, s.name]),
     ];
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '学生名单');
-    XLSX.writeFile(wb, `${cls?.name || '名单'}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, t('sidebar.studentList'));
+    XLSX.writeFile(wb, `${cls?.name || t('sidebar.studentList')}.xlsx`);
   };
 
   const exportAllToExcel = () => {
-    const data: string[][] = [['学院', '班级', '学号', '姓名']];
+    const data: string[][] = [[t('library.college'), t('library.class'), t('library.studentNumber'), t('library.studentName')]];
     for (const college of colleges) {
       const collegeClasses = classes.filter(c => c.college_id === college.id);
       for (const cls of collegeClasses) {
@@ -326,8 +244,8 @@ export default function ClassLibrary() {
     }
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '班级库');
-    XLSX.writeFile(wb, '班级库.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, t('library.title'));
+    XLSX.writeFile(wb, `${t('library.title')}.xlsx`);
   };
 
   const toggleExpand = (id: string) => {
@@ -358,15 +276,15 @@ export default function ClassLibrary() {
         <div className="p-3 border-b border-border">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-              <Building2 className="w-4 h-4" /> 班级库
+              <Building2 className="w-4 h-4" /> {t('library.title')}
             </h3>
             <div className="flex gap-1">
               <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleFileSelect} className="hidden" />
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => fileRef.current?.click()}>
-                <Upload className="w-3 h-3 mr-1" /> 导入
+                <Upload className="w-3 h-3 mr-1" /> {t('library.import')}
               </Button>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={exportAllToExcel} disabled={colleges.length === 0}>
-                <Download className="w-3 h-3 mr-1" /> 导出
+                <Download className="w-3 h-3 mr-1" /> {t('library.export')}
               </Button>
             </div>
           </div>
@@ -375,7 +293,7 @@ export default function ClassLibrary() {
               value={newCollegeName}
               onChange={e => setNewCollegeName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addCollege()}
-              placeholder="添加学院..."
+              placeholder={t('library.addCollege')}
               className="h-7 text-xs"
             />
             <Button size="sm" variant="ghost" onClick={addCollege} className="h-7 px-2">
@@ -390,24 +308,14 @@ export default function ClassLibrary() {
               <div
                 className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm
                   ${selectedCollege === college.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-foreground'}`}
-                onClick={() => {
-                  setSelectedCollege(college.id);
-                  setSelectedClass(null);
-                  toggleExpand(college.id);
-                }}
+                onClick={() => { setSelectedCollege(college.id); setSelectedClass(null); toggleExpand(college.id); }}
               >
                 {expandedColleges.has(college.id) ? <ChevronDown className="w-3 h-3 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 flex-shrink-0" />}
                 <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
                 {editingCollege === college.id ? (
-                  <Input
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
+                  <Input value={editName} onChange={e => setEditName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveCollegeEdit(college.id); if (e.key === 'Escape') setEditingCollege(null); }}
-                    onBlur={() => saveCollegeEdit(college.id)}
-                    className="h-5 text-xs flex-1"
-                    autoFocus
-                    onClick={e => e.stopPropagation()}
-                  />
+                    onBlur={() => saveCollegeEdit(college.id)} className="h-5 text-xs flex-1" autoFocus onClick={e => e.stopPropagation()} />
                 ) : (
                   <span className="flex-1 truncate">{college.name}</span>
                 )}
@@ -423,23 +331,16 @@ export default function ClassLibrary() {
               {expandedColleges.has(college.id) && (
                 <div className="ml-4 space-y-0.5">
                   {classes.filter(c => c.college_id === college.id).map(cls => (
-                    <div
-                      key={cls.id}
+                    <div key={cls.id}
                       className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-sm transition-colors
                         ${selectedClass === cls.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}`}
                       onClick={() => { setSelectedCollege(college.id); setSelectedClass(cls.id); }}
                     >
                       <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
                       {editingClass === cls.id ? (
-                        <Input
-                          value={editName}
-                          onChange={e => setEditName(e.target.value)}
+                        <Input value={editName} onChange={e => setEditName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') saveClassEdit(cls.id); if (e.key === 'Escape') setEditingClass(null); }}
-                          onBlur={() => saveClassEdit(cls.id)}
-                          className="h-5 text-xs flex-1"
-                          autoFocus
-                          onClick={e => e.stopPropagation()}
-                        />
+                          onBlur={() => saveClassEdit(cls.id)} className="h-5 text-xs flex-1" autoFocus onClick={e => e.stopPropagation()} />
                       ) : (
                         <span className="flex-1 truncate">{cls.name}</span>
                       )}
@@ -458,13 +359,8 @@ export default function ClassLibrary() {
                   ))}
                   {selectedCollege === college.id && (
                     <div className="flex gap-1 px-2 py-1">
-                      <Input
-                        value={newClassName}
-                        onChange={e => setNewClassName(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && addClass()}
-                        placeholder="添加班级..."
-                        className="h-6 text-xs"
-                      />
+                      <Input value={newClassName} onChange={e => setNewClassName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && addClass()} placeholder={t('library.addClass')} className="h-6 text-xs" />
                       <Button size="sm" variant="ghost" onClick={addClass} className="h-6 px-1.5">
                         <Plus className="w-3 h-3" />
                       </Button>
@@ -476,8 +372,8 @@ export default function ClassLibrary() {
           ))}
           {colleges.length === 0 && (
             <div className="text-center py-8 text-muted-foreground text-xs">
-              <p>暂无学院</p>
-              <p className="mt-1">添加学院或导入Excel</p>
+              <p>{t('library.noColleges')}</p>
+              <p className="mt-1">{t('library.noCollegesHint')}</p>
             </div>
           )}
         </div>
@@ -492,15 +388,15 @@ export default function ClassLibrary() {
                 <div className="text-xs text-muted-foreground">{currentCollege?.name}</div>
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                   <GraduationCap className="w-4 h-4" /> {currentClass?.name}
-                  <span className="text-xs font-normal text-muted-foreground">({classStudents.length}人)</span>
+                  <span className="text-xs font-normal text-muted-foreground">({classStudents.length}{t('random.persons')})</span>
                 </h3>
               </div>
               <div className="flex gap-1.5">
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadToWorkspace}>
-                  <ArrowRight className="w-3 h-3" /> 加载到名单
+                  <ArrowRight className="w-3 h-3" /> {t('library.loadToList')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportClassToExcel}>
-                  <Download className="w-3 h-3" /> 导出
+                  <Download className="w-3 h-3" /> {t('library.export')}
                 </Button>
               </div>
             </div>
@@ -510,19 +406,11 @@ export default function ClassLibrary() {
                 <div key={s.id} className="group flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors">
                   {editingStudent === s.id ? (
                     <>
-                      <Input
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
+                      <Input value={editName} onChange={e => setEditName(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') saveStudentEdit(s.id); if (e.key === 'Escape') setEditingStudent(null); }}
-                        className="h-7 text-sm flex-1"
-                        autoFocus
-                      />
-                      <Button size="sm" variant="ghost" onClick={() => saveStudentEdit(s.id)} className="h-7 px-1.5">
-                        <Check className="w-3 h-3" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingStudent(null)} className="h-7 px-1.5">
-                        <X className="w-3 h-3" />
-                      </Button>
+                        className="h-7 text-sm flex-1" autoFocus />
+                      <Button size="sm" variant="ghost" onClick={() => saveStudentEdit(s.id)} className="h-7 px-1.5"><Check className="w-3 h-3" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingStudent(null)} className="h-7 px-1.5"><X className="w-3 h-3" /></Button>
                     </>
                   ) : (
                     <>
@@ -530,12 +418,8 @@ export default function ClassLibrary() {
                       {s.student_number && <span className="text-xs text-muted-foreground w-16 truncate">{s.student_number}</span>}
                       <span className="flex-1 text-sm text-foreground">{s.name}</span>
                       <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
-                        <button onClick={() => { setEditingStudent(s.id); setEditName(s.name); }}>
-                          <Edit2 className="w-3 h-3 text-muted-foreground hover:text-foreground" />
-                        </button>
-                        <button onClick={() => deleteStudent(s.id)}>
-                          <Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" />
-                        </button>
+                        <button onClick={() => { setEditingStudent(s.id); setEditName(s.name); }}><Edit2 className="w-3 h-3 text-muted-foreground hover:text-foreground" /></button>
+                        <button onClick={() => deleteStudent(s.id)}><Trash2 className="w-3 h-3 text-muted-foreground hover:text-destructive" /></button>
                       </div>
                     </>
                   )}
@@ -544,29 +428,16 @@ export default function ClassLibrary() {
             </div>
 
             <div className="p-3 border-t border-border flex gap-1.5">
-              <Input
-                value={newStudentNumber}
-                onChange={e => setNewStudentNumber(e.target.value)}
-                placeholder="学号"
-                className="h-7 text-xs w-20"
-              />
-              <Input
-                value={newStudentName}
-                onChange={e => setNewStudentName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addStudent()}
-                placeholder="姓名"
-                className="h-7 text-xs flex-1"
-              />
-              <Button size="sm" variant="ghost" onClick={addStudent} className="h-7 px-2">
-                <Plus className="w-3 h-3" />
-              </Button>
+              <Input value={newStudentNumber} onChange={e => setNewStudentNumber(e.target.value)} placeholder={t('library.studentNumber')} className="h-7 text-xs w-20" />
+              <Input value={newStudentName} onChange={e => setNewStudentName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStudent()} placeholder={t('library.studentName')} className="h-7 text-xs flex-1" />
+              <Button size="sm" variant="ghost" onClick={addStudent} className="h-7 px-2"><Plus className="w-3 h-3" /></Button>
             </div>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
             <div className="text-center space-y-2">
               <GraduationCap className="w-10 h-10 mx-auto opacity-30" />
-              <p>选择一个班级查看学生名单</p>
+              <p>{t('library.selectClass')}</p>
             </div>
           </div>
         )}
@@ -576,20 +447,20 @@ export default function ClassLibrary() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>导入预览</DialogTitle>
+            <DialogTitle>{t('library.importPreview')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              共解析 <span className="font-medium text-foreground">{previewData.length}</span> 条记录
+              {t('library.recordsParsed')} <span className="font-medium text-foreground">{previewData.length}</span> {t('library.records')}
             </p>
             <div className="max-h-60 overflow-y-auto border border-border rounded-lg">
               <table className="w-full text-xs">
                 <thead className="bg-muted sticky top-0">
                   <tr>
-                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">学院</th>
-                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">班级</th>
-                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">学号</th>
-                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">姓名</th>
+                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t('library.college')}</th>
+                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t('library.class')}</th>
+                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t('library.studentNumber')}</th>
+                    <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{t('library.studentName')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -602,25 +473,25 @@ export default function ClassLibrary() {
                     </tr>
                   ))}
                   {previewData.length > 50 && (
-                    <tr><td colSpan={4} className="px-2 py-1 text-center text-muted-foreground">...还有 {previewData.length - 50} 条</td></tr>
+                    <tr><td colSpan={4} className="px-2 py-1 text-center text-muted-foreground">{t('library.moreRecords').replace('{0}', String(previewData.length - 50))}</td></tr>
                   )}
                 </tbody>
               </table>
             </div>
             <div className="flex items-center gap-4">
-              <label className="text-sm text-foreground">已有班级处理：</label>
+              <label className="text-sm text-foreground">{t('library.existingClassHandling')}</label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="radio" checked={importMode === 'append'} onChange={() => setImportMode('append')} />
-                追加
+                {t('library.append')}
               </label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="radio" checked={importMode === 'overwrite'} onChange={() => setImportMode('overwrite')} />
-                覆盖
+                {t('library.overwrite')}
               </label>
             </div>
             <div className="flex gap-2">
-              <Button onClick={confirmImport} className="flex-1">确认导入</Button>
-              <Button variant="outline" onClick={() => setImportOpen(false)}>取消</Button>
+              <Button onClick={confirmImport} className="flex-1">{t('library.confirmImport')}</Button>
+              <Button variant="outline" onClick={() => setImportOpen(false)}>{t('library.cancel')}</Button>
             </div>
           </div>
         </DialogContent>
