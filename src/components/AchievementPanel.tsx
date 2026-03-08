@@ -484,7 +484,7 @@ export default function AchievementPanel() {
                     list="student-names"
                   />
                   <datalist id="student-names">
-                    {students.map(s => <option key={s} value={s} />)}
+                    {students.map(s => <option key={s.id} value={s.name} />)}
                   </datalist>
                 </div>
               )}
