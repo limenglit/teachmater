@@ -408,7 +408,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEdit(p)} title={t('quiz.editQuestion')}>
                       <Edit3 className="w-3 h-3 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => duplicatePaper(p)} title={t('quiz.paper.duplicate')}>
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => duplicatePaperHandler(p)} title={t('quiz.paper.duplicate')}>
                       <Copy className="w-3 h-3 text-muted-foreground" />
                     </Button>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => exportPaperExcel(p)} title="Excel">
