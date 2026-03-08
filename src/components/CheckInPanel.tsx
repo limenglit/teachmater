@@ -11,22 +11,6 @@ import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
 import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
 
-interface CheckinRecord {
-  id: string;
-  student_name: string;
-  checked_in_at: string;
-  status: string;
-}
-
-interface SessionData {
-  id: string;
-  created_at: string;
-  duration_minutes: number;
-  status: string;
-  ended_at: string | null;
-  creator_token: string;
-}
-
 const HISTORY_KEY = 'teachmate_checkin_history';
 
 function saveHistory(session: SessionData, records: CheckinRecord[], studentNames: string[]) {
