@@ -143,11 +143,11 @@ export default function QuizQuestionBank({
 
   const deleteQuestion = async (id: string) => {
     if (isGuest) {
-      const updated = questions.filter(q => q.id !== id);
+      const updated = deleteLocalQuestion(questions, id);
       setQuestions(updated); saveLocalQuestions(updated);
     } else {
       await supabase.from('quiz_questions').delete().eq('id', id) as any;
-      setQuestions(questions.filter(q => q.id !== id));
+      setQuestions(deleteLocalQuestion(questions, id));
     }
   };
 
