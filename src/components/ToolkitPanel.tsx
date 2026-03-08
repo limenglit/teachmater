@@ -76,6 +76,10 @@ export default function ToolkitPanel() {
           <CommandCards />
           <QRCodeGenerator />
         </div>
+        {/* Board Panel - full width below the grid */}
+        <div className="mt-6">
+          <BoardPanel />
+        </div>
       </div>
     </div>
   );
