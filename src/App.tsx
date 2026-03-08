@@ -16,10 +16,12 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const GoRedirect = lazy(() => import("./pages/GoRedirect"));
 const SeatCheckinPage = lazy(() => import("./pages/SeatCheckinPage"));
+const BoardPage = lazy(() => import("./pages/BoardPage"));
+const BoardSubmitPage = lazy(() => import("./pages/BoardSubmitPage"));
 
 const queryClient = new QueryClient();
 
-const Loading = () => <div className="flex items-center justify-center min-h-screen text-muted-foreground">加载中...</div>;
+const Loading = () => <div className="flex items-center justify-center min-h-screen text-muted-foreground">Loading...</div>;
 
 const App = () => (
   <LanguageProvider>
@@ -38,6 +40,8 @@ const App = () => (
               <Route path="/checkin/:sessionId" element={<Suspense fallback={<Loading />}><CheckInPage /></Suspense>} />
               <Route path="/go" element={<Suspense fallback={<Loading />}><GoRedirect /></Suspense>} />
               <Route path="/seat-checkin/:sessionId" element={<Suspense fallback={<Loading />}><SeatCheckinPage /></Suspense>} />
+              <Route path="/board/:boardId" element={<Suspense fallback={<Loading />}><BoardPage /></Suspense>} />
+              <Route path="/board/:boardId/submit" element={<Suspense fallback={<Loading />}><BoardSubmitPage /></Suspense>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
