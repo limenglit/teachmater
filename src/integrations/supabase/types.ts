@@ -415,6 +415,113 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_answers: {
+        Row: {
+          answer: Json
+          created_at: string
+          id: string
+          is_correct: boolean | null
+          question_index: number
+          session_id: string
+          student_name: string
+        }
+        Insert: {
+          answer?: Json
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          question_index?: number
+          session_id: string
+          student_name?: string
+        }
+        Update: {
+          answer?: Json
+          created_at?: string
+          id?: string
+          is_correct?: boolean | null
+          question_index?: number
+          session_id?: string
+          student_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_answers_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          content: string
+          correct_answer: Json
+          created_at: string
+          id: string
+          options: Json
+          tags: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          correct_answer?: Json
+          created_at?: string
+          id?: string
+          options?: Json
+          tags?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          correct_answer?: Json
+          created_at?: string
+          id?: string
+          options?: Json
+          tags?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      quiz_sessions: {
+        Row: {
+          created_at: string
+          creator_token: string
+          ended_at: string | null
+          id: string
+          questions: Json
+          status: string
+          student_names: Json | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_token?: string
+          ended_at?: string | null
+          id?: string
+          questions?: Json
+          status?: string
+          student_names?: Json | null
+          title?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_token?: string
+          ended_at?: string | null
+          id?: string
+          questions?: Json
+          status?: string
+          student_names?: Json | null
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       seat_checkin_records: {
         Row: {
           checked_in_at: string
@@ -502,6 +609,10 @@ export type Database = {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
       }
+      delete_quiz_session: {
+        Args: { p_session_id: string; p_token: string }
+        Returns: undefined
+      }
       delete_topic: {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
@@ -546,6 +657,15 @@ export type Database = {
           p_title?: string
           p_token: string
           p_view_mode?: string
+        }
+        Returns: undefined
+      }
+      update_quiz_session: {
+        Args: {
+          p_session_id: string
+          p_status?: string
+          p_title?: string
+          p_token: string
         }
         Returns: undefined
       }
