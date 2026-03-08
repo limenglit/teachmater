@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { tFormat } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, X, Heart, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Heart, ExternalLink, Download } from 'lucide-react';
 import type { BoardCard } from '@/components/BoardPanel';
+import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon } from '@/lib/board-file-utils';
 
 interface Props {
   cards: BoardCard[];
