@@ -1,7 +1,7 @@
 import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck, BotMessageSquare, Lightbulb, PenBox, FileQuestion } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'checkin' | 'board' | 'toolkit';
+export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'checkin' | 'board' | 'quiz' | 'toolkit';
 
 interface TabItem {
   id: TabId;
