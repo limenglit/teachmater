@@ -184,6 +184,7 @@ export type Database = {
           is_locked: boolean
           moderation_enabled: boolean
           title: string
+          user_id: string | null
           view_mode: string
         }
         Insert: {
@@ -197,6 +198,7 @@ export type Database = {
           is_locked?: boolean
           moderation_enabled?: boolean
           title?: string
+          user_id?: string | null
           view_mode?: string
         }
         Update: {
@@ -210,6 +212,7 @@ export type Database = {
           is_locked?: boolean
           moderation_enabled?: boolean
           title?: string
+          user_id?: string | null
           view_mode?: string
         }
         Relationships: []
