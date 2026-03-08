@@ -2021,6 +2021,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.board': 'ボード',
     'tab.toolkit': 'ツールボックス',
     'tab.quiz': 'テスト',
+    'tab.achieve': 'ポイント',
     'ext.ai': 'AIアシスタント',
     'ext.idea': 'IdeaVas',
     'ext.tip': '同じメールでログイン',
