@@ -2672,6 +2672,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.prev': '이전', 'quiz.next': '다음', 'quiz.submit': '제출', 'quiz.multiHint': '여러 개 선택 가능',
     'quiz.shortPlaceholder': '답변을 입력하세요...', 'quiz.submitSuccess': '제출 완료!', 'quiz.waitForResult': '결과 발표를 기다려주세요',
     'quiz.sessionNotFound': '퀴즈를 찾을 수 없습니다', 'quiz.sessionEnded': '퀴즈가 종료되었습니다', 'quiz.loginRequired': '로그인이 필요합니다',
+    'quiz.localMode': '로컬 모드', 'quiz.cloudMode': '클라우드 동기화', 'quiz.loginToPublish': '로그인 후 퀴즈를 시작하세요', 'quiz.loginForSessions': '로그인 후 온라인 퀴즈 가능', 'quiz.localModeHint': '문제가 로컬에 저장되었습니다',
   },
 };
 
