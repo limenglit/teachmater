@@ -18,6 +18,7 @@ import ClassLibrary from '@/components/ClassLibrary';
 import LanguageSelector from '@/components/LanguageSelector';
 import StoryboardPanel from '@/components/StoryboardPanel';
 import PPTPanel from '@/components/PPTPanel';
+import VisualizationPanel from '@/components/VisualizationPanel';
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
