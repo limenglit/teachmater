@@ -32,6 +32,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.quiz': '测验',
     'tab.sketch': '手绘',
     'tab.ppt': 'PPT',
+    'tab.visual': '可视化',
     'tab.achieve': '积分',
     // External links
     'ext.ai': 'AI助手',
