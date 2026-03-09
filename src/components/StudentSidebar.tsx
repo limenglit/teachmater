@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen, ClipboardPaste, Download, Building2 } from 'lucide-react';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
@@ -21,7 +22,44 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewTimerRef.current !== null) {
+        window.clearTimeout(previewTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleIconKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, action?: () => void) => {
+    if (!action) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      action();
+    }
+  };
+
+  const handleCollapsedMouseEnter = () => {
+    if (previewTimerRef.current !== null) {
+      window.clearTimeout(previewTimerRef.current);
+    }
+    // Small delay avoids accidental hover flash when cursor briefly passes by.
+    previewTimerRef.current = window.setTimeout(() => {
+      setShowPreview(true);
+      previewTimerRef.current = null;
+    }, 120);
+  };
+
+  const handleCollapsedMouseLeave = () => {
+    if (previewTimerRef.current !== null) {
+      window.clearTimeout(previewTimerRef.current);
+      previewTimerRef.current = null;
+    }
+    setShowPreview(false);
+  };
 
   const handleAdd = () => {
     if (newName.trim()) {
@@ -77,18 +115,35 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
 
   if (collapsed) {
     return (
-      <div className="group relative w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2">
-        <button
-          onClick={onToggleCollapse}
-          className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-          title={t('sidebar.expandPanel')}
+      <TooltipProvider delayDuration={250}>
+        <div
+          className="relative w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2 transition-[width] duration-150 ease-out"
+          onMouseEnter={handleCollapsedMouseEnter}
+          onMouseLeave={handleCollapsedMouseLeave}
         >
-          <PanelLeftOpen className="w-4 h-4" />
-        </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onToggleCollapse}
+                onKeyDown={(e) => handleIconKeyDown(e, onToggleCollapse)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                title={t('sidebar.expandPanel')}
+                aria-label={t('sidebar.expandPanel')}
+                type="button"
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t('sidebar.expandPanel')}</TooltipContent>
+          </Tooltip>
         <span className="text-xs text-muted-foreground font-medium writing-vertical">{students.length}{t('sidebar.persons')}</span>
 
         {/* Desktop hover preview in collapsed state */}
-        <div className="pointer-events-none hidden lg:block absolute left-full top-3 ml-2 w-56 rounded-lg border border-border bg-card shadow-lg p-2 opacity-0 translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0 z-50">
+        <div
+          className={`pointer-events-none hidden lg:block absolute left-full top-3 ml-2 w-56 rounded-lg border border-border bg-card shadow-lg p-2 translate-x-1 transition-all duration-150 z-50 ${
+            showPreview ? 'opacity-100 translate-x-0' : 'opacity-0'
+          }`}
+        >
           <div className="text-xs font-semibold text-foreground px-1 pb-1 border-b border-border mb-1">
             {t('sidebar.studentList')} ({students.length}{t('sidebar.persons')})
           </div>
@@ -111,12 +166,14 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
             {t('sidebar.expandPanel')}
           </div>
         </div>
-      </div>
+        </div>
+      </TooltipProvider>
     );
   }
 
   return (
-    <div className="w-64 border-r border-border bg-card flex flex-col h-full min-h-0 overflow-hidden">
+    <TooltipProvider delayDuration={250}>
+    <div className="w-64 border-r border-border bg-card flex flex-col h-full min-h-0 overflow-hidden transition-[width] duration-150 ease-out">
       {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
@@ -126,25 +183,41 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
           </div>
           <div className="flex items-center gap-1">
             {onOpenLibrary && (
-              <button
-                onClick={onOpenLibrary}
-                className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
-                title={t('sidebar.library')}
-              >
-                <Building2 className="w-4 h-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onOpenLibrary}
+                    onKeyDown={(e) => handleIconKeyDown(e, onOpenLibrary)}
+                    className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
+                    title={t('sidebar.library')}
+                    aria-label={t('sidebar.library')}
+                    type="button"
+                  >
+                    <Building2 className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t('sidebar.library')}</TooltipContent>
+              </Tooltip>
             )}
             <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
               {students.length} {t('sidebar.persons')}
             </span>
             {onToggleCollapse && (
-              <button
-                onClick={onToggleCollapse}
-                className="hidden lg:flex p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
-                title={t('sidebar.collapsePanel')}
-              >
-                <PanelLeftClose className="w-4 h-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onToggleCollapse}
+                    onKeyDown={(e) => handleIconKeyDown(e, onToggleCollapse)}
+                    className="hidden lg:flex p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
+                    title={t('sidebar.collapsePanel')}
+                    aria-label={t('sidebar.collapsePanel')}
+                    type="button"
+                  >
+                    <PanelLeftClose className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{t('sidebar.collapsePanel')}</TooltipContent>
+              </Tooltip>
             )}
             {onClose && (
               <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
@@ -236,5 +309,6 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
         </div>
       </div>
     </div>
+    </TooltipProvider>
   );
 }

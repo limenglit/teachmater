@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import {
   Building2, GraduationCap, Plus, Trash2, Edit2, Upload, Download, Check, X,
@@ -55,6 +56,14 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const textFileRef = useRef<HTMLInputElement>(null);
 
   const userId = user?.id;
+
+  const handleIconKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, action?: () => void) => {
+    if (!action) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      action();
+    }
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -449,22 +458,38 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   }
 
   return (
-    <div className="flex-1 flex overflow-hidden">
+    <TooltipProvider delayDuration={250}>
+    <div className="flex-1 flex overflow-hidden transition-opacity duration-150">
       {onBackToList && (
         <div className="w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2">
-          <button
-            onClick={onBackToList}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-            title={t('sidebar.current')}
-          >
-            <PanelLeftOpen className="w-4 h-4" />
-          </button>
-          <button
-            className="p-1.5 rounded-lg bg-accent text-accent-foreground"
-            title={t('sidebar.library')}
-          >
-            <Building2 className="w-4 h-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onBackToList}
+                onKeyDown={(e) => handleIconKeyDown(e, onBackToList)}
+                className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                title={t('sidebar.current')}
+                aria-label={t('sidebar.current')}
+                type="button"
+              >
+                <PanelLeftOpen className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t('sidebar.current')}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className="p-1.5 rounded-lg bg-accent text-accent-foreground"
+                title={t('sidebar.library')}
+                aria-label={t('sidebar.library')}
+                type="button"
+              >
+                <Building2 className="w-4 h-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t('sidebar.library')}</TooltipContent>
+          </Tooltip>
         </div>
       )}
       {/* Left: Tree */}
@@ -726,5 +751,6 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
         </DialogContent>
       </Dialog>
     </div>
+    </TooltipProvider>
   );
 }

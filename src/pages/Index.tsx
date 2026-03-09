@@ -31,20 +31,60 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'list' | 'library'>('list');
+  const [sidebarModeTransitioning, setSidebarModeTransitioning] = useState(false);
+  const [sidebarModeEntering, setSidebarModeEntering] = useState(false);
+  const [sidebarTransitionDirection, setSidebarTransitionDirection] = useState<'to-library' | 'to-list'>('to-library');
   const collapseTimerRef = useRef<number | null>(null);
+  const modeTimerRef = useRef<number | null>(null);
+  const enterFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (collapseTimerRef.current !== null) {
         window.clearTimeout(collapseTimerRef.current);
       }
+      if (modeTimerRef.current !== null) {
+        window.clearTimeout(modeTimerRef.current);
+      }
+      if (enterFrameRef.current !== null) {
+        window.cancelAnimationFrame(enterFrameRef.current);
+      }
     };
   }, []);
+
+  const switchSidebarMode = (nextMode: 'list' | 'library') => {
+    if (sidebarMode === nextMode) return;
+
+    if (modeTimerRef.current !== null) {
+      window.clearTimeout(modeTimerRef.current);
+    }
+    if (enterFrameRef.current !== null) {
+      window.cancelAnimationFrame(enterFrameRef.current);
+    }
+
+    setSidebarTransitionDirection(nextMode === 'library' ? 'to-library' : 'to-list');
+
+    setSidebarModeTransitioning(true);
+    modeTimerRef.current = window.setTimeout(() => {
+      setSidebarMode(nextMode);
+      setSidebarModeEntering(true);
+
+      enterFrameRef.current = window.requestAnimationFrame(() => {
+        setSidebarModeEntering(false);
+        enterFrameRef.current = null;
+      });
+
+      setSidebarModeTransitioning(false);
+      modeTimerRef.current = null;
+    }, 150);
+  };
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
     // Two-stage behavior: switch content first, then collapse after a short delay.
     setSidebarMode('list');
+    setSidebarModeTransitioning(false);
+    setSidebarModeEntering(false);
     setSidebarOpen(false);
     setSidebarCollapsed(false);
 
@@ -136,24 +176,38 @@ const Index = () => {
                 transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
               `}>
-                <div className="h-full min-h-0 flex flex-col">
+                <div
+                  className={`h-full min-h-0 flex flex-col transition-all duration-150 ease-out will-change-transform ${
+                    sidebarModeTransitioning
+                      ? sidebarTransitionDirection === 'to-library'
+                        ? 'opacity-0 -translate-x-2'
+                        : 'opacity-0 translate-x-2'
+                      : sidebarModeEntering
+                        ? sidebarTransitionDirection === 'to-library'
+                          ? 'opacity-0 translate-x-2'
+                          : 'opacity-0 -translate-x-2'
+                        : 'opacity-100 translate-x-0'
+                  }`}
+                >
                   {isApproved && sidebarMode === 'library' ? (
                     <div className="h-full min-h-0 flex flex-col w-[500px] lg:w-[560px]">
-                      <ClassLibrary onBackToList={() => setSidebarMode('list')} />
+                      <ClassLibrary onBackToList={() => switchSidebarMode('list')} />
                     </div>
                   ) : (
                     <StudentSidebar
                       onClose={() => setSidebarOpen(false)}
                       collapsed={sidebarCollapsed}
                       onToggleCollapse={() => setSidebarCollapsed(c => !c)}
-                      onOpenLibrary={isApproved ? () => setSidebarMode('library') : undefined}
+                      onOpenLibrary={isApproved ? () => switchSidebarMode('library') : undefined}
                     />
                   )}
                 </div>
               </div>
             ) : null}
 
-            {renderContent()}
+            <div className="flex-1 min-w-0 overflow-hidden transition-[width] duration-150 ease-out">
+              {renderContent()}
+            </div>
           </div>
         </div>
       </StudentProvider>
