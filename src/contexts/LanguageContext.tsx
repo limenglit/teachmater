@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 
-export type LangCode = 'zh' | 'en' | 'ru' | 'ja' | 'ko';
+export type LangCode = 'zh' | 'en' | 'ru' | 'ja' | 'ko' | 'es';
 
 export interface LangOption {
   code: LangCode;
