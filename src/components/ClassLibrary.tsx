@@ -550,6 +550,30 @@ export default function ClassLibrary() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Text import dialog */}
+      <Dialog open={textImportOpen} onOpenChange={setTextImportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('sidebar.importTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importPaste')}</p>
+              <Textarea
+                value={textImportContent}
+                onChange={e => setTextImportContent(e.target.value)}
+                placeholder="张三&#10;李四&#10;王五"
+                rows={8}
+              />
+              <Button onClick={confirmTextImport} className="mt-2 w-full" size="sm">{t('sidebar.importConfirm')}</Button>
+            </div>
+            <div className="border-t border-border pt-4">
+              <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importFile')}</p>
+              <input ref={textFileRef} type="file" accept=".txt" onChange={handleTextFileUpload} className="text-sm" />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
