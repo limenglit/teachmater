@@ -151,8 +151,9 @@ class UploadQueue {
       next.progress = 40;
       this.notify();
 
-      // Upload with retry
+      // Upload with retry + rate limiting
       let lastError: string | undefined;
+      await uploadLimiter.acquire(); // Wait for rate limit token
       for (let attempt = 0; attempt <= UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
         if (attempt > 0) {
           const delay = UPLOAD_CONFIG.RETRY_DELAY_MS * Math.pow(2, attempt - 1);
