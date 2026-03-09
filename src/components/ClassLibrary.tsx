@@ -46,6 +46,10 @@ export default function ClassLibrary() {
   const [importMode, setImportMode] = useState<'overwrite' | 'append'>('append');
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [textImportOpen, setTextImportOpen] = useState(false);
+  const [textImportContent, setTextImportContent] = useState('');
+  const textFileRef = useRef<HTMLInputElement>(null);
+
   const userId = user?.id;
 
   useEffect(() => {
