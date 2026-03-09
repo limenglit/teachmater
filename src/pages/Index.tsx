@@ -61,7 +61,7 @@ const Index = () => {
           {/* Header */}
           <header className="flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
             <div className="flex items-center gap-2 sm:gap-3">
-              <img src="/logo.png" alt="教创搭子" className="h-[4.5rem] w-auto" />
+              <img src="/logo.png" alt="教创搭子" className="h-14 w-auto" />
               <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">{t('app.subtitle')}</span>
             </div>
             <div className="flex items-center gap-1">
