@@ -803,6 +803,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '商业画布',
     nameKey: 'storyboard.template.businessCanvas',
+    category: 'special',
     params: {
       theme: '商业模式画布九要素：价值主张、客户细分、渠道、客户关系、收入来源、核心资源、关键活动、合作伙伴、成本结构',
       audience: 'college',
