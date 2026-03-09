@@ -11,7 +11,7 @@ import InfographicRenderer from './visual/InfographicRenderer';
 import DataChartRenderer from './visual/DataChartRenderer';
 import ExportButtons from './ExportButtons';
 import { type AnalysisResult, type TemplateStyle, type ChartType, type StructureType, type VisualHistoryItem } from './visual/visualTypes';
-import { checkGuestAiLimit, incrementGuestAiUsage } from '@/lib/guest-ai-limit';
+import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
 
 const HISTORY_KEY = 'visual_history';
 
