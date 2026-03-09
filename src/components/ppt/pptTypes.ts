@@ -61,8 +61,42 @@ export interface PPTProject {
   template: string;
   style: string;
   colorScheme: string;
+  fontFamily: string;
+  fontSize: string;
   createdAt: string;
 }
+
+// Font presets
+export interface PPTFont {
+  id: string;
+  nameKey: string;
+  fontFace: string;
+  sample: string;
+}
+
+export interface PPTFontSize {
+  id: string;
+  nameKey: string;
+  titleSize: number;
+  bodySize: number;
+  captionSize: number;
+}
+
+export const PPT_FONTS: PPTFont[] = [
+  { id: 'yahei', nameKey: 'ppt.font.yahei', fontFace: 'Microsoft YaHei', sample: '微软雅黑' },
+  { id: 'songti', nameKey: 'ppt.font.songti', fontFace: 'SimSun', sample: '宋体正文' },
+  { id: 'kaiti', nameKey: 'ppt.font.kaiti', fontFace: 'KaiTi', sample: '楷体优雅' },
+  { id: 'heiti', nameKey: 'ppt.font.heiti', fontFace: 'SimHei', sample: '黑体醒目' },
+  { id: 'arial', nameKey: 'ppt.font.arial', fontFace: 'Arial', sample: 'Arial Clean' },
+  { id: 'georgia', nameKey: 'ppt.font.georgia', fontFace: 'Georgia', sample: 'Georgia Serif' },
+];
+
+export const PPT_FONT_SIZES: PPTFontSize[] = [
+  { id: 'compact', nameKey: 'ppt.fontSize.compact', titleSize: 28, bodySize: 14, captionSize: 10 },
+  { id: 'standard', nameKey: 'ppt.fontSize.standard', titleSize: 32, bodySize: 16, captionSize: 12 },
+  { id: 'large', nameKey: 'ppt.fontSize.large', titleSize: 40, bodySize: 20, captionSize: 14 },
+  { id: 'xl', nameKey: 'ppt.fontSize.xl', titleSize: 48, bodySize: 24, captionSize: 16 },
+];
 
 // Presets
 export const PPT_TEMPLATES: PPTTemplate[] = [
