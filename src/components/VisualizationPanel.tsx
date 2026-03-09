@@ -101,6 +101,10 @@ export default function VisualizationPanel() {
     setShowHistory(false);
   };
 
+  const handleUpdateAnalysis = useCallback((updated: AnalysisResult) => {
+    setAnalysis(updated);
+  }, []);
+
   // Override structure_type for rendering
   const renderAnalysis = analysis ? { ...analysis, structure_type: structureType } : null;
 
@@ -171,7 +175,7 @@ export default function VisualizationPanel() {
             </div>
             <div ref={exportRef}>
               {/* Infographic */}
-              <InfographicRenderer analysis={renderAnalysis} colorSchemeId={colorScheme} template={template} />
+              <InfographicRenderer analysis={renderAnalysis} colorSchemeId={colorScheme} template={template} onUpdate={handleUpdateAnalysis} />
 
               {/* Data Chart */}
               {renderAnalysis.data_points.length > 0 && (
