@@ -4145,6 +4145,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'library.title': '학급 라이브러리',
     'library.import': '가져오기',
     'library.export': '내보내기',
+    'library.downloadTemplate': '템플릿',
     'library.addCollege': '학과 추가...',
     'library.addClass': '학급 추가...',
     'library.noColleges': '학과 없음',
