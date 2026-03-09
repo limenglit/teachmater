@@ -14,6 +14,7 @@ export const LANGUAGES: LangOption[] = [
   { code: 'ru', label: 'Русский', flag: '🇷🇺' },
   { code: 'ja', label: '日本語', flag: '🇯🇵' },
   { code: 'ko', label: '한국어', flag: '🇰🇷' },
+  { code: 'es', label: 'Español', flag: '🇪🇸' },
 ];
 
 const translations: Record<LangCode, Record<string, string>> = {
