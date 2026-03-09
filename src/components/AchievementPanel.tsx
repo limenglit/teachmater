@@ -271,6 +271,16 @@ export default function AchievementPanel() {
             <Trophy className="w-5 h-5 text-primary" /> {t('achieve.title')}
           </h2>
           <div className="flex items-center gap-2">
+            <Button
+              variant={rosterStudents.length > 0 ? 'default' : 'outline'}
+              size="sm" className="gap-1"
+              onClick={() => setShowRoster(true)}
+            >
+              <Users className="w-3 h-3" />
+              {rosterStudents.length > 0
+                ? tFormat(t('board.studentCount'), rosterStudents.length)
+                : t('board.selectClass')}
+            </Button>
             <Button size="sm" className="gap-1" onClick={() => setShowAddPoints(true)}>
               <Plus className="w-3 h-3" /> {t('achieve.addPoints')}
             </Button>
