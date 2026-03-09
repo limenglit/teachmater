@@ -147,11 +147,14 @@ export default function PPTPanel() {
     try {
       const effectiveColorId = colorScheme === 'custom' ? 'custom' : colorScheme;
       
+      const fontConfig = PPT_FONTS.find(f => f.id === fontFamily) || PPT_FONTS[0];
+      const fontSizeConfig = PPT_FONT_SIZES.find(f => f.id === fontSize) || PPT_FONT_SIZES[1];
+      
       if (format === 'pptx' || format === 'both') {
-        await exportPPTX(outline, effectiveColorId, template);
+        await exportPPTX(outline, effectiveColorId, template, fontConfig.fontFace, fontSizeConfig);
       }
       if (format === 'pdf' || format === 'both') {
-        await exportPDF(outline, effectiveColorId);
+        await exportPDF(outline, effectiveColorId, fontSizeConfig);
       }
       
       // Save to history
