@@ -177,6 +177,7 @@ export default function StoryboardPanel() {
           prompt={prompt}
           isLoading={isLoading}
           onRegenerate={handleGenerate}
+          keywords={currentKeywords}
         />
       </div>
     </div>
