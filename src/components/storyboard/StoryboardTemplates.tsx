@@ -1,7 +1,7 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TEMPLATES, StoryboardParams, DEFAULT_PARAMS } from './types';
+import { TEMPLATES, StoryboardParams, DEFAULT_PARAMS, TemplateConfig } from './types';
 import { Lightbulb } from 'lucide-react';
 
 interface Props {
@@ -11,7 +11,7 @@ interface Props {
 export default function StoryboardTemplates({ onSelect }: Props) {
   const { t } = useLanguage();
 
-  const handleSelect = (template: typeof TEMPLATES[0]) => {
+  const handleSelect = (template: TemplateConfig) => {
     onSelect({ ...DEFAULT_PARAMS, ...template.params });
   };
 
