@@ -10,7 +10,7 @@ import StyleControls from './visual/StyleControls';
 import InfographicRenderer from './visual/InfographicRenderer';
 import DataChartRenderer from './visual/DataChartRenderer';
 import ExportButtons from './ExportButtons';
-import { type AnalysisResult, type TemplateStyle, type ChartType, type StructureType, type VisualHistoryItem } from './visual/visualTypes';
+import { type AnalysisResult, type TemplateStyle, type ChartType, type StructureType, type VisualHistoryItem, type VisualSettings } from './visual/visualTypes';
 import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
 
 const HISTORY_KEY = 'visual_history';
@@ -37,6 +37,7 @@ export default function VisualizationPanel() {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<VisualHistoryItem[]>(loadHistory);
   const [inputText, setInputText] = useState('');
+  const [visualSettings, setVisualSettings] = useState<VisualSettings>({ fontFamily: 'sans', fontSize: 14, layoutDensity: 'normal' });
   const exportRef = useRef<HTMLDivElement>(null);
 
   const handleAnalyze = useCallback(async (text: string) => {
@@ -164,6 +165,8 @@ export default function VisualizationPanel() {
               chartType={chartType}
               onChartChange={setChartType}
               hasData={renderAnalysis.data_points.length > 0}
+              visualSettings={visualSettings}
+              onVisualSettingsChange={setVisualSettings}
             />
           </div>
 
@@ -175,7 +178,7 @@ export default function VisualizationPanel() {
             </div>
             <div ref={exportRef}>
               {/* Infographic */}
-              <InfographicRenderer analysis={renderAnalysis} colorSchemeId={colorScheme} template={template} onUpdate={handleUpdateAnalysis} />
+              <InfographicRenderer analysis={renderAnalysis} colorSchemeId={colorScheme} template={template} onUpdate={handleUpdateAnalysis} visualSettings={visualSettings} />
 
               {/* Data Chart */}
               {renderAnalysis.data_points.length > 0 && (
