@@ -110,7 +110,15 @@ export default function TeamBuilder() {
           <div className="flex items-center gap-2 flex-wrap">
             {user && <TeamworkHistory type="teams" onRestore={handleRestore} />}
             {teams.length > 0 && (
-              <ExportButtons targetRef={printRef} filename={t('team.exportName')} />
+              <>
+                {user && (
+                  <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+                    <Save className="w-4 h-4" />
+                    <span className="hidden sm:inline">{saving ? t('common.loading') : t('teamwork.save')}</span>
+                  </Button>
+                )}
+                <ExportButtons targetRef={printRef} filename={t('team.exportName')} />
+              </>
             )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('team.perTeam')}
