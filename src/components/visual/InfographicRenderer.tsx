@@ -45,16 +45,21 @@ function EditableText({ value, onChange, style, className }: {
   );
 }
 
-export default function InfographicRenderer({ analysis, colorSchemeId, template, onUpdate }: Props) {
+export default function InfographicRenderer({ analysis, colorSchemeId, template, onUpdate, visualSettings }: Props) {
   const scheme = COLOR_SCHEMES.find(s => s.id === colorSchemeId) || COLOR_SCHEMES[0];
   const nodes = analysis.structure_nodes;
-  const isDark = template === 'dark';
-  const bgColor = isDark ? '#1e1e2e' : scheme.bg;
-  const textColor = isDark ? '#cdd6f4' : scheme.text;
+  const isDark = template === 'dark' || template === 'tech';
+  const bgColor = isDark ? '#1e1e2e' : template === 'magazine' ? '#fafaf9' : template === 'elegant' ? '#f8f5f0' : template === 'bold' ? scheme.bg : scheme.bg;
+  const textColor = isDark ? '#cdd6f4' : template === 'elegant' ? '#3c3836' : scheme.text;
   const isPlayful = template === 'playful';
 
-  const borderRadius = isPlayful ? '16px' : template === 'modern' ? '12px' : '4px';
-  const fontFamily = template === 'classic' ? 'Georgia, serif' : 'inherit';
+  const borderRadius = isPlayful ? '16px' : template === 'modern' ? '12px' : template === 'bold' ? '2px' : template === 'elegant' ? '8px' : '4px';
+  const fontDef = FONT_FAMILIES.find(f => f.id === (visualSettings?.fontFamily || 'sans'));
+  const fontFamily = fontDef?.css || 'inherit';
+  const baseFontSize = visualSettings?.fontSize || 14;
+  const density = visualSettings?.layoutDensity || 'normal';
+  const gap = density === 'compact' ? '0.25rem' : density === 'spacious' ? '1rem' : '0.5rem';
+  const padding = density === 'compact' ? '0.5rem' : density === 'spacious' ? '1.5rem' : '0.75rem';
 
   const updateNode = useCallback((index: number, patch: Partial<StructureNode>) => {
     if (!onUpdate) return;
