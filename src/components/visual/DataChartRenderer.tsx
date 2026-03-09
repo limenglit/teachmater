@@ -192,4 +192,12 @@ export default function DataChartRenderer({ data, chartType, colorSchemeId, onDa
     default:
       return null;
   }
+  };
+
+  return (
+    <div>
+      {onDataChange && <DataEditor data={data} scheme={scheme} onDataChange={onDataChange} />}
+      {renderChart()}
+    </div>
+  );
 }
