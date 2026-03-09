@@ -11,7 +11,8 @@ import { toast } from 'sonner';
 import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown, Image, Trash2 } from 'lucide-react';
 import { 
   PPTOutline, PPTProject, 
-  PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES 
+  PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES,
+  PPT_FONTS, PPT_FONT_SIZES, PPT_LAYOUTS,
 } from './ppt/pptTypes';
 import PPTSlidePreview from './ppt/PPTSlidePreview';
 import PPTHistoryPanel, { savePPTProject, getPPTHistory } from './ppt/PPTHistoryPanel';
