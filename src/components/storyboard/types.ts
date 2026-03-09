@@ -344,6 +344,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'PBL项目学习',
     nameKey: 'storyboard.template.pbl',
+    category: 'learning',
     params: {
       theme: '项目式学习流程：提出驱动问题→调研探究→设计方案→制作原型→展示成果→反思改进',
       audience: 'high-school',
