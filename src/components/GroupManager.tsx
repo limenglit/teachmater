@@ -26,6 +26,19 @@ export default function GroupManager() {
   const [dropTarget, setDropTarget] = useState<{ groupId: string; memberIdx: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const saveToHistory = useCallback(async (newGroups: Group[]) => {
+    if (!user || newGroups.length === 0) return;
+    try {
+      const studentCount = newGroups.reduce((sum, g) => sum + g.members.length, 0);
+      const title = `${newGroups.length}${t('teamwork.groupsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      await supabase.from('teamwork_history').insert([{
+        user_id: user.id, type: 'groups' as const, title, data: newGroups as any, student_count: studentCount,
+      }]);
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+    }
+  }, [user, t]);
+
   const autoGroup = useCallback(() => {
     if (students.length === 0) return;
     const shuffled = [...students].sort(() => Math.random() - 0.5);
@@ -38,7 +51,8 @@ export default function GroupManager() {
       newGroups[i % groupCount].members.push({ ...s, isLeader: false });
     });
     setGroups(newGroups);
-  }, [students, groupCount, t]);
+    saveToHistory(newGroups);
+  }, [students, groupCount, t, saveToHistory]);
 
   const toggleLeader = (groupId: string, memberId: string) => {
     setGroups(prev => prev.map(g => {

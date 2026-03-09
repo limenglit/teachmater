@@ -26,6 +26,19 @@ export default function TeamBuilder() {
   const [dropTarget, setDropTarget] = useState<{ teamId: string; memberIdx: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const saveToHistory = useCallback(async (newTeams: Team[]) => {
+    if (!user || newTeams.length === 0) return;
+    try {
+      const studentCount = newTeams.reduce((sum, t) => sum + t.members.length, 0);
+      const title = `${newTeams.length}${t('teamwork.teamsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      await supabase.from('teamwork_history').insert([{
+        user_id: user.id, type: 'teams' as const, title, data: newTeams as any, student_count: studentCount,
+      }]);
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+    }
+  }, [user, t]);
+
   const autoTeam = useCallback(() => {
     if (students.length === 0) return;
     const shuffled = [...students].sort(() => Math.random() - 0.5);
@@ -40,7 +53,8 @@ export default function TeamBuilder() {
       if (teamIdx < newTeams.length) newTeams[teamIdx].members.push({ ...s, isCaptain: false });
     });
     setTeams(newTeams);
-  }, [students, membersPerTeam, t]);
+    saveToHistory(newTeams);
+  }, [students, membersPerTeam, t, saveToHistory]);
 
   const toggleCaptain = (teamId: string, memberId: string) => {
     setTeams(prev => prev.map(t => {
