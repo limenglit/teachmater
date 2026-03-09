@@ -280,6 +280,9 @@ export default function ClassLibrary() {
             </h3>
             <div className="flex gap-1">
               <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleFileSelect} className="hidden" />
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={downloadTemplate}>
+                <Download className="w-3 h-3 mr-1" /> {t('library.downloadTemplate')}
+              </Button>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => fileRef.current?.click()}>
                 <Upload className="w-3 h-3 mr-1" /> {t('library.import')}
               </Button>
