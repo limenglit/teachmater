@@ -467,6 +467,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'PDCA循环',
     nameKey: 'storyboard.template.pdca',
+    category: 'analysis',
     params: {
       theme: 'PDCA持续改进循环：计划(Plan)→执行(Do)→检查(Check)→行动(Act)→再计划',
       audience: 'college',
