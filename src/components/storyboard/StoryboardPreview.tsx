@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Download, Copy, RefreshCw, Maximize2, X, ImageIcon, Type } from 'lucide-react';
 import { useState, lazy, Suspense } from 'react';
 import { toast } from 'sonner';
+import { TextOverlay } from './types';
 
 const TextOverlayEditor = lazy(() => import('./TextOverlayEditor'));
 
@@ -11,6 +12,7 @@ interface Props {
   prompt: string | null;
   isLoading: boolean;
   onRegenerate: () => void;
+  keywords?: TextOverlay[];
 }
 
 export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegenerate }: Props) {
