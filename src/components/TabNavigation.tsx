@@ -1,7 +1,7 @@
-import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation } from 'lucide-react';
+import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation, ImageIcon } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-export type TabId = 'random' | 'teamwork' | 'seats' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'achieve' | 'toolkit';
+export type TabId = 'random' | 'teamwork' | 'seats' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'visual' | 'achieve' | 'toolkit';
 
 interface TabItem {
   id: TabId;
