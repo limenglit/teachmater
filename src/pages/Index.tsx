@@ -19,6 +19,7 @@ import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
 import LanguageSelector from '@/components/LanguageSelector';
 import StoryboardPanel from '@/components/StoryboardPanel';
+import PPTPanel from '@/components/PPTPanel';
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -34,7 +35,7 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    if (tab === 'checkin' || tab === 'board' || tab === 'quiz' || tab === 'achieve') {
+    if (tab === 'checkin' || tab === 'board' || tab === 'quiz' || tab === 'achieve' || tab === 'ppt') {
       setSidebarCollapsed(true);
     }
   };
@@ -48,9 +49,10 @@ const Index = () => {
       case 'checkin': return <CheckInPanel />;
       case 'board': return <BoardPanel />;
       case 'quiz': return <QuizPanel />;
+      case 'sketch': return <StoryboardPanel />;
+      case 'ppt': return <PPTPanel />;
       case 'achieve': return <AchievementPanel />;
       case 'toolkit': return <ToolkitPanel />;
-      case 'sketch': return <StoryboardPanel />;
     }
   };
 
