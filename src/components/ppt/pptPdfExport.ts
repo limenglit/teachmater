@@ -1,12 +1,15 @@
 // PPT PDF export using jspdf
 import jsPDF from 'jspdf';
-import { PPTOutline, PPT_COLOR_SCHEMES } from './pptTypes';
+import { PPTOutline, PPT_COLOR_SCHEMES, PPTFontSize } from './pptTypes';
 
 export async function exportPDF(
   outline: PPTOutline,
-  colorSchemeId: string
+  colorSchemeId: string,
+  fontSizeConfig?: PPTFontSize
 ): Promise<void> {
   const colorScheme = PPT_COLOR_SCHEMES.find(c => c.id === colorSchemeId) || PPT_COLOR_SCHEMES[0];
+  const titleFS = fontSizeConfig?.titleSize || 32;
+  const bodyFS = fontSizeConfig?.bodySize || 16;
   
   // Create PDF in landscape 16:9 format
   const pdf = new jsPDF({

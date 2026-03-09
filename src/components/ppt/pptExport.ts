@@ -1,13 +1,18 @@
 // PPT export using pptxgenjs
 import pptxgen from 'pptxgenjs';
-import { PPTOutline, PPT_COLOR_SCHEMES } from './pptTypes';
+import { PPTOutline, PPT_COLOR_SCHEMES, PPTFontSize } from './pptTypes';
 
 export async function exportPPTX(
   outline: PPTOutline,
   colorSchemeId: string,
-  templateId: string
+  templateId: string,
+  fontFace: string = 'Microsoft YaHei',
+  fontSizeConfig?: PPTFontSize
 ): Promise<void> {
   const colorScheme = PPT_COLOR_SCHEMES.find(c => c.id === colorSchemeId) || PPT_COLOR_SCHEMES[0];
+  const titleFontSize = fontSizeConfig?.titleSize || 32;
+  const bodyFontSize = fontSizeConfig?.bodySize || 16;
+  const captionFontSize = fontSizeConfig?.captionSize || 12;
   
   const pptx = new pptxgen();
   pptx.layout = 'LAYOUT_16x9';
