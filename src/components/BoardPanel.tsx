@@ -172,6 +172,7 @@ export default function BoardPanel() {
         background_color: '#ffffff',
         banned_words: '',
         created_at: new Date().toISOString(),
+        student_names: [],
       };
       const updated = [board, ...boards];
       saveLocalBoards(updated);
