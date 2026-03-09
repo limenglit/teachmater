@@ -489,14 +489,22 @@ export default function PPTPanel() {
                       )}
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                       <Button variant="outline" onClick={() => setStep('design')}>
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         {t('ppt.back')}
                       </Button>
-                      <Button onClick={handleExport} className="flex-1">
+                      <Button variant="outline" onClick={() => handleExport('pdf')}>
+                        <FileDown className="w-4 h-4 mr-2" />
+                        {t('ppt.exportPDF')}
+                      </Button>
+                      <Button onClick={() => handleExport('pptx')} className="flex-1">
                         <Download className="w-4 h-4 mr-2" />
                         {t('ppt.exportPPTX')}
+                      </Button>
+                      <Button onClick={() => handleExport('both')} variant="secondary">
+                        <Download className="w-4 h-4 mr-2" />
+                        {t('ppt.exportBoth')}
                       </Button>
                     </div>
                   </div>
