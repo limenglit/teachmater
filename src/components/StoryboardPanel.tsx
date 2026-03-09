@@ -150,7 +150,7 @@ export default function StoryboardPanel() {
         <CardContent className="flex-1 overflow-hidden">
           <ScrollArea className="h-full pr-4">
             <div className="space-y-6">
-              <StoryboardTemplates onSelect={setParams} />
+              <StoryboardTemplates onSelect={handleSelectTemplate} />
               <Separator />
               <StoryboardForm
                 params={params}
