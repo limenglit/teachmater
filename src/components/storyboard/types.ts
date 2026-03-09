@@ -511,6 +511,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '四象限矩阵',
     nameKey: 'storyboard.template.quadrant',
+    category: 'analysis',
     params: {
       theme: '四象限决策矩阵：紧急重要、紧急不重要、不紧急重要、不紧急不重要四个区域',
       audience: 'general',
