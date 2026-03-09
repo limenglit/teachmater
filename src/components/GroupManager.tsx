@@ -1,11 +1,15 @@
 import { useState, useCallback, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Star, GripVertical } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Shuffle, Star, GripVertical, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExportButtons from '@/components/ExportButtons';
+import TeamworkHistory from '@/components/TeamworkHistory';
+import { toast } from 'sonner';
 
 interface GroupMember { id: string; name: string; isLeader: boolean }
 interface Group { id: string; name: string; members: GroupMember[] }
@@ -15,10 +19,12 @@ const GROUP_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','�
 export default function GroupManager() {
   const { students } = useStudents();
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [groupCount, setGroupCount] = useState(4);
   const [groups, setGroups] = useState<Group[]>([]);
   const [dragItem, setDragItem] = useState<{ groupId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ groupId: string; memberIdx: number } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const autoGroup = useCallback(() => {
     if (students.length === 0) return;
@@ -69,6 +75,36 @@ export default function GroupManager() {
   const handleDragEnd = () => { setDragItem(null); setDropTarget(null); };
   const printRef = useRef<HTMLDivElement>(null);
 
+  const handleSave = async () => {
+    if (!user || groups.length === 0) return;
+    setSaving(true);
+    try {
+      const studentCount = groups.reduce((sum, g) => sum + g.members.length, 0);
+      const title = `${groups.length}${t('teamwork.groupsCount')} · ${new Date().toLocaleDateString()}`;
+      
+      const { error } = await supabase
+        .from('teamwork_history')
+        .insert([{
+          user_id: user.id,
+          type: 'groups' as const,
+          title,
+          data: groups as any,
+          student_count: studentCount,
+        }]);
+      
+      if (error) throw error;
+      toast.success(t('teamwork.saved'));
+    } catch (err) {
+      toast.error(t('teamwork.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRestore = (data: any[]) => {
+    setGroups(data as Group[]);
+  };
+
   return (
     <div className="flex-1 p-4 sm:p-8 overflow-auto">
       <div className="max-w-5xl mx-auto">
@@ -77,8 +113,19 @@ export default function GroupManager() {
             <h2 className="text-lg sm:text-xl font-semibold text-foreground">{t('group.title')}</h2>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t('group.subtitle').replace('{0}', String(students.length))}</p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            {groups.length > 0 && <ExportButtons targetRef={printRef} filename={t('group.exportName')} />}
+          <div className="flex items-center gap-2 flex-wrap">
+            {user && <TeamworkHistory type="groups" onRestore={handleRestore} />}
+            {groups.length > 0 && (
+              <>
+                {user && (
+                  <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
+                    <Save className="w-4 h-4" />
+                    <span className="hidden sm:inline">{saving ? t('common.loading') : t('teamwork.save')}</span>
+                  </Button>
+                )}
+                <ExportButtons targetRef={printRef} filename={t('group.exportName')} />
+              </>
+            )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('group.count')}
               <Input type="number" min={2} max={10} value={groupCount}
