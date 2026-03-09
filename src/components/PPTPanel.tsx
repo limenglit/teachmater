@@ -165,6 +165,8 @@ export default function PPTPanel() {
         template,
         style,
         colorScheme,
+        fontFamily,
+        fontSize,
         createdAt: new Date().toISOString(),
       };
       savePPTProject(project);
