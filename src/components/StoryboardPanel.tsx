@@ -93,6 +93,7 @@ export default function StoryboardPanel() {
           imageUrl: data.imageUrl,
           prompt: data.prompt || '',
           createdAt: new Date().toISOString(),
+          keywords: currentKeywords,
         };
         const newHistory = [newResult, ...history].slice(0, MAX_HISTORY);
         saveHistory(newHistory);
