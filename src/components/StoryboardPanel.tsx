@@ -113,11 +113,21 @@ export default function StoryboardPanel() {
     setParams(result.params);
     setImageUrl(result.imageUrl);
     setPrompt(result.prompt);
+    setCurrentKeywords(result.keywords || []);
   };
 
   const handleClearHistory = () => {
     saveHistory([]);
     toast.success(t('storyboard.historyCleared'));
+  };
+
+  const handleSelectTemplate = (templateParams: StoryboardParams) => {
+    setParams(templateParams);
+    // Find matching template to get keywords
+    const template = TEMPLATES.find(t => t.params.theme === templateParams.theme);
+    if (template) {
+      setCurrentKeywords(template.keywords);
+    }
   };
 
   const guestRemaining = getGuestAIRemaining(!!user);
