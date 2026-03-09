@@ -60,12 +60,12 @@ export async function exportPDF(
       }
     } else if (slide.type === 'toc') {
       // Table of contents
-      pdf.setFontSize(24);
+      pdf.setFontSize(titleFS - 8);
       pdf.setTextColor(...primaryRgb);
       pdf.text(slide.title, 20, 25);
       
       if (slide.bullets) {
-        pdf.setFontSize(14);
+        pdf.setFontSize(bodyFS - 2);
         pdf.setTextColor(...textRgb);
         slide.bullets.forEach((item, i) => {
           pdf.text(`${i + 1}. ${item}`, 30, 45 + i * 12);
