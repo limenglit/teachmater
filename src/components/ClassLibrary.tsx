@@ -233,22 +233,76 @@ export default function ClassLibrary() {
 
   const confirmTextImport = async () => {
     if (!textImportContent.trim() || !selectedClass || !userId) return;
-    const names = textImportContent.split('\n').map(n => n.trim()).filter(Boolean);
-    if (names.length === 0) return;
-    
+    const rawNames = textImportContent.split('\n').map(n => n.trim()).filter(Boolean);
+    if (rawNames.length === 0) return;
+
+    // Deduplicate within input
+    const seen = new Set<string>();
+    const duplicatesInInput: string[] = [];
+    const uniqueInputNames: string[] = [];
+    for (const name of rawNames) {
+      if (seen.has(name)) {
+        duplicatesInInput.push(name);
+      } else {
+        seen.add(name);
+        uniqueInputNames.push(name);
+      }
+    }
+
+    // Check against existing students in this class
+    const existingNames = new Set(
+      students.filter(s => s.class_id === selectedClass).map(s => s.name)
+    );
+    const alreadyExist: string[] = [];
+    const newNames: string[] = [];
+    for (const name of uniqueInputNames) {
+      if (existingNames.has(name)) {
+        alreadyExist.push(name);
+      } else {
+        newNames.push(name);
+      }
+    }
+
+    // Build warning messages
+    const warnings: string[] = [];
+    const emptyLineCount = textImportContent.split('\n').length - rawNames.length;
+    if (emptyLineCount > 0) {
+      warnings.push(`已跳过 ${emptyLineCount} 个空行`);
+    }
+    if (duplicatesInInput.length > 0) {
+      warnings.push(`输入中重复已去重: ${duplicatesInInput.join('、')}`);
+    }
+    if (alreadyExist.length > 0) {
+      warnings.push(`班级中已存在（已跳过）: ${alreadyExist.join('、')}`);
+    }
+
+    if (newNames.length === 0) {
+      toast({
+        title: '无新增学生',
+        description: warnings.join('；'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
-    const inserts = names.map(name => ({
+    const inserts = newNames.map(name => ({
       class_id: selectedClass,
       user_id: userId,
       name,
       student_number: ''
     }));
-    
+
     await supabase.from('class_students').insert(inserts);
     await loadAll();
     setTextImportContent('');
     setTextImportOpen(false);
-    toast({ title: t('library.importSuccess'), description: `${names.length} ${t('library.students')}` });
+
+    const desc = [
+      `成功导入 ${newNames.length} 名学生`,
+      ...warnings,
+    ].join('；');
+    toast({ title: t('library.importSuccess'), description: desc });
   };
 
   const exportClassToExcel = () => {
