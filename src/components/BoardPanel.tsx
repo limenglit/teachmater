@@ -99,6 +99,7 @@ function saveLocalCards(boardId: string, cards: BoardCard[]) {
 export default function BoardPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { students: sidebarStudents } = useStudents();
   const isCloud = true; // All users use cloud for collaboration features
 
   const [boards, setBoards] = useState<Board[]>([]);
@@ -110,7 +111,9 @@ export default function BoardPanel() {
   const [showWordCloud, setShowWordCloud] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
 
   // Load boards
   useEffect(() => {
