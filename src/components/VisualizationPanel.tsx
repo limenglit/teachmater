@@ -41,8 +41,8 @@ export default function VisualizationPanel() {
 
   const handleAnalyze = useCallback(async (text: string) => {
     if (!user) {
-      const { allowed } = checkGuestAiLimit();
-      if (!allowed) {
+      const remaining = getGuestAIRemaining(false);
+      if (remaining <= 0) {
         toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
         return;
       }
