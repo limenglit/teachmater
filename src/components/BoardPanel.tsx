@@ -471,8 +471,18 @@ export default function BoardPanel() {
 
             {isCreator && (
               <>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowQR(true)}>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setShowQR(true); }}>
                   <QrCode className="w-3 h-3" /> {t('board.qrcode')}
+                </Button>
+                <Button
+                  variant={activeBoard.student_names?.length > 0 ? 'default' : 'outline'}
+                  size="sm" className="h-7 text-xs gap-1"
+                  onClick={() => { loadClassesForSelect(); setShowRoster(true); }}
+                >
+                  <Users className="w-3 h-3" />
+                  {activeBoard.student_names?.length > 0
+                    ? tFormat(t('board.studentCount'), activeBoard.student_names.length)
+                    : t('board.selectClass')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowPPT(true)}>
                   <Play className="w-3 h-3" /> {t('board.pptMode')}
