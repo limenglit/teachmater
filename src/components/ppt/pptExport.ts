@@ -219,33 +219,55 @@ export async function exportPPTX(
         fontFace: 'Microsoft YaHei',
       });
       
-      // Image placeholder (left side)
-      pptSlide.addShape('rect', {
-        x: 0.5,
-        y: 1.1,
-        w: 4,
-        h: 3.5,
-        fill: { color: accentColor },
-      });
-      pptSlide.addText('🖼️', {
-        x: 0.5,
-        y: 2.4,
-        w: 4,
-        h: 1,
-        fontSize: 48,
-        align: 'center',
-        fontFace: 'Microsoft YaHei',
-      });
-      pptSlide.addText(slide.imagePlaceholder || '图片占位符', {
-        x: 0.5,
-        y: 3.4,
-        w: 4,
-        h: 0.5,
-        fontSize: 12,
-        align: 'center',
-        color: 'FFFFFF',
-        fontFace: 'Microsoft YaHei',
-      });
+      // Image (left side) - use real image if available
+      if (slide.imageUrl) {
+        try {
+          pptSlide.addImage({
+            path: slide.imageUrl,
+            x: 0.5,
+            y: 1.1,
+            w: 4,
+            h: 3.5,
+          });
+        } catch {
+          // Fallback to placeholder
+          pptSlide.addShape('rect', {
+            x: 0.5, y: 1.1, w: 4, h: 3.5,
+            fill: { color: accentColor },
+          });
+          pptSlide.addText('🖼️', {
+            x: 0.5, y: 2.4, w: 4, h: 1,
+            fontSize: 48, align: 'center', fontFace: 'Microsoft YaHei',
+          });
+        }
+      } else {
+        pptSlide.addShape('rect', {
+          x: 0.5,
+          y: 1.1,
+          w: 4,
+          h: 3.5,
+          fill: { color: accentColor },
+        });
+        pptSlide.addText('🖼️', {
+          x: 0.5,
+          y: 2.4,
+          w: 4,
+          h: 1,
+          fontSize: 48,
+          align: 'center',
+          fontFace: 'Microsoft YaHei',
+        });
+        pptSlide.addText(slide.imagePlaceholder || '图片占位符', {
+          x: 0.5,
+          y: 3.4,
+          w: 4,
+          h: 0.5,
+          fontSize: 12,
+          align: 'center',
+          color: 'FFFFFF',
+          fontFace: 'Microsoft YaHei',
+        });
+      }
       
       // Text content (right side)
       if (slide.bullets) {
@@ -260,6 +282,33 @@ export async function exportPPTX(
           });
         });
       }
+
+      // For any slide type with imageUrl that isn't image-text, add as corner image
+    } else if (slide.imageUrl && !['title', 'section'].includes(slide.type)) {
+      // This handles content/conclusion/etc slides with user-added images
+      // Standard layout first
+      pptSlide.addText(slide.title, {
+        x: 0.5, y: 0.3, w: '55%',
+        fontSize: 28, bold: true, color: primaryColor, fontFace: 'Microsoft YaHei',
+      });
+      pptSlide.addShape('rect', {
+        x: 0.5, y: 0.9, w: 1.5, h: 0.06,
+        fill: { color: accentColor },
+      });
+      if (slide.bullets) {
+        slide.bullets.forEach((item, i) => {
+          pptSlide.addText(`• ${item}`, {
+            x: 0.8, y: 1.2 + i * 0.65, w: '50%',
+            fontSize: 16, color: textColor, fontFace: 'Microsoft YaHei',
+          });
+        });
+      }
+      try {
+        pptSlide.addImage({
+          path: slide.imageUrl,
+          x: 6, y: 1.1, w: 3.5, h: 3.5,
+        });
+      } catch { /* ignore image errors */ }
     } else if (slide.type === 'comparison') {
       // Comparison layout
       pptSlide.addText(slide.title, {

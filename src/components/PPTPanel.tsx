@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown } from 'lucide-react';
+import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown, Image, Trash2 } from 'lucide-react';
 import { 
   PPTOutline, PPTProject, 
   PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES 
@@ -17,6 +17,7 @@ import PPTSlidePreview from './ppt/PPTSlidePreview';
 import PPTHistoryPanel, { savePPTProject, getPPTHistory } from './ppt/PPTHistoryPanel';
 import { exportPPTX } from './ppt/pptExport';
 import { exportPDF } from './ppt/pptPdfExport';
+import PPTImageManager from './ppt/PPTImageManager';
 import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
 
 type Step = 'input' | 'design' | 'preview';
@@ -39,6 +40,7 @@ export default function PPTPanel() {
   const [showHistory, setShowHistory] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [fileLoading, setFileLoading] = useState(false);
+  const [showImageManager, setShowImageManager] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const guestRemaining = getGuestAIRemaining(isLoggedIn);
@@ -454,10 +456,27 @@ export default function PPTPanel() {
                   <div className="lg:col-span-2 space-y-4">
                     <div className="flex items-center justify-between">
                       <Label className="text-base font-medium">{t('ppt.slideDetail')}</Label>
-                      <Button variant="outline" size="sm" onClick={() => handleRegenerateSlide(selectedSlide)}>
-                        <RefreshCw className="w-4 h-4 mr-1" />
-                        {t('ppt.regenerateSlide')}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {outline.slides[selectedSlide]?.imageUrl ? (
+                          <Button variant="outline" size="sm" onClick={() => {
+                            const newSlides = [...outline.slides];
+                            newSlides[selectedSlide] = { ...newSlides[selectedSlide], imageUrl: undefined };
+                            setOutline({ ...outline, slides: newSlides });
+                          }}>
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            {t('ppt.image.removeImage')}
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" onClick={() => setShowImageManager(true)}>
+                            <Image className="w-4 h-4 mr-1" />
+                            {t('ppt.image.addImage')}
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={() => handleRegenerateSlide(selectedSlide)}>
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          {t('ppt.regenerateSlide')}
+                        </Button>
+                      </div>
                     </div>
                     
                     <div 
@@ -465,29 +484,51 @@ export default function PPTPanel() {
                       style={{ backgroundColor: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.background || '#FFF' }}
                     >
                       {outline.slides[selectedSlide] && (
-                        <div className="h-full">
-                          <h3 
-                            className="text-xl font-bold mb-4"
-                            style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.primary }}
-                          >
-                            {outline.slides[selectedSlide].title}
-                          </h3>
-                          {outline.slides[selectedSlide].bullets && (
-                            <ul className="space-y-2">
-                              {outline.slides[selectedSlide].bullets.map((b, i) => (
-                                <li 
-                                  key={i} 
-                                  className="text-sm"
-                                  style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.text }}
-                                >
-                                  • {b}
-                                </li>
-                              ))}
-                            </ul>
+                        <div className="h-full flex gap-4">
+                          {outline.slides[selectedSlide].imageUrl && (
+                            <div className="w-1/3 flex-shrink-0">
+                              <img 
+                                src={outline.slides[selectedSlide].imageUrl} 
+                                alt="" 
+                                className="w-full h-full object-contain rounded"
+                              />
+                            </div>
                           )}
+                          <div className="flex-1">
+                            <h3 
+                              className="text-xl font-bold mb-4"
+                              style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.primary }}
+                            >
+                              {outline.slides[selectedSlide].title}
+                            </h3>
+                            {outline.slides[selectedSlide].bullets && (
+                              <ul className="space-y-2">
+                                {outline.slides[selectedSlide].bullets.map((b, i) => (
+                                  <li 
+                                    key={i} 
+                                    className="text-sm"
+                                    style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.text }}
+                                  >
+                                    • {b}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
+
+                    <PPTImageManager
+                      open={showImageManager}
+                      onClose={() => setShowImageManager(false)}
+                      onSelectImage={(url) => {
+                        if (!outline) return;
+                        const newSlides = [...outline.slides];
+                        newSlides[selectedSlide] = { ...newSlides[selectedSlide], imageUrl: url };
+                        setOutline({ ...outline, slides: newSlides });
+                      }}
+                    />
 
                     <div className="flex gap-3 flex-wrap">
                       <Button variant="outline" onClick={() => setStep('design')}>
