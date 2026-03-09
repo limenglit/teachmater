@@ -288,9 +288,19 @@ export default function ClassLibrary() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setTextImportContent(ev.target?.result as string);
+      const text = ev.target?.result as string;
+      // Detect encoding issues
+      const garbledChars = (text.match(/[�\ufffd]/g) || []).length;
+      if (garbledChars > 0 && text.length > 0 && garbledChars / text.length > 0.05) {
+        toast({
+          title: '编码问题',
+          description: '检测到文件可能存在编码问题（乱码），请确认文件编码为 UTF-8 后重试',
+          variant: 'destructive',
+        });
+      }
+      setTextImportContent(text);
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
     if (textFileRef.current) textFileRef.current.value = '';
   };
 
