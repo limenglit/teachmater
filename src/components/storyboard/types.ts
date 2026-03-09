@@ -168,6 +168,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '思维导图',
     nameKey: 'storyboard.template.mindMap',
+    category: 'thinking',
     params: {
       theme: '中心主题放射状展开：核心概念在中央，四周分支展示关键要点、子主题和细节，用线条连接表示关系',
       audience: 'general',
