@@ -59,8 +59,20 @@ function getToken(): string {
 
 export default function AchievementPanel() {
   const { t } = useLanguage();
-  const { students } = useStudents();
+  const { students: sidebarStudents } = useStudents();
   const token = getToken();
+
+  // Class roster override
+  const [showRoster, setShowRoster] = useState(false);
+  const [rosterStudents, setRosterStudents] = useState<string[]>([]);
+
+  // Effective student list: roster override or sidebar
+  const students = useMemo(() => {
+    if (rosterStudents.length > 0) {
+      return rosterStudents.map((name, i) => ({ id: `roster-${i}`, name }));
+    }
+    return sidebarStudents;
+  }, [rosterStudents, sidebarStudents]);
 
   const [points, setPoints] = useState<PointRecord[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
