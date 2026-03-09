@@ -491,6 +491,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '优缺点对比',
     nameKey: 'storyboard.template.proscons',
+    category: 'analysis',
     params: {
       theme: '优缺点对比分析：左侧列出优点/好处，右侧列出缺点/风险，底部综合评估',
       audience: 'general',
