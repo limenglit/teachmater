@@ -1,6 +1,6 @@
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { type DataPoint, type ChartType, type ColorScheme, COLOR_SCHEMES } from './visualTypes';
+  ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, Treemap } from 'recharts';
+import { type DataPoint, type ChartType, COLOR_SCHEMES } from './visualTypes';
 
 interface Props {
   data: DataPoint[];
@@ -45,6 +45,24 @@ export default function DataChartRenderer({ data, chartType, colorSchemeId }: Pr
           </LineChart>
         </ResponsiveContainer>
       );
+    case 'area':
+      return (
+        <ResponsiveContainer {...commonProps}>
+          <AreaChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <defs>
+              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={scheme.colors[0]} stopOpacity={0.4} />
+                <stop offset="95%" stopColor={scheme.colors[0]} stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
+            <Area type="monotone" dataKey="value" stroke={scheme.colors[0]} fill="url(#areaGrad)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      );
     case 'pie':
       return (
         <ResponsiveContainer {...commonProps}>
@@ -55,6 +73,20 @@ export default function DataChartRenderer({ data, chartType, colorSchemeId }: Pr
               ))}
             </Pie>
             <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      );
+    case 'donut':
+      return (
+        <ResponsiveContainer {...commonProps}>
+          <PieChart>
+            <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={100} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+              {chartData.map((_, i) => (
+                <Cell key={i} fill={scheme.colors[i % scheme.colors.length]} />
+              ))}
+            </Pie>
+            <Tooltip />
+            <Legend />
           </PieChart>
         </ResponsiveContainer>
       );
@@ -83,6 +115,27 @@ export default function DataChartRenderer({ data, chartType, colorSchemeId }: Pr
               ))}
             </Scatter>
           </ScatterChart>
+        </ResponsiveContainer>
+      );
+    case 'treemap':
+      return (
+        <ResponsiveContainer {...commonProps}>
+          <Treemap
+            data={chartData}
+            dataKey="value"
+            nameKey="name"
+            stroke="#fff"
+            content={({ x, y, width, height, name, index }: any) => (
+              <g>
+                <rect x={x} y={y} width={width} height={height} fill={scheme.colors[(index ?? 0) % scheme.colors.length]} stroke="#fff" strokeWidth={2} rx={4} />
+                {width > 40 && height > 20 && (
+                  <text x={x + width / 2} y={y + height / 2} textAnchor="middle" dominantBaseline="central" fontSize={11} fill="#fff" fontWeight={600}>
+                    {name}
+                  </text>
+                )}
+              </g>
+            )}
+          />
         </ResponsiveContainer>
       );
     default:
