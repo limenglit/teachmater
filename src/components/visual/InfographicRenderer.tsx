@@ -1,9 +1,47 @@
-import { type AnalysisResult, type ColorScheme, type TemplateStyle, COLOR_SCHEMES } from './visualTypes';
+import { useState } from 'react';
+import { type AnalysisResult, type ColorScheme, type TemplateStyle, type StructureNode, COLOR_SCHEMES } from './visualTypes';
 
 interface Props {
   analysis: AnalysisResult;
   colorSchemeId: string;
   template: TemplateStyle;
+  onUpdate?: (analysis: AnalysisResult) => void;
+}
+
+function EditableText({ value, onChange, style, className }: {
+  value: string;
+  onChange: (v: string) => void;
+  style?: React.CSSProperties;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { onChange(draft); setEditing(false); }}
+        onKeyDown={e => { if (e.key === 'Enter') { onChange(draft); setEditing(false); } if (e.key === 'Escape') { setDraft(value); setEditing(false); } }}
+        className={className}
+        style={{ ...style, background: 'rgba(255,255,255,0.15)', border: '1px dashed currentColor', outline: 'none', borderRadius: 4, padding: '0 4px', width: '100%' }}
+      />
+    );
+  }
+  return (
+    <span
+      onClick={() => { setDraft(value); setEditing(true); }}
+      className={className}
+      style={{ ...style, cursor: 'pointer', borderBottom: '1px dashed transparent' }}
+      onMouseEnter={e => (e.currentTarget.style.borderBottomColor = 'currentColor')}
+      onMouseLeave={e => (e.currentTarget.style.borderBottomColor = 'transparent')}
+      title="Click to edit"
+    >
+      {value}
+    </span>
+  );
 }
 
 export default function InfographicRenderer({ analysis, colorSchemeId, template }: Props) {
