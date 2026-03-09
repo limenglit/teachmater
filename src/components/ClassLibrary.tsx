@@ -220,6 +220,37 @@ export default function ClassLibrary() {
     toast({ title: t('library.importSuccess'), description: `${previewData.length} ${t('library.students')}` });
   };
 
+  const handleTextFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setTextImportContent(ev.target?.result as string);
+    };
+    reader.readAsText(file);
+    if (textFileRef.current) textFileRef.current.value = '';
+  };
+
+  const confirmTextImport = async () => {
+    if (!textImportContent.trim() || !selectedClass || !userId) return;
+    const names = textImportContent.split('\n').map(n => n.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    
+    setLoading(true);
+    const inserts = names.map(name => ({
+      class_id: selectedClass,
+      user_id: userId,
+      name,
+      student_number: ''
+    }));
+    
+    await supabase.from('class_students').insert(inserts);
+    await loadAll();
+    setTextImportContent('');
+    setTextImportOpen(false);
+    toast({ title: t('library.importSuccess'), description: `${names.length} ${t('library.students')}` });
+  };
+
   const exportClassToExcel = () => {
     if (!selectedClass) return;
     const cls = classes.find(c => c.id === selectedClass);
