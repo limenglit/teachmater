@@ -1,5 +1,6 @@
 import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation, ImageIcon } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
 
 export type TabId = 'random' | 'teamwork' | 'seats' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'visual' | 'achieve' | 'toolkit';
 
