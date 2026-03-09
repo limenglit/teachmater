@@ -77,6 +77,24 @@ export default function TeamBuilder() {
   const handleDragEnd = () => { setDragItem(null); setDropTarget(null); };
   const printRef = useRef<HTMLDivElement>(null);
 
+  const handleSave = async () => {
+    if (!user || teams.length === 0) return;
+    setSaving(true);
+    try {
+      const studentCount = teams.reduce((sum, t) => sum + t.members.length, 0);
+      const title = `${teams.length}${t('teamwork.teamsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      const { error } = await supabase.from('teamwork_history').insert([{
+        user_id: user.id, type: 'teams' as const, title, data: teams as any, student_count: studentCount,
+      }]);
+      if (error) throw error;
+      toast.success(t('teamwork.saved'));
+    } catch (err) {
+      toast.error(t('teamwork.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRestore = (data: any[]) => {
     setTeams(data as Team[]);
   };
