@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen, ClipboardPaste, Download } from 'lucide-react';
+import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen, ClipboardPaste, Download, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,9 +12,10 @@ interface Props {
   onClose?: () => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  onOpenLibrary?: () => void;
 }
 
-export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }: Props) {
+export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, onOpenLibrary }: Props) {
   const { students, addStudent, removeStudent, clearAll, importFromText } = useStudents();
   const { t } = useLanguage();
   const [newName, setNewName] = useState('');
@@ -124,6 +125,15 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
             <h2 className="font-semibold text-foreground">{t('sidebar.studentList')}</h2>
           </div>
           <div className="flex items-center gap-1">
+            {onOpenLibrary && (
+              <button
+                onClick={onOpenLibrary}
+                className="p-1 rounded hover:bg-muted transition-colors text-muted-foreground"
+                title={t('sidebar.library')}
+              >
+                <Building2 className="w-4 h-4" />
+              </button>
+            )}
             <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full font-medium">
               {students.length} {t('sidebar.persons')}
             </span>

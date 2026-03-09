@@ -136,49 +136,20 @@ const Index = () => {
                 transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
               `}>
-            {isApproved && sidebarMode === 'library' ? (
-                  <div className="h-full min-h-0 flex flex-col w-[500px] lg:w-[560px]">
-                    <div className="flex border-b border-border bg-card">
-                      <button
-                        onClick={() => setSidebarMode('list')}
-                        className="flex-1 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {t('sidebar.current')}
-                      </button>
-                      <button
-                        onClick={() => setSidebarMode('library')}
-                        className="flex-1 px-3 py-2 text-xs font-medium text-primary border-b-2 border-primary"
-                      >
-                        {t('sidebar.library')}
-                      </button>
+                <div className="h-full min-h-0 flex flex-col">
+                  {isApproved && sidebarMode === 'library' ? (
+                    <div className="h-full min-h-0 flex flex-col w-[500px] lg:w-[560px]">
+                      <ClassLibrary onBackToList={() => setSidebarMode('list')} />
                     </div>
-                    <ClassLibrary />
-                  </div>
-                ) : (
-                  <div className="h-full min-h-0 flex flex-col">
-                    {isApproved && (
-                      <div className="flex border-b border-border bg-card">
-                        <button
-                          onClick={() => setSidebarMode('list')}
-                          className="flex-1 px-3 py-2 text-xs font-medium text-primary border-b-2 border-primary"
-                        >
-                          {t('sidebar.current')}
-                        </button>
-                        <button
-                          onClick={() => setSidebarMode('library')}
-                          className="flex-1 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {t('sidebar.library')}
-                        </button>
-                      </div>
-                    )}
+                  ) : (
                     <StudentSidebar
                       onClose={() => setSidebarOpen(false)}
                       collapsed={sidebarCollapsed}
                       onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+                      onOpenLibrary={isApproved ? () => setSidebarMode('library') : undefined}
                     />
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ) : null}
 

@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import {
   Building2, GraduationCap, Plus, Trash2, Edit2, Upload, Download, Check, X,
-  ChevronRight, ChevronDown, Users, ArrowRight, Loader2
+  ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -19,7 +19,11 @@ interface ClassItem { id: string; college_id: string; name: string; user_id: str
 interface ClassStudent { id: string; class_id: string; name: string; student_number: string; user_id: string; }
 interface PreviewRow { college: string; className: string; studentNumber: string; name: string; }
 
-export default function ClassLibrary() {
+interface ClassLibraryProps {
+  onBackToList?: () => void;
+}
+
+export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const { user } = useAuth();
   const { importFromText } = useStudents();
   const { t } = useLanguage();
@@ -446,6 +450,23 @@ export default function ClassLibrary() {
 
   return (
     <div className="flex-1 flex overflow-hidden">
+      {onBackToList && (
+        <div className="w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2">
+          <button
+            onClick={onBackToList}
+            className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+            title={t('sidebar.current')}
+          >
+            <PanelLeftOpen className="w-4 h-4" />
+          </button>
+          <button
+            className="p-1.5 rounded-lg bg-accent text-accent-foreground"
+            title={t('sidebar.library')}
+          >
+            <Building2 className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Left: Tree */}
       <div className="w-56 lg:w-64 border-r border-border bg-card flex flex-col overflow-hidden">
         <div className="p-3 border-b border-border">
