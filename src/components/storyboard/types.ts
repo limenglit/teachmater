@@ -537,6 +537,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '六顶思考帽',
     nameKey: 'storyboard.template.sixHats',
+    category: 'creative',
     params: {
       theme: '六顶思考帽：白帽事实、红帽情感、黑帽批判、黄帽乐观、绿帽创意、蓝帽控制',
       audience: 'college',
