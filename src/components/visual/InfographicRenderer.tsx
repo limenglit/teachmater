@@ -277,6 +277,85 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     </div>
   );
 
+  const renderMindmap = () => (
+    <div className="flex flex-col items-center" style={{ fontFamily, gap }}>
+      {/* Center node */}
+      <div className="px-6 py-3 rounded-full shadow-md text-center" style={{ backgroundColor: scheme.colors[0], color: '#fff', fontSize: `${baseFontSize + 2}px`, fontWeight: 700 }}>
+        {nodes[0] ? renderNodeLabel(nodes[0], 0) : analysis.title}
+      </div>
+      {/* Branches */}
+      <div className="flex flex-wrap justify-center" style={{ gap }}>
+        {nodes.slice(1).map((node, i) => (
+          <div key={i + 1} className="flex flex-col items-center" style={{ gap: '4px' }}>
+            <div className="w-0.5 h-4" style={{ backgroundColor: scheme.colors[(i + 1) % scheme.colors.length] }} />
+            <div className="px-3 py-2 rounded-lg shadow-sm text-center" style={{ backgroundColor: scheme.colors[(i + 1) % scheme.colors.length], color: '#fff', borderRadius, fontSize: `${baseFontSize - 1}px`, fontWeight: 600, maxWidth: '140px' }}>
+              {renderNodeLabel(node, i + 1)}
+              {node.description && <div className="text-xs mt-0.5 opacity-80">{renderNodeDesc(node, i + 1)}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderMatrix = () => {
+    const cols = Math.ceil(Math.sqrt(nodes.length));
+    return (
+      <div className="grid gap-2" style={{ fontFamily, gridTemplateColumns: `repeat(${cols}, 1fr)`, gap }}>
+        {nodes.map((node, i) => (
+          <div key={i} className="px-3 py-3 text-center shadow-sm" style={{ backgroundColor: scheme.colors[i % scheme.colors.length], color: '#fff', borderRadius, fontSize: `${baseFontSize - 1}px`, fontWeight: 600 }}>
+            {renderNodeLabel(node, i)}
+            {node.description && <div className="text-xs mt-1 opacity-80">{renderNodeDesc(node, i)}</div>}
+            {node.value != null && <div className="text-lg font-bold mt-1">{node.value}</div>}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderRadial = () => {
+    const count = nodes.length;
+    const radius = 120;
+    return (
+      <div className="flex justify-center" style={{ fontFamily }}>
+        <div className="relative" style={{ width: radius * 2 + 140, height: radius * 2 + 140 }}>
+          {/* Center */}
+          <div className="absolute rounded-full shadow-lg flex items-center justify-center text-center" style={{ left: radius + 70 - 45, top: radius + 70 - 45, width: 90, height: 90, backgroundColor: scheme.colors[0], color: '#fff', fontSize: `${baseFontSize - 2}px`, fontWeight: 700 }}>
+            {analysis.title.slice(0, 8)}
+          </div>
+          {/* Spokes */}
+          {nodes.map((node, i) => {
+            const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+            const x = radius * Math.cos(angle) + radius + 70;
+            const y = radius * Math.sin(angle) + radius + 70;
+            return (
+              <div key={i} className="absolute px-2 py-1.5 text-center shadow-sm" style={{ left: x - 45, top: y - 20, backgroundColor: scheme.colors[i % scheme.colors.length], color: '#fff', borderRadius, width: 90, fontSize: `${baseFontSize - 3}px`, fontWeight: 600 }}>
+                {renderNodeLabel(node, i)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderSwot = () => {
+    const labels = ['S', 'W', 'O', 'T'];
+    const quadrants = [0, 1, 2, 3].map(qi => nodes.filter((_, i) => i % 4 === qi));
+    return (
+      <div className="grid grid-cols-2 gap-1" style={{ fontFamily }}>
+        {quadrants.map((group, qi) => (
+          <div key={qi} className="p-3 rounded-lg" style={{ backgroundColor: scheme.colors[qi % scheme.colors.length], color: '#fff', borderRadius }}>
+            <div className="text-lg font-bold mb-2 opacity-90">{labels[qi]}</div>
+            {group.map((node, i) => (
+              <div key={i} className="text-xs mb-1 opacity-90">• {renderNodeLabel(node, qi + i * 4)}</div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const structureMap: Record<string, () => JSX.Element> = {
     flow: renderFlow,
     pyramid: renderPyramid,
@@ -287,6 +366,10 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     list: renderList,
     hierarchy: renderHierarchy,
     quadrant: renderComparison,
+    mindmap: renderMindmap,
+    matrix: renderMatrix,
+    radial: renderRadial,
+    swot: renderSwot,
   };
 
   const renderer = structureMap[analysis.structure_type] || renderList;
