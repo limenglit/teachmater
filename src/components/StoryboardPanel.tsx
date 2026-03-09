@@ -130,7 +130,7 @@ export default function StoryboardPanel() {
             <Pencil className="w-5 h-5" />
             {t('storyboard.title')}
           </CardTitle>
-          {guestRemaining !== null && (
+          {guestRemaining >= 0 && (
             <p className="text-xs text-muted-foreground">
               {t('storyboard.guestRemaining')}: {guestRemaining}
             </p>
