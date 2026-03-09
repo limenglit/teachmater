@@ -83,3 +83,7 @@ For pre-release quality checks, test matrix, and usability validation, see:
 - Developer Guide: `docs/developer-guide.md`
 - User Manual: `docs/user-manual.md`
 - Lovable Unit Test Prompts: `docs/lovable-unit-test-prompts.md`
+- Lovable Whiteboard Prompts: `docs/lovable-whiteboard-prompts.md`
+- Lovable Quiz Prompts: `docs/lovable-quiz-prompts.md`
+- Lovable PPT Prompts: `docs/lovable-ppt-prompts.md`
+- Lovable Infographic Prompts: `docs/lovable-infographic-prompts.md`
