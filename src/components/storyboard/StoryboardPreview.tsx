@@ -1,8 +1,10 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, RefreshCw, Maximize2, X, ImageIcon } from 'lucide-react';
-import { useState } from 'react';
+import { Download, Copy, RefreshCw, Maximize2, X, ImageIcon, Type } from 'lucide-react';
+import { useState, lazy, Suspense } from 'react';
 import { toast } from 'sonner';
+
+const TextOverlayEditor = lazy(() => import('./TextOverlayEditor'));
 
 interface Props {
   imageUrl: string | null;
@@ -14,6 +16,7 @@ interface Props {
 export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegenerate }: Props) {
   const { t } = useLanguage();
   const [fullscreen, setFullscreen] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   const handleDownload = () => {
     if (!imageUrl) return;
@@ -67,7 +70,11 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-center gap-2 p-4 border-t border-border bg-card">
+        <div className="flex items-center justify-center gap-2 p-4 border-t border-border bg-card flex-wrap">
+          <Button variant="default" size="sm" onClick={() => setShowEditor(true)}>
+            <Type className="w-4 h-4 mr-1" />
+            {t('storyboard.editText')}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setFullscreen(true)}>
             <Maximize2 className="w-4 h-4 mr-1" />
             {t('storyboard.fullscreen')}
@@ -106,6 +113,17 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
             onClick={(e) => e.stopPropagation()}
           />
         </div>
+      )}
+
+      {/* Text Overlay Editor */}
+      {showEditor && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 bg-background/95 flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        }>
+          <TextOverlayEditor imageUrl={imageUrl} onClose={() => setShowEditor(false)} />
+        </Suspense>
       )}
     </>
   );
