@@ -220,6 +220,10 @@ export default function ClassLibrary() {
       classMap.get(row.className)!.push(row);
     }
 
+    let totalInserted = 0;
+    let totalSkippedExisting = 0;
+    const skippedNames: string[] = [];
+
     for (const [collegeName, classMap] of grouped) {
       let college = colleges.find(c => c.name === collegeName);
       if (!college) {
@@ -238,17 +242,45 @@ export default function ClassLibrary() {
 
         if (importMode === 'overwrite') {
           await supabase.from('class_students').delete().eq('class_id', cls.id);
+          const inserts = rows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
+          await supabase.from('class_students').insert(inserts);
+          totalInserted += inserts.length;
+        } else {
+          // Append mode: skip existing names
+          const existingNames = new Set(
+            students.filter(s => s.class_id === cls!.id).map(s => s.name)
+          );
+          const newRows = rows.filter(r => {
+            if (existingNames.has(r.name)) {
+              totalSkippedExisting++;
+              skippedNames.push(r.name);
+              return false;
+            }
+            return true;
+          });
+          if (newRows.length > 0) {
+            const inserts = newRows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
+            await supabase.from('class_students').insert(inserts);
+            totalInserted += inserts.length;
+          }
         }
-
-        const inserts = rows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
-        await supabase.from('class_students').insert(inserts);
       }
     }
 
     await loadAll();
     setImportOpen(false);
     setPreviewData([]);
-    toast({ title: t('library.importSuccess'), description: `${previewData.length} ${t('library.students')}` });
+
+    const parts: string[] = [`成功导入 ${totalInserted} 名学生`];
+    if (totalSkippedExisting > 0) {
+      const uniqueSkipped = [...new Set(skippedNames)].slice(0, 5).join('、');
+      parts.push(`已跳过 ${totalSkippedExisting} 个已存在: ${uniqueSkipped}${skippedNames.length > 5 ? '等' : ''}`);
+    }
+    toast({
+      title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
+      description: parts.join('；'),
+      variant: totalInserted > 0 ? 'default' : 'destructive',
+    });
   };
 
   const handleTextFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
