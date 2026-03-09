@@ -707,6 +707,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '前后对比',
     nameKey: 'storyboard.template.beforeAfter',
+    category: 'compare',
     params: {
       theme: '前后对比展示：改变前的状态/问题→转变过程→改变后的效果/成果',
       audience: 'general',
