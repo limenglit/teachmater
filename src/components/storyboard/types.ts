@@ -82,6 +82,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '五问反思',
     nameKey: 'storyboard.template.fiveWhys',
+    category: 'teaching',
     params: {
       theme: '五问反思法：为什么学习AI？为什么需要批判思维？为什么要验证信息？为什么要负责任地使用？为什么要持续学习？',
       audience: 'college',
