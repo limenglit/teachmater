@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Shuffle, Crown, GripVertical, Save } from 'lucide-react';
+import { Shuffle, Crown, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,7 +24,20 @@ export default function TeamBuilder() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [dragItem, setDragItem] = useState<{ teamId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ teamId: string; memberIdx: number } | null>(null);
-  const [saving, setSaving] = useState(false);
+  
+
+  const saveToHistory = useCallback(async (newTeams: Team[]) => {
+    if (!user || newTeams.length === 0) return;
+    try {
+      const studentCount = newTeams.reduce((sum, t) => sum + t.members.length, 0);
+      const title = `${newTeams.length}${t('teamwork.teamsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      await supabase.from('teamwork_history').insert([{
+        user_id: user.id, type: 'teams' as const, title, data: newTeams as any, student_count: studentCount,
+      }]);
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+    }
+  }, [user, t]);
 
   const autoTeam = useCallback(() => {
     if (students.length === 0) return;
@@ -40,7 +53,8 @@ export default function TeamBuilder() {
       if (teamIdx < newTeams.length) newTeams[teamIdx].members.push({ ...s, isCaptain: false });
     });
     setTeams(newTeams);
-  }, [students, membersPerTeam, t]);
+    saveToHistory(newTeams);
+  }, [students, membersPerTeam, t, saveToHistory]);
 
   const toggleCaptain = (teamId: string, memberId: string) => {
     setTeams(prev => prev.map(t => {
@@ -77,32 +91,6 @@ export default function TeamBuilder() {
   const handleDragEnd = () => { setDragItem(null); setDropTarget(null); };
   const printRef = useRef<HTMLDivElement>(null);
 
-  const handleSave = async () => {
-    if (!user || teams.length === 0) return;
-    setSaving(true);
-    try {
-      const studentCount = teams.reduce((sum, t) => sum + t.members.length, 0);
-      const title = `${teams.length}${t('teamwork.teamsCount')} · ${new Date().toLocaleDateString()}`;
-      
-      const { error } = await supabase
-        .from('teamwork_history')
-        .insert([{
-          user_id: user.id,
-          type: 'teams' as const,
-          title,
-          data: teams as any,
-          student_count: studentCount,
-        }]);
-      
-      if (error) throw error;
-      toast.success(t('teamwork.saved'));
-    } catch (err) {
-      toast.error(t('teamwork.saveFailed'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleRestore = (data: any[]) => {
     setTeams(data as Team[]);
   };
@@ -118,15 +106,7 @@ export default function TeamBuilder() {
           <div className="flex items-center gap-2 flex-wrap">
             {user && <TeamworkHistory type="teams" onRestore={handleRestore} />}
             {teams.length > 0 && (
-              <>
-                {user && (
-                  <Button variant="outline" size="sm" onClick={handleSave} disabled={saving} className="gap-1.5">
-                    <Save className="w-4 h-4" />
-                    <span className="hidden sm:inline">{saving ? t('common.loading') : t('teamwork.save')}</span>
-                  </Button>
-                )}
-                <ExportButtons targetRef={printRef} filename={t('team.exportName')} />
-              </>
+              <ExportButtons targetRef={printRef} filename={t('team.exportName')} />
             )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('team.perTeam')}
