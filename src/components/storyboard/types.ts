@@ -662,6 +662,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'OKR目标',
     nameKey: 'storyboard.template.okr',
+    category: 'goals',
     params: {
       theme: 'OKR目标管理：设定目标(Objective)→定义关键结果(Key Results)→执行追踪→复盘评估',
       audience: 'college',
