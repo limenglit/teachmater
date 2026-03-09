@@ -3,8 +3,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { TEMPLATES, TEMPLATE_CATEGORIES, StoryboardParams, DEFAULT_PARAMS, TemplateConfig, TemplateCategory } from './types';
 import { Lightbulb } from 'lucide-react';
+import TemplateMiniPreview from './TemplateMiniPreview';
 
 interface Props {
   onSelect: (params: StoryboardParams) => void;
@@ -53,15 +55,29 @@ export default function StoryboardTemplates({ onSelect }: Props) {
       <ScrollArea className="h-[180px]">
         <div className="grid grid-cols-2 gap-2 pr-4">
           {filteredTemplates.map((template) => (
-            <Button
-              key={template.name}
-              variant="outline"
-              size="sm"
-              className="h-auto py-2 px-3 text-left justify-start"
-              onClick={() => handleSelect(template)}
-            >
-              <span className="truncate text-xs">{t(template.nameKey)}</span>
-            </Button>
+            <HoverCard key={template.name} openDelay={200} closeDelay={100}>
+              <HoverCardTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-auto py-2 px-3 text-left justify-start"
+                  onClick={() => handleSelect(template)}
+                >
+                  <span className="truncate text-xs">{t(template.nameKey)}</span>
+                </Button>
+              </HoverCardTrigger>
+              <HoverCardContent side="right" align="start" className="w-auto p-2">
+                <div className="space-y-2">
+                  <TemplateMiniPreview 
+                    keywords={template.keywords} 
+                    theme={template.params.theme || ''} 
+                  />
+                  <p className="text-xs text-muted-foreground max-w-[120px] truncate">
+                    {template.params.theme}
+                  </p>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
           ))}
         </div>
       </ScrollArea>
