@@ -24,7 +24,7 @@ export default function GroupManager() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [dragItem, setDragItem] = useState<{ groupId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ groupId: string; memberIdx: number } | null>(null);
-  const [saving, setSaving] = useState(false);
+  
 
   const saveToHistory = useCallback(async (newGroups: Group[]) => {
     if (!user || newGroups.length === 0) return;

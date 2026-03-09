@@ -24,7 +24,7 @@ export default function TeamBuilder() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [dragItem, setDragItem] = useState<{ teamId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ teamId: string; memberIdx: number } | null>(null);
-  const [saving, setSaving] = useState(false);
+  
 
   const saveToHistory = useCallback(async (newTeams: Team[]) => {
     if (!user || newTeams.length === 0) return;
