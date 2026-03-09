@@ -30,6 +30,7 @@ export const COLOR_SCHEMES: ColorScheme[] = [
       '--surface': '210 15% 98%',
       '--border': '210 18% 90%',
       '--ring': '210 45% 55%',
+      '--logo-hue-rotate': '100deg',
     },
   },
   {
@@ -47,6 +48,7 @@ export const COLOR_SCHEMES: ColorScheme[] = [
       '--surface': '220 10% 97%',
       '--border': '220 12% 88%',
       '--ring': '220 30% 35%',
+      '--logo-hue-rotate': '110deg',
     },
   },
   {
@@ -64,6 +66,7 @@ export const COLOR_SCHEMES: ColorScheme[] = [
       '--surface': '35 25% 97%',
       '--border': '30 20% 88%',
       '--ring': '25 65% 52%',
+      '--logo-hue-rotate': '275deg',
     },
   },
   {
@@ -81,6 +84,7 @@ export const COLOR_SCHEMES: ColorScheme[] = [
       '--surface': '145 15% 97%',
       '--border': '150 15% 88%',
       '--ring': '155 35% 42%',
+      '--logo-hue-rotate': '45deg',
     },
   },
   {
@@ -98,6 +102,7 @@ export const COLOR_SCHEMES: ColorScheme[] = [
       '--surface': '260 15% 97%',
       '--border': '265 15% 88%',
       '--ring': '270 40% 55%',
+      '--logo-hue-rotate': '160deg',
     },
   },
   {
@@ -115,6 +120,7 @@ export const COLOR_SCHEMES: ColorScheme[] = [
       '--surface': '335 20% 97%',
       '--border': '340 18% 89%',
       '--ring': '345 50% 55%',
+      '--logo-hue-rotate': '235deg',
     },
   },
 ];
