@@ -134,10 +134,11 @@ export default function CheckInPanel() {
     if (!session) return;
     clearInterval(timerRef.current);
 
-    await supabase
-      .from('checkin_sessions')
-      .update({ status: 'ended', ended_at: new Date().toISOString() })
-      .eq('id', session.id);
+    await supabase.rpc('update_checkin_session', {
+      p_session_id: session.id,
+      p_token: (session as any).creator_token,
+      p_status: 'ended',
+    } as any);
 
     const ended = { ...session, status: 'ended', ended_at: new Date().toISOString() };
     setSession(ended);
