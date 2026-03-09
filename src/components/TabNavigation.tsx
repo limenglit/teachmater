@@ -45,7 +45,8 @@ interface Props {
 
 export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, userEmail }: Props) {
   const { t } = useLanguage();
-  const visibleTabs = tabs.filter(t => !t.requiresAuth || isLoggedIn);
+  const { isFeatureVisible } = useFeatureConfig();
+  const visibleTabs = tabs.filter(tab => (!tab.requiresAuth || isLoggedIn) && isFeatureVisible(tab.id));
 
   return (
     <nav className="flex items-center gap-0.5 px-2 sm:px-4 py-2 border-b border-border bg-card overflow-x-auto scrollbar-hide">
