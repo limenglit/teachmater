@@ -156,10 +156,13 @@ export default function ClassLibrary() {
           return;
         }
 
+        const warnings: string[] = [];
+        let skippedRows = 0;
         const preview: PreviewRow[] = [];
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          if (!row || row.length < 3) continue;
+          if (!row || row.every((c: any) => !c || String(c).trim() === '')) { skippedRows++; continue; }
+          if (row.length < 3) { skippedRows++; continue; }
           if (row.length >= 4) {
             preview.push({ college: String(row[0] || '').trim(), className: String(row[1] || '').trim(), studentNumber: String(row[2] || '').trim(), name: String(row[3] || '').trim() });
           } else {
@@ -167,10 +170,38 @@ export default function ClassLibrary() {
           }
         }
 
-        setPreviewData(preview.filter(r => r.name && r.college && r.className));
+        // Check for garbled encoding (common sign: high ratio of replacement chars)
+        const allText = preview.map(r => r.name + r.college + r.className).join('');
+        const garbledChars = (allText.match(/[�\ufffd]/g) || []).length;
+        if (garbledChars > 0 && garbledChars / allText.length > 0.1) {
+          warnings.push('检测到疑似编码问题（乱码），请确认文件编码为 UTF-8');
+        }
+
+        const validPreview = preview.filter(r => r.name && r.college && r.className);
+        const invalidCount = preview.length - validPreview.length;
+        if (skippedRows > 0) warnings.push(`已跳过 ${skippedRows} 个空行/不完整行`);
+        if (invalidCount > 0) warnings.push(`${invalidCount} 行缺少必填字段已忽略`);
+
+        // Deduplicate within file
+        const seen = new Set<string>();
+        const duplicates: string[] = [];
+        const deduped: PreviewRow[] = [];
+        for (const row of validPreview) {
+          const key = `${row.college}|${row.className}|${row.name}`;
+          if (seen.has(key)) { duplicates.push(row.name); } else { seen.add(key); deduped.push(row); }
+        }
+        if (duplicates.length > 0) {
+          warnings.push(`文件内重复已去重: ${[...new Set(duplicates)].slice(0, 5).join('、')}${duplicates.length > 5 ? '等' : ''}`);
+        }
+
+        if (warnings.length > 0) {
+          toast({ title: '导入预览提示', description: warnings.join('；') });
+        }
+
+        setPreviewData(deduped);
         setImportOpen(true);
       } catch {
-        toast({ title: t('library.parseFailed'), variant: 'destructive' });
+        toast({ title: t('library.parseFailed'), description: '文件解析失败，请检查文件格式或编码（建议使用 UTF-8 编码的 .xlsx 文件）', variant: 'destructive' });
       }
     };
     reader.readAsArrayBuffer(file);
@@ -188,6 +219,10 @@ export default function ClassLibrary() {
       if (!classMap.has(row.className)) classMap.set(row.className, []);
       classMap.get(row.className)!.push(row);
     }
+
+    let totalInserted = 0;
+    let totalSkippedExisting = 0;
+    const skippedNames: string[] = [];
 
     for (const [collegeName, classMap] of grouped) {
       let college = colleges.find(c => c.name === collegeName);
@@ -207,17 +242,45 @@ export default function ClassLibrary() {
 
         if (importMode === 'overwrite') {
           await supabase.from('class_students').delete().eq('class_id', cls.id);
+          const inserts = rows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
+          await supabase.from('class_students').insert(inserts);
+          totalInserted += inserts.length;
+        } else {
+          // Append mode: skip existing names
+          const existingNames = new Set(
+            students.filter(s => s.class_id === cls!.id).map(s => s.name)
+          );
+          const newRows = rows.filter(r => {
+            if (existingNames.has(r.name)) {
+              totalSkippedExisting++;
+              skippedNames.push(r.name);
+              return false;
+            }
+            return true;
+          });
+          if (newRows.length > 0) {
+            const inserts = newRows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
+            await supabase.from('class_students').insert(inserts);
+            totalInserted += inserts.length;
+          }
         }
-
-        const inserts = rows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
-        await supabase.from('class_students').insert(inserts);
       }
     }
 
     await loadAll();
     setImportOpen(false);
     setPreviewData([]);
-    toast({ title: t('library.importSuccess'), description: `${previewData.length} ${t('library.students')}` });
+
+    const parts: string[] = [`成功导入 ${totalInserted} 名学生`];
+    if (totalSkippedExisting > 0) {
+      const uniqueSkipped = [...new Set(skippedNames)].slice(0, 5).join('、');
+      parts.push(`已跳过 ${totalSkippedExisting} 个已存在: ${uniqueSkipped}${skippedNames.length > 5 ? '等' : ''}`);
+    }
+    toast({
+      title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
+      description: parts.join('；'),
+      variant: totalInserted > 0 ? 'default' : 'destructive',
+    });
   };
 
   const handleTextFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -225,9 +288,19 @@ export default function ClassLibrary() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setTextImportContent(ev.target?.result as string);
+      const text = ev.target?.result as string;
+      // Detect encoding issues
+      const garbledChars = (text.match(/[�\ufffd]/g) || []).length;
+      if (garbledChars > 0 && text.length > 0 && garbledChars / text.length > 0.05) {
+        toast({
+          title: '编码问题',
+          description: '检测到文件可能存在编码问题（乱码），请确认文件编码为 UTF-8 后重试',
+          variant: 'destructive',
+        });
+      }
+      setTextImportContent(text);
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
     if (textFileRef.current) textFileRef.current.value = '';
   };
 
