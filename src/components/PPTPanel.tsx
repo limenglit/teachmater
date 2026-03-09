@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X } from 'lucide-react';
 import { 
   PPTOutline, PPTProject, 
   PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES 
@@ -36,8 +36,54 @@ export default function PPTPanel() {
   const [selectedSlide, setSelectedSlide] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [fileLoading, setFileLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const guestRemaining = getGuestAIRemaining(isLoggedIn);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['txt', 'md', 'docx'].includes(ext || '')) {
+      toast.error(t('ppt.fileUnsupported'));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('ppt.fileTooLarge'));
+      return;
+    }
+
+    setFileLoading(true);
+    try {
+      let text = '';
+      if (ext === 'txt' || ext === 'md') {
+        text = await file.text();
+      } else if (ext === 'docx') {
+        const mammoth = await import('mammoth');
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        text = result.value;
+      }
+
+      if (!text.trim()) {
+        toast.error(t('ppt.fileEmpty'));
+        return;
+      }
+
+      setContent(text);
+      setUploadedFileName(file.name);
+      toast.success(t('ppt.fileLoaded'));
+    } catch (error) {
+      console.error('File read error:', error);
+      toast.error(t('ppt.fileReadError'));
+    } finally {
+      setFileLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleGenerate = async () => {
     if (!content.trim()) {
@@ -188,12 +234,49 @@ export default function PPTPanel() {
           <div className="flex-1 overflow-auto p-4">
             {step === 'input' && (
               <div className="max-w-2xl mx-auto space-y-6">
+                {/* File Upload */}
+                <div className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".txt,.md,.docx"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={fileLoading}
+                    className="mb-2"
+                  >
+                    {fileLoading ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2" />
+                    )}
+                    {fileLoading ? t('ppt.fileLoading') : t('ppt.uploadFile')}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">{t('ppt.uploadHint')}</p>
+                  {uploadedFileName && (
+                    <div className="flex items-center justify-center gap-2 mt-2 text-sm text-primary">
+                      <FileText className="w-4 h-4" />
+                      <span>{uploadedFileName}</span>
+                      <button
+                        onClick={() => { setUploadedFileName(''); setContent(''); }}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <Label className="text-base font-medium">{t('ppt.inputContent')}</Label>
                   <p className="text-sm text-muted-foreground mb-2">{t('ppt.inputHint')}</p>
                   <Textarea
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    onChange={(e) => { setContent(e.target.value); setUploadedFileName(''); }}
                     placeholder={t('ppt.inputPlaceholder')}
                     className="min-h-[200px] text-sm"
                   />
