@@ -2804,6 +2804,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'admin.noPending': 'Нет ожидающих',
     'admin.operationFailed': 'Ошибка',
     'admin.batchResult': '{0}: {1} пользователей',
+    'sysconfig.title': 'Настройка функций', 'sysconfig.desc': 'Управление видимостью и лимитами AI', 'sysconfig.guest': 'Гости', 'sysconfig.registered': 'Зарегистрированные', 'sysconfig.featureAccess': 'Модули', 'sysconfig.aiLimit': 'Лимит AI', 'sysconfig.unlimited': 'Без ограничений', 'sysconfig.perDay': '/день', 'sysconfig.save': 'Сохранить', 'sysconfig.saved': 'Сохранено', 'sysconfig.saveFailed': 'Ошибка', 'admin.tabUsers': 'Пользователи', 'admin.tabConfig': 'Настройки',
     'checkinPage.loading': 'Загрузка...',
     'checkinPage.expired': 'Отметка завершена',
     'checkinPage.expiredDesc': 'Сессия истекла',
