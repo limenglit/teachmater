@@ -4,6 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Upload, Sparkles, FileText, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
+import mammoth from 'mammoth';
 
 interface Props {
   onAnalyze: (text: string) => void;
@@ -12,6 +13,7 @@ interface Props {
 
 export default function TextInputArea({ onAnalyze, loading }: Props) {
   const [text, setText] = useState('');
+  const [fileLoading, setFileLoading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { t } = useLanguage();
 
@@ -19,7 +21,7 @@ export default function TextInputArea({ onAnalyze, loading }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!['txt', 'md'].includes(ext || '')) {
+    if (!['txt', 'md', 'docx'].includes(ext || '')) {
       toast({ title: t('visual.fileUnsupported'), variant: 'destructive' });
       return;
     }
@@ -27,9 +29,24 @@ export default function TextInputArea({ onAnalyze, loading }: Props) {
       toast({ title: t('visual.fileTooLarge'), variant: 'destructive' });
       return;
     }
-    const content = await file.text();
-    setText(content);
-    toast({ title: t('visual.fileLoaded') });
+
+    setFileLoading(true);
+    try {
+      if (ext === 'docx') {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        setText(result.value);
+      } else {
+        const content = await file.text();
+        setText(content);
+      }
+      toast({ title: t('visual.fileLoaded') });
+    } catch {
+      toast({ title: t('visual.fileReadError'), variant: 'destructive' });
+    } finally {
+      setFileLoading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
   };
 
   return (
@@ -53,13 +70,14 @@ export default function TextInputArea({ onAnalyze, loading }: Props) {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {loading ? t('visual.analyzing') : t('visual.analyze')}
         </Button>
-        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="gap-1.5">
-          <Upload className="w-4 h-4" />
-          {t('visual.uploadFile')}
+        <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={fileLoading} className="gap-1.5">
+          {fileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+          {fileLoading ? t('visual.fileReading') : t('visual.uploadFile')}
         </Button>
-        <input ref={fileRef} type="file" accept=".txt,.md" className="hidden" onChange={handleFile} />
+        <input ref={fileRef} type="file" accept=".txt,.md,.docx" className="hidden" onChange={handleFile} />
         <span className="text-xs text-muted-foreground ml-auto">{text.length} {t('visual.chars')}</span>
       </div>
+      <p className="text-xs text-muted-foreground">{t('visual.uploadHint')}</p>
     </div>
   );
 }
