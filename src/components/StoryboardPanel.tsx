@@ -119,7 +119,7 @@ export default function StoryboardPanel() {
     toast.success(t('storyboard.historyCleared'));
   };
 
-  const guestRemaining = !user ? getGuestAIRemaining() : null;
+  const guestRemaining = getGuestAIRemaining(!!user);
 
   return (
     <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
