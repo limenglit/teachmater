@@ -219,6 +219,7 @@ export type Database = {
           id: string
           is_locked: boolean
           moderation_enabled: boolean
+          student_names: Json | null
           title: string
           user_id: string | null
           view_mode: string
@@ -233,6 +234,7 @@ export type Database = {
           id?: string
           is_locked?: boolean
           moderation_enabled?: boolean
+          student_names?: Json | null
           title?: string
           user_id?: string | null
           view_mode?: string
@@ -247,6 +249,7 @@ export type Database = {
           id?: string
           is_locked?: boolean
           moderation_enabled?: boolean
+          student_names?: Json | null
           title?: string
           user_id?: string | null
           view_mode?: string
@@ -965,21 +968,38 @@ export type Database = {
         Returns: undefined
       }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
-      update_board: {
-        Args: {
-          p_background_color?: string
-          p_banned_words?: string
-          p_board_id: string
-          p_columns?: Json
-          p_description?: string
-          p_is_locked?: boolean
-          p_moderation_enabled?: boolean
-          p_title?: string
-          p_token: string
-          p_view_mode?: string
-        }
-        Returns: undefined
-      }
+      update_board:
+        | {
+            Args: {
+              p_background_color?: string
+              p_banned_words?: string
+              p_board_id: string
+              p_columns?: Json
+              p_description?: string
+              p_is_locked?: boolean
+              p_moderation_enabled?: boolean
+              p_title?: string
+              p_token: string
+              p_view_mode?: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_background_color?: string
+              p_banned_words?: string
+              p_board_id: string
+              p_columns?: Json
+              p_description?: string
+              p_is_locked?: boolean
+              p_moderation_enabled?: boolean
+              p_student_names?: Json
+              p_title?: string
+              p_token: string
+              p_view_mode?: string
+            }
+            Returns: undefined
+          }
       update_poll: {
         Args: {
           p_poll_id: string
