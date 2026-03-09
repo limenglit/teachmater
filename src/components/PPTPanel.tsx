@@ -16,6 +16,7 @@ import {
 import PPTSlidePreview from './ppt/PPTSlidePreview';
 import PPTHistoryPanel, { savePPTProject, getPPTHistory } from './ppt/PPTHistoryPanel';
 import { exportPPTX } from './ppt/pptExport';
+import { exportPDF } from './ppt/pptPdfExport';
 import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
 
 type Step = 'input' | 'design' | 'preview';
