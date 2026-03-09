@@ -49,6 +49,7 @@ export default function PPTPanel() {
   const [showHistory, setShowHistory] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [fileLoading, setFileLoading] = useState(false);
+  const [showImageManager, setShowImageManager] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const guestRemaining = getGuestAIRemaining(isLoggedIn);
