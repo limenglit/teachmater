@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = [
   'https://teachmater.lovable.app',
@@ -21,6 +22,26 @@ serve(async (req) => {
   }
 
   try {
+    // Auth check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
     const { content, audience } = await req.json();
     
     if (!content || content.trim().length < 10) {
@@ -35,11 +56,12 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const audiencePrompt = {
+    const audienceMap: Record<string, string> = {
       report: "汇报型风格，重点突出结论和数据支撑",
       teaching: "教学型风格，循序渐进，便于理解",
       marketing: "营销型风格，突出亮点和说服力",
-    }[audience] || "通用风格";
+    };
+    const audiencePrompt = audienceMap[audience as string] || "通用风格";
 
     const systemPrompt = `你是专业的PPT大纲生成专家。根据用户提供的文稿内容，生成结构化的PPT大纲。
 
