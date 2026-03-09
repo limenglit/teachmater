@@ -2731,6 +2731,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'library.title': 'Библиотека',
     'library.import': 'Импорт',
     'library.export': 'Экспорт',
+    'library.downloadTemplate': 'Шаблон',
     'library.addCollege': 'Добавить...',
     'library.addClass': 'Добавить класс...',
     'library.noColleges': 'Нет факультетов',
