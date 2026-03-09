@@ -1,10 +1,20 @@
 // PPT generation types and presets
 
+export type PPTSlideType = 'title' | 'toc' | 'content' | 'section' | 'conclusion' | 'two-column' | 'image-text' | 'comparison' | 'quote' | 'timeline';
+
 export interface PPTSlide {
-  type: 'title' | 'toc' | 'content' | 'section' | 'chart' | 'conclusion';
+  type: PPTSlideType;
   title: string;
   bullets?: string[];
   subtitle?: string;
+  leftBullets?: string[];
+  rightBullets?: string[];
+  leftTitle?: string;
+  rightTitle?: string;
+  quoteText?: string;
+  quoteAuthor?: string;
+  imagePlaceholder?: string;
+  timelineItems?: { year: string; text: string }[];
 }
 
 export interface PPTOutline {
@@ -23,6 +33,13 @@ export interface PPTTemplate {
 export interface PPTStyle {
   id: string;
   nameKey: string;
+  description: string;
+}
+
+export interface PPTLayout {
+  id: PPTSlideType;
+  nameKey: string;
+  icon: string;
   description: string;
 }
 
@@ -58,6 +75,15 @@ export const PPT_STYLES: PPTStyle[] = [
   { id: 'minimal', nameKey: 'ppt.style.minimal', description: '简洁留白' },
   { id: 'professional', nameKey: 'ppt.style.professional', description: '专业严谨' },
   { id: 'storytelling', nameKey: 'ppt.style.storytelling', description: '故事化叙述' },
+];
+
+export const PPT_LAYOUTS: PPTLayout[] = [
+  { id: 'content', nameKey: 'ppt.layout.content', icon: '📝', description: '标准内容页' },
+  { id: 'two-column', nameKey: 'ppt.layout.twoColumn', icon: '▥', description: '左右双栏' },
+  { id: 'image-text', nameKey: 'ppt.layout.imageText', icon: '🖼️', description: '图文混排' },
+  { id: 'comparison', nameKey: 'ppt.layout.comparison', icon: '⚖️', description: '对比分析' },
+  { id: 'quote', nameKey: 'ppt.layout.quote', icon: '💬', description: '引用名言' },
+  { id: 'timeline', nameKey: 'ppt.layout.timeline', icon: '📅', description: '时间线' },
 ];
 
 export const PPT_COLOR_SCHEMES: PPTColorScheme[] = [
