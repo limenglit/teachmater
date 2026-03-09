@@ -685,6 +685,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '行动计划表',
     nameKey: 'storyboard.template.actionPlan',
+    category: 'goals',
     params: {
       theme: '行动计划模板：目标描述→具体任务→负责人→截止日期→资源需求→进度状态',
       audience: 'teacher',
