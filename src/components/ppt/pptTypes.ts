@@ -14,6 +14,7 @@ export interface PPTSlide {
   quoteText?: string;
   quoteAuthor?: string;
   imagePlaceholder?: string;
+  imageUrl?: string;
   timelineItems?: { year: string; text: string }[];
 }
 
