@@ -11,7 +11,6 @@ interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
   content: string;
   options: string[];
-  correct_answer: string | string[];
 }
 
 interface Session {
