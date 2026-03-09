@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { X, Plus, Download, Trash2, Move } from 'lucide-react';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
+import { TextOverlay } from './types';
 
 interface TextLayer {
   id: string;
@@ -23,6 +24,7 @@ interface TextLayer {
 interface Props {
   imageUrl: string;
   onClose: () => void;
+  initialKeywords?: TextOverlay[];
 }
 
 const FONTS = [
