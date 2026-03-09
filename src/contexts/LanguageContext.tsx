@@ -4216,6 +4216,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'admin.noPending': '대기 중인 사용자 없음',
     'admin.operationFailed': '작업 실패',
     'admin.batchResult': '{1}명을 {0}',
+    'sysconfig.title': '기능 설정', 'sysconfig.desc': '사용자 유형별 기능 제어', 'sysconfig.guest': '게스트', 'sysconfig.registered': '등록 사용자', 'sysconfig.featureAccess': '기능 모듈', 'sysconfig.aiLimit': 'AI 일일 제한', 'sysconfig.unlimited': '무제한', 'sysconfig.perDay': '회/일', 'sysconfig.save': '저장', 'sysconfig.saved': '저장 완료', 'sysconfig.saveFailed': '저장 실패', 'admin.tabUsers': '사용자', 'admin.tabConfig': '기능 설정',
     'checkinPage.loading': '로딩 중...',
     'checkinPage.expired': '출석 종료',
     'checkinPage.expiredDesc': '이 세션은 만료되었습니다',
