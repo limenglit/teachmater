@@ -165,6 +165,8 @@ export default function VisualizationPanel() {
               chartType={chartType}
               onChartChange={setChartType}
               hasData={renderAnalysis.data_points.length > 0}
+              visualSettings={visualSettings}
+              onVisualSettingsChange={setVisualSettings}
             />
           </div>
 

@@ -117,27 +117,28 @@ export default function DataChartRenderer({ data, chartType, colorSchemeId }: Pr
           </ScatterChart>
         </ResponsiveContainer>
       );
-    case 'treemap':
+    case 'treemap': {
+      const treemapData = chartData.map((d, i) => ({
+        ...d,
+        fill: scheme.colors[i % scheme.colors.length],
+      }));
       return (
         <ResponsiveContainer {...commonProps}>
           <Treemap
-            data={chartData}
+            data={treemapData}
             dataKey="value"
             nameKey="name"
             stroke="#fff"
-            content={({ x, y, width, height, name, index }: any) => (
-              <g>
-                <rect x={x} y={y} width={width} height={height} fill={scheme.colors[(index ?? 0) % scheme.colors.length]} stroke="#fff" strokeWidth={2} rx={4} />
-                {width > 40 && height > 20 && (
-                  <text x={x + width / 2} y={y + height / 2} textAnchor="middle" dominantBaseline="central" fontSize={11} fill="#fff" fontWeight={600}>
-                    {name}
-                  </text>
-                )}
-              </g>
-            )}
-          />
+            fill={scheme.colors[0]}
+          >
+            {treemapData.map((entry, i) => (
+              <Cell key={i} fill={scheme.colors[i % scheme.colors.length]} />
+            ))}
+            <Tooltip />
+          </Treemap>
         </ResponsiveContainer>
       );
+    }
     default:
       return null;
   }
