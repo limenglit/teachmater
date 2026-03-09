@@ -83,9 +83,7 @@ export default function StoryboardPanel() {
         setPrompt(data.prompt || '');
 
         // Record guest usage
-        if (!user) {
-          recordGuestAIUsage();
-        }
+        recordGuestAIUsage(!!user);
 
         // Add to history
         const newResult: StoryboardResult = {
