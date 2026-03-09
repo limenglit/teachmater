@@ -56,9 +56,23 @@ const accent = (text: string, x: number, y: number, color = '#e74c3c'): TextOver
   text, x, y, fontSize: 18, fontFamily: 'Ma Shan Zheng', fontWeight: '500', color,
 });
 
+export type TemplateCategory = 'teaching' | 'thinking' | 'learning' | 'analysis' | 'creative' | 'goals' | 'compare' | 'special';
+
+export const TEMPLATE_CATEGORIES: { key: TemplateCategory; nameKey: string }[] = [
+  { key: 'teaching', nameKey: 'storyboard.category.teaching' },
+  { key: 'thinking', nameKey: 'storyboard.category.thinking' },
+  { key: 'learning', nameKey: 'storyboard.category.learning' },
+  { key: 'analysis', nameKey: 'storyboard.category.analysis' },
+  { key: 'creative', nameKey: 'storyboard.category.creative' },
+  { key: 'goals', nameKey: 'storyboard.category.goals' },
+  { key: 'compare', nameKey: 'storyboard.category.compare' },
+  { key: 'special', nameKey: 'storyboard.category.special' },
+];
+
 export interface TemplateConfig {
   name: string;
   nameKey: string;
+  category: TemplateCategory;
   params: Partial<StoryboardParams>;
   keywords: TextOverlay[];
 }
