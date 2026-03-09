@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X } from 'lucide-react';
+import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown } from 'lucide-react';
 import { 
   PPTOutline, PPTProject, 
   PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES 
