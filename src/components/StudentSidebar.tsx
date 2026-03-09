@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen, ClipboardPaste, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   onClose?: () => void;
@@ -46,6 +47,31 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
       setImportText('');
       setImportOpen(false);
     }
+  };
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        importFromText(text);
+        toast({ title: t('sidebar.pasteSuccess'), description: `${text.trim().split(/\n/).filter(Boolean).length} ${t('sidebar.persons')}` });
+      }
+    } catch {
+      toast({ title: t('sidebar.pasteFailed'), variant: 'destructive' });
+    }
+  };
+
+  const handleDownload = () => {
+    if (students.length === 0) return;
+    const text = students.map(s => s.name).join('\n');
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `${t('sidebar.studentList')}.txt`;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: t('sidebar.downloadSuccess') });
   };
 
   if (collapsed) {
@@ -95,7 +121,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
       </div>
 
       {/* Student List */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-2 pb-24">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2">
         {students.map((student) => (
           <div
             key={student.id}
@@ -118,8 +144,9 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
         )}
       </div>
 
-      {/* Add Student */}
-      <div className="sticky bottom-0 p-3 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 space-y-2 shadow-[0_-6px_16px_-12px_hsl(var(--foreground)/0.35)] pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      {/* Bottom Actions - no longer sticky, just a normal bottom section */}
+      <div className="flex-shrink-0 p-3 border-t border-border bg-card space-y-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+        {/* Add student row */}
         <div className="flex gap-1.5">
           <Input
             value={newName}
@@ -132,11 +159,15 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
             <Plus className="w-4 h-4" />
           </Button>
         </div>
-        <div className="flex gap-1.5">
+        {/* Action buttons row */}
+        <div className="flex gap-1 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handlePasteFromClipboard} className="flex-1 h-8 text-xs font-medium min-w-0" title={t('sidebar.paste')}>
+            <ClipboardPaste className="w-3 h-3 mr-1 flex-shrink-0" /> {t('sidebar.paste')}
+          </Button>
           <Dialog open={importOpen} onOpenChange={setImportOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs font-medium">
-                <Upload className="w-3 h-3 mr-1" /> {t('sidebar.import')}
+              <Button variant="outline" size="sm" className="flex-1 h-8 text-xs font-medium min-w-0">
+                <Upload className="w-3 h-3 mr-1 flex-shrink-0" /> {t('sidebar.import')}
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -161,8 +192,11 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
               </div>
             </DialogContent>
           </Dialog>
-          <Button variant="outline" size="sm" onClick={clearAll} className="h-8 text-xs font-medium text-destructive border-destructive/30 hover:bg-destructive/5">
-            <Trash2 className="w-3 h-3 mr-1" /> {t('sidebar.clear')}
+          <Button variant="outline" size="sm" onClick={handleDownload} disabled={students.length === 0} className="h-8 text-xs font-medium px-2" title={t('sidebar.download')}>
+            <Download className="w-3 h-3" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={clearAll} className="h-8 text-xs font-medium px-2 text-destructive border-destructive/30 hover:bg-destructive/5" title={t('sidebar.clear')}>
+            <Trash2 className="w-3 h-3" />
           </Button>
         </div>
       </div>
