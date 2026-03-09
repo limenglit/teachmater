@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
-import { type AnalysisResult, type TemplateStyle, type StructureNode, COLOR_SCHEMES } from './visualTypes';
+import { type AnalysisResult, type TemplateStyle, type StructureNode, type VisualSettings, COLOR_SCHEMES, FONT_FAMILIES } from './visualTypes';
 
 interface Props {
   analysis: AnalysisResult;
   colorSchemeId: string;
   template: TemplateStyle;
   onUpdate?: (analysis: AnalysisResult) => void;
+  visualSettings?: VisualSettings;
 }
 
 function EditableText({ value, onChange, style, className }: {
