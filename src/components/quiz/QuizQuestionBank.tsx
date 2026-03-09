@@ -46,7 +46,7 @@ interface Props {
 export default function QuizQuestionBank({
   questions, setQuestions, categories, setCategories,
   selectedIds, setSelectedIds, onStartSession,
-  sessionTitle, setSessionTitle, isGuest,
+  sessionTitle, setSessionTitle, isGuest, rosterButton,
 }: Props) {
   const { t } = useLanguage();
   const { user } = useAuth();
