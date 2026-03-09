@@ -410,8 +410,12 @@ export default function SeatChart() {
           </div>
           {seats.length > 0 && <ExportButtons targetRef={printRef} filename={t('seat.exportName')} />}
           {seats.length > 0 && (
-            <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-              <QrCode className="w-4 h-4" /> {t('seat.checkin')}
+            <Button
+              onClick={() => setCheckinOpen(true)}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md animate-pulse hover:animate-none"
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              {t('seat.checkin')}
             </Button>
           )}
           <Button onClick={autoSeat} className="gap-2 ml-auto">
