@@ -31,6 +31,7 @@ export interface Board {
   background_color: string;
   banned_words: string;
   created_at: string;
+  student_names: string[];
 }
 
 export interface BoardCard {
