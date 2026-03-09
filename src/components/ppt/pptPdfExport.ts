@@ -43,18 +43,18 @@ export async function exportPDF(
 
     if (slide.type === 'title') {
       // Title slide
-      pdf.setFontSize(36);
+      pdf.setFontSize(titleFS + 4);
       pdf.setTextColor(...primaryRgb);
       pdf.text(slide.title, pageWidth / 2, 70, { align: 'center' });
       
       if (slide.subtitle) {
-        pdf.setFontSize(16);
+        pdf.setFontSize(bodyFS);
         pdf.setTextColor(...textRgb);
         pdf.text(slide.subtitle, pageWidth / 2, 90, { align: 'center' });
       }
       
       if (outline.keywords.length > 0) {
-        pdf.setFontSize(10);
+        pdf.setFontSize(bodyFS - 6);
         pdf.setTextColor(...accentRgb);
         pdf.text(outline.keywords.join('  •  '), pageWidth / 2, 110, { align: 'center' });
       }
