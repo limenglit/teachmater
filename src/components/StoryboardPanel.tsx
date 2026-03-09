@@ -9,7 +9,7 @@ import StoryboardForm from './storyboard/StoryboardForm';
 import StoryboardPreview from './storyboard/StoryboardPreview';
 import StoryboardTemplates from './storyboard/StoryboardTemplates';
 import StoryboardHistory from './storyboard/StoryboardHistory';
-import { StoryboardParams, StoryboardResult, DEFAULT_PARAMS } from './storyboard/types';
+import { StoryboardParams, StoryboardResult, DEFAULT_PARAMS, TextOverlay, TEMPLATES } from './storyboard/types';
 import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
 import { supabase } from '@/integrations/supabase/client';
 import { Pencil } from 'lucide-react';
@@ -25,6 +25,7 @@ export default function StoryboardPanel() {
   const [prompt, setPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<StoryboardResult[]>([]);
+  const [currentKeywords, setCurrentKeywords] = useState<TextOverlay[]>([]);
 
   // Load history from localStorage
   useEffect(() => {
