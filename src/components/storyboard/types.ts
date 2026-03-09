@@ -238,6 +238,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '鱼骨图',
     nameKey: 'storyboard.template.fishbone',
+    category: 'thinking',
     params: {
       theme: '因果分析鱼骨图：主干表示问题结果，鱼骨分支展示人员、方法、材料、设备、环境等原因类别',
       audience: 'college',
