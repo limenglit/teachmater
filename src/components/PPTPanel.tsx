@@ -182,6 +182,8 @@ export default function PPTPanel() {
     setTemplate(project.template);
     setStyle(project.style);
     setColorScheme(project.colorScheme);
+    setFontFamily(project.fontFamily || 'yahei');
+    setFontSize(project.fontSize || 'standard');
     setStep('preview');
     setShowHistory(false);
   };
