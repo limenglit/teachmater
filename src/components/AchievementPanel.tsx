@@ -680,6 +680,17 @@ export default function AchievementPanel() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <ClassRosterPicker
+          open={showRoster}
+          onOpenChange={setShowRoster}
+          onSelect={(names) => {
+            setRosterStudents(names);
+            toast({ title: t('board.classLinked'), description: tFormat(t('board.studentCount'), names.length) });
+          }}
+          currentCount={rosterStudents.length}
+          onClear={() => setRosterStudents([])}
+        />
       </div>
     </div>
   );
