@@ -1,7 +1,7 @@
 // Guest AI usage limiter - daily quota for non-registered users
 
 const GUEST_AI_KEY = 'guest-ai-usage';
-const GUEST_AI_DAILY_LIMIT = 5; // max AI calls per day for guests
+let GUEST_AI_DAILY_LIMIT = 5; // default, can be overridden by system config
 
 interface GuestAIUsage {
   date: string; // YYYY-MM-DD
@@ -17,7 +17,6 @@ function getUsage(): GuestAIUsage {
     const raw = localStorage.getItem(GUEST_AI_KEY);
     if (!raw) return { date: getToday(), count: 0 };
     const parsed = JSON.parse(raw) as GuestAIUsage;
-    // Reset if different day
     if (parsed.date !== getToday()) return { date: getToday(), count: 0 };
     return parsed;
   } catch {
@@ -30,22 +29,33 @@ function saveUsage(usage: GuestAIUsage) {
 }
 
 /**
- * Check if guest can use AI. Returns remaining count.
- * Returns -1 if user is logged in (unlimited).
+ * Set the dynamic daily limit from system config
  */
-export function getGuestAIRemaining(isLoggedIn: boolean): number {
-  if (isLoggedIn) return -1; // unlimited
+export function setGuestAIDailyLimit(limit: number) {
+  GUEST_AI_DAILY_LIMIT = limit;
+}
+
+/**
+ * Check if guest can use AI. Returns remaining count.
+ * Returns -1 if unlimited.
+ */
+export function getGuestAIRemaining(isLoggedIn: boolean, dynamicLimit?: number): number {
+  const limit = dynamicLimit ?? GUEST_AI_DAILY_LIMIT;
+  if (limit === -1) return -1; // unlimited
+  if (isLoggedIn && dynamicLimit === undefined) return -1;
   const usage = getUsage();
-  return Math.max(0, GUEST_AI_DAILY_LIMIT - usage.count);
+  return Math.max(0, limit - usage.count);
 }
 
 /**
  * Record one AI usage for guest. Returns false if over limit.
  */
-export function recordGuestAIUsage(isLoggedIn: boolean): boolean {
-  if (isLoggedIn) return true; // always allowed
+export function recordGuestAIUsage(isLoggedIn: boolean, dynamicLimit?: number): boolean {
+  const limit = dynamicLimit ?? GUEST_AI_DAILY_LIMIT;
+  if (limit === -1) return true; // unlimited
+  if (isLoggedIn && dynamicLimit === undefined) return true;
   const usage = getUsage();
-  if (usage.count >= GUEST_AI_DAILY_LIMIT) return false;
+  if (usage.count >= limit) return false;
   usage.count += 1;
   saveUsage(usage);
   return true;
