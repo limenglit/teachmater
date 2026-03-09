@@ -60,17 +60,47 @@ export default function BoardSubmitPage() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !boardId) return;
+
+    // Validate file size
+    const validationError = validateFile(file);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
+      return;
+    }
+
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
     const category = getFileCategory(ext);
 
-    const { data, error } = await supabase.storage.from('board-media').upload(path, file);
-    if (error) { setUploading(false); return; }
-    const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(data.path);
-    setMediaUrl(urlData.publicUrl);
-    setFileName(file.name);
-    setFileCategory(category);
+    // Compress image if applicable
+    let fileToUpload: File = file;
+    if (category === 'image') {
+      fileToUpload = await compressImage(file);
+    }
+
+    const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
+
+    // Upload with retry
+    let lastError: string | undefined;
+    for (let attempt = 0; attempt < UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        await new Promise(r => setTimeout(r, UPLOAD_CONFIG.RETRY_DELAY_MS * Math.pow(2, attempt - 1)));
+      }
+      const { data, error } = await supabase.storage.from('board-media').upload(path, fileToUpload);
+      if (!error && data) {
+        const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(data.path);
+        setMediaUrl(urlData.publicUrl);
+        setFileName(file.name);
+        setFileCategory(category);
+        lastError = undefined;
+        break;
+      }
+      lastError = error?.message;
+    }
+
+    if (lastError) {
+      toast({ title: `上传失败: ${lastError}`, variant: 'destructive' });
+    }
     setUploading(false);
   };
 
