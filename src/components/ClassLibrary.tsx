@@ -5,6 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -44,6 +45,10 @@ export default function ClassLibrary() {
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importMode, setImportMode] = useState<'overwrite' | 'append'>('append');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const [textImportOpen, setTextImportOpen] = useState(false);
+  const [textImportContent, setTextImportContent] = useState('');
+  const textFileRef = useRef<HTMLInputElement>(null);
 
   const userId = user?.id;
 
@@ -213,6 +218,37 @@ export default function ClassLibrary() {
     setImportOpen(false);
     setPreviewData([]);
     toast({ title: t('library.importSuccess'), description: `${previewData.length} ${t('library.students')}` });
+  };
+
+  const handleTextFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setTextImportContent(ev.target?.result as string);
+    };
+    reader.readAsText(file);
+    if (textFileRef.current) textFileRef.current.value = '';
+  };
+
+  const confirmTextImport = async () => {
+    if (!textImportContent.trim() || !selectedClass || !userId) return;
+    const names = textImportContent.split('\n').map(n => n.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    
+    setLoading(true);
+    const inserts = names.map(name => ({
+      class_id: selectedClass,
+      user_id: userId,
+      name,
+      student_number: ''
+    }));
+    
+    await supabase.from('class_students').insert(inserts);
+    await loadAll();
+    setTextImportContent('');
+    setTextImportOpen(false);
+    toast({ title: t('library.importSuccess'), description: `${names.length} ${t('library.students')}` });
   };
 
   const exportClassToExcel = () => {
@@ -407,6 +443,9 @@ export default function ClassLibrary() {
                 </h3>
               </div>
               <div className="flex gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setTextImportOpen(true)}>
+                  <Upload className="w-3 h-3" /> {t('sidebar.import')}
+                </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadToWorkspace}>
                   <ArrowRight className="w-3 h-3" /> {t('library.loadToList')}
                 </Button>
@@ -507,6 +546,30 @@ export default function ClassLibrary() {
             <div className="flex gap-2">
               <Button onClick={confirmImport} className="flex-1">{t('library.confirmImport')}</Button>
               <Button variant="outline" onClick={() => setImportOpen(false)}>{t('library.cancel')}</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Text import dialog */}
+      <Dialog open={textImportOpen} onOpenChange={setTextImportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('sidebar.importTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importPaste')}</p>
+              <Textarea
+                value={textImportContent}
+                onChange={e => setTextImportContent(e.target.value)}
+                placeholder="张三&#10;李四&#10;王五"
+                rows={8}
+              />
+              <Button onClick={confirmTextImport} className="mt-2 w-full" size="sm">{t('sidebar.importConfirm')}</Button>
+            </div>
+            <div className="border-t border-border pt-4">
+              <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importFile')}</p>
+              <input ref={textFileRef} type="file" accept=".txt" onChange={handleTextFileUpload} className="text-sm" />
             </div>
           </div>
         </DialogContent>
