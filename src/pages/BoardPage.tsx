@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +7,9 @@ import BoardKanbanView from '@/components/board/BoardKanbanView';
 import BoardTimelineView from '@/components/board/BoardTimelineView';
 import BoardCanvasView from '@/components/board/BoardCanvasView';
 import type { Board, BoardCard } from '@/components/BoardPanel';
-import { RealtimeThrottle } from '@/lib/realtime-throttle';
+import { ScalableRealtimeManager } from '@/lib/scalable-realtime';
+
+const PAGE_SIZE = 200; // Load cards in pages for large boards
 
 export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -15,51 +17,72 @@ export default function BoardPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [cards, setCards] = useState<BoardCard[]>([]);
   const [loading, setLoading] = useState(true);
-  const throttleRef = useRef<RealtimeThrottle | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const managerRef = useRef<ScalableRealtimeManager | null>(null);
+
+  // Paginated card loader
+  const loadCards = useCallback(async (boardId: string, offset = 0, append = false) => {
+    const { data } = await supabase
+      .from('board_cards')
+      .select('*')
+      .eq('board_id', boardId)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (data) {
+      setCards(prev => append ? [...prev, ...(data as any)] : data as any);
+      setHasMore(data.length === PAGE_SIZE);
+    }
+  }, []);
 
   useEffect(() => {
     if (!boardId) return;
+
+    // Load board + first page of cards
     Promise.all([
       supabase.from('boards').select('*').eq('id', boardId).single(),
-      supabase.from('board_cards').select('*').eq('board_id', boardId).eq('is_approved', true).order('sort_order'),
-    ]).then(([boardRes, cardsRes]) => {
+      loadCards(boardId),
+    ]).then(([boardRes]) => {
       if (boardRes.data) setBoard(boardRes.data as any);
-      if (cardsRes.data) setCards(cardsRes.data as any);
       setLoading(false);
     });
 
-    // Throttled realtime: batch rapid events into ~2 updates/sec
-    const throttle = new RealtimeThrottle((events) => {
-      setCards(prev => {
-        let next = [...prev];
-        for (const payload of events) {
-          if (payload.eventType === 'INSERT' && (payload.new as any).is_approved) {
-            if (!next.find(c => c.id === (payload.new as any).id)) {
-              next.push(payload.new as any);
-            }
-          } else if (payload.eventType === 'DELETE') {
-            next = next.filter(c => c.id !== (payload.old as any).id);
-          } else if (payload.eventType === 'UPDATE') {
-            next = next.map(c => c.id === (payload.new as any).id ? payload.new as any : c);
-          }
+    // Scalable realtime with dedup, batching, and polling fallback
+    const manager = new ScalableRealtimeManager(
+      `board-view-${boardId}`,
+      'board_cards',
+      `board_id=eq.${boardId}`,
+      (events) => {
+        // Empty events = polling fallback signal → re-fetch
+        if (events.length === 0) {
+          loadCards(boardId);
+          return;
         }
-        return next;
-      });
-    }, 500);
-    throttleRef.current = throttle;
-
-    const channel = supabase
-      .channel(`board-view-${boardId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'board_cards', filter: `board_id=eq.${boardId}` }, (payload) => {
-        throttle.push(payload);
-      })
-      .subscribe();
+        setCards(prev => {
+          let next = [...prev];
+          for (const payload of events) {
+            if (payload.eventType === 'INSERT' && (payload.new as any).is_approved) {
+              if (!next.find(c => c.id === (payload.new as any).id)) {
+                next.push(payload.new as any);
+              }
+            } else if (payload.eventType === 'DELETE') {
+              next = next.filter(c => c.id !== (payload.old as any).id);
+            } else if (payload.eventType === 'UPDATE') {
+              next = next.map(c => c.id === (payload.new as any).id ? payload.new as any : c);
+            }
+          }
+          return next;
+        });
+      },
+      { flushIntervalMs: 500, maxBufferSize: 100, enablePollingFallback: true },
+    ).subscribe();
+    managerRef.current = manager;
 
     return () => {
-      throttle.destroy();
-      supabase.removeChannel(channel);
+      manager.destroy();
     };
-  }, [boardId]);
+  }, [boardId, loadCards]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t('common.loading')}</div>;
   if (!board) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t('board.noBoards')}</div>;

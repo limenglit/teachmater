@@ -4,6 +4,10 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { TokenBucketLimiter } from '@/lib/concurrency-utils';
+
+// Global rate limiter: 10 uploads/sec burst, 5/sec sustained
+const uploadLimiter = new TokenBucketLimiter(10, 5);
 
 // ─── Configuration ───────────────────────────────────────────────
 export const UPLOAD_CONFIG = {
@@ -147,8 +151,9 @@ class UploadQueue {
       next.progress = 40;
       this.notify();
 
-      // Upload with retry
+      // Upload with retry + rate limiting
       let lastError: string | undefined;
+      await uploadLimiter.acquire(); // Wait for rate limit token
       for (let attempt = 0; attempt <= UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
         if (attempt > 0) {
           const delay = UPLOAD_CONFIG.RETRY_DELAY_MS * Math.pow(2, attempt - 1);
