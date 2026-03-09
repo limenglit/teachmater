@@ -412,7 +412,7 @@ export default function SeatChart() {
           {seats.length > 0 && (
             <Button
               onClick={() => setCheckinOpen(true)}
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md animate-pulse hover:animate-none"
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ring-2 ring-primary/30 font-semibold"
             >
               <ClipboardCheck className="w-4 h-4" />
               {t('seat.checkin')}
