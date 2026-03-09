@@ -427,6 +427,66 @@ export default function PPTPanel() {
                   </div>
                 </div>
 
+                {/* Font Family */}
+                <div>
+                  <Label className="text-base font-medium mb-2 block">{t('ppt.fontLabel')}</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {PPT_FONTS.map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setFontFamily(f.id)}
+                        className={`px-3 py-2 rounded-lg border-2 text-center transition-colors ${
+                          fontFamily === f.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="text-sm font-medium" style={{ fontFamily: f.fontFace }}>
+                          {f.sample}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{t(f.nameKey)}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Font Size */}
+                <div>
+                  <Label className="text-base font-medium mb-2 block">{t('ppt.fontSizeLabel')}</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {PPT_FONT_SIZES.map(fs => (
+                      <button
+                        key={fs.id}
+                        onClick={() => setFontSize(fs.id)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          fontSize === fs.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        {t(fs.nameKey)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Layout hints */}
+                <div>
+                  <Label className="text-base font-medium mb-2 block">{t('ppt.layoutLabel')}</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {PPT_LAYOUTS.map(l => (
+                      <div
+                        key={l.id}
+                        className="p-2 rounded-lg border border-border text-center"
+                      >
+                        <div className="text-lg">{l.icon}</div>
+                        <div className="text-xs text-muted-foreground">{t(l.nameKey)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{t('ppt.layoutHint')}</p>
+                </div>
+
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={() => setStep('input')}>
                     <ChevronLeft className="w-4 h-4 mr-1" />
