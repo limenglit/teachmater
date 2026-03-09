@@ -1,7 +1,7 @@
-import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck, BotMessageSquare, Lightbulb, PenBox, FileQuestion } from 'lucide-react';
+import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck, BotMessageSquare, Lightbulb, PenBox, FileQuestion, Pencil } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'checkin' | 'board' | 'quiz' | 'achieve' | 'toolkit';
+export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'checkin' | 'board' | 'quiz' | 'achieve' | 'toolkit' | 'sketch';
 
 interface TabItem {
   id: TabId;
@@ -28,6 +28,7 @@ const tabs: TabItem[] = [
   { id: 'quiz', labelKey: 'tab.quiz', emoji: '📝', icon: <FileQuestion className="w-4 h-4" /> },
   { id: 'achieve', labelKey: 'tab.achieve', emoji: '🏆', icon: <Dices className="w-4 h-4" /> },
   { id: 'toolkit', labelKey: 'tab.toolkit', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
+  { id: 'sketch', labelKey: 'tab.sketch', emoji: '✏️', icon: <Pencil className="w-4 h-4" /> },
 ];
 
 const externalLinks: ExternalLink[] = [

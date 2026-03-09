@@ -18,6 +18,7 @@ import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
 import LanguageSelector from '@/components/LanguageSelector';
+import StoryboardPanel from '@/components/StoryboardPanel';
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -49,6 +50,7 @@ const Index = () => {
       case 'quiz': return <QuizPanel />;
       case 'achieve': return <AchievementPanel />;
       case 'toolkit': return <ToolkitPanel />;
+      case 'sketch': return <StoryboardPanel />;
     }
   };
 
