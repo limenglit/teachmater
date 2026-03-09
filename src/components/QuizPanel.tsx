@@ -29,6 +29,7 @@ const SESSION_TOKENS_KEY = 'quiz-session-tokens';
 export default function QuizPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { students: sidebarStudents } = useStudents();
   const isGuest = !user;
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -43,6 +44,8 @@ export default function QuizPanel() {
   const [sessionTitle, setSessionTitle] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showQR, setShowQR] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
+  const [sessionStudentNames, setSessionStudentNames] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
