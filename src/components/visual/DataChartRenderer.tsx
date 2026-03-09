@@ -65,6 +65,7 @@ export default function DataChartRenderer({ data, chartType, colorSchemeId, onDa
 
   const commonProps = { width: '100%' as any, height: 300 };
 
+  const renderChart = () => {
   switch (chartType) {
     case 'bar':
       return (
