@@ -282,6 +282,17 @@ export default function QuizPanel() {
           </div>
         )}
       </div>
+
+      <ClassRosterPicker
+        open={showRoster}
+        onOpenChange={setShowRoster}
+        onSelect={(names) => {
+          setSessionStudentNames(names);
+          toast({ title: t('board.classLinked'), description: tFormat(t('board.studentCount'), names.length) });
+        }}
+        currentCount={sessionStudentNames.length}
+        onClear={() => setSessionStudentNames([])}
+      />
     </div>
   );
 }
