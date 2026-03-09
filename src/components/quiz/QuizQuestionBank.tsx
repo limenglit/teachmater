@@ -40,6 +40,7 @@ interface Props {
   sessionTitle: string;
   setSessionTitle: (s: string) => void;
   isGuest: boolean;
+  rosterButton?: React.ReactNode;
 }
 
 export default function QuizQuestionBank({
