@@ -728,6 +728,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '正误对比',
     nameKey: 'storyboard.template.rightWrong',
+    category: 'compare',
     params: {
       theme: '正确与错误做法对比：错误示范(打叉)vs正确示范(打勾)，配合说明原因',
       audience: 'middle-school',
