@@ -440,6 +440,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '5W1H分析',
     nameKey: 'storyboard.template.5w1h',
+    category: 'analysis',
     params: {
       theme: '5W1H问题分析法：What什么、Why为什么、Who谁、When何时、Where何地、How如何',
       audience: 'general',
