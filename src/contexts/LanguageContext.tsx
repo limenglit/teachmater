@@ -352,7 +352,19 @@ const translations: Record<LangCode, Record<string, string>> = {
     'team.emptyDesc': '设定每队人数后随机分配，支持拖拽调整',
     'team.namePrefix': '第{0}队',
     'team.exportName': '建队结果',
-    // Toolkit
+    // Teamwork history
+    'teamwork.save': '保存',
+    'teamwork.history': '历史',
+    'teamwork.historyTitle': '历史记录',
+    'teamwork.noHistory': '暂无保存记录',
+    'teamwork.groupsCount': '组',
+    'teamwork.teamsCount': '队',
+    'teamwork.saved': '已保存',
+    'teamwork.saveFailed': '保存失败',
+    'teamwork.restore': '恢复',
+    'teamwork.historyRestored': '已恢复',
+    'teamwork.historyDeleted': '已删除',
+    'teamwork.historyDeleteFailed': '删除失败',
     'toolkit.title': '课堂工具箱',
     // Command Cards
     'cmd.title': '📢 课堂指令卡',
