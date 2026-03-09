@@ -371,6 +371,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '康奈尔笔记法',
     nameKey: 'storyboard.template.cornell',
+    category: 'learning',
     params: {
       theme: '康奈尔笔记系统：左栏关键词/问题，右栏详细笔记，底部总结要点',
       audience: 'college',
