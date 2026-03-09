@@ -392,6 +392,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '番茄工作法',
     nameKey: 'storyboard.template.pomodoro',
+    category: 'learning',
     params: {
       theme: '番茄工作法：25分钟专注→5分钟休息→循环4次→长休息15-30分钟',
       audience: 'general',
