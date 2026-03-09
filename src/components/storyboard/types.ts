@@ -324,6 +324,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '费曼学习法',
     nameKey: 'storyboard.template.feynman',
+    category: 'learning',
     params: {
       theme: '费曼学习法四步骤：选择概念→教给小白→发现盲点→简化重述',
       audience: 'college',
