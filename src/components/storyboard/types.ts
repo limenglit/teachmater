@@ -103,6 +103,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '课堂流程图',
     nameKey: 'storyboard.template.classFlow',
+    category: 'teaching',
     params: {
       theme: '一节AI素养课的流程：导入→概念讲解→案例分析→小组讨论→实践练习→总结反思',
       audience: 'teacher',
