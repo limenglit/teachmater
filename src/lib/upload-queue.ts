@@ -4,6 +4,10 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { TokenBucketLimiter } from '@/lib/concurrency-utils';
+
+// Global rate limiter: 10 uploads/sec burst, 5/sec sustained
+const uploadLimiter = new TokenBucketLimiter(10, 5);
 
 // ─── Configuration ───────────────────────────────────────────────
 export const UPLOAD_CONFIG = {
