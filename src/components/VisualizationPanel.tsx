@@ -183,7 +183,12 @@ export default function VisualizationPanel() {
               {/* Data Chart */}
               {renderAnalysis.data_points.length > 0 && (
                 <div className="mt-4 p-4 bg-background rounded-lg">
-                  <DataChartRenderer data={renderAnalysis.data_points} chartType={chartType} colorSchemeId={colorScheme} />
+                  <DataChartRenderer
+                    data={renderAnalysis.data_points}
+                    chartType={chartType}
+                    colorSchemeId={colorScheme}
+                    onDataChange={(newData) => handleUpdateAnalysis({ ...renderAnalysis, data_points: newData })}
+                  />
                 </div>
               )}
             </div>
