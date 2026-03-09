@@ -215,6 +215,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'SWOT分析',
     nameKey: 'storyboard.template.swot',
+    category: 'thinking',
     params: {
       theme: 'SWOT战略分析框架：优势(Strengths)、劣势(Weaknesses)、机会(Opportunities)、威胁(Threats)四象限分析',
       audience: 'college',
