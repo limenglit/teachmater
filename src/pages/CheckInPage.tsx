@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,6 +8,7 @@ import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 export default function CheckInPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'expired'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -40,7 +42,6 @@ export default function CheckInPage() {
       });
   }, [sessionId]);
 
-  // Close suggestions on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -59,9 +60,7 @@ export default function CheckInPage() {
   const handleNameChange = (val: string) => {
     setName(val);
     if (val.trim() && studentNames.length > 0) {
-      const filtered = studentNames.filter(n =>
-        n.includes(val.trim())
-      );
+      const filtered = studentNames.filter(n => n.includes(val.trim()));
       setSuggestions(filtered.slice(0, 8));
       setShowSuggestions(filtered.length > 0);
     } else {
@@ -79,42 +78,32 @@ export default function CheckInPage() {
   const handleCheckin = async () => {
     const trimmed = name.trim();
     if (!trimmed || !sessionId) return;
-
     setStatus('loading');
-
     const { data: existing } = await supabase
       .from('checkin_records')
       .select('id')
       .eq('session_id', sessionId)
       .eq('student_name', trimmed)
       .maybeSingle();
-
     if (existing) {
       setStatus('success');
       return;
     }
-
     const { error } = await supabase
       .from('checkin_records')
-      .insert({
-        session_id: sessionId,
-        student_name: trimmed,
-        status: 'pending',
-      });
-
+      .insert({ session_id: sessionId, student_name: trimmed, status: 'pending' });
     if (error) {
       setStatus('error');
-      setErrorMsg('签到失败，请重试');
+      setErrorMsg(t('checkinPage.failed'));
       return;
     }
-
     setStatus('success');
   };
 
   if (sessionValid === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-muted-foreground">加载中...</div>
+        <div className="text-muted-foreground">{t('checkinPage.loading')}</div>
       </div>
     );
   }
@@ -124,8 +113,8 @@ export default function CheckInPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
           <Clock className="w-12 h-12 text-muted-foreground mx-auto" />
-          <h1 className="text-xl font-bold text-foreground">签到已结束</h1>
-          <p className="text-sm text-muted-foreground">此签到会话已过期或不存在</p>
+          <h1 className="text-xl font-bold text-foreground">{t('checkinPage.expired')}</h1>
+          <p className="text-sm text-muted-foreground">{t('checkinPage.expiredDesc')}</p>
         </div>
       </div>
     );
@@ -136,8 +125,8 @@ export default function CheckInPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
           <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
-          <h1 className="text-xl font-bold text-foreground">签到成功！</h1>
-          <p className="text-sm text-muted-foreground">{name.trim()} 已完成签到</p>
+          <h1 className="text-xl font-bold text-foreground">{t('checkinPage.success')}</h1>
+          <p className="text-sm text-muted-foreground">{t('checkinPage.completed').replace('{0}', name.trim())}</p>
         </div>
       </div>
     );
@@ -148,8 +137,8 @@ export default function CheckInPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
           <div className="text-5xl">📋</div>
-          <h1 className="text-xl font-bold text-foreground">课堂签到</h1>
-          <p className="text-sm text-muted-foreground">请输入您的姓名完成签到</p>
+          <h1 className="text-xl font-bold text-foreground">{t('checkinPage.title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('checkinPage.desc')}</p>
         </div>
 
         <div className="space-y-3">
@@ -158,47 +147,25 @@ export default function CheckInPage() {
               ref={inputRef}
               value={name}
               onChange={e => handleNameChange(e.target.value)}
-              onFocus={() => {
-                if (suggestions.length > 0) setShowSuggestions(true);
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  setShowSuggestions(false);
-                  handleCheckin();
-                }
-              }}
-              placeholder="请输入姓名"
+              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+              onKeyDown={e => { if (e.key === 'Enter') { setShowSuggestions(false); handleCheckin(); } }}
+              placeholder={t('checkinPage.namePlaceholder')}
               className="h-12 text-center text-lg"
               autoFocus
             />
             {showSuggestions && suggestions.length > 0 && (
-              <div
-                ref={suggestionsRef}
-                className="absolute z-50 w-full mt-1 rounded-md border border-border bg-popover shadow-md overflow-hidden"
-              >
+              <div ref={suggestionsRef} className="absolute z-50 w-full mt-1 rounded-md border border-border bg-popover shadow-md overflow-hidden">
                 {suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    className="w-full text-left px-4 py-2.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      selectSuggestion(s);
-                    }}
-                  >
+                  <button key={i} className="w-full text-left px-4 py-2.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground transition-colors" onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}>
                     {s}
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <Button
-            onClick={handleCheckin}
-            disabled={!name.trim() || status === 'loading'}
-            className="w-full h-12 text-base"
-          >
-            {status === 'loading' ? '签到中...' : '签到'}
+          <Button onClick={handleCheckin} disabled={!name.trim() || status === 'loading'} className="w-full h-12 text-base">
+            {status === 'loading' ? t('checkinPage.checking') : t('checkinPage.checkinBtn')}
           </Button>
-
           {status === 'error' && (
             <div className="flex items-center justify-center gap-2 text-destructive text-sm">
               <XCircle className="w-4 h-4" />

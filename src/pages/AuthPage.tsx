@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function AuthPage() {
   const { user, approvalStatus, isAdmin, signOut } = useAuth();
+  const { t } = useLanguage();
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,30 +18,26 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Already logged in but pending approval
   if (user && approvalStatus === 'pending') {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-4">
         <div className="w-full max-w-sm text-center space-y-6">
           <div className="text-6xl">⏳</div>
-          <h1 className="text-xl font-bold text-foreground">等待审批</h1>
-          <p className="text-sm text-muted-foreground">
-            您的账户已注册成功，正在等待管理员审批。<br />
-            审批通过后即可使用全部功能。
-          </p>
+          <h1 className="text-xl font-bold text-foreground">{t('auth.pendingTitle')}</h1>
+          <p className="text-sm text-muted-foreground whitespace-pre-line">{t('auth.pendingDesc')}</p>
           <div className="bg-card border border-border rounded-xl p-4 space-y-2">
             <div className="flex items-center justify-center gap-2 text-warning">
               <Clock className="w-5 h-5" />
-              <span className="text-sm font-medium">审批中</span>
+              <span className="text-sm font-medium">{t('auth.pendingStatus')}</span>
             </div>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
           <div className="flex gap-2 justify-center">
             <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-              <ArrowLeft className="w-3 h-3 mr-1" /> 以访客继续
+              <ArrowLeft className="w-3 h-3 mr-1" /> {t('auth.guestBtn')}
             </Button>
             <Button variant="ghost" size="sm" onClick={signOut} className="text-destructive">
-              退出登录
+              {t('settings.logout')}
             </Button>
           </div>
         </div>
@@ -47,22 +45,19 @@ export default function AuthPage() {
     );
   }
 
-  // Already logged in but rejected
   if (user && approvalStatus === 'rejected') {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-4">
         <div className="w-full max-w-sm text-center space-y-6">
           <div className="text-6xl">❌</div>
-          <h1 className="text-xl font-bold text-foreground">审批未通过</h1>
-          <p className="text-sm text-muted-foreground">
-            您的注册申请未通过审批。如有疑问请联系管理员。
-          </p>
+          <h1 className="text-xl font-bold text-foreground">{t('auth.rejectedTitle')}</h1>
+          <p className="text-sm text-muted-foreground">{t('auth.rejectedDesc')}</p>
           <div className="flex gap-2 justify-center">
             <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-              <ArrowLeft className="w-3 h-3 mr-1" /> 以访客继续
+              <ArrowLeft className="w-3 h-3 mr-1" /> {t('auth.guestBtn')}
             </Button>
             <Button variant="ghost" size="sm" onClick={signOut} className="text-destructive">
-              退出登录
+              {t('settings.logout')}
             </Button>
           </div>
         </div>
@@ -70,7 +65,6 @@ export default function AuthPage() {
     );
   }
 
-  // Already logged in and approved
   if (user && approvalStatus === 'approved') {
     navigate('/');
     return null;
@@ -82,9 +76,8 @@ export default function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      toast({ title: '登录失败', description: error.message, variant: 'destructive' });
+      toast({ title: t('auth.loginFailed'), description: error.message, variant: 'destructive' });
     }
-    // Auth state change will handle redirect via approvalStatus
   };
 
   const handleSignup = async () => {
@@ -100,9 +93,9 @@ export default function AuthPage() {
     });
     setLoading(false);
     if (error) {
-      toast({ title: '注册失败', description: error.message, variant: 'destructive' });
+      toast({ title: t('auth.signupFailed'), description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: '注册成功', description: '请查收验证邮件后登录，管理员审批通过后可使用全部功能' });
+      toast({ title: t('auth.signupSuccess'), description: t('auth.signupSuccessDesc') });
       setMode('login');
     }
   };
@@ -115,21 +108,25 @@ export default function AuthPage() {
     });
     setLoading(false);
     if (error) {
-      toast({ title: '发送失败', description: error.message, variant: 'destructive' });
+      toast({ title: t('auth.sendFailed'), description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: '重置邮件已发送', description: '请查收邮件' });
+      toast({ title: t('auth.resetSent'), description: t('auth.resetSentDesc') });
       setMode('login');
     }
+  };
+
+  const modeLabels: Record<string, string> = {
+    login: t('auth.loginTitle'),
+    signup: t('auth.signupTitle'),
+    forgot: t('auth.forgotTitle'),
   };
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-foreground">互动课堂派</h1>
-          <p className="text-sm text-muted-foreground">
-            {mode === 'login' ? '登录账户' : mode === 'signup' ? '创建账户' : '重置密码'}
-          </p>
+          <h1 className="text-2xl font-bold text-foreground">{t('app.title')}</h1>
+          <p className="text-sm text-muted-foreground">{modeLabels[mode]}</p>
         </div>
 
         <div className="bg-card border border-border rounded-xl p-6 space-y-4 shadow-sm">
@@ -137,30 +134,30 @@ export default function AuthPage() {
             <>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="email" placeholder="邮箱地址" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" />
+                <Input type="email" placeholder={t('auth.emailPlaceholder')} value={email} onChange={e => setEmail(e.target.value)} className="pl-10" />
               </div>
               <Button onClick={handleForgotPassword} disabled={loading} className="w-full">
-                {loading ? '发送中...' : '发送重置邮件'}
+                {loading ? t('auth.sending') : t('auth.sendReset')}
               </Button>
-              <button onClick={() => setMode('login')} className="text-sm text-primary hover:underline w-full text-center">返回登录</button>
+              <button onClick={() => setMode('login')} className="text-sm text-primary hover:underline w-full text-center">{t('auth.backToLogin')}</button>
             </>
           ) : (
             <>
               {mode === 'signup' && (
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="昵称（可选）" value={nickname} onChange={e => setNickname(e.target.value)} className="pl-10" />
+                  <Input placeholder={t('auth.nicknamePlaceholder')} value={nickname} onChange={e => setNickname(e.target.value)} className="pl-10" />
                 </div>
               )}
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="email" placeholder="邮箱地址" value={email} onChange={e => setEmail(e.target.value)} className="pl-10" />
+                <Input type="email" placeholder={t('auth.emailPlaceholder')} value={email} onChange={e => setEmail(e.target.value)} className="pl-10" />
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="password"
-                  placeholder="密码"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleSignup())}
@@ -168,19 +165,17 @@ export default function AuthPage() {
                 />
               </div>
               <Button onClick={mode === 'login' ? handleLogin : handleSignup} disabled={loading} className="w-full">
-                {loading ? '请稍候...' : mode === 'login' ? '登录' : '注册'}
+                {loading ? t('auth.pleaseWait') : mode === 'login' ? t('auth.login') : t('auth.signup')}
               </Button>
               {mode === 'signup' && (
-                <p className="text-xs text-muted-foreground text-center">
-                  注册后需管理员审批方可使用全部功能
-                </p>
+                <p className="text-xs text-muted-foreground text-center">{t('auth.signupNote')}</p>
               )}
               <div className="flex items-center justify-between text-sm">
                 <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="text-primary hover:underline">
-                  {mode === 'login' ? '没有账户？注册' : '已有账户？登录'}
+                  {mode === 'login' ? t('auth.noAccount') : t('auth.hasAccount')}
                 </button>
                 {mode === 'login' && (
-                  <button onClick={() => setMode('forgot')} className="text-muted-foreground hover:underline">忘记密码</button>
+                  <button onClick={() => setMode('forgot')} className="text-muted-foreground hover:underline">{t('auth.forgotPassword')}</button>
                 )}
               </div>
             </>
@@ -189,7 +184,7 @@ export default function AuthPage() {
 
         <div className="text-center">
           <button onClick={() => navigate('/')} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-            <ArrowLeft className="w-3 h-3" /> 以访客身份继续
+            <ArrowLeft className="w-3 h-3" /> {t('auth.guestContinue')}
           </button>
         </div>
       </div>

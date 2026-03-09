@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-const COPYRIGHT_TEXT = '互动课堂派出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
+const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
 async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   const clone = element.cloneNode(true) as HTMLElement;
@@ -91,4 +91,45 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
   pdf.addImage(imgData, 'PNG', x, y, w, h);
   pdf.save(`${filename}.pdf`);
+}
+
+export async function exportToSVG(element: HTMLElement, filename: string, title?: string) {
+  const exportTitle = title || filename;
+  const width = Math.max(element.scrollWidth, element.clientWidth, 900);
+  const clone = element.cloneNode(true) as HTMLElement;
+
+  // Render to canvas first for accurate measurement
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'fixed';
+  wrapper.style.left = '-100000px';
+  wrapper.style.top = '0';
+  wrapper.style.width = `${width}px`;
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+  const contentHeight = wrapper.scrollHeight;
+  document.body.removeChild(wrapper);
+
+  const padding = 20;
+  const titleHeight = 40;
+  const footerHeight = 30;
+  const totalHeight = padding + titleHeight + contentHeight + footerHeight + padding;
+  const totalWidth = width + padding * 2;
+
+  // Use html2canvas to capture the element as an image, then embed in SVG
+  const canvas = await captureWithHeaderFooter(element, exportTitle);
+  const dataUrl = canvas.toDataURL('image/png');
+
+  const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+  width="${canvas.width / 2}" height="${canvas.height / 2}" viewBox="0 0 ${canvas.width / 2} ${canvas.height / 2}">
+  <image width="${canvas.width / 2}" height="${canvas.height / 2}" href="${dataUrl}" />
+</svg>`;
+
+  const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = `${filename}.svg`;
+  link.href = url;
+  link.click();
+  URL.revokeObjectURL(url);
 }

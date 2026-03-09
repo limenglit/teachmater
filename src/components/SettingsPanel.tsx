@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme, COLOR_SCHEMES, FONT_OPTIONS, FONT_SIZE_MIN, FONT_SIZE_MAX } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Slider } from '@/components/ui/slider';
@@ -12,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 export default function SettingsPanel() {
   const { config, setScheme, setFont, setFontSize } = useTheme();
   const { user, signOut } = useAuth();
+  const { t } = useLanguage();
   const [nickname, setNickname] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -27,12 +29,12 @@ export default function SettingsPanel() {
     setSaving(true);
     await supabase.from('profiles').update({ nickname: nickname.trim() }).eq('user_id', user.id);
     setSaving(false);
-    toast({ title: '已保存' });
+    toast({ title: t('settings.saved') });
   };
 
   const handleSignOut = async () => {
     await signOut();
-    toast({ title: '已退出登录' });
+    toast({ title: t('settings.loggedOut') });
   };
 
   return (
@@ -44,7 +46,7 @@ export default function SettingsPanel() {
       </SheetTrigger>
       <SheetContent className="w-80 overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-foreground">个性化设置</SheetTitle>
+          <SheetTitle className="text-foreground">{t('settings.title')}</SheetTitle>
         </SheetHeader>
 
         <div className="mt-6 space-y-8">
@@ -52,29 +54,29 @@ export default function SettingsPanel() {
           {user && (
             <section>
               <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <User className="w-4 h-4" /> 个人资料
+                <User className="w-4 h-4" /> {t('settings.profile')}
               </h3>
               <div className="space-y-2">
                 <div>
-                  <label className="text-xs text-muted-foreground">邮箱</label>
+                  <label className="text-xs text-muted-foreground">{t('settings.email')}</label>
                   <p className="text-sm text-foreground truncate">{user.email}</p>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">昵称</label>
+                  <label className="text-xs text-muted-foreground">{t('settings.nickname')}</label>
                   <div className="flex gap-1.5 mt-1">
                     <Input
                       value={nickname}
                       onChange={e => setNickname(e.target.value)}
-                      placeholder="设置昵称"
+                      placeholder={t('settings.nicknamePlaceholder')}
                       className="h-8 text-sm"
                     />
                     <Button size="sm" onClick={saveProfile} disabled={saving} className="h-8 px-3">
-                      {saving ? '...' : '保存'}
+                      {saving ? '...' : t('settings.save')}
                     </Button>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full mt-2 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/5">
-                  <LogOut className="w-3.5 h-3.5" /> 退出登录
+                  <LogOut className="w-3.5 h-3.5" /> {t('settings.logout')}
                 </Button>
               </div>
             </section>
@@ -83,7 +85,7 @@ export default function SettingsPanel() {
           {/* Color Schemes */}
           <section>
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              🎨 主题配色
+              {t('settings.theme')}
             </h3>
             <div className="grid grid-cols-2 gap-2">
               {COLOR_SCHEMES.map(scheme => (
@@ -120,7 +122,7 @@ export default function SettingsPanel() {
           {/* Font Family */}
           <section>
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Type className="w-4 h-4" /> 字体
+              <Type className="w-4 h-4" /> {t('settings.font')}
             </h3>
             <div className="space-y-1.5">
               {FONT_OPTIONS.map(font => (
@@ -145,7 +147,7 @@ export default function SettingsPanel() {
           {/* Font Size */}
           <section>
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <ALargeSmall className="w-4 h-4" /> 字号
+              <ALargeSmall className="w-4 h-4" /> {t('settings.fontSize')}
             </h3>
             <div className="px-1">
               <Slider
@@ -157,21 +159,21 @@ export default function SettingsPanel() {
                 className="mb-3"
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>小</span>
+                <span>{t('settings.fontSmall')}</span>
                 <span
                   className="font-medium text-foreground tabular-nums"
                   style={{ fontSize: `${config.fontSize * 14}px` }}
                 >
                   {Math.round(config.fontSize * 100)}%
                 </span>
-                <span>大</span>
+                <span>{t('settings.fontLarge')}</span>
               </div>
             </div>
           </section>
 
           {/* Info */}
           <div className="text-xs text-muted-foreground text-center pt-4 border-t border-border">
-            {user ? '☁️ 班级库数据已云端同步' : '🔒 数据仅保存于本地，安全无忧'}
+            {user ? t('settings.cloudSync') : t('settings.localOnly')}
           </div>
         </div>
       </SheetContent>

@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AdminConfigPanel from '@/components/AdminConfigPanel';
 
 interface PendingUser {
   user_id: string;
@@ -18,6 +20,7 @@ interface PendingUser {
 
 export default function AdminPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [users, setUsers] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,25 +29,22 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchActing, setBatchActing] = useState(false);
+  const [adminTab, setAdminTab] = useState<'users' | 'config'>('users');
 
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
-
-    // Delay a bit and then load with robust session checks/retries
     const timer = setTimeout(() => {
       void loadUsers(0);
     }, 150);
-
     return () => clearTimeout(timer);
   }, [user, navigate]);
 
   const ensureSessionReady = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) return session;
-
     const { data, error } = await supabase.auth.refreshSession();
     if (error) return null;
     return data.session;
@@ -52,42 +52,31 @@ export default function AdminPage() {
 
   const loadUsers = async (attempt: number) => {
     if (attempt === 0) setLoading(true);
-
     const session = await ensureSessionReady();
     if (!session) {
       if (attempt < 2) {
-        setTimeout(() => {
-          void loadUsers(attempt + 1);
-        }, 800);
+        setTimeout(() => { void loadUsers(attempt + 1); }, 800);
         return;
       }
-
       setLoading(false);
-      toast({ title: '登录状态失效', description: '请重新登录后再试', variant: 'destructive' });
+      toast({ title: t('admin.sessionExpired'), description: t('admin.pleaseRelogin'), variant: 'destructive' });
       navigate('/auth');
       return;
     }
-
     const { data, error } = await supabase.rpc('get_pending_users');
-
     if (error) {
       const msg = (error.message || '').toLowerCase();
       const transientAuthError = msg.includes('unauthorized') || msg.includes('jwt') || msg.includes('permission');
-
       if (attempt < 2 && transientAuthError) {
         await supabase.auth.refreshSession();
-        setTimeout(() => {
-          void loadUsers(attempt + 1);
-        }, 800);
+        setTimeout(() => { void loadUsers(attempt + 1); }, 800);
         return;
       }
-
       setLoading(false);
-      toast({ title: '无权限访问', description: '仅管理员可查看', variant: 'destructive' });
+      toast({ title: t('admin.noPermission'), description: t('admin.adminOnly'), variant: 'destructive' });
       navigate('/');
       return;
     }
-
     setUsers((data as PendingUser[]) || []);
     setLoading(false);
   };
@@ -96,9 +85,9 @@ export default function AdminPage() {
     setActing(userId);
     const { error } = await supabase.rpc('approve_user', { p_user_id: userId });
     if (error) {
-      toast({ title: '操作失败', description: error.message, variant: 'destructive' });
+      toast({ title: t('admin.operationFailed'), description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: '已批准' });
+      toast({ title: t('admin.approved') });
       setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, status: 'approved' } : u));
     }
     setActing(null);
@@ -108,9 +97,9 @@ export default function AdminPage() {
     setActing(userId);
     const { error } = await supabase.rpc('reject_user', { p_user_id: userId });
     if (error) {
-      toast({ title: '操作失败', description: error.message, variant: 'destructive' });
+      toast({ title: t('admin.operationFailed'), description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: '已拒绝' });
+      toast({ title: t('admin.rejected') });
       setUsers(prev => prev.map(u => u.user_id === userId ? { ...u, status: 'rejected' } : u));
     }
     setActing(null);
@@ -152,7 +141,8 @@ export default function AdminPage() {
     setUsers(prev => prev.map(u => ids.includes(u.user_id) ? { ...u, status: newStatus } : u));
     setSelected(new Set());
     setBatchActing(false);
-    toast({ title: `已${action === 'approve' ? '批准' : '拒绝'} ${successCount} 位用户` });
+    const actionLabel = action === 'approve' ? t('admin.approved') : t('admin.rejected');
+    toast({ title: t('admin.batchResult').replace('{0}', actionLabel).replace('{1}', String(successCount)) });
   };
 
   const filtered = useMemo(() => {
@@ -173,10 +163,17 @@ export default function AdminPage() {
 
   const statusBadge = (status: string) => {
     switch (status) {
-      case 'pending': return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning"><Clock className="w-3 h-3" />待审批</span>;
-      case 'approved': return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-success/10 text-success"><CheckCircle2 className="w-3 h-3" />已批准</span>;
-      case 'rejected': return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive"><XCircle className="w-3 h-3" />已拒绝</span>;
+      case 'pending': return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning"><Clock className="w-3 h-3" />{t('admin.pending')}</span>;
+      case 'approved': return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-success/10 text-success"><CheckCircle2 className="w-3 h-3" />{t('admin.approved')}</span>;
+      case 'rejected': return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive"><XCircle className="w-3 h-3" />{t('admin.rejected')}</span>;
     }
+  };
+
+  const filterLabels: Record<string, string> = {
+    all: t('admin.all'),
+    pending: t('admin.pending'),
+    approved: t('admin.approved'),
+    rejected: t('admin.rejected'),
   };
 
   const renderUserRow = (u: PendingUser) => (
@@ -200,28 +197,28 @@ export default function AdminPage() {
       {u.status === 'pending' && (
         <div className="flex gap-1.5 ml-3">
           <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleApprove(u.user_id)} disabled={acting === u.user_id}>
-            <CheckCircle2 className="w-3 h-3" /> 批准
+            <CheckCircle2 className="w-3 h-3" /> {t('admin.approve')}
           </Button>
           <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => handleReject(u.user_id)} disabled={acting === u.user_id}>
-            <XCircle className="w-3 h-3" /> 拒绝
+            <XCircle className="w-3 h-3" /> {t('admin.reject')}
           </Button>
         </div>
       )}
       {u.status === 'rejected' && (
         <Button size="sm" variant="outline" className="h-7 text-xs gap-1 ml-3" onClick={() => handleApprove(u.user_id)} disabled={acting === u.user_id}>
-          <CheckCircle2 className="w-3 h-3" /> 改为批准
+          <CheckCircle2 className="w-3 h-3" /> {t('admin.changeToApprove')}
         </Button>
       )}
     </div>
   );
 
-  const renderSectionHeader = (userList: PendingUser[], label: string) => {
+  const renderSectionHeader = (userList: PendingUser[]) => {
     const ids = userList.map(u => u.user_id);
     const allSelected = ids.length > 0 && ids.every(id => selected.has(id));
     return (
       <div className="flex items-center gap-2">
         <Checkbox checked={allSelected} onCheckedChange={() => toggleSelectAll(ids)} />
-        <span>全选</span>
+        <span>{t('admin.selectAll')}</span>
       </div>
     );
   };
@@ -231,27 +228,50 @@ export default function AdminPage() {
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 bg-card border-b border-border">
         <div className="flex items-center gap-2">
           <Shield className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold text-foreground">用户管理</h1>
+          <h1 className="text-lg font-bold text-foreground">{t('admin.title')}</h1>
         </div>
         <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="gap-1">
-          <ArrowLeft className="w-4 h-4" /> 返回
+          <ArrowLeft className="w-4 h-4" /> {t('admin.back')}
         </Button>
       </header>
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
-        {/* Search & Filter */}
+      <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-4">
+        {/* Admin sub-tabs */}
+        <div className="flex gap-1 border-b border-border pb-2">
+          <Button
+            size="sm"
+            variant={adminTab === 'users' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('users')}
+          >
+            <Users className="w-3.5 h-3.5" /> {t('admin.tabUsers')}
+          </Button>
+          <Button
+            size="sm"
+            variant={adminTab === 'config' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('config')}
+          >
+            <Settings2 className="w-3.5 h-3.5" /> {t('admin.tabConfig')}
+          </Button>
+        </div>
+
+        {adminTab === 'config' ? (
+          <AdminConfigPanel />
+        ) : (
+        <>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="搜索邮箱或昵称…"
+              placeholder={t('admin.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="pl-8 h-9"
             />
           </div>
           <div className="flex gap-1">
-            {([['all', '全部'], ['pending', '待审批'], ['approved', '已批准'], ['rejected', '已拒绝']] as const).map(([key, label]) => (
+            {(['all', 'pending', 'approved', 'rejected'] as const).map(key => (
               <Button
                 key={key}
                 size="sm"
@@ -259,24 +279,23 @@ export default function AdminPage() {
                 className="h-9 text-xs"
                 onClick={() => setFilter(key)}
               >
-                {label}
+                {filterLabels[key]}
               </Button>
             ))}
           </div>
         </div>
 
-        {/* Batch action bar */}
         {selected.size > 0 && (
           <div className="flex items-center gap-2 p-3 bg-accent/50 rounded-lg border border-border">
-            <span className="text-sm text-foreground font-medium">已选 {selected.size} 人</span>
+            <span className="text-sm text-foreground font-medium">{t('admin.selected').replace('{0}', String(selected.size))}</span>
             <div className="flex gap-1.5 ml-auto">
               <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleBatchAction('approve')} disabled={batchActing}>
-                {batchActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} 批量批准
+                {batchActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />} {t('admin.batchApprove')}
               </Button>
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/5" onClick={() => handleBatchAction('reject')} disabled={batchActing}>
-                {batchActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />} 批量拒绝
+                {batchActing ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />} {t('admin.batchReject')}
               </Button>
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>取消</Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelected(new Set())}>{t('common.cancel')}</Button>
             </div>
           </div>
         )}
@@ -290,8 +309,8 @@ export default function AdminPage() {
             {pendingUsers.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-warning" /> 待审批 ({pendingUsers.length})
-                  <span className="ml-auto">{renderSectionHeader(pendingUsers, '待审批')}</span>
+                  <Clock className="w-4 h-4 text-warning" /> {t('admin.pending')} ({pendingUsers.length})
+                  <span className="ml-auto">{renderSectionHeader(pendingUsers)}</span>
                 </h2>
                 <div className="space-y-2">{pendingUsers.map(renderUserRow)}</div>
               </section>
@@ -299,15 +318,15 @@ export default function AdminPage() {
 
             {pendingUsers.length === 0 && (
               <div className="text-center py-8 text-muted-foreground text-sm">
-                暂无待审批用户
+                {t('admin.noPending')}
               </div>
             )}
 
             {approvedUsers.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-success" /> 已批准 ({approvedUsers.length})
-                  <span className="ml-auto">{renderSectionHeader(approvedUsers, '已批准')}</span>
+                  <CheckCircle2 className="w-4 h-4 text-success" /> {t('admin.approved')} ({approvedUsers.length})
+                  <span className="ml-auto">{renderSectionHeader(approvedUsers)}</span>
                 </h2>
                 <div className="space-y-2">{approvedUsers.map(renderUserRow)}</div>
               </section>
@@ -316,13 +335,15 @@ export default function AdminPage() {
             {rejectedUsers.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <XCircle className="w-4 h-4 text-destructive" /> 已拒绝 ({rejectedUsers.length})
-                  <span className="ml-auto">{renderSectionHeader(rejectedUsers, '已拒绝')}</span>
+                  <XCircle className="w-4 h-4 text-destructive" /> {t('admin.rejected')} ({rejectedUsers.length})
+                  <span className="ml-auto">{renderSectionHeader(rejectedUsers)}</span>
                 </h2>
                 <div className="space-y-2">{rejectedUsers.map(renderUserRow)}</div>
               </section>
             )}
           </>
+        )}
+        </>
         )}
       </div>
     </div>

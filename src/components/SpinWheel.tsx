@@ -3,13 +3,13 @@ import { Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { playTick } from '@/lib/sounds';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Student {
   id: string;
   name: string;
 }
 
-// Warm distinct colors for wheel segments
 const SEGMENT_COLORS = [
   'hsl(var(--primary) / 0.85)',
   'hsl(var(--primary) / 0.55)',
@@ -40,6 +40,7 @@ export default function SpinWheel({
   onRollStart,
   onRollEnd,
 }: SpinWheelProps) {
+  const { t } = useLanguage();
   const displayStudents = availableStudents.length > 0 ? availableStudents : students;
   const count = displayStudents.length;
   const anglePerSlice = 360 / count;
@@ -57,19 +58,16 @@ export default function SpinWheel({
     setSelectedName(null);
     setSpinning(true);
 
-    // Pick winner
     const winnerIndex = Math.floor(Math.random() * availableStudents.length);
     const chosen = availableStudents[winnerIndex];
     chosenRef.current = { student: chosen, winnerIndex };
 
-    // Calculate final rotation
     const targetAngle = 360 - (winnerIndex * anglePerSlice + anglePerSlice / 2);
     const fullSpins = Math.floor(rollDuration / 2) * 360;
     const finalRotation = rotation + fullSpins + targetAngle + (360 - (rotation % 360));
 
     setRotation(finalRotation);
 
-    // Tick sound during spinning
     if (soundEnabled) {
       let tickInterval = 80;
       const tickLoop = () => {
@@ -82,7 +80,6 @@ export default function SpinWheel({
       tickLoop();
     }
 
-    // Auto-stop after duration
     timerRef.current = window.setTimeout(() => {
       stopWheel();
     }, rollDuration * 1000);
@@ -117,12 +114,11 @@ export default function SpinWheel({
 
   return (
     <div className="flex-1 flex flex-col items-center">
-      <h3 className="text-lg font-medium text-foreground mb-1">随机选人</h3>
+      <h3 className="text-lg font-medium text-foreground mb-1">{t('random.title')}</h3>
       <p className="text-sm text-muted-foreground mb-2">
-        大转盘 ({students.length}人)
+        {t('random.wheelMode')} ({students.length}{t('random.persons')})
       </p>
 
-      {/* Selected name display above wheel */}
       <div className="h-10 mb-2 flex items-center justify-center">
         {selectedName && !spinning ? (
           <motion.p
@@ -133,12 +129,11 @@ export default function SpinWheel({
             🎉 {selectedName}
           </motion.p>
         ) : spinning ? (
-          <p className="text-sm text-muted-foreground animate-pulse">点击转盘停止...</p>
+          <p className="text-sm text-muted-foreground animate-pulse">{t('random.clickWheelStop')}</p>
         ) : null}
       </div>
 
       <div className="relative" style={{ width: wheelSize, height: wheelSize }}>
-        {/* Pointer triangle at top */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-20">
           <div
             className="w-0 h-0"
@@ -151,7 +146,6 @@ export default function SpinWheel({
           />
         </div>
 
-        {/* Wheel */}
         <motion.div
           ref={wheelRef}
           className={`w-full h-full rounded-full border-4 border-border shadow-lg overflow-hidden relative ${spinning ? 'cursor-pointer' : ''}`}
@@ -163,7 +157,6 @@ export default function SpinWheel({
           }}
           onClick={handleWheelClick}
         >
-          {/* SVG wheel segments */}
           <svg viewBox={`0 0 ${wheelSize} ${wheelSize}`} className="w-full h-full">
             {displayStudents.map((student, i) => {
               const startAngle = i * anglePerSlice - 90;
@@ -212,7 +205,6 @@ export default function SpinWheel({
             })}
           </svg>
 
-          {/* Center circle */}
           <div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-card border-2 border-border shadow-md flex items-center justify-center"
             style={{ width: wheelSize * 0.18, height: wheelSize * 0.18 }}
@@ -222,7 +214,6 @@ export default function SpinWheel({
         </motion.div>
       </div>
 
-      {/* Controls below wheel */}
       <div className="mt-4 flex flex-col items-center gap-2">
         <Button
           onClick={spin}
@@ -231,7 +222,7 @@ export default function SpinWheel({
           size="lg"
         >
           <Play className="w-4 h-4" />
-          {spinning ? '旋转中（点击转盘停止）' : '旋转'}
+          {spinning ? t('random.spinning') : t('random.spin')}
         </Button>
       </div>
     </div>

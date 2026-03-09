@@ -6,15 +6,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import StudentSidebar from '@/components/StudentSidebar';
 import TabNavigation, { TabId } from '@/components/TabNavigation';
 import RandomPicker from '@/components/RandomPicker';
-import GroupManager from '@/components/GroupManager';
-import TeamBuilder from '@/components/TeamBuilder';
+import TeamworkPanel from '@/components/TeamworkPanel';
 import SeatChart from '@/components/SeatChart';
 import ToolkitPanel from '@/components/ToolkitPanel';
-import CheckInPanel from '@/components/CheckInPanel';
+import BoardPanel from '@/components/BoardPanel';
+import QuizPanel from '@/components/QuizPanel';
+import AchievementPanel from '@/components/AchievementPanel';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
 import LanguageSelector from '@/components/LanguageSelector';
+import StoryboardPanel from '@/components/StoryboardPanel';
+import PPTPanel from '@/components/PPTPanel';
+import VisualizationPanel from '@/components/VisualizationPanel';
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -30,22 +34,24 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    if (tab === 'checkin') {
-      setSidebarCollapsed(true);
-    }
+    // Auto-collapse sidebar when switching tabs for cleaner UI
+    setSidebarCollapsed(true);
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'random': return <RandomPicker />;
-      case 'groups': return <GroupManager />;
-      case 'teams': return <TeamBuilder />;
+      case 'teamwork': return <TeamworkPanel />;
       case 'seats': return <SeatChart />;
+      case 'board': return <BoardPanel />;
+      case 'quiz': return <QuizPanel />;
+      case 'sketch': return <StoryboardPanel />;
+      case 'ppt': return <PPTPanel />;
+      case 'visual': return <VisualizationPanel />;
+      case 'achieve': return <AchievementPanel />;
       case 'toolkit': return <ToolkitPanel />;
-      case 'checkin': return <CheckInPanel />;
     }
   };
-
   return (
     <ThemeProvider>
       <StudentProvider>
@@ -53,9 +59,9 @@ const Index = () => {
           <WeChatBanner />
 
           {/* Header */}
-          <header className="flex items-center justify-between px-4 sm:px-6 py-2.5 sm:py-3 bg-card border-b border-border">
+          <header className="flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
             <div className="flex items-center gap-2 sm:gap-3">
-              <h1 className="text-lg sm:text-xl font-bold text-foreground tracking-tight">{t('app.title')}</h1>
+              <img src="/logo.png" alt="教创搭子" className="h-14 w-auto transition-[filter] duration-300" style={{ filter: 'hue-rotate(var(--logo-hue-rotate, 0deg))' }} />
               <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">{t('app.subtitle')}</span>
             </div>
             <div className="flex items-center gap-1">
@@ -105,7 +111,7 @@ const Index = () => {
             )}
 
             {/* Sidebar area */}
-            {activeTab !== 'checkin' || isApproved ? (
+            {true ? (
               <div className={`
                 fixed lg:relative z-50 lg:z-auto h-full min-h-0
                 transition-transform duration-300 ease-in-out

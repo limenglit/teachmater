@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { FeatureConfigProvider } from "@/contexts/FeatureConfigContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -16,32 +17,42 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const GoRedirect = lazy(() => import("./pages/GoRedirect"));
 const SeatCheckinPage = lazy(() => import("./pages/SeatCheckinPage"));
+const BoardPage = lazy(() => import("./pages/BoardPage"));
+const BoardSubmitPage = lazy(() => import("./pages/BoardSubmitPage"));
+const QuizSubmitPage = lazy(() => import("./pages/QuizSubmitPage"));
+const PollVotePage = lazy(() => import("./pages/PollVotePage"));
 
 const queryClient = new QueryClient();
 
-const Loading = () => <div className="flex items-center justify-center min-h-screen text-muted-foreground">加载中...</div>;
+const Loading = () => <div className="flex items-center justify-center min-h-screen text-muted-foreground">Loading...</div>;
 
 const App = () => (
   <LanguageProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Suspense fallback={<Loading />}><AuthPage /></Suspense>} />
-              <Route path="/reset-password" element={<Suspense fallback={<Loading />}><ResetPassword /></Suspense>} />
-              <Route path="/admin" element={<Suspense fallback={<Loading />}><AdminPage /></Suspense>} />
-              <Route path="/discuss/:topicId" element={<Suspense fallback={<Loading />}><DiscussPage /></Suspense>} />
-              <Route path="/checkin/:sessionId" element={<Suspense fallback={<Loading />}><CheckInPage /></Suspense>} />
-              <Route path="/go" element={<Suspense fallback={<Loading />}><GoRedirect /></Suspense>} />
-              <Route path="/seat-checkin/:sessionId" element={<Suspense fallback={<Loading />}><SeatCheckinPage /></Suspense>} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+        <FeatureConfigProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Suspense fallback={<Loading />}><AuthPage /></Suspense>} />
+                <Route path="/reset-password" element={<Suspense fallback={<Loading />}><ResetPassword /></Suspense>} />
+                <Route path="/admin" element={<Suspense fallback={<Loading />}><AdminPage /></Suspense>} />
+                <Route path="/discuss/:topicId" element={<Suspense fallback={<Loading />}><DiscussPage /></Suspense>} />
+                <Route path="/checkin/:sessionId" element={<Suspense fallback={<Loading />}><CheckInPage /></Suspense>} />
+                <Route path="/go" element={<Suspense fallback={<Loading />}><GoRedirect /></Suspense>} />
+                <Route path="/seat-checkin/:sessionId" element={<Suspense fallback={<Loading />}><SeatCheckinPage /></Suspense>} />
+                <Route path="/board/:boardId" element={<Suspense fallback={<Loading />}><BoardPage /></Suspense>} />
+                <Route path="/board/:boardId/submit" element={<Suspense fallback={<Loading />}><BoardSubmitPage /></Suspense>} />
+                <Route path="/quiz/:sessionId" element={<Suspense fallback={<Loading />}><QuizSubmitPage /></Suspense>} />
+                <Route path="/poll/:pollId" element={<Suspense fallback={<Loading />}><PollVotePage /></Suspense>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </FeatureConfigProvider>
       </AuthProvider>
     </QueryClientProvider>
   </LanguageProvider>
