@@ -146,7 +146,7 @@ export default function StoryboardPanel() {
                 onChange={setParams}
                 onGenerate={handleGenerate}
                 isLoading={isLoading}
-                disabled={guestRemaining !== null && guestRemaining <= 0}
+                disabled={guestRemaining === 0}
               />
               <Separator />
               <StoryboardHistory

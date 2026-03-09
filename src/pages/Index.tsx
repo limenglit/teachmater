@@ -50,6 +50,7 @@ const Index = () => {
       case 'quiz': return <QuizPanel />;
       case 'achieve': return <AchievementPanel />;
       case 'toolkit': return <ToolkitPanel />;
+      case 'sketch': return <StoryboardPanel />;
     }
   };
 
