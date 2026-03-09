@@ -23,10 +23,10 @@ const translations: Record<LangCode, Record<string, string>> = {
     'app.subtitle': 'TeachMate |--洛阳理工学院--| limeng@lit.edu.cn',
     // Tabs
     'tab.random': '随机选人',
+    'tab.teamwork': '组队',
     'tab.groups': '分组',
     'tab.teams': '建队',
     'tab.seats': '座位',
-    'tab.checkin': '签到',
     'tab.board': '白板',
     'tab.toolkit': '工具箱',
     'tab.quiz': '测验',
