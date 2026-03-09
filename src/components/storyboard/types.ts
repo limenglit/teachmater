@@ -827,6 +827,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '复盘总结',
     nameKey: 'storyboard.template.retrospective',
+    category: 'special',
     params: {
       theme: '项目复盘四步法：回顾目标→评估结果→分析原因→总结经验',
       audience: 'teacher',
