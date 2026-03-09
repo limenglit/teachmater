@@ -850,6 +850,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '知识卡片',
     nameKey: 'storyboard.template.knowledgeCard',
+    category: 'special',
     params: {
       theme: '知识点卡片：核心概念定义→关键特征→实际例子→常见误区',
       audience: 'middle-school',
