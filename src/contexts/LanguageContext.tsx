@@ -3438,6 +3438,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'library.title': 'クラスライブラリ',
     'library.import': 'インポート',
     'library.export': 'エクスポート',
+    'library.downloadTemplate': 'テンプレート',
     'library.addCollege': '学部を追加...',
     'library.addClass': 'クラスを追加...',
     'library.noColleges': '学部なし',
