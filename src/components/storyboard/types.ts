@@ -749,6 +749,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '步骤指南',
     nameKey: 'storyboard.template.stepGuide',
+    category: 'compare',
     params: {
       theme: '分步操作指南：第一步→第二步→第三步→第四步，每步配图说明',
       audience: 'general',
