@@ -755,6 +755,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'library.title': '班级库',
     'library.import': '导入',
     'library.export': '导出',
+    'library.downloadTemplate': '下载模板',
     'library.addCollege': '添加学院...',
     'library.addClass': '添加班级...',
     'library.noColleges': '暂无学院',
