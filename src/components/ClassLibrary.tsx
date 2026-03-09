@@ -443,6 +443,9 @@ export default function ClassLibrary() {
                 </h3>
               </div>
               <div className="flex gap-1.5">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setTextImportOpen(true)}>
+                  <Upload className="w-3 h-3" /> {t('sidebar.import')}
+                </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadToWorkspace}>
                   <ArrowRight className="w-3 h-3" /> {t('library.loadToList')}
                 </Button>
