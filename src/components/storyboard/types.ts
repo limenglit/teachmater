@@ -1,3 +1,13 @@
+export interface TextOverlay {
+  text: string;
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  color: string;
+}
+
 export interface StoryboardParams {
   theme: string;
   audience: 'middle-school' | 'high-school' | 'college' | 'teacher' | 'general';
@@ -15,6 +25,7 @@ export interface StoryboardResult {
   imageUrl: string;
   prompt: string;
   createdAt: string;
+  keywords?: TextOverlay[];
 }
 
 export const DEFAULT_PARAMS: StoryboardParams = {
@@ -28,7 +39,31 @@ export const DEFAULT_PARAMS: StoryboardParams = {
   textDensity: 'medium',
 };
 
-export const TEMPLATES: { name: string; nameKey: string; params: Partial<StoryboardParams> }[] = [
+// Helper functions for keyword styling presets
+const title = (text: string, x: number, y: number, color = '#2c3e50'): TextOverlay => ({
+  text, x, y, fontSize: 32, fontFamily: 'ZCOOL KuaiLe', fontWeight: '700', color,
+});
+
+const subtitle = (text: string, x: number, y: number, color = '#34495e'): TextOverlay => ({
+  text, x, y, fontSize: 20, fontFamily: 'Noto Sans SC', fontWeight: '600', color,
+});
+
+const label = (text: string, x: number, y: number, color = '#7f8c8d'): TextOverlay => ({
+  text, x, y, fontSize: 14, fontFamily: 'Noto Sans SC', fontWeight: '400', color,
+});
+
+const accent = (text: string, x: number, y: number, color = '#e74c3c'): TextOverlay => ({
+  text, x, y, fontSize: 18, fontFamily: 'Ma Shan Zheng', fontWeight: '500', color,
+});
+
+export interface TemplateConfig {
+  name: string;
+  nameKey: string;
+  params: Partial<StoryboardParams>;
+  keywords: TextOverlay[];
+}
+
+export const TEMPLATES: TemplateConfig[] = [
   // 教学流程类
   {
     name: '五问反思',
@@ -40,6 +75,15 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 5,
       textDensity: 'medium',
     },
+    keywords: [
+      title('五问反思法', 50, 8, '#8e44ad'),
+      subtitle('Why 1', 10, 28, '#9b59b6'),
+      subtitle('Why 2', 30, 28, '#9b59b6'),
+      subtitle('Why 3', 50, 28, '#9b59b6'),
+      subtitle('Why 4', 70, 28, '#9b59b6'),
+      subtitle('Why 5', 90, 28, '#9b59b6'),
+      label('深入追问本质', 50, 92, '#7f8c8d'),
+    ],
   },
   {
     name: '课堂流程图',
@@ -51,6 +95,20 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 6,
       textDensity: 'high',
     },
+    keywords: [
+      title('课堂流程', 50, 6, '#2980b9'),
+      label('导入', 8, 25, '#3498db'),
+      label('讲解', 25, 25, '#3498db'),
+      label('案例', 42, 25, '#3498db'),
+      label('讨论', 58, 25, '#3498db'),
+      label('练习', 75, 25, '#3498db'),
+      label('反思', 92, 25, '#3498db'),
+      accent('→', 16, 25, '#95a5a6'),
+      accent('→', 33, 25, '#95a5a6'),
+      accent('→', 50, 25, '#95a5a6'),
+      accent('→', 66, 25, '#95a5a6'),
+      accent('→', 83, 25, '#95a5a6'),
+    ],
   },
   {
     name: '角色对比图',
@@ -62,6 +120,13 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('角色转变', 50, 8, '#16a085'),
+      subtitle('传统模式', 25, 25, '#e74c3c'),
+      subtitle('AI时代', 75, 25, '#27ae60'),
+      accent('VS', 50, 50, '#f39c12'),
+      label('被动 → 主动', 50, 75, '#7f8c8d'),
+    ],
   },
   {
     name: '案例分析板',
@@ -73,6 +138,13 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('案例分析', 50, 8, '#e67e22'),
+      subtitle('场景', 12, 30, '#d35400'),
+      subtitle('问题', 37, 30, '#d35400'),
+      subtitle('方案', 62, 30, '#d35400'),
+      subtitle('注意', 87, 30, '#d35400'),
+    ],
   },
   // 思维工具类
   {
@@ -85,6 +157,14 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('思维导图', 50, 8, '#9b59b6'),
+      { text: '核心主题', x: 50, y: 50, fontSize: 24, fontFamily: 'ZCOOL KuaiLe', fontWeight: '700', color: '#8e44ad' },
+      subtitle('分支1', 20, 30, '#3498db'),
+      subtitle('分支2', 80, 30, '#e74c3c'),
+      subtitle('分支3', 20, 70, '#27ae60'),
+      subtitle('分支4', 80, 70, '#f39c12'),
+    ],
   },
   {
     name: '时间线',
@@ -96,6 +176,21 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 6,
       textDensity: 'medium',
     },
+    keywords: [
+      title('时间线', 50, 8, '#2c3e50'),
+      label('起点', 8, 50, '#95a5a6'),
+      label('节点1', 25, 50, '#3498db'),
+      label('节点2', 42, 50, '#3498db'),
+      label('节点3', 58, 50, '#3498db'),
+      label('现在', 75, 50, '#e74c3c'),
+      label('未来', 92, 50, '#27ae60'),
+      { text: '●', x: 8, y: 42, fontSize: 16, fontFamily: 'sans-serif', fontWeight: '400', color: '#95a5a6' },
+      { text: '●', x: 25, y: 42, fontSize: 16, fontFamily: 'sans-serif', fontWeight: '400', color: '#3498db' },
+      { text: '●', x: 42, y: 42, fontSize: 16, fontFamily: 'sans-serif', fontWeight: '400', color: '#3498db' },
+      { text: '●', x: 58, y: 42, fontSize: 16, fontFamily: 'sans-serif', fontWeight: '400', color: '#3498db' },
+      { text: '●', x: 75, y: 42, fontSize: 16, fontFamily: 'sans-serif', fontWeight: '400', color: '#e74c3c' },
+      { text: '●', x: 92, y: 42, fontSize: 16, fontFamily: 'sans-serif', fontWeight: '400', color: '#27ae60' },
+    ],
   },
   {
     name: 'SWOT分析',
@@ -107,6 +202,17 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'high',
     },
+    keywords: [
+      title('SWOT 分析', 50, 8, '#2c3e50'),
+      subtitle('S 优势', 25, 28, '#27ae60'),
+      subtitle('W 劣势', 75, 28, '#e74c3c'),
+      subtitle('O 机会', 25, 72, '#3498db'),
+      subtitle('T 威胁', 75, 72, '#f39c12'),
+      label('Strengths', 25, 36, '#27ae60'),
+      label('Weaknesses', 75, 36, '#e74c3c'),
+      label('Opportunities', 25, 80, '#3498db'),
+      label('Threats', 75, 80, '#f39c12'),
+    ],
   },
   {
     name: '鱼骨图',
@@ -118,6 +224,16 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'high',
     },
+    keywords: [
+      title('鱼骨图分析', 50, 8, '#34495e'),
+      { text: '问题', x: 90, y: 50, fontSize: 22, fontFamily: 'ZCOOL KuaiLe', fontWeight: '700', color: '#e74c3c' },
+      subtitle('人员', 20, 25, '#3498db'),
+      subtitle('方法', 40, 25, '#9b59b6'),
+      subtitle('材料', 60, 25, '#e67e22'),
+      subtitle('设备', 20, 75, '#27ae60'),
+      subtitle('环境', 40, 75, '#1abc9c'),
+      subtitle('其他', 60, 75, '#95a5a6'),
+    ],
   },
   {
     name: '流程图',
@@ -129,6 +245,17 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 6,
       textDensity: 'medium',
     },
+    keywords: [
+      title('流程图', 50, 6, '#2980b9'),
+      label('开始', 10, 30, '#27ae60'),
+      label('输入', 25, 30, '#3498db'),
+      label('处理', 42, 30, '#9b59b6'),
+      label('判断', 58, 30, '#f39c12'),
+      label('输出', 75, 30, '#3498db'),
+      label('结束', 90, 30, '#e74c3c'),
+      accent('⬇', 42, 55, '#95a5a6'),
+      label('是/否', 58, 45, '#7f8c8d'),
+    ],
   },
   {
     name: '金字塔结构',
@@ -140,6 +267,13 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 3,
       textDensity: 'medium',
     },
+    keywords: [
+      title('金字塔结构', 50, 8, '#8e44ad'),
+      subtitle('核心观点', 50, 25, '#9b59b6'),
+      subtitle('支撑论据', 50, 50, '#3498db'),
+      subtitle('事实数据', 50, 75, '#27ae60'),
+      label('▲', 50, 18, '#9b59b6'),
+    ],
   },
   // 学习方法类
   {
@@ -152,6 +286,15 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 3,
       textDensity: 'medium',
     },
+    keywords: [
+      title('KWL 学习法', 50, 8, '#16a085'),
+      subtitle('K 已知', 17, 30, '#3498db'),
+      subtitle('W 想学', 50, 30, '#e67e22'),
+      subtitle('L 学到', 83, 30, '#27ae60'),
+      label('Know', 17, 40, '#3498db'),
+      label('Want', 50, 40, '#e67e22'),
+      label('Learned', 83, 40, '#27ae60'),
+    ],
   },
   {
     name: '费曼学习法',
@@ -163,6 +306,14 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('费曼学习法', 50, 8, '#e74c3c'),
+      subtitle('1. 选择概念', 12, 30, '#c0392b'),
+      subtitle('2. 教给小白', 37, 30, '#e67e22'),
+      subtitle('3. 发现盲点', 62, 30, '#f39c12'),
+      subtitle('4. 简化重述', 87, 30, '#27ae60'),
+      label('Feynman Technique', 50, 92, '#95a5a6'),
+    ],
   },
   {
     name: 'PBL项目学习',
@@ -174,6 +325,21 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 6,
       textDensity: 'medium',
     },
+    keywords: [
+      title('PBL 项目学习', 50, 6, '#2980b9'),
+      label('问题', 8, 28, '#e74c3c'),
+      label('调研', 25, 28, '#e67e22'),
+      label('设计', 42, 28, '#f1c40f'),
+      label('原型', 58, 28, '#27ae60'),
+      label('展示', 75, 28, '#3498db'),
+      label('反思', 92, 28, '#9b59b6'),
+      { text: '1', x: 8, y: 38, fontSize: 12, fontFamily: 'sans-serif', fontWeight: '700', color: '#e74c3c' },
+      { text: '2', x: 25, y: 38, fontSize: 12, fontFamily: 'sans-serif', fontWeight: '700', color: '#e67e22' },
+      { text: '3', x: 42, y: 38, fontSize: 12, fontFamily: 'sans-serif', fontWeight: '700', color: '#f1c40f' },
+      { text: '4', x: 58, y: 38, fontSize: 12, fontFamily: 'sans-serif', fontWeight: '700', color: '#27ae60' },
+      { text: '5', x: 75, y: 38, fontSize: 12, fontFamily: 'sans-serif', fontWeight: '700', color: '#3498db' },
+      { text: '6', x: 92, y: 38, fontSize: 12, fontFamily: 'sans-serif', fontWeight: '700', color: '#9b59b6' },
+    ],
   },
   {
     name: '康奈尔笔记法',
@@ -185,6 +351,15 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 3,
       textDensity: 'high',
     },
+    keywords: [
+      title('康奈尔笔记法', 50, 6, '#34495e'),
+      subtitle('关键词/问题', 15, 25, '#e74c3c'),
+      subtitle('详细笔记', 60, 25, '#3498db'),
+      subtitle('总结要点', 50, 85, '#27ae60'),
+      label('Cue Column', 15, 33, '#95a5a6'),
+      label('Note-Taking Area', 60, 33, '#95a5a6'),
+      label('Summary', 50, 92, '#95a5a6'),
+    ],
   },
   {
     name: '番茄工作法',
@@ -196,6 +371,18 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'low',
     },
+    keywords: [
+      title('番茄工作法', 50, 8, '#e74c3c'),
+      { text: '🍅', x: 50, y: 22, fontSize: 36, fontFamily: 'sans-serif', fontWeight: '400', color: '#e74c3c' },
+      subtitle('25分钟', 20, 50, '#c0392b'),
+      subtitle('5分钟', 45, 50, '#27ae60'),
+      subtitle('×4', 65, 50, '#3498db'),
+      subtitle('长休息', 85, 50, '#9b59b6'),
+      label('专注', 20, 60, '#95a5a6'),
+      label('休息', 45, 60, '#95a5a6'),
+      label('循环', 65, 60, '#95a5a6'),
+      label('15-30min', 85, 60, '#95a5a6'),
+    ],
   },
   // 分析框架类
   {
@@ -208,6 +395,17 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'high',
     },
+    keywords: [
+      title('PEST 分析', 50, 8, '#2c3e50'),
+      subtitle('P 政治', 25, 30, '#e74c3c'),
+      subtitle('E 经济', 75, 30, '#27ae60'),
+      subtitle('S 社会', 25, 70, '#3498db'),
+      subtitle('T 技术', 75, 70, '#f39c12'),
+      label('Political', 25, 40, '#e74c3c'),
+      label('Economic', 75, 40, '#27ae60'),
+      label('Social', 25, 80, '#3498db'),
+      label('Technological', 75, 80, '#f39c12'),
+    ],
   },
   {
     name: '5W1H分析',
@@ -219,6 +417,21 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 6,
       textDensity: 'medium',
     },
+    keywords: [
+      title('5W1H 分析法', 50, 6, '#8e44ad'),
+      subtitle('What', 8, 30, '#e74c3c'),
+      subtitle('Why', 25, 30, '#e67e22'),
+      subtitle('Who', 42, 30, '#f1c40f'),
+      subtitle('When', 58, 30, '#27ae60'),
+      subtitle('Where', 75, 30, '#3498db'),
+      subtitle('How', 92, 30, '#9b59b6'),
+      label('什么', 8, 42, '#95a5a6'),
+      label('为什么', 25, 42, '#95a5a6'),
+      label('谁', 42, 42, '#95a5a6'),
+      label('何时', 58, 42, '#95a5a6'),
+      label('何地', 75, 42, '#95a5a6'),
+      label('如何', 92, 42, '#95a5a6'),
+    ],
   },
   {
     name: 'PDCA循环',
@@ -230,6 +443,18 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('PDCA 循环', 50, 8, '#2980b9'),
+      subtitle('P 计划', 25, 30, '#3498db'),
+      subtitle('D 执行', 75, 30, '#27ae60'),
+      subtitle('C 检查', 75, 70, '#f39c12'),
+      subtitle('A 行动', 25, 70, '#e74c3c'),
+      label('Plan', 25, 40, '#3498db'),
+      label('Do', 75, 40, '#27ae60'),
+      label('Check', 75, 80, '#f39c12'),
+      label('Act', 25, 80, '#e74c3c'),
+      accent('↻', 50, 50, '#7f8c8d'),
+    ],
   },
   {
     name: '优缺点对比',
@@ -241,6 +466,14 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 3,
       textDensity: 'medium',
     },
+    keywords: [
+      title('优缺点分析', 50, 8, '#34495e'),
+      subtitle('✓ 优点', 25, 28, '#27ae60'),
+      subtitle('✗ 缺点', 75, 28, '#e74c3c'),
+      label('Pros', 25, 38, '#27ae60'),
+      label('Cons', 75, 38, '#e74c3c'),
+      subtitle('综合评估', 50, 85, '#3498db'),
+    ],
   },
   {
     name: '四象限矩阵',
@@ -252,6 +485,19 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('四象限矩阵', 50, 6, '#2c3e50'),
+      subtitle('紧急+重要', 25, 28, '#e74c3c'),
+      subtitle('不紧急+重要', 75, 28, '#27ae60'),
+      subtitle('紧急+不重要', 25, 72, '#f39c12'),
+      subtitle('不紧急+不重要', 75, 72, '#95a5a6'),
+      label('立即做', 25, 38, '#e74c3c'),
+      label('计划做', 75, 38, '#27ae60'),
+      label('委托做', 25, 82, '#f39c12'),
+      label('不做', 75, 82, '#95a5a6'),
+      accent('重要', 5, 50, '#7f8c8d'),
+      accent('紧急', 50, 95, '#7f8c8d'),
+    ],
   },
   // 创意设计类
   {
@@ -264,6 +510,21 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 6,
       textDensity: 'medium',
     },
+    keywords: [
+      title('六顶思考帽', 50, 6, '#2c3e50'),
+      { text: '⬜ 白帽', x: 8, y: 30, fontSize: 16, fontFamily: 'Noto Sans SC', fontWeight: '600', color: '#ecf0f1' },
+      { text: '🟥 红帽', x: 25, y: 30, fontSize: 16, fontFamily: 'Noto Sans SC', fontWeight: '600', color: '#e74c3c' },
+      { text: '⬛ 黑帽', x: 42, y: 30, fontSize: 16, fontFamily: 'Noto Sans SC', fontWeight: '600', color: '#2c3e50' },
+      { text: '🟨 黄帽', x: 58, y: 30, fontSize: 16, fontFamily: 'Noto Sans SC', fontWeight: '600', color: '#f1c40f' },
+      { text: '🟩 绿帽', x: 75, y: 30, fontSize: 16, fontFamily: 'Noto Sans SC', fontWeight: '600', color: '#27ae60' },
+      { text: '🟦 蓝帽', x: 92, y: 30, fontSize: 16, fontFamily: 'Noto Sans SC', fontWeight: '600', color: '#3498db' },
+      label('事实', 8, 42, '#bdc3c7'),
+      label('情感', 25, 42, '#e74c3c'),
+      label('批判', 42, 42, '#2c3e50'),
+      label('乐观', 58, 42, '#f1c40f'),
+      label('创意', 75, 42, '#27ae60'),
+      label('控制', 92, 42, '#3498db'),
+    ],
   },
   {
     name: '设计思维',
@@ -275,6 +536,19 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 5,
       textDensity: 'medium',
     },
+    keywords: [
+      title('Design Thinking', 50, 6, '#9b59b6'),
+      subtitle('共情', 10, 30, '#e74c3c'),
+      subtitle('定义', 30, 30, '#e67e22'),
+      subtitle('构思', 50, 30, '#f1c40f'),
+      subtitle('原型', 70, 30, '#27ae60'),
+      subtitle('测试', 90, 30, '#3498db'),
+      label('Empathize', 10, 42, '#e74c3c'),
+      label('Define', 30, 42, '#e67e22'),
+      label('Ideate', 50, 42, '#f1c40f'),
+      label('Prototype', 70, 42, '#27ae60'),
+      label('Test', 90, 42, '#3498db'),
+    ],
   },
   {
     name: 'SCAMPER创新',
@@ -286,6 +560,16 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'high',
     },
+    keywords: [
+      title('SCAMPER', 50, 8, '#e67e22'),
+      subtitle('S 替代', 15, 30, '#e74c3c'),
+      subtitle('C 合并', 35, 30, '#3498db'),
+      subtitle('A 改造', 55, 30, '#27ae60'),
+      subtitle('M 修改', 75, 30, '#9b59b6'),
+      subtitle('P 另用', 25, 70, '#f1c40f'),
+      subtitle('E 消除', 50, 70, '#e67e22'),
+      subtitle('R 重组', 75, 70, '#1abc9c'),
+    ],
   },
   {
     name: '故事板叙事',
@@ -297,6 +581,19 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 5,
       textDensity: 'medium',
     },
+    keywords: [
+      title('故事叙事', 50, 8, '#8e44ad'),
+      subtitle('开场', 10, 30, '#3498db'),
+      subtitle('冲突', 30, 30, '#e67e22'),
+      subtitle('发展', 50, 30, '#f1c40f'),
+      subtitle('高潮', 70, 30, '#e74c3c'),
+      subtitle('结局', 90, 30, '#27ae60'),
+      label('Setup', 10, 42, '#95a5a6'),
+      label('Conflict', 30, 42, '#95a5a6'),
+      label('Rising', 50, 42, '#95a5a6'),
+      label('Climax', 70, 42, '#95a5a6'),
+      label('Resolution', 90, 42, '#95a5a6'),
+    ],
   },
   // 目标管理类
   {
@@ -309,6 +606,19 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 5,
       textDensity: 'medium',
     },
+    keywords: [
+      title('SMART 目标', 50, 8, '#16a085'),
+      subtitle('S 具体', 10, 32, '#e74c3c'),
+      subtitle('M 可衡量', 30, 32, '#e67e22'),
+      subtitle('A 可达成', 50, 32, '#f1c40f'),
+      subtitle('R 相关性', 70, 32, '#27ae60'),
+      subtitle('T 时限', 90, 32, '#3498db'),
+      label('Specific', 10, 44, '#e74c3c'),
+      label('Measurable', 30, 44, '#e67e22'),
+      label('Achievable', 50, 44, '#f1c40f'),
+      label('Relevant', 70, 44, '#27ae60'),
+      label('Time-bound', 90, 44, '#3498db'),
+    ],
   },
   {
     name: 'OKR目标',
@@ -320,6 +630,17 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('OKR 目标管理', 50, 8, '#2980b9'),
+      subtitle('O 目标', 20, 30, '#e74c3c'),
+      subtitle('KR 关键结果', 50, 30, '#3498db'),
+      subtitle('执行追踪', 80, 30, '#27ae60'),
+      label('Objective', 20, 42, '#e74c3c'),
+      label('Key Results', 50, 42, '#3498db'),
+      label('Track & Review', 80, 42, '#27ae60'),
+      accent('→', 35, 35, '#95a5a6'),
+      accent('→', 65, 35, '#95a5a6'),
+    ],
   },
   {
     name: '行动计划表',
@@ -331,6 +652,15 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 6,
       textDensity: 'high',
     },
+    keywords: [
+      title('行动计划', 50, 6, '#34495e'),
+      subtitle('目标', 8, 28, '#e74c3c'),
+      subtitle('任务', 25, 28, '#3498db'),
+      subtitle('负责人', 42, 28, '#9b59b6'),
+      subtitle('截止', 58, 28, '#e67e22'),
+      subtitle('资源', 75, 28, '#27ae60'),
+      subtitle('进度', 92, 28, '#1abc9c'),
+    ],
   },
   // 对比展示类
   {
@@ -343,6 +673,15 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 3,
       textDensity: 'low',
     },
+    keywords: [
+      title('前后对比', 50, 8, '#2c3e50'),
+      subtitle('Before', 17, 30, '#e74c3c'),
+      subtitle('转变', 50, 30, '#f39c12'),
+      subtitle('After', 83, 30, '#27ae60'),
+      label('改变前', 17, 42, '#e74c3c'),
+      accent('→', 50, 50, '#f39c12'),
+      label('改变后', 83, 42, '#27ae60'),
+    ],
   },
   {
     name: '正误对比',
@@ -354,6 +693,15 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('正误对比', 50, 8, '#34495e'),
+      { text: '✗', x: 25, y: 35, fontSize: 48, fontFamily: 'sans-serif', fontWeight: '700', color: '#e74c3c' },
+      { text: '✓', x: 75, y: 35, fontSize: 48, fontFamily: 'sans-serif', fontWeight: '700', color: '#27ae60' },
+      subtitle('错误做法', 25, 60, '#e74c3c'),
+      subtitle('正确做法', 75, 60, '#27ae60'),
+      label('Wrong', 25, 72, '#e74c3c'),
+      label('Right', 75, 72, '#27ae60'),
+    ],
   },
   {
     name: '步骤指南',
@@ -365,6 +713,17 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('步骤指南', 50, 8, '#2980b9'),
+      { text: '①', x: 12, y: 30, fontSize: 28, fontFamily: 'sans-serif', fontWeight: '700', color: '#3498db' },
+      { text: '②', x: 37, y: 30, fontSize: 28, fontFamily: 'sans-serif', fontWeight: '700', color: '#3498db' },
+      { text: '③', x: 62, y: 30, fontSize: 28, fontFamily: 'sans-serif', fontWeight: '700', color: '#3498db' },
+      { text: '④', x: 87, y: 30, fontSize: 28, fontFamily: 'sans-serif', fontWeight: '700', color: '#3498db' },
+      label('Step 1', 12, 45, '#95a5a6'),
+      label('Step 2', 37, 45, '#95a5a6'),
+      label('Step 3', 62, 45, '#95a5a6'),
+      label('Step 4', 87, 45, '#95a5a6'),
+    ],
   },
   // 特殊用途类
   {
@@ -377,6 +736,24 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 5,
       textDensity: 'medium',
     },
+    keywords: [
+      title('用户旅程图', 50, 6, '#9b59b6'),
+      subtitle('意识', 10, 30, '#3498db'),
+      subtitle('考虑', 30, 30, '#e67e22'),
+      subtitle('决策', 50, 30, '#f1c40f'),
+      subtitle('使用', 70, 30, '#27ae60'),
+      subtitle('推荐', 90, 30, '#e74c3c'),
+      label('Awareness', 10, 42, '#95a5a6'),
+      label('Consider', 30, 42, '#95a5a6'),
+      label('Decision', 50, 42, '#95a5a6'),
+      label('Use', 70, 42, '#95a5a6'),
+      label('Advocate', 90, 42, '#95a5a6'),
+      accent('😐', 10, 75, '#f39c12'),
+      accent('🤔', 30, 75, '#e67e22'),
+      accent('😊', 50, 75, '#27ae60'),
+      accent('😄', 70, 75, '#27ae60'),
+      accent('🥰', 90, 75, '#e74c3c'),
+    ],
   },
   {
     name: '商业画布',
@@ -388,6 +765,18 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'high',
     },
+    keywords: [
+      title('商业画布', 50, 4, '#2c3e50'),
+      subtitle('价值主张', 50, 25, '#e74c3c'),
+      label('客户细分', 85, 25, '#3498db'),
+      label('渠道', 85, 50, '#27ae60'),
+      label('客户关系', 85, 75, '#9b59b6'),
+      label('收入来源', 70, 90, '#f39c12'),
+      label('核心资源', 15, 50, '#1abc9c'),
+      label('关键活动', 35, 50, '#e67e22'),
+      label('合作伙伴', 15, 25, '#8e44ad'),
+      label('成本结构', 30, 90, '#95a5a6'),
+    ],
   },
   {
     name: '复盘总结',
@@ -399,6 +788,17 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('复盘总结', 50, 8, '#8e44ad'),
+      subtitle('回顾目标', 12, 32, '#3498db'),
+      subtitle('评估结果', 37, 32, '#27ae60'),
+      subtitle('分析原因', 62, 32, '#f39c12'),
+      subtitle('总结经验', 87, 32, '#e74c3c'),
+      label('Goal', 12, 44, '#3498db'),
+      label('Result', 37, 44, '#27ae60'),
+      label('Analysis', 62, 44, '#f39c12'),
+      label('Lessons', 87, 44, '#e74c3c'),
+    ],
   },
   {
     name: '知识卡片',
@@ -410,5 +810,16 @@ export const TEMPLATES: { name: string; nameKey: string; params: Partial<Storybo
       panelCount: 4,
       textDensity: 'medium',
     },
+    keywords: [
+      title('知识卡片', 50, 8, '#16a085'),
+      subtitle('定义', 12, 32, '#e74c3c'),
+      subtitle('特征', 37, 32, '#3498db'),
+      subtitle('例子', 62, 32, '#27ae60'),
+      subtitle('误区', 87, 32, '#f39c12'),
+      label('Definition', 12, 44, '#95a5a6'),
+      label('Features', 37, 44, '#95a5a6'),
+      label('Examples', 62, 44, '#95a5a6'),
+      label('Pitfalls', 87, 44, '#95a5a6'),
+    ],
   },
 ];
