@@ -589,6 +589,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'SCAMPER创新',
     nameKey: 'storyboard.template.scamper',
+    category: 'creative',
     params: {
       theme: 'SCAMPER创新法：替代、合并、改造、修改、另用、消除、重组七种创新策略',
       audience: 'college',
