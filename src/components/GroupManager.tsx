@@ -84,13 +84,13 @@ export default function GroupManager() {
       
       const { error } = await supabase
         .from('teamwork_history')
-        .insert({
+        .insert([{
           user_id: user.id,
-          type: 'groups',
+          type: 'groups' as const,
           title,
-          data: groups,
+          data: groups as any,
           student_count: studentCount,
-        });
+        }]);
       
       if (error) throw error;
       toast.success(t('teamwork.saved'));

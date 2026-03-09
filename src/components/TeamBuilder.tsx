@@ -86,13 +86,13 @@ export default function TeamBuilder() {
       
       const { error } = await supabase
         .from('teamwork_history')
-        .insert({
+        .insert([{
           user_id: user.id,
-          type: 'teams',
+          type: 'teams' as const,
           title,
-          data: teams,
+          data: teams as any,
           student_count: studentCount,
-        });
+        }]);
       
       if (error) throw error;
       toast.success(t('teamwork.saved'));
