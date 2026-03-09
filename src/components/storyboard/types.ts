@@ -129,6 +129,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '角色对比图',
     nameKey: 'storyboard.template.roleCompare',
+    category: 'teaching',
     params: {
       theme: 'AI时代的学生角色转变：被动接收者vs主动探索者，死记硬背vs批判思考，单独学习vs协作创新',
       audience: 'college',
