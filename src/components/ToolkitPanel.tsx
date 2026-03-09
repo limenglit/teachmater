@@ -86,6 +86,10 @@ export default function ToolkitPanel() {
           <RandomAssigner />
           <LotteryDrawer />
           <PollManager />
+          <Stopwatch />
+          <TrafficLight />
+          <BreathingExercise />
+          <TextMagnifier />
           <CommandCards />
           <QRCodeGenerator />
         </div>
