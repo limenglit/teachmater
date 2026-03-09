@@ -104,7 +104,6 @@ const translations: Record<LangCode, Record<string, string>> = {
     'ppt.exportError': '导出失败',
     'ext.idea': '思享岛',
     'ext.tip': '与本平台使用同一邮箱即可登录',
-    'ext.tip': '与本平台使用同一邮箱即可登录',
     // Storyboard
     'storyboard.title': '手绘故事板生成器',
     'storyboard.theme': '主题',
