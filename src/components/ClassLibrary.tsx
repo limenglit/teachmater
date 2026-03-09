@@ -231,6 +231,18 @@ export default function ClassLibrary() {
     XLSX.writeFile(wb, `${cls?.name || t('sidebar.studentList')}.xlsx`);
   };
 
+  const downloadTemplate = () => {
+    const data = [
+      ['学生院系', '行政班', '学号', '姓名'],
+      ['计算机学院', '计科2201', '220101001', '张三'],
+      ['计算机学院', '计科2201', '220101002', '李四'],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '学生信息');
+    XLSX.writeFile(wb, '学生信息导入模板.xlsx');
+  };
+
   const exportAllToExcel = () => {
     const data: string[][] = [[t('library.college'), t('library.class'), t('library.studentNumber'), t('library.studentName')]];
     for (const college of colleges) {
