@@ -67,7 +67,7 @@ export default function VisualizationPanel() {
       setStructureType(result.structure_type);
       setChartType(result.suggested_chart === 'none' ? 'bar' : result.suggested_chart);
 
-      if (!user) incrementGuestAiUsage();
+      if (!user) recordGuestAIUsage(false);
 
       // Save to history
       const item: VisualHistoryItem = {

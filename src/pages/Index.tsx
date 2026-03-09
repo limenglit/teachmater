@@ -47,6 +47,7 @@ const Index = () => {
       case 'quiz': return <QuizPanel />;
       case 'sketch': return <StoryboardPanel />;
       case 'ppt': return <PPTPanel />;
+      case 'visual': return <VisualizationPanel />;
       case 'achieve': return <AchievementPanel />;
       case 'toolkit': return <ToolkitPanel />;
     }
