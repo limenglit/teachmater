@@ -583,6 +583,65 @@ export default function BoardPanel() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Roster Selection Dialog */}
+        <Dialog open={showRoster} onOpenChange={setShowRoster}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t('board.selectClass')}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">{t('board.selectClassDesc')}</p>
+            <div className="space-y-2 mt-2">
+              {/* Use sidebar list option */}
+              {sidebarStudents.length > 0 && (
+                <button
+                  onClick={() => handleSelectClass(sidebarStudents.map(s => s.name))}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">{t('board.useSidebarList')}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{sidebarStudents.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              )}
+
+              {/* Class library options */}
+              {classesForSelect.map(cls => (
+                <button
+                  key={cls.id}
+                  onClick={() => handleSelectClass(cls.students)}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                  disabled={cls.students.length === 0}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{cls.name}</span>
+                      {cls.collegeName && <span className="text-xs text-muted-foreground ml-2">{cls.collegeName}</span>}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{cls.students.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              ))}
+
+              {classesForSelect.length === 0 && sidebarStudents.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">{t('sidebar.noStudents')}</p>
+              )}
+
+              {/* Clear roster */}
+              {activeBoard?.student_names?.length > 0 && (
+                <button
+                  onClick={handleClearRoster}
+                  className="w-full text-left p-3 rounded-lg border border-destructive/30 hover:bg-destructive/5 transition-colors"
+                >
+                  <span className="text-sm text-destructive">{t('board.noClass')}</span>
+                </button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
