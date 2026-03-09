@@ -1868,6 +1868,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'library.title': 'Class Library',
     'library.import': 'Import',
     'library.export': 'Export',
+    'library.downloadTemplate': 'Template',
     'library.addCollege': 'Add college...',
     'library.addClass': 'Add class...',
     'library.noColleges': 'No colleges yet',
