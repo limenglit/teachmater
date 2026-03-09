@@ -564,6 +564,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '设计思维',
     nameKey: 'storyboard.template.designThinking',
+    category: 'creative',
     params: {
       theme: '设计思维五阶段：共情(Empathize)→定义(Define)→构思(Ideate)→原型(Prototype)→测试(Test)',
       audience: 'college',
