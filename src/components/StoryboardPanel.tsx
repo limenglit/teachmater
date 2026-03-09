@@ -51,12 +51,10 @@ export default function StoryboardPanel() {
     }
 
     // Check guest limit
-    if (!user) {
-      const remaining = getGuestAIRemaining();
-      if (remaining <= 0) {
-        toast.error(t('storyboard.guestLimitReached'));
-        return;
-      }
+    const remaining = getGuestAIRemaining(!!user);
+    if (remaining === 0) {
+      toast.error(t('storyboard.guestLimitReached'));
+      return;
     }
 
     setIsLoading(true);
