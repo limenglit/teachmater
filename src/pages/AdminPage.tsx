@@ -235,7 +235,31 @@ export default function AdminPage() {
         </Button>
       </header>
 
-      <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
+      <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-4">
+        {/* Admin sub-tabs */}
+        <div className="flex gap-1 border-b border-border pb-2">
+          <Button
+            size="sm"
+            variant={adminTab === 'users' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('users')}
+          >
+            <Users className="w-3.5 h-3.5" /> {t('admin.tabUsers')}
+          </Button>
+          <Button
+            size="sm"
+            variant={adminTab === 'config' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('config')}
+          >
+            <Settings2 className="w-3.5 h-3.5" /> {t('admin.tabConfig')}
+          </Button>
+        </div>
+
+        {adminTab === 'config' ? (
+          <AdminConfigPanel />
+        ) : (
+        <>
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
