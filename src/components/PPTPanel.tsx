@@ -36,8 +36,54 @@ export default function PPTPanel() {
   const [selectedSlide, setSelectedSlide] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [fileLoading, setFileLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const guestRemaining = getGuestAIRemaining(isLoggedIn);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!['txt', 'md', 'docx'].includes(ext || '')) {
+      toast.error(t('ppt.fileUnsupported'));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('ppt.fileTooLarge'));
+      return;
+    }
+
+    setFileLoading(true);
+    try {
+      let text = '';
+      if (ext === 'txt' || ext === 'md') {
+        text = await file.text();
+      } else if (ext === 'docx') {
+        const mammoth = await import('mammoth');
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        text = result.value;
+      }
+
+      if (!text.trim()) {
+        toast.error(t('ppt.fileEmpty'));
+        return;
+      }
+
+      setContent(text);
+      setUploadedFileName(file.name);
+      toast.success(t('ppt.fileLoaded'));
+    } catch (error) {
+      console.error('File read error:', error);
+      toast.error(t('ppt.fileReadError'));
+    } finally {
+      setFileLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleGenerate = async () => {
     if (!content.trim()) {
