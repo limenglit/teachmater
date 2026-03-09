@@ -175,7 +175,7 @@ export default function VisualizationPanel() {
             </div>
             <div ref={exportRef}>
               {/* Infographic */}
-              <InfographicRenderer analysis={renderAnalysis} colorSchemeId={colorScheme} template={template} />
+              <InfographicRenderer analysis={renderAnalysis} colorSchemeId={colorScheme} template={template} onUpdate={handleUpdateAnalysis} />
 
               {/* Data Chart */}
               {renderAnalysis.data_points.length > 0 && (
