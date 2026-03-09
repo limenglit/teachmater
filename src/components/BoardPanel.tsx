@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, Columns3, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, Columns3, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
@@ -30,6 +31,7 @@ export interface Board {
   background_color: string;
   banned_words: string;
   created_at: string;
+  student_names: string[];
 }
 
 export interface BoardCard {
@@ -97,6 +99,7 @@ function saveLocalCards(boardId: string, cards: BoardCard[]) {
 export default function BoardPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { students: sidebarStudents } = useStudents();
   const isCloud = true; // All users use cloud for collaboration features
 
   const [boards, setBoards] = useState<Board[]>([]);
@@ -108,7 +111,9 @@ export default function BoardPanel() {
   const [showWordCloud, setShowWordCloud] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
 
   // Load boards
   useEffect(() => {
@@ -170,6 +175,7 @@ export default function BoardPanel() {
         background_color: '#ffffff',
         banned_words: '',
         created_at: new Date().toISOString(),
+        student_names: [],
       };
       const updated = [board, ...boards];
       saveLocalBoards(updated);
@@ -369,6 +375,35 @@ export default function BoardPanel() {
     return () => { supabase.removeChannel(channel); };
   }, [isCloud, activeBoard?.id]);
 
+  // Load classes for roster selection
+  const loadClassesForSelect = async () => {
+    if (!user) return;
+    const { data: colleges } = await supabase.from('colleges').select('id, name').eq('user_id', user.id);
+    const { data: classes } = await supabase.from('classes').select('id, name, college_id').eq('user_id', user.id);
+    const { data: classStudents } = await supabase.from('class_students').select('class_id, name').eq('user_id', user.id);
+    if (!classes) return;
+    const result = classes.map(cls => ({
+      id: cls.id,
+      name: cls.name,
+      collegeName: colleges?.find(c => c.id === cls.college_id)?.name || '',
+      students: (classStudents || []).filter(s => s.class_id === cls.id).map(s => s.name),
+    }));
+    setClassesForSelect(result);
+  };
+
+  const handleSelectClass = async (studentNames: string[]) => {
+    if (!activeBoard) return;
+    await updateBoardSetting('student_names', studentNames);
+    setShowRoster(false);
+    toast({ title: t('board.classLinked'), description: tFormat(t('board.studentCount'), studentNames.length) });
+  };
+
+  const handleClearRoster = async () => {
+    if (!activeBoard) return;
+    await updateBoardSetting('student_names', []);
+    setShowRoster(false);
+  };
+
   const pendingCount = cards.filter(c => !c.is_approved).length;
   const approvedCards = cards.filter(c => c.is_approved);
   const sortedCards = [...approvedCards].sort((a, b) => {
@@ -436,8 +471,18 @@ export default function BoardPanel() {
 
             {isCreator && (
               <>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowQR(true)}>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => { setShowQR(true); }}>
                   <QrCode className="w-3 h-3" /> {t('board.qrcode')}
+                </Button>
+                <Button
+                  variant={activeBoard.student_names?.length > 0 ? 'default' : 'outline'}
+                  size="sm" className="h-7 text-xs gap-1"
+                  onClick={() => { loadClassesForSelect(); setShowRoster(true); }}
+                >
+                  <Users className="w-3 h-3" />
+                  {activeBoard.student_names?.length > 0
+                    ? tFormat(t('board.studentCount'), activeBoard.student_names.length)
+                    : t('board.selectClass')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowPPT(true)}>
                   <Play className="w-3 h-3" /> {t('board.pptMode')}
@@ -535,6 +580,65 @@ export default function BoardPanel() {
               }}>
                 {t('board.shareLink')}
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Roster Selection Dialog */}
+        <Dialog open={showRoster} onOpenChange={setShowRoster}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{t('board.selectClass')}</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">{t('board.selectClassDesc')}</p>
+            <div className="space-y-2 mt-2">
+              {/* Use sidebar list option */}
+              {sidebarStudents.length > 0 && (
+                <button
+                  onClick={() => handleSelectClass(sidebarStudents.map(s => s.name))}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">{t('board.useSidebarList')}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{sidebarStudents.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              )}
+
+              {/* Class library options */}
+              {classesForSelect.map(cls => (
+                <button
+                  key={cls.id}
+                  onClick={() => handleSelectClass(cls.students)}
+                  className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors"
+                  disabled={cls.students.length === 0}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{cls.name}</span>
+                      {cls.collegeName && <span className="text-xs text-muted-foreground ml-2">{cls.collegeName}</span>}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{cls.students.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              ))}
+
+              {classesForSelect.length === 0 && sidebarStudents.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">{t('sidebar.noStudents')}</p>
+              )}
+
+              {/* Clear roster */}
+              {activeBoard?.student_names?.length > 0 && (
+                <button
+                  onClick={handleClearRoster}
+                  className="w-full text-left p-3 rounded-lg border border-destructive/30 hover:bg-destructive/5 transition-colors"
+                >
+                  <span className="text-sm text-destructive">{t('board.noClass')}</span>
+                </button>
+              )}
             </div>
           </DialogContent>
         </Dialog>

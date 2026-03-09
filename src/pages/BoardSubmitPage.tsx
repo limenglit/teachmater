@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Lock, Send, User, Paperclip, X, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Lock, Send, User, Paperclip, X, AlertCircle, Search } from 'lucide-react';
 import type { Board } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getDocIcon, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
@@ -30,6 +30,8 @@ export default function BoardSubmitPage() {
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'document'>('image');
   const [uploading, setUploading] = useState(false);
+  const [nameSearch, setNameSearch] = useState('');
+  const [showManualInput, setShowManualInput] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -57,11 +59,16 @@ export default function BoardSubmitPage() {
     localStorage.setItem(`board-nick-${boardId}`, nickname.trim());
   };
 
+  const selectName = (name: string) => {
+    setNickname(name);
+    setNicknameConfirmed(true);
+    localStorage.setItem(`board-nick-${boardId}`, name);
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !boardId) return;
 
-    // Validate file size
     const validationError = validateFile(file);
     if (validationError) {
       toast({ title: validationError, variant: 'destructive' });
@@ -72,7 +79,6 @@ export default function BoardSubmitPage() {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const category = getFileCategory(ext);
 
-    // Compress image if applicable
     let fileToUpload: File = file;
     if (category === 'image') {
       fileToUpload = await compressImage(file);
@@ -80,7 +86,6 @@ export default function BoardSubmitPage() {
 
     const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
 
-    // Upload with retry
     let lastError: string | undefined;
     for (let attempt = 0; attempt < UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
       if (attempt > 0) {
@@ -167,6 +172,10 @@ export default function BoardSubmitPage() {
     );
   }
 
+  // Name selection / confirmation screen
+  const studentNames: string[] = Array.isArray(board.student_names) ? board.student_names : [];
+  const hasRoster = studentNames.length > 0;
+
   if (!nicknameConfirmed) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -176,23 +185,74 @@ export default function BoardSubmitPage() {
             <h1 className="text-xl font-bold text-foreground">{board.title}</h1>
             <p className="text-sm text-muted-foreground mt-1">{t('board.joinBoard')}</p>
           </div>
-          <div className="space-y-3">
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={nickname}
-                onChange={e => setNickname(e.target.value.slice(0, 12))}
-                placeholder={t('board.nicknamePlaceholder')}
-                className="pl-9"
-                maxLength={12}
-                onKeyDown={e => e.key === 'Enter' && confirmNickname()}
-                autoFocus
-              />
+
+          {hasRoster && !showManualInput ? (
+            <div className="space-y-3 text-left">
+              <p className="text-sm font-medium text-foreground text-center">{t('board.selectYourName')}</p>
+              {/* Search box */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={nameSearch}
+                  onChange={e => setNameSearch(e.target.value)}
+                  placeholder={t('board.searchName')}
+                  className="pl-9"
+                  autoFocus
+                />
+              </div>
+              {/* Name list */}
+              <div className="max-h-[40vh] overflow-y-auto space-y-1 border border-border rounded-lg p-2">
+                {studentNames
+                  .filter(name => !nameSearch || name.toLowerCase().includes(nameSearch.toLowerCase()))
+                  .map(name => (
+                    <button
+                      key={name}
+                      onClick={() => selectName(name)}
+                      className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-sm flex items-center gap-2"
+                    >
+                      <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      {name}
+                    </button>
+                  ))}
+                {studentNames.filter(name => !nameSearch || name.toLowerCase().includes(nameSearch.toLowerCase())).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">{t('board.searchName')}</p>
+                )}
+              </div>
+              {/* Manual input fallback */}
+              <button
+                onClick={() => setShowManualInput(true)}
+                className="w-full text-center text-xs text-primary hover:underline py-1"
+              >
+                {t('board.nameNotFound')}
+              </button>
             </div>
-            <Button onClick={confirmNickname} disabled={!nickname.trim()} className="w-full gap-2">
-              {t('board.joinBoard')} 🚀
-            </Button>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={nickname}
+                  onChange={e => setNickname(e.target.value.slice(0, 12))}
+                  placeholder={t('board.nicknamePlaceholder')}
+                  className="pl-9"
+                  maxLength={12}
+                  onKeyDown={e => e.key === 'Enter' && confirmNickname()}
+                  autoFocus
+                />
+              </div>
+              <Button onClick={confirmNickname} disabled={!nickname.trim()} className="w-full gap-2">
+                {t('board.joinBoard')} 🚀
+              </Button>
+              {hasRoster && showManualInput && (
+                <button
+                  onClick={() => setShowManualInput(false)}
+                  className="w-full text-center text-xs text-primary hover:underline py-1"
+                >
+                  {t('board.selectYourName')}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -206,7 +266,7 @@ export default function BoardSubmitPage() {
           <h1 className="text-xl font-bold text-foreground">{t('board.submitPage')}</h1>
           <div className="text-xs text-muted-foreground mt-1">
             {t('board.nickname')}: <span className="text-foreground font-medium">{nickname}</span>
-            <button onClick={() => setNicknameConfirmed(false)} className="ml-2 underline text-primary">{t('common.edit')}</button>
+            <button onClick={() => { setNicknameConfirmed(false); setShowManualInput(false); }} className="ml-2 underline text-primary">{t('common.edit')}</button>
           </div>
         </div>
 
