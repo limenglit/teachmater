@@ -18,6 +18,7 @@ import ClassLibrary from '@/components/ClassLibrary';
 import LanguageSelector from '@/components/LanguageSelector';
 import StoryboardPanel from '@/components/StoryboardPanel';
 import PPTPanel from '@/components/PPTPanel';
+import VisualizationPanel from '@/components/VisualizationPanel';
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -46,6 +47,7 @@ const Index = () => {
       case 'quiz': return <QuizPanel />;
       case 'sketch': return <StoryboardPanel />;
       case 'ppt': return <PPTPanel />;
+      case 'visual': return <VisualizationPanel />;
       case 'achieve': return <AchievementPanel />;
       case 'toolkit': return <ToolkitPanel />;
     }
