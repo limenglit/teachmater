@@ -375,7 +375,7 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
   const renderer = structureMap[analysis.structure_type] || renderList;
 
   return (
-    <div className="p-6 rounded-lg" style={{ backgroundColor: bgColor, color: textColor, fontFamily }}>
+    <div style={{ backgroundColor: bgColor, color: textColor, fontFamily, fontSize: `${baseFontSize}px`, padding, borderRadius: '8px' }}>
       {/* Title & Summary */}
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold mb-1" style={{ color: scheme.colors[0] }}>
