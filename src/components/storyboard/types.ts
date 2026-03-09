@@ -188,6 +188,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '时间线',
     nameKey: 'storyboard.template.timeline',
+    category: 'thinking',
     params: {
       theme: '横向时间轴展示事件发展：起点→关键节点1→关键节点2→关键节点3→当前状态→未来展望',
       audience: 'general',
