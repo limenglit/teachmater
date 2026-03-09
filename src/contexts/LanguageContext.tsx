@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 export type LangCode = 'zh' | 'en' | 'ru' | 'ja' | 'ko';
