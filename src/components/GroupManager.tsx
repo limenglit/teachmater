@@ -75,6 +75,24 @@ export default function GroupManager() {
   const handleDragEnd = () => { setDragItem(null); setDropTarget(null); };
   const printRef = useRef<HTMLDivElement>(null);
 
+  const handleSave = async () => {
+    if (!user || groups.length === 0) return;
+    setSaving(true);
+    try {
+      const studentCount = groups.reduce((sum, g) => sum + g.members.length, 0);
+      const title = `${groups.length}${t('teamwork.groupsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      const { error } = await supabase.from('teamwork_history').insert([{
+        user_id: user.id, type: 'groups' as const, title, data: groups as any, student_count: studentCount,
+      }]);
+      if (error) throw error;
+      toast.success(t('teamwork.saved'));
+    } catch (err) {
+      toast.error(t('teamwork.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRestore = (data: any[]) => {
     setGroups(data as Group[]);
   };
