@@ -1,7 +1,7 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
-const COPYRIGHT_TEXT = '互动课堂派出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
+const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
 async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   const clone = element.cloneNode(true) as HTMLElement;

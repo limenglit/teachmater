@@ -757,7 +757,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'export.failed': '导出失败',
     'export.retry': '请重试',
     // Auth Page
-    'auth.appTitle': '互动课堂派',
+    'auth.appTitle': '教创搭子',
     'auth.loginTitle': '登录账户',
     'auth.signupTitle': '创建账户',
     'auth.forgotTitle': '重置密码',
