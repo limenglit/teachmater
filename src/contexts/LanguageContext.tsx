@@ -3510,6 +3510,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'admin.noPending': '承認待ちなし',
     'admin.operationFailed': '操作失敗',
     'admin.batchResult': '{1}人を{0}',
+    'sysconfig.title': '機能設定', 'sysconfig.desc': 'ユーザー種別ごとの機能制御', 'sysconfig.guest': 'ゲスト', 'sysconfig.registered': '登録ユーザー', 'sysconfig.featureAccess': '機能モジュール', 'sysconfig.aiLimit': 'AI日次制限', 'sysconfig.unlimited': '無制限', 'sysconfig.perDay': '回/日', 'sysconfig.save': '保存', 'sysconfig.saved': '保存完了', 'sysconfig.saveFailed': '保存失敗', 'admin.tabUsers': 'ユーザー', 'admin.tabConfig': '機能設定',
     'checkinPage.loading': '読み込み中...',
     'checkinPage.expired': '出席確認終了',
     'checkinPage.expiredDesc': 'このセッションは終了しました',
