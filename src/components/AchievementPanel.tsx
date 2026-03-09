@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Trophy, Plus, Minus, Medal, Star, Award, Gift, Crown, Target, Zap, Heart, Flame, Download, RotateCcw, X } from 'lucide-react';
+import { Trophy, Plus, Minus, Medal, Star, Award, Gift, Crown, Target, Zap, Heart, Flame, Download, RotateCcw, X, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ClassRosterPicker from '@/components/ClassRosterPicker';
 
 interface PointRecord {
   id: string;
@@ -58,8 +59,20 @@ function getToken(): string {
 
 export default function AchievementPanel() {
   const { t } = useLanguage();
-  const { students } = useStudents();
+  const { students: sidebarStudents } = useStudents();
   const token = getToken();
+
+  // Class roster override
+  const [showRoster, setShowRoster] = useState(false);
+  const [rosterStudents, setRosterStudents] = useState<string[]>([]);
+
+  // Effective student list: roster override or sidebar
+  const students = useMemo(() => {
+    if (rosterStudents.length > 0) {
+      return rosterStudents.map((name, i) => ({ id: `roster-${i}`, name }));
+    }
+    return sidebarStudents;
+  }, [rosterStudents, sidebarStudents]);
 
   const [points, setPoints] = useState<PointRecord[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -258,6 +271,16 @@ export default function AchievementPanel() {
             <Trophy className="w-5 h-5 text-primary" /> {t('achieve.title')}
           </h2>
           <div className="flex items-center gap-2">
+            <Button
+              variant={rosterStudents.length > 0 ? 'default' : 'outline'}
+              size="sm" className="gap-1"
+              onClick={() => setShowRoster(true)}
+            >
+              <Users className="w-3 h-3" />
+              {rosterStudents.length > 0
+                ? tFormat(t('board.studentCount'), rosterStudents.length)
+                : t('board.selectClass')}
+            </Button>
             <Button size="sm" className="gap-1" onClick={() => setShowAddPoints(true)}>
               <Plus className="w-3 h-3" /> {t('achieve.addPoints')}
             </Button>
@@ -657,6 +680,17 @@ export default function AchievementPanel() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <ClassRosterPicker
+          open={showRoster}
+          onOpenChange={setShowRoster}
+          onSelect={(names) => {
+            setRosterStudents(names);
+            toast({ title: t('board.classLinked'), description: tFormat(t('board.studentCount'), names.length) });
+          }}
+          currentCount={rosterStudents.length}
+          onClear={() => setRosterStudents([])}
+        />
       </div>
     </div>
   );

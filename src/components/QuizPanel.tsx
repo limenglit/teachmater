@@ -5,7 +5,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOpen, FileCheck, History } from 'lucide-react';
+import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOpen, FileCheck, History, Users } from 'lucide-react';
+import ClassRosterPicker from '@/components/ClassRosterPicker';
+import { useStudents } from '@/contexts/StudentContext';
+import { tFormat } from '@/contexts/LanguageContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import QuizStatsView from '@/components/quiz/QuizStatsView';
@@ -26,6 +29,7 @@ const SESSION_TOKENS_KEY = 'quiz-session-tokens';
 export default function QuizPanel() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { students: sidebarStudents } = useStudents();
   const isGuest = !user;
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -40,6 +44,8 @@ export default function QuizPanel() {
   const [sessionTitle, setSessionTitle] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showQR, setShowQR] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
+  const [sessionStudentNames, setSessionStudentNames] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -87,14 +93,17 @@ export default function QuizPanel() {
     if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
     const selected = questions.filter(q => selectedIds.has(q.id));
     if (selected.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
+    // Default to sidebar students if no roster selected
+    const names = sessionStudentNames.length > 0 ? sessionStudentNames : sidebarStudents.map(s => s.name);
     const title = sessionTitle.trim() || t('quiz.defaultTitle');
     const { data, error } = await supabase.from('quiz_sessions').insert({
       user_id: user.id, title, questions: selected as any,
+      student_names: names as any,
     }).select().single() as any;
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     saveSessionToken(data.id, data.creator_token);
     setActiveSession(data); setShowSession(true);
-    setSelectedIds(new Set()); setSessionTitle('');
+    setSelectedIds(new Set()); setSessionTitle(''); setSessionStudentNames([]);
     loadSessions();
   };
 
@@ -222,6 +231,18 @@ export default function QuizPanel() {
             onStartSession={startSession}
             sessionTitle={sessionTitle} setSessionTitle={setSessionTitle}
             isGuest={isGuest}
+            rosterButton={
+              <Button
+                variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
+                size="sm" className="h-8 text-xs gap-1 shrink-0"
+                onClick={() => setShowRoster(true)}
+              >
+                <Users className="w-3 h-3" />
+                {sessionStudentNames.length > 0
+                  ? tFormat(t('board.studentCount'), sessionStudentNames.length)
+                  : t('board.selectClass')}
+              </Button>
+            }
           />
         )}
 
@@ -261,6 +282,17 @@ export default function QuizPanel() {
           </div>
         )}
       </div>
+
+      <ClassRosterPicker
+        open={showRoster}
+        onOpenChange={setShowRoster}
+        onSelect={(names) => {
+          setSessionStudentNames(names);
+          toast({ title: t('board.classLinked'), description: tFormat(t('board.studentCount'), names.length) });
+        }}
+        currentCount={sessionStudentNames.length}
+        onClear={() => setSessionStudentNames([])}
+      />
     </div>
   );
 }
