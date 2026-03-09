@@ -231,6 +231,18 @@ export default function QuizPanel() {
             onStartSession={startSession}
             sessionTitle={sessionTitle} setSessionTitle={setSessionTitle}
             isGuest={isGuest}
+            rosterButton={
+              <Button
+                variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
+                size="sm" className="h-8 text-xs gap-1 shrink-0"
+                onClick={() => setShowRoster(true)}
+              >
+                <Users className="w-3 h-3" />
+                {sessionStudentNames.length > 0
+                  ? tFormat(t('board.studentCount'), sessionStudentNames.length)
+                  : t('board.selectClass')}
+              </Button>
+            }
           />
         )}
 
