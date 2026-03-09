@@ -375,6 +375,35 @@ export default function BoardPanel() {
     return () => { supabase.removeChannel(channel); };
   }, [isCloud, activeBoard?.id]);
 
+  // Load classes for roster selection
+  const loadClassesForSelect = async () => {
+    if (!user) return;
+    const { data: colleges } = await supabase.from('colleges').select('id, name').eq('user_id', user.id);
+    const { data: classes } = await supabase.from('classes').select('id, name, college_id').eq('user_id', user.id);
+    const { data: classStudents } = await supabase.from('class_students').select('class_id, name').eq('user_id', user.id);
+    if (!classes) return;
+    const result = classes.map(cls => ({
+      id: cls.id,
+      name: cls.name,
+      collegeName: colleges?.find(c => c.id === cls.college_id)?.name || '',
+      students: (classStudents || []).filter(s => s.class_id === cls.id).map(s => s.name),
+    }));
+    setClassesForSelect(result);
+  };
+
+  const handleSelectClass = async (studentNames: string[]) => {
+    if (!activeBoard) return;
+    await updateBoardSetting('student_names', studentNames);
+    setShowRoster(false);
+    toast({ title: t('board.classLinked'), description: tFormat(t('board.studentCount'), studentNames.length) });
+  };
+
+  const handleClearRoster = async () => {
+    if (!activeBoard) return;
+    await updateBoardSetting('student_names', []);
+    setShowRoster(false);
+  };
+
   const pendingCount = cards.filter(c => !c.is_approved).length;
   const approvedCards = cards.filter(c => c.is_approved);
   const sortedCards = [...approvedCards].sort((a, b) => {
