@@ -148,6 +148,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '案例分析板',
     nameKey: 'storyboard.template.caseAnalysis',
+    category: 'teaching',
     params: {
       theme: 'AI辅助学习的正确打开方式：场景展示→问题分析→解决方案→注意事项',
       audience: 'high-school',
