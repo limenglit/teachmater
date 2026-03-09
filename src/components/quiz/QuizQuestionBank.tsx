@@ -476,10 +476,11 @@ export default function QuizQuestionBank({
 
       {/* Session launch bar */}
       {selectedIds.size > 0 && (
-        <div className="sticky bottom-0 bg-card border border-border rounded-xl p-3 shadow-lg flex items-center gap-3">
+        <div className="sticky bottom-0 bg-card border border-border rounded-xl p-3 shadow-lg flex items-center gap-3 flex-wrap">
           <span className="text-sm text-foreground font-medium">{t('quiz.selected')}: {selectedIds.size}</span>
           <Input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)}
-            placeholder={t('quiz.sessionTitle')} className="flex-1 h-8 text-sm" />
+            placeholder={t('quiz.sessionTitle')} className="flex-1 h-8 text-sm min-w-[120px]" />
+          {rosterButton}
           <Button size="sm" onClick={onStartSession} disabled={isGuest} className="gap-1 shrink-0"
             title={isGuest ? t('quiz.loginToPublish') : ''}>
             {t('quiz.startSession')}
