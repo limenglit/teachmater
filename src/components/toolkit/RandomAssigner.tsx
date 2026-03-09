@@ -3,7 +3,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shuffle, Plus, X, RotateCcw } from 'lucide-react';
+import { Shuffle, Plus, X, RotateCcw, Users } from 'lucide-react';
+import ClassRosterPicker from '@/components/ClassRosterPicker';
 
 interface Assignment {
   task: string;
@@ -17,6 +18,10 @@ export default function RandomAssigner() {
   const [newTask, setNewTask] = useState('');
   const [results, setResults] = useState<Assignment[]>([]);
   const [animating, setAnimating] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
+  const [linkedNames, setLinkedNames] = useState<string[]>([]);
+
+  const resolvedNames = linkedNames.length > 0 ? linkedNames : students.map(s => s.name);
 
   const addTask = () => {
     const trimmed = newTask.trim();
@@ -30,14 +35,14 @@ export default function RandomAssigner() {
   };
 
   const assign = () => {
-    if (tasks.length === 0 || students.length === 0) return;
+    if (tasks.length === 0 || resolvedNames.length === 0) return;
     setAnimating(true);
     
     setTimeout(() => {
-      const shuffledStudents = [...students].sort(() => Math.random() - 0.5);
+      const shuffledStudents = [...resolvedNames].sort(() => Math.random() - 0.5);
       const assigned: Assignment[] = tasks.map((task, i) => ({
         task,
-        assignee: shuffledStudents[i % shuffledStudents.length].name,
+        assignee: shuffledStudents[i % shuffledStudents.length],
       }));
       setResults(assigned);
       setAnimating(false);
@@ -53,6 +58,18 @@ export default function RandomAssigner() {
       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
         <Shuffle className="w-4 h-4" /> {t('assign.title')}
       </h3>
+
+      <div className="flex items-center gap-2 mb-3">
+        <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1.5" onClick={() => setShowRoster(true)}>
+          <Users className="w-3.5 h-3.5" />
+          {linkedNames.length > 0 ? `已关联班级(${linkedNames.length}${t('sidebar.persons')})` : '关联班级'}
+        </Button>
+        {linkedNames.length === 0 && students.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
+            使用当前名单({students.length}{t('sidebar.persons')})
+          </Button>
+        )}
+      </div>
 
       {/* Task input */}
       <div className="flex gap-2 mb-3">
@@ -84,14 +101,14 @@ export default function RandomAssigner() {
 
       {/* Info */}
       <p className="text-xs text-muted-foreground mb-3">
-        {t('assign.info').replace('{0}', String(tasks.length)).replace('{1}', String(students.length))}
+        {t('assign.info').replace('{0}', String(tasks.length)).replace('{1}', String(resolvedNames.length))}
       </p>
 
       {/* Assign button */}
       <div className="flex gap-2">
         <Button
           onClick={assign}
-          disabled={tasks.length === 0 || students.length === 0 || animating}
+          disabled={tasks.length === 0 || resolvedNames.length === 0 || animating}
           className="flex-1 gap-1"
         >
           <Shuffle className="w-4 h-4" />
@@ -116,6 +133,14 @@ export default function RandomAssigner() {
           ))}
         </div>
       )}
+
+      <ClassRosterPicker
+        open={showRoster}
+        onOpenChange={setShowRoster}
+        onSelect={(names) => setLinkedNames(names)}
+        currentCount={linkedNames.length}
+        onClear={() => setLinkedNames([])}
+      />
     </div>
   );
 }

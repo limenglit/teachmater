@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useStudents } from '@/contexts/StudentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trophy, Plus, Minus, RotateCcw, X } from 'lucide-react';
+import { Trophy, Plus, Minus, RotateCcw, X, Users } from 'lucide-react';
+import ClassRosterPicker from '@/components/ClassRosterPicker';
 
 interface ScoreEntry {
   name: string;
@@ -31,16 +33,43 @@ function saveScores(entries: ScoreEntry[]) {
 
 export default function Scoreboard() {
   const { t } = useLanguage();
+  const { students } = useStudents();
   const [entries, setEntries] = useState<ScoreEntry[]>(() => loadScores());
   const [newName, setNewName] = useState('');
   const [step, setStep] = useState(1);
+  const [showRoster, setShowRoster] = useState(false);
+  const [linkedNames, setLinkedNames] = useState<string[]>([]);
 
   const updateAndSave = (next: ScoreEntry[]) => {
     setEntries(next);
     saveScores(next);
   };
 
+  const resolveRoster = () => {
+    if (linkedNames.length > 0) return linkedNames;
+    return students.map(s => s.name);
+  };
+
+  const applyRoster = (names: string[]) => {
+    setLinkedNames(names);
+    const scoreByName = new Map(entries.map(e => [e.name, e.score]));
+    const next = names.map(name => ({ name, score: scoreByName.get(name) ?? 0 }));
+    updateAndSave(next);
+  };
+
+  const ensureRosterReady = () => {
+    const roster = resolveRoster();
+    if (roster.length === 0) {
+      return false;
+    }
+    if (entries.length === 0) {
+      applyRoster(roster);
+    }
+    return true;
+  };
+
   const addEntry = () => {
+    if (!ensureRosterReady()) return;
     const name = newName.trim();
     if (!name || entries.find(e => e.name === name)) return;
     updateAndSave([...entries, { name, score: 0 }]);
@@ -48,6 +77,7 @@ export default function Scoreboard() {
   };
 
   const changeScore = (idx: number, delta: number) => {
+    if (!ensureRosterReady()) return;
     const next = entries.map((e, i) => i === idx ? { ...e, score: e.score + delta } : e);
     updateAndSave(next);
   };
@@ -57,6 +87,7 @@ export default function Scoreboard() {
   };
 
   const resetAll = () => {
+    if (!ensureRosterReady()) return;
     updateAndSave(entries.map(e => ({ ...e, score: 0 })));
   };
 
@@ -67,6 +98,18 @@ export default function Scoreboard() {
       <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
         <Trophy className="w-4 h-4" /> {t('score.title')}
       </h3>
+
+      <div className="flex items-center gap-2 mb-3">
+        <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1.5" onClick={() => setShowRoster(true)}>
+          <Users className="w-3.5 h-3.5" />
+          {linkedNames.length > 0 ? `已关联班级(${linkedNames.length}${t('sidebar.persons')})` : '关联班级'}
+        </Button>
+        {linkedNames.length === 0 && students.length > 0 && (
+          <Button variant="outline" size="sm" onClick={() => applyRoster(students.map(s => s.name))}>
+            使用当前名单({students.length}{t('sidebar.persons')})
+          </Button>
+        )}
+      </div>
 
       {/* Add entry */}
       <div className="flex gap-2 mb-3">
@@ -141,6 +184,17 @@ export default function Scoreboard() {
           <RotateCcw className="w-3 h-3" /> {t('score.resetAll')}
         </Button>
       )}
+
+      <ClassRosterPicker
+        open={showRoster}
+        onOpenChange={setShowRoster}
+        onSelect={applyRoster}
+        currentCount={linkedNames.length}
+        onClear={() => {
+          setLinkedNames([]);
+          updateAndSave([]);
+        }}
+      />
     </div>
   );
 }

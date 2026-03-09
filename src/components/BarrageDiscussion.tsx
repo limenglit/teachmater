@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStudents } from '@/contexts/StudentContext';
 import { recordGuestAIUsage } from '@/lib/guest-ai-limit';
+import ClassRosterPicker from './ClassRosterPicker';
 
 interface BarrageMessage {
   id: string;
@@ -124,6 +126,7 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
 export default function BarrageDiscussion() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { students } = useStudents();
   const isLoggedIn = !!user;
   const [topicTitle, setTopicTitle] = useState('');
   const [topicId, setTopicId] = useState<string | null>(null);
@@ -138,6 +141,8 @@ export default function BarrageDiscussion() {
   const [analyzing, setAnalyzing] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editTitle, setEditTitle] = useState('');
+  const [showRoster, setShowRoster] = useState(false);
+  const [linkedNames, setLinkedNames] = useState<string[]>([]);
   const barrageIndexRef = useRef(0);
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -145,6 +150,17 @@ export default function BarrageDiscussion() {
 
   const handleCreateTopic = async () => {
     if (!topicTitle.trim()) return;
+
+    const resolvedNames = linkedNames.length > 0 ? linkedNames : students.map(s => s.name);
+    if (resolvedNames.length === 0) {
+      toast({ title: '请先关联班级或维护当前学生名单', variant: 'destructive' });
+      return;
+    }
+
+    if (linkedNames.length === 0) {
+      setLinkedNames(resolvedNames);
+    }
+
     const token = crypto.randomUUID();
     const { data, error } = await supabase
       .from('discussion_topics' as any)
@@ -312,6 +328,16 @@ export default function BarrageDiscussion() {
       <div className="bg-card rounded-2xl border border-border shadow-card p-6">
         <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">{t('barrage.title')}</h3>
         <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" onClick={() => setShowRoster(true)}>
+              {linkedNames.length > 0 ? `已关联班级(${linkedNames.length}${t('sidebar.persons')})` : '关联班级'}
+            </Button>
+            {linkedNames.length === 0 && students.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
+                使用当前名单({students.length}{t('sidebar.persons')})
+              </Button>
+            )}
+          </div>
           <Input
             value={topicTitle}
             onChange={e => setTopicTitle(e.target.value)}
@@ -323,6 +349,14 @@ export default function BarrageDiscussion() {
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-3">{t('barrage.privacy')}</p>
+
+        <ClassRosterPicker
+          open={showRoster}
+          onOpenChange={setShowRoster}
+          onSelect={(names) => setLinkedNames(names)}
+          currentCount={linkedNames.length}
+          onClear={() => setLinkedNames([])}
+        />
       </div>
     );
   }

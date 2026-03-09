@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, PieChart, Plus, Trash2, QrCode, ArrowLeft, Lock, Unlock, X, Download, Copy } from 'lucide-react';
+import { BarChart3, PieChart, Plus, Trash2, QrCode, ArrowLeft, Lock, Unlock, X, Download, Copy, Users } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
+import ClassRosterPicker from '@/components/ClassRosterPicker';
 
 interface PollOption {
   label: string;
@@ -54,6 +56,7 @@ function getCreatorToken(pollId: string): string | null {
 export default function PollManager() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { students } = useStudents();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
   const [votes, setVotes] = useState<PollVote[]>([]);
@@ -61,6 +64,8 @@ export default function PollManager() {
   const [showQR, setShowQR] = useState(false);
   const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
   const [loading, setLoading] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
+  const [linkedNames, setLinkedNames] = useState<string[]>([]);
 
   // Create form state
   const [newTitle, setNewTitle] = useState('');
@@ -93,6 +98,12 @@ export default function PollManager() {
   };
 
   const createPoll = async () => {
+    const resolvedNames = linkedNames.length > 0 ? linkedNames : students.map(s => s.name);
+    if (resolvedNames.length === 0) {
+      toast({ title: '请先关联班级或维护当前学生名单', variant: 'destructive' });
+      return;
+    }
+
     const title = newTitle.trim();
     const options = newOptions.filter(o => o.trim()).map((label, i) => ({
       label: label.trim(),
@@ -338,10 +349,24 @@ export default function PollManager() {
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <BarChart3 className="w-4 h-4" /> {t('poll.title')}
         </h3>
-        <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}>
-          <Plus className="w-3 h-3" /> {t('poll.create')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setShowRoster(true)}>
+            <Users className="w-3 h-3" />
+            {linkedNames.length > 0 ? `已关联班级(${linkedNames.length}${t('sidebar.persons')})` : '关联班级'}
+          </Button>
+          <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}>
+            <Plus className="w-3 h-3" /> {t('poll.create')}
+          </Button>
+        </div>
       </div>
+
+      {linkedNames.length === 0 && students.length > 0 && (
+        <div className="mb-3">
+          <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
+            使用当前名单({students.length}{t('sidebar.persons')})
+          </Button>
+        </div>
+      )}
 
       {/* Poll list */}
       {polls.length === 0 && !loading && (
@@ -420,6 +445,14 @@ export default function PollManager() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ClassRosterPicker
+        open={showRoster}
+        onOpenChange={setShowRoster}
+        onSelect={(names) => setLinkedNames(names)}
+        currentCount={linkedNames.length}
+        onClear={() => setLinkedNames([])}
+      />
     </div>
   );
 }
