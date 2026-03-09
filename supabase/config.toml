@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-ppt-outline]
 verify_jwt = false
+
+[functions.generate-ppt-image]
+verify_jwt = false
