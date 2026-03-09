@@ -124,7 +124,7 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
         }>
-          <TextOverlayEditor imageUrl={imageUrl} onClose={() => setShowEditor(false)} />
+          <TextOverlayEditor imageUrl={imageUrl} onClose={() => setShowEditor(false)} initialKeywords={keywords} />
         </Suspense>
       )}
     </>
