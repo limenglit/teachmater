@@ -34,15 +34,11 @@ const Index = () => {
   const [sidebarModeTransitioning, setSidebarModeTransitioning] = useState(false);
   const [sidebarModeEntering, setSidebarModeEntering] = useState(false);
   const [sidebarTransitionDirection, setSidebarTransitionDirection] = useState<'to-library' | 'to-list'>('to-library');
-  const collapseTimerRef = useRef<number | null>(null);
   const modeTimerRef = useRef<number | null>(null);
   const enterFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
-      if (collapseTimerRef.current !== null) {
-        window.clearTimeout(collapseTimerRef.current);
-      }
       if (modeTimerRef.current !== null) {
         window.clearTimeout(modeTimerRef.current);
       }
@@ -81,20 +77,11 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    // Two-stage behavior: switch content first, then collapse after a short delay.
+    // Keep collapse state stable across tabs; only normalize mode for consistency.
     setSidebarMode('list');
     setSidebarModeTransitioning(false);
     setSidebarModeEntering(false);
     setSidebarOpen(false);
-    setSidebarCollapsed(false);
-
-    if (collapseTimerRef.current !== null) {
-      window.clearTimeout(collapseTimerRef.current);
-    }
-    collapseTimerRef.current = window.setTimeout(() => {
-      setSidebarCollapsed(true);
-      collapseTimerRef.current = null;
-    }, 150);
   };
 
   const renderContent = () => {
