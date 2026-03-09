@@ -337,6 +337,11 @@ const translations: Record<LangCode, Record<string, string>> = {
     'sidebar.expandPanel': '展开名单栏',
     'sidebar.collapsePanel': '折叠名单栏',
     'sidebar.persons': '人',
+    'sidebar.paste': '粘贴',
+    'sidebar.pasteSuccess': '粘贴导入成功',
+    'sidebar.pasteFailed': '无法读取剪贴板',
+    'sidebar.download': '下载',
+    'sidebar.downloadSuccess': '名单已下载',
     // Header
     'header.login': '登录',
     'header.admin': '用户管理',
