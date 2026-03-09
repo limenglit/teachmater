@@ -19,7 +19,7 @@ export const LANGUAGES: LangOption[] = [
 const translations: Record<LangCode, Record<string, string>> = {
   zh: {
     // App header
-    'app.title': '互动课堂派',
+    'app.title': '教创搭子',
     'app.subtitle': 'TeachMate |--洛阳理工学院--| limeng@lit.edu.cn',
     // Tabs
     'tab.random': '随机选人',
@@ -757,7 +757,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'export.failed': '导出失败',
     'export.retry': '请重试',
     // Auth Page
-    'auth.appTitle': '互动课堂派',
+    'auth.appTitle': '教创搭子',
     'auth.loginTitle': '登录账户',
     'auth.signupTitle': '创建账户',
     'auth.forgotTitle': '重置密码',
