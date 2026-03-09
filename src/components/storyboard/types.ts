@@ -611,6 +611,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '故事板叙事',
     nameKey: 'storyboard.template.narrative',
+    category: 'creative',
     params: {
       theme: '故事叙事结构：开场设置→冲突引入→情节发展→高潮转折→结局收尾',
       audience: 'general',
