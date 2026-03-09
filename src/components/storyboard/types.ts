@@ -773,6 +773,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '用户旅程图',
     nameKey: 'storyboard.template.userJourney',
+    category: 'special',
     params: {
       theme: '用户体验旅程：意识阶段→考虑阶段→决策阶段→使用阶段→推荐阶段，标注触点和情绪',
       audience: 'college',
