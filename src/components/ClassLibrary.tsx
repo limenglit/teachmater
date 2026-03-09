@@ -156,10 +156,13 @@ export default function ClassLibrary() {
           return;
         }
 
+        const warnings: string[] = [];
+        let skippedRows = 0;
         const preview: PreviewRow[] = [];
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
-          if (!row || row.length < 3) continue;
+          if (!row || row.every((c: any) => !c || String(c).trim() === '')) { skippedRows++; continue; }
+          if (row.length < 3) { skippedRows++; continue; }
           if (row.length >= 4) {
             preview.push({ college: String(row[0] || '').trim(), className: String(row[1] || '').trim(), studentNumber: String(row[2] || '').trim(), name: String(row[3] || '').trim() });
           } else {
@@ -167,10 +170,38 @@ export default function ClassLibrary() {
           }
         }
 
-        setPreviewData(preview.filter(r => r.name && r.college && r.className));
+        // Check for garbled encoding (common sign: high ratio of replacement chars)
+        const allText = preview.map(r => r.name + r.college + r.className).join('');
+        const garbledChars = (allText.match(/[�\ufffd]/g) || []).length;
+        if (garbledChars > 0 && garbledChars / allText.length > 0.1) {
+          warnings.push('检测到疑似编码问题（乱码），请确认文件编码为 UTF-8');
+        }
+
+        const validPreview = preview.filter(r => r.name && r.college && r.className);
+        const invalidCount = preview.length - validPreview.length;
+        if (skippedRows > 0) warnings.push(`已跳过 ${skippedRows} 个空行/不完整行`);
+        if (invalidCount > 0) warnings.push(`${invalidCount} 行缺少必填字段已忽略`);
+
+        // Deduplicate within file
+        const seen = new Set<string>();
+        const duplicates: string[] = [];
+        const deduped: PreviewRow[] = [];
+        for (const row of validPreview) {
+          const key = `${row.college}|${row.className}|${row.name}`;
+          if (seen.has(key)) { duplicates.push(row.name); } else { seen.add(key); deduped.push(row); }
+        }
+        if (duplicates.length > 0) {
+          warnings.push(`文件内重复已去重: ${[...new Set(duplicates)].slice(0, 5).join('、')}${duplicates.length > 5 ? '等' : ''}`);
+        }
+
+        if (warnings.length > 0) {
+          toast({ title: '导入预览提示', description: warnings.join('；') });
+        }
+
+        setPreviewData(deduped);
         setImportOpen(true);
       } catch {
-        toast({ title: t('library.parseFailed'), variant: 'destructive' });
+        toast({ title: t('library.parseFailed'), description: '文件解析失败，请检查文件格式或编码（建议使用 UTF-8 编码的 .xlsx 文件）', variant: 'destructive' });
       }
     };
     reader.readAsArrayBuffer(file);
