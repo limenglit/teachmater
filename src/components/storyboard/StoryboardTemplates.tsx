@@ -3,8 +3,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { TEMPLATES, TEMPLATE_CATEGORIES, StoryboardParams, DEFAULT_PARAMS, TemplateConfig, TemplateCategory } from './types';
 import { Lightbulb } from 'lucide-react';
+import TemplateMiniPreview from './TemplateMiniPreview';
 
 interface Props {
   onSelect: (params: StoryboardParams) => void;
