@@ -73,6 +73,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'visual.chart.pie': '饼图',
     'visual.chart.radar': '雷达图',
     'visual.chart.scatter': '散点图',
+    'visual.fileReading': '读取中...',
+    'visual.fileReadError': '文件读取失败',
+    'visual.uploadHint': '支持 .txt、.md、.docx 格式，最大 10MB',
     // External links
     'ext.ai': 'AI助手',
     // PPT Generator
