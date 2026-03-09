@@ -34,6 +34,8 @@ export default function PPTPanel() {
   const [template, setTemplate] = useState('education');
   const [style, setStyle] = useState('minimal');
   const [colorScheme, setColorScheme] = useState('calm-blue');
+  const [fontFamily, setFontFamily] = useState('yahei');
+  const [fontSize, setFontSize] = useState('standard');
   const [customColor, setCustomColor] = useState('#2563EB');
   const [outline, setOutline] = useState<PPTOutline | null>(null);
   const [selectedSlide, setSelectedSlide] = useState(0);
