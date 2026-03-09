@@ -107,11 +107,15 @@ export default function PPTPanel() {
 
     setLoading(true);
     try {
+      const { data: { session } } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ppt-outline`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify({ content, audience }),
         }
       );
