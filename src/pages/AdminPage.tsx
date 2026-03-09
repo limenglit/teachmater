@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AdminConfigPanel from '@/components/AdminConfigPanel';
 
 interface PendingUser {
   user_id: string;
@@ -28,6 +29,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchActing, setBatchActing] = useState(false);
+  const [adminTab, setAdminTab] = useState<'users' | 'config'>('users');
 
   useEffect(() => {
     if (!user) {
