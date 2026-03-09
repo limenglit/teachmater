@@ -417,6 +417,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'PEST分析',
     nameKey: 'storyboard.template.pest',
+    category: 'analysis',
     params: {
       theme: 'PEST宏观环境分析：政治(Political)、经济(Economic)、社会(Social)、技术(Technological)四维度',
       audience: 'college',
