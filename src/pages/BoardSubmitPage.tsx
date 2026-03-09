@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, Lock, Send, User, Paperclip, X } from 'lucide-react';
+import { CheckCircle2, Lock, Send, User, Paperclip, X, AlertCircle } from 'lucide-react';
 import type { Board } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getDocIcon, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
+import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 

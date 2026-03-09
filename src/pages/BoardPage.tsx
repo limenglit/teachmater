@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,6 +7,7 @@ import BoardKanbanView from '@/components/board/BoardKanbanView';
 import BoardTimelineView from '@/components/board/BoardTimelineView';
 import BoardCanvasView from '@/components/board/BoardCanvasView';
 import type { Board, BoardCard } from '@/components/BoardPanel';
+import { RealtimeThrottle } from '@/lib/realtime-throttle';
 
 export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -14,6 +15,7 @@ export default function BoardPage() {
   const [board, setBoard] = useState<Board | null>(null);
   const [cards, setCards] = useState<BoardCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const throttleRef = useRef<RealtimeThrottle | null>(null);
 
   useEffect(() => {
     if (!boardId) return;
@@ -26,24 +28,37 @@ export default function BoardPage() {
       setLoading(false);
     });
 
-    // Realtime
+    // Throttled realtime: batch rapid events into ~2 updates/sec
+    const throttle = new RealtimeThrottle((events) => {
+      setCards(prev => {
+        let next = [...prev];
+        for (const payload of events) {
+          if (payload.eventType === 'INSERT' && (payload.new as any).is_approved) {
+            if (!next.find(c => c.id === (payload.new as any).id)) {
+              next.push(payload.new as any);
+            }
+          } else if (payload.eventType === 'DELETE') {
+            next = next.filter(c => c.id !== (payload.old as any).id);
+          } else if (payload.eventType === 'UPDATE') {
+            next = next.map(c => c.id === (payload.new as any).id ? payload.new as any : c);
+          }
+        }
+        return next;
+      });
+    }, 500);
+    throttleRef.current = throttle;
+
     const channel = supabase
       .channel(`board-view-${boardId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'board_cards', filter: `board_id=eq.${boardId}` }, (payload) => {
-        if (payload.eventType === 'INSERT' && (payload.new as any).is_approved) {
-          setCards(prev => {
-            if (prev.find(c => c.id === (payload.new as any).id)) return prev;
-            return [...prev, payload.new as any];
-          });
-        } else if (payload.eventType === 'DELETE') {
-          setCards(prev => prev.filter(c => c.id !== (payload.old as any).id));
-        } else if (payload.eventType === 'UPDATE') {
-          setCards(prev => prev.map(c => c.id === (payload.new as any).id ? payload.new as any : c));
-        }
+        throttle.push(payload);
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      throttle.destroy();
+      supabase.removeChannel(channel);
+    };
   }, [boardId]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t('common.loading')}</div>;
