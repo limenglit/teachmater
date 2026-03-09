@@ -76,7 +76,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
 
   if (collapsed) {
     return (
-      <div className="w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2">
+      <div className="group relative w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2">
         <button
           onClick={onToggleCollapse}
           className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
@@ -85,6 +85,31 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse }:
           <PanelLeftOpen className="w-4 h-4" />
         </button>
         <span className="text-xs text-muted-foreground font-medium writing-vertical">{students.length}{t('sidebar.persons')}</span>
+
+        {/* Desktop hover preview in collapsed state */}
+        <div className="pointer-events-none hidden lg:block absolute left-full top-3 ml-2 w-56 rounded-lg border border-border bg-card shadow-lg p-2 opacity-0 translate-x-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0 z-50">
+          <div className="text-xs font-semibold text-foreground px-1 pb-1 border-b border-border mb-1">
+            {t('sidebar.studentList')} ({students.length}{t('sidebar.persons')})
+          </div>
+          <div className="max-h-52 overflow-y-auto space-y-0.5">
+            {students.slice(0, 8).map((student) => (
+              <div key={student.id} className="px-1 py-1 text-xs text-foreground truncate rounded hover:bg-muted">
+                {student.name}
+              </div>
+            ))}
+            {students.length > 8 && (
+              <div className="px-1 py-1 text-xs text-muted-foreground">
+                +{students.length - 8}
+              </div>
+            )}
+            {students.length === 0 && (
+              <div className="px-1 py-2 text-xs text-muted-foreground">{t('sidebar.noStudents')}</div>
+            )}
+          </div>
+          <div className="text-[11px] text-muted-foreground px-1 pt-1 border-t border-border mt-1">
+            {t('sidebar.expandPanel')}
+          </div>
+        </div>
       </div>
     );
   }

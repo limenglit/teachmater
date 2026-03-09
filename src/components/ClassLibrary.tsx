@@ -449,20 +449,23 @@ export default function ClassLibrary() {
       {/* Left: Tree */}
       <div className="w-56 lg:w-64 border-r border-border bg-card flex flex-col overflow-hidden">
         <div className="p-3 border-b border-border">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 min-w-0 truncate">
               <Building2 className="w-4 h-4" /> {t('library.title')}
             </h3>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap justify-end gap-1 shrink-0">
               <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleFileSelect} className="hidden" />
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={downloadTemplate}>
-                <Download className="w-3 h-3 mr-1" /> {t('library.downloadTemplate')}
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={downloadTemplate} title={t('library.downloadTemplate')}>
+                <Download className="w-3 h-3 mr-0 sm:mr-1" />
+                <span className="hidden sm:inline">{t('library.downloadTemplate')}</span>
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => fileRef.current?.click()}>
-                <Upload className="w-3 h-3 mr-1" /> {t('library.import')}
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={() => fileRef.current?.click()} title={t('library.import')}>
+                <Upload className="w-3 h-3 mr-0 sm:mr-1" />
+                <span className="hidden sm:inline">{t('library.import')}</span>
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={exportAllToExcel} disabled={colleges.length === 0}>
-                <Download className="w-3 h-3 mr-1" /> {t('library.export')}
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={exportAllToExcel} disabled={colleges.length === 0} title={t('library.export')}>
+                <Download className="w-3 h-3 mr-0 sm:mr-1" />
+                <span className="hidden sm:inline">{t('library.export')}</span>
               </Button>
             </div>
           </div>
@@ -561,23 +564,23 @@ export default function ClassLibrary() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedClass ? (
           <>
-            <div className="p-3 border-b border-border bg-card flex items-center justify-between">
-              <div>
+            <div className="p-3 border-b border-border bg-card flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
                 <div className="text-xs text-muted-foreground">{currentCollege?.name}</div>
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 min-w-0">
                   <GraduationCap className="w-4 h-4" /> {currentClass?.name}
                   <span className="text-xs font-normal text-muted-foreground">({classStudents.length}{t('random.persons')})</span>
                 </h3>
               </div>
-              <div className="flex gap-1.5">
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setTextImportOpen(true)}>
-                  <Upload className="w-3 h-3" /> {t('sidebar.import')}
+              <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 whitespace-nowrap" onClick={() => setTextImportOpen(true)} title={t('sidebar.import')}>
+                  <Upload className="w-3 h-3" /> <span className="hidden sm:inline">{t('sidebar.import')}</span>
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={loadToWorkspace}>
-                  <ArrowRight className="w-3 h-3" /> {t('library.loadToList')}
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 whitespace-nowrap" onClick={loadToWorkspace} title={t('library.loadToList')}>
+                  <ArrowRight className="w-3 h-3" /> <span className="hidden sm:inline">{t('library.loadToList')}</span>
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportClassToExcel}>
-                  <Download className="w-3 h-3" /> {t('library.export')}
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 whitespace-nowrap" onClick={exportClassToExcel} title={t('library.export')}>
+                  <Download className="w-3 h-3" /> <span className="hidden sm:inline">{t('library.export')}</span>
                 </Button>
               </div>
             </div>

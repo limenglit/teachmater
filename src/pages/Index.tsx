@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StudentProvider } from '@/contexts/StudentContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,11 +31,30 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'list' | 'library'>('list');
+  const collapseTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimerRef.current !== null) {
+        window.clearTimeout(collapseTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    // Auto-collapse sidebar when switching tabs for cleaner UI
-    setSidebarCollapsed(true);
+    // Two-stage behavior: switch content first, then collapse after a short delay.
+    setSidebarMode('list');
+    setSidebarOpen(false);
+    setSidebarCollapsed(false);
+
+    if (collapseTimerRef.current !== null) {
+      window.clearTimeout(collapseTimerRef.current);
+    }
+    collapseTimerRef.current = window.setTimeout(() => {
+      setSidebarCollapsed(true);
+      collapseTimerRef.current = null;
+    }, 150);
   };
 
   const renderContent = () => {
