@@ -137,13 +137,17 @@ export default function PPTPanel() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'pptx' | 'pdf' | 'both') => {
     if (!outline) return;
     try {
-      const effectiveColor = colorScheme === 'custom' 
-        ? { id: 'custom', nameKey: 'custom', primary: customColor, secondary: customColor, accent: customColor, background: '#FFFFFF', text: '#1E293B' }
-        : colorScheme;
-      await exportPPTX(outline, typeof effectiveColor === 'string' ? effectiveColor : effectiveColor.id, template);
+      const effectiveColorId = colorScheme === 'custom' ? 'custom' : colorScheme;
+      
+      if (format === 'pptx' || format === 'both') {
+        await exportPPTX(outline, effectiveColorId, template);
+      }
+      if (format === 'pdf' || format === 'both') {
+        await exportPDF(outline, effectiveColorId);
+      }
       
       // Save to history
       const project: PPTProject = {
@@ -156,7 +160,7 @@ export default function PPTPanel() {
         createdAt: new Date().toISOString(),
       };
       savePPTProject(project);
-      toast.success(t('ppt.exportSuccess'));
+      toast.success(format === 'both' ? t('ppt.exportBothSuccess') : t('ppt.exportSuccess'));
     } catch (error) {
       console.error(error);
       toast.error(t('ppt.exportError'));
