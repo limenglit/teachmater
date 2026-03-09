@@ -283,6 +283,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '金字塔结构',
     nameKey: 'storyboard.template.pyramid',
+    category: 'thinking',
     params: {
       theme: '金字塔层级结构：顶层核心观点，中层支撑论据，底层具体事实和数据',
       audience: 'college',
