@@ -93,14 +93,17 @@ export default function QuizPanel() {
     if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
     const selected = questions.filter(q => selectedIds.has(q.id));
     if (selected.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
+    // Default to sidebar students if no roster selected
+    const names = sessionStudentNames.length > 0 ? sessionStudentNames : sidebarStudents.map(s => s.name);
     const title = sessionTitle.trim() || t('quiz.defaultTitle');
     const { data, error } = await supabase.from('quiz_sessions').insert({
       user_id: user.id, title, questions: selected as any,
+      student_names: names as any,
     }).select().single() as any;
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     saveSessionToken(data.id, data.creator_token);
     setActiveSession(data); setShowSession(true);
-    setSelectedIds(new Set()); setSessionTitle('');
+    setSelectedIds(new Set()); setSessionTitle(''); setSessionStudentNames([]);
     loadSessions();
   };
 
