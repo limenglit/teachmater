@@ -39,6 +39,19 @@ serve(async (req) => {
 3. 每页包含标题和3-5个要点
 4. 风格：${audiencePrompt}
 5. 必须包含：标题页、目录页、若干内容页、总结页
+6. 内容页可使用多种布局类型，增加视觉多样性
+
+支持的幻灯片类型：
+- title: 标题页（含标题和副标题）
+- toc: 目录页（含章节列表）
+- content: 标准内容页（含标题和要点列表）
+- section: 章节分隔页（仅标题）
+- two-column: 双栏布局（左右两列内容对比或并列展示）
+- image-text: 图文混排（左侧图片占位，右侧文字要点）
+- comparison: 对比分析（左右两个对比方案，如优缺点、前后对比）
+- quote: 名言引用（引用文字和作者）
+- timeline: 时间线（展示发展历程或步骤流程）
+- conclusion: 总结页（含总结要点）
 
 输出JSON格式（不要包含任何其他文字）：
 {
@@ -48,11 +61,18 @@ serve(async (req) => {
     {"type": "title", "title": "标题", "subtitle": "副标题"},
     {"type": "toc", "title": "目录", "bullets": ["章节1", "章节2", "章节3"]},
     {"type": "content", "title": "内容标题", "bullets": ["要点1", "要点2", "要点3"]},
+    {"type": "two-column", "title": "双栏对比", "leftTitle": "方面A", "leftBullets": ["要点1", "要点2"], "rightTitle": "方面B", "rightBullets": ["要点1", "要点2"]},
+    {"type": "image-text", "title": "图文说明", "imagePlaceholder": "示意图描述", "bullets": ["说明1", "说明2"]},
+    {"type": "comparison", "title": "方案对比", "leftTitle": "方案A", "leftBullets": ["优点1", "优点2"], "rightTitle": "方案B", "rightBullets": ["优点1", "优点2"]},
+    {"type": "quote", "title": "启示", "quoteText": "引用的名言内容", "quoteAuthor": "作者姓名"},
+    {"type": "timeline", "title": "发展历程", "timelineItems": [{"year": "2020", "text": "事件1"}, {"year": "2022", "text": "事件2"}]},
     {"type": "section", "title": "章节分隔"},
     {"type": "conclusion", "title": "总结", "bullets": ["总结1", "总结2"]}
   ],
   "audience": "${audience}"
-}`;
+}
+
+请根据内容的特点，合理选择不同的幻灯片类型，使演示更加生动有层次。`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
