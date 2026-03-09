@@ -637,6 +637,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'SMART目标',
     nameKey: 'storyboard.template.smart',
+    category: 'goals',
     params: {
       theme: 'SMART目标设定：具体(Specific)、可衡量(Measurable)、可达成(Achievable)、相关性(Relevant)、时限(Time-bound)',
       audience: 'college',
