@@ -18,18 +18,18 @@ interface StoryboardParams {
 
 function buildPrompt(params: StoryboardParams): string {
   const audienceMap: Record<string, string> = {
-    'middle-school': params.language === 'zh' ? '初中生' : 'middle school students',
-    'high-school': params.language === 'zh' ? '高中生' : 'high school students',
-    'college': params.language === 'zh' ? '大学生' : 'college students',
-    'teacher': params.language === 'zh' ? '教师' : 'teachers',
-    'general': params.language === 'zh' ? '普通大众' : 'general audience',
+    'middle-school': 'middle school students',
+    'high-school': 'high school students',
+    'college': 'college students',
+    'teacher': 'teachers',
+    'general': 'general audience',
   };
 
   const toneMap: Record<string, string> = {
-    'educational': params.language === 'zh' ? '科普性、易懂' : 'educational, easy to understand',
-    'serious': params.language === 'zh' ? '严肃、专业' : 'serious, professional',
-    'encouraging': params.language === 'zh' ? '鼓励性、积极向上' : 'encouraging, positive',
-    'critical': params.language === 'zh' ? '批判性思维' : 'critical thinking',
+    'educational': 'educational, easy to understand',
+    'serious': 'serious, professional',
+    'encouraging': 'encouraging, positive',
+    'critical': 'critical thinking',
   };
 
   const colorMap: Record<string, string> = {
@@ -37,17 +37,13 @@ function buildPrompt(params: StoryboardParams): string {
     'high-contrast': 'high contrast classroom colors (bright blue, orange, green, red)',
   };
 
-  const densityMap: Record<string, string> = {
-    'low': 'minimal text, focus on visuals',
-    'medium': 'balanced text and visuals',
-    'high': 'detailed text explanations with visuals',
-  };
+  return `Create a hand-drawn style educational infographic illustration WITHOUT ANY TEXT.
 
-  const langInstruction = params.language === 'zh' 
-    ? 'All text labels and titles MUST be in Chinese (简体中文).' 
-    : 'All text labels and titles should be in English.';
-
-  return `Create a hand-drawn style educational infographic storyboard poster.
+CRITICAL REQUIREMENTS - NO TEXT POLICY:
+- DO NOT include ANY text, labels, titles, numbers, letters, or written words in the image
+- Leave BLANK banner/title areas at the top (empty rectangular space for overlay)
+- Each panel should have EMPTY label placeholders (blank rounded rectangles or speech bubbles)
+- All content must be purely visual - icons, characters, objects, symbols only
 
 Topic: ${params.theme}
 Target Audience: ${audienceMap[params.audience] || 'general audience'}
@@ -56,22 +52,21 @@ Tone: ${toneMap[params.tone] || 'educational'}
 Visual Style Requirements:
 - Hand-drawn sketch style with clean linework
 - Flat colorful design with ${colorMap[params.colorScheme] || 'soft pastel colors'}
-- Divided into ${params.panelCount} clear sections/panels
-- Each panel has a distinct visual element and text label
-- Include a prominent title banner at the top
-- Use simple icon-style characters and objects
-- ${densityMap[params.textDensity] || 'balanced text and visuals'}
-- Educational poster/infographic layout
-- ${langInstruction}
+- Divided into ${params.panelCount} clear sections/panels with visual separators
+- Include a prominent BLANK banner area at the top for title overlay
+- Use simple icon-style characters and objects to convey meaning
+- Each panel should have a distinct visual element representing the concept
+- Educational poster/infographic layout with clear visual hierarchy
 - Aspect ratio: ${params.aspectRatio}
 
 DO NOT include:
+- ANY text, labels, titles, numbers, or letters (CRITICAL!)
 - Photorealistic elements
 - Complex 3D graphics
 - Watermarks or logos
 - Any copyrighted characters
 
-The final image should look like a classroom educational poster or AI literacy infographic with clear visual hierarchy and engaging hand-drawn aesthetics.`;
+The final image should be a clean visual template ready for text overlay, with clear blank spaces where titles and labels would go.`;
 }
 
 serve(async (req) => {
