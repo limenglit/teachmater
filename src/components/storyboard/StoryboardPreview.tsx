@@ -15,7 +15,7 @@ interface Props {
   keywords?: TextOverlay[];
 }
 
-export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegenerate }: Props) {
+export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegenerate, keywords }: Props) {
   const { t } = useLanguage();
   const [fullscreen, setFullscreen] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
