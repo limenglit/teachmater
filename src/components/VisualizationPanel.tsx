@@ -101,6 +101,10 @@ export default function VisualizationPanel() {
     setShowHistory(false);
   };
 
+  const handleUpdateAnalysis = useCallback((updated: AnalysisResult) => {
+    setAnalysis(updated);
+  }, []);
+
   // Override structure_type for rendering
   const renderAnalysis = analysis ? { ...analysis, structure_type: structureType } : null;
 
