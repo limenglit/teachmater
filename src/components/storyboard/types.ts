@@ -260,6 +260,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: '流程图',
     nameKey: 'storyboard.template.flowchart',
+    category: 'thinking',
     params: {
       theme: '标准流程图：开始→输入→处理步骤→判断分支→输出→结束，包含循环和条件判断',
       audience: 'general',
