@@ -303,6 +303,7 @@ export const TEMPLATES: TemplateConfig[] = [
   {
     name: 'KWL学习法',
     nameKey: 'storyboard.template.kwl',
+    category: 'learning',
     params: {
       theme: 'KWL学习策略：K-我已知道什么(Know)，W-我想学什么(Want)，L-我学到了什么(Learned)',
       audience: 'middle-school',
