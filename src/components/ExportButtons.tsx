@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { FileImage, FileText } from 'lucide-react';
+import { FileImage, FileText, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { exportToPNG, exportToPDF } from '@/lib/export';
+import { exportToPNG, exportToPDF, exportToSVG } from '@/lib/export';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
@@ -18,14 +18,16 @@ export default function ExportButtons({ targetRef, filename }: Props) {
     return trimmed.length > 0 ? trimmed : filename;
   };
 
-  const handleExport = async (type: 'png' | 'pdf') => {
+  const handleExport = async (type: 'png' | 'pdf' | 'svg') => {
     if (!targetRef.current) return;
     const exportTitle = getExportTitle();
     try {
       if (type === 'png') {
         await exportToPNG(targetRef.current, exportTitle, exportTitle);
-      } else {
+      } else if (type === 'pdf') {
         await exportToPDF(targetRef.current, exportTitle, exportTitle);
+      } else {
+        await exportToSVG(targetRef.current, exportTitle, exportTitle);
       }
       toast({ title: `已导出为 ${type.toUpperCase()}`, description: `${exportTitle}.${type}` });
     } catch (err) {
@@ -51,6 +53,9 @@ export default function ExportButtons({ targetRef, filename }: Props) {
       />
       <Button variant="outline" size="sm" onClick={() => handleExport('png')} className="gap-1.5 h-8 text-xs">
         <FileImage className="w-3.5 h-3.5" /> PNG
+      </Button>
+      <Button variant="outline" size="sm" onClick={() => handleExport('svg')} className="gap-1.5 h-8 text-xs">
+        <FileCode className="w-3.5 h-3.5" /> SVG
       </Button>
       <Button variant="outline" size="sm" onClick={() => handleExport('pdf')} className="gap-1.5 h-8 text-xs">
         <FileText className="w-3.5 h-3.5" /> PDF
