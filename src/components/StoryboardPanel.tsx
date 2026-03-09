@@ -9,7 +9,7 @@ import StoryboardForm from './storyboard/StoryboardForm';
 import StoryboardPreview from './storyboard/StoryboardPreview';
 import StoryboardTemplates from './storyboard/StoryboardTemplates';
 import StoryboardHistory from './storyboard/StoryboardHistory';
-import { StoryboardParams, StoryboardResult, DEFAULT_PARAMS } from './storyboard/types';
+import { StoryboardParams, StoryboardResult, DEFAULT_PARAMS, TextOverlay, TEMPLATES } from './storyboard/types';
 import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
 import { supabase } from '@/integrations/supabase/client';
 import { Pencil } from 'lucide-react';
@@ -25,6 +25,7 @@ export default function StoryboardPanel() {
   const [prompt, setPrompt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [history, setHistory] = useState<StoryboardResult[]>([]);
+  const [currentKeywords, setCurrentKeywords] = useState<TextOverlay[]>([]);
 
   // Load history from localStorage
   useEffect(() => {
@@ -92,6 +93,7 @@ export default function StoryboardPanel() {
           imageUrl: data.imageUrl,
           prompt: data.prompt || '',
           createdAt: new Date().toISOString(),
+          keywords: currentKeywords,
         };
         const newHistory = [newResult, ...history].slice(0, MAX_HISTORY);
         saveHistory(newHistory);
@@ -112,11 +114,21 @@ export default function StoryboardPanel() {
     setParams(result.params);
     setImageUrl(result.imageUrl);
     setPrompt(result.prompt);
+    setCurrentKeywords(result.keywords || []);
   };
 
   const handleClearHistory = () => {
     saveHistory([]);
     toast.success(t('storyboard.historyCleared'));
+  };
+
+  const handleSelectTemplate = (templateParams: StoryboardParams) => {
+    setParams(templateParams);
+    // Find matching template to get keywords
+    const template = TEMPLATES.find(t => t.params.theme === templateParams.theme);
+    if (template) {
+      setCurrentKeywords(template.keywords);
+    }
   };
 
   const guestRemaining = getGuestAIRemaining(!!user);
@@ -139,7 +151,7 @@ export default function StoryboardPanel() {
         <CardContent className="flex-1 overflow-hidden">
           <ScrollArea className="h-full pr-4">
             <div className="space-y-6">
-              <StoryboardTemplates onSelect={setParams} />
+              <StoryboardTemplates onSelect={handleSelectTemplate} />
               <Separator />
               <StoryboardForm
                 params={params}
@@ -166,6 +178,7 @@ export default function StoryboardPanel() {
           prompt={prompt}
           isLoading={isLoading}
           onRegenerate={handleGenerate}
+          keywords={currentKeywords}
         />
       </div>
     </div>

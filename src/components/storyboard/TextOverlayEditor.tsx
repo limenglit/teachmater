@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { X, Plus, Download, Trash2, Move } from 'lucide-react';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
+import { TextOverlay } from './types';
 
 interface TextLayer {
   id: string;
@@ -23,6 +24,7 @@ interface TextLayer {
 interface Props {
   imageUrl: string;
   onClose: () => void;
+  initialKeywords?: TextOverlay[];
 }
 
 const FONTS = [
@@ -42,13 +44,30 @@ const FONT_WEIGHTS = [
   { value: '900', label: '特粗' },
 ];
 
-export default function TextOverlayEditor({ imageUrl, onClose }: Props) {
+export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }: Props) {
   const { t } = useLanguage();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [layers, setLayers] = useState<TextLayer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Initialize layers from initialKeywords
+  useEffect(() => {
+    if (initialKeywords && initialKeywords.length > 0 && layers.length === 0) {
+      const initialLayers: TextLayer[] = initialKeywords.map(kw => ({
+        id: crypto.randomUUID(),
+        text: kw.text,
+        x: kw.x,
+        y: kw.y,
+        fontSize: kw.fontSize,
+        fontFamily: kw.fontFamily,
+        fontWeight: kw.fontWeight,
+        color: kw.color,
+      }));
+      setLayers(initialLayers);
+    }
+  }, [initialKeywords]);
 
   const selectedLayer = layers.find(l => l.id === selectedId);
 
