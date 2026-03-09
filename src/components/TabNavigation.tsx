@@ -1,7 +1,7 @@
-import { Dices, Users, Zap, LayoutGrid, Wrench, ClipboardCheck, BotMessageSquare, Lightbulb, PenBox, FileQuestion, Pencil, Presentation } from 'lucide-react';
+import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-export type TabId = 'random' | 'groups' | 'teams' | 'seats' | 'checkin' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'achieve' | 'toolkit';
+export type TabId = 'random' | 'teamwork' | 'seats' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'achieve' | 'toolkit';
 
 interface TabItem {
   id: TabId;
@@ -20,10 +20,8 @@ interface ExternalLink {
 
 const tabs: TabItem[] = [
   { id: 'random', labelKey: 'tab.random', emoji: '🎲', icon: <Dices className="w-4 h-4" /> },
-  { id: 'groups', labelKey: 'tab.groups', emoji: '👥', icon: <Users className="w-4 h-4" /> },
-  { id: 'teams', labelKey: 'tab.teams', emoji: '⚡', icon: <Zap className="w-4 h-4" /> },
+  { id: 'teamwork', labelKey: 'tab.teamwork', emoji: '👥', icon: <Users className="w-4 h-4" /> },
   { id: 'seats', labelKey: 'tab.seats', emoji: '🏫', icon: <LayoutGrid className="w-4 h-4" /> },
-  { id: 'checkin', labelKey: 'tab.checkin', emoji: '📋', icon: <ClipboardCheck className="w-4 h-4" /> },
   { id: 'board', labelKey: 'tab.board', emoji: '🎨', icon: <PenBox className="w-4 h-4" /> },
   { id: 'quiz', labelKey: 'tab.quiz', emoji: '📝', icon: <FileQuestion className="w-4 h-4" /> },
   { id: 'sketch', labelKey: 'tab.sketch', emoji: '✏️', icon: <Pencil className="w-4 h-4" /> },
@@ -48,23 +46,23 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
   const visibleTabs = tabs.filter(t => !t.requiresAuth || isLoggedIn);
 
   return (
-    <nav className="flex items-center gap-1 px-3 sm:px-6 py-2 sm:py-3 border-b border-border bg-card overflow-x-auto scrollbar-hide">
+    <nav className="flex items-center gap-0.5 px-2 sm:px-4 py-2 border-b border-border bg-card overflow-x-auto scrollbar-hide">
       {visibleTabs.map(tab => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0
+          className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0
             ${activeTab === tab.id
-              ? 'bg-primary text-primary-foreground shadow-soft'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
             }`}
         >
-          <span>{tab.emoji}</span>
+          <span className="text-sm">{tab.emoji}</span>
           <span>{t(tab.labelKey)}</span>
         </button>
       ))}
 
-      <div className="w-px h-5 bg-border mx-1 shrink-0" />
+      <div className="w-px h-4 bg-border mx-1.5 shrink-0" />
 
       {externalLinks.map(link => {
         const targetUrl = userEmail
@@ -77,9 +75,9 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
             target="_blank"
             rel="noopener noreferrer"
             title={t('ext.tip')}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60"
           >
-            <span>{link.emoji}</span>
+            <span className="text-sm">{link.emoji}</span>
             <span>{t(link.labelKey)}</span>
           </a>
         );

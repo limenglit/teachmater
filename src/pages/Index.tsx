@@ -6,11 +6,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import StudentSidebar from '@/components/StudentSidebar';
 import TabNavigation, { TabId } from '@/components/TabNavigation';
 import RandomPicker from '@/components/RandomPicker';
-import GroupManager from '@/components/GroupManager';
-import TeamBuilder from '@/components/TeamBuilder';
+import TeamworkPanel from '@/components/TeamworkPanel';
 import SeatChart from '@/components/SeatChart';
 import ToolkitPanel from '@/components/ToolkitPanel';
-import CheckInPanel from '@/components/CheckInPanel';
 import BoardPanel from '@/components/BoardPanel';
 import QuizPanel from '@/components/QuizPanel';
 import AchievementPanel from '@/components/AchievementPanel';
@@ -35,18 +33,15 @@ const Index = () => {
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
-    if (tab === 'checkin' || tab === 'board' || tab === 'quiz' || tab === 'achieve' || tab === 'ppt') {
-      setSidebarCollapsed(true);
-    }
+    // Auto-collapse sidebar when switching tabs for cleaner UI
+    setSidebarCollapsed(true);
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case 'random': return <RandomPicker />;
-      case 'groups': return <GroupManager />;
-      case 'teams': return <TeamBuilder />;
+      case 'teamwork': return <TeamworkPanel />;
       case 'seats': return <SeatChart />;
-      case 'checkin': return <CheckInPanel />;
       case 'board': return <BoardPanel />;
       case 'quiz': return <QuizPanel />;
       case 'sketch': return <StoryboardPanel />;
@@ -55,7 +50,6 @@ const Index = () => {
       case 'toolkit': return <ToolkitPanel />;
     }
   };
-
   return (
     <ThemeProvider>
       <StudentProvider>
