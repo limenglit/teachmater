@@ -41,7 +41,7 @@ export default function QuizSubmitPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    supabase.from('quiz_sessions').select('*').eq('id', sessionId).single()
+    supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId })
       .then(({ data }) => {
         if (data) setSession(data as any);
         setLoading(false);
