@@ -1,12 +1,15 @@
 // PPT PDF export using jspdf
 import jsPDF from 'jspdf';
-import { PPTOutline, PPT_COLOR_SCHEMES } from './pptTypes';
+import { PPTOutline, PPT_COLOR_SCHEMES, PPTFontSize } from './pptTypes';
 
 export async function exportPDF(
   outline: PPTOutline,
-  colorSchemeId: string
+  colorSchemeId: string,
+  fontSizeConfig?: PPTFontSize
 ): Promise<void> {
   const colorScheme = PPT_COLOR_SCHEMES.find(c => c.id === colorSchemeId) || PPT_COLOR_SCHEMES[0];
+  const titleFS = fontSizeConfig?.titleSize || 32;
+  const bodyFS = fontSizeConfig?.bodySize || 16;
   
   // Create PDF in landscape 16:9 format
   const pdf = new jsPDF({
@@ -40,29 +43,29 @@ export async function exportPDF(
 
     if (slide.type === 'title') {
       // Title slide
-      pdf.setFontSize(36);
+      pdf.setFontSize(titleFS + 4);
       pdf.setTextColor(...primaryRgb);
       pdf.text(slide.title, pageWidth / 2, 70, { align: 'center' });
       
       if (slide.subtitle) {
-        pdf.setFontSize(16);
+        pdf.setFontSize(bodyFS);
         pdf.setTextColor(...textRgb);
         pdf.text(slide.subtitle, pageWidth / 2, 90, { align: 'center' });
       }
       
       if (outline.keywords.length > 0) {
-        pdf.setFontSize(10);
+        pdf.setFontSize(bodyFS - 6);
         pdf.setTextColor(...accentRgb);
         pdf.text(outline.keywords.join('  •  '), pageWidth / 2, 110, { align: 'center' });
       }
     } else if (slide.type === 'toc') {
       // Table of contents
-      pdf.setFontSize(24);
+      pdf.setFontSize(titleFS - 8);
       pdf.setTextColor(...primaryRgb);
       pdf.text(slide.title, 20, 25);
       
       if (slide.bullets) {
-        pdf.setFontSize(14);
+        pdf.setFontSize(bodyFS - 2);
         pdf.setTextColor(...textRgb);
         slide.bullets.forEach((item, i) => {
           pdf.text(`${i + 1}. ${item}`, 30, 45 + i * 12);

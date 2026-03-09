@@ -11,7 +11,8 @@ import { toast } from 'sonner';
 import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown, Image, Trash2 } from 'lucide-react';
 import { 
   PPTOutline, PPTProject, 
-  PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES 
+  PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES,
+  PPT_FONTS, PPT_FONT_SIZES, PPT_LAYOUTS,
 } from './ppt/pptTypes';
 import PPTSlidePreview from './ppt/PPTSlidePreview';
 import PPTHistoryPanel, { savePPTProject, getPPTHistory } from './ppt/PPTHistoryPanel';
@@ -33,6 +34,8 @@ export default function PPTPanel() {
   const [template, setTemplate] = useState('education');
   const [style, setStyle] = useState('minimal');
   const [colorScheme, setColorScheme] = useState('calm-blue');
+  const [fontFamily, setFontFamily] = useState('yahei');
+  const [fontSize, setFontSize] = useState('standard');
   const [customColor, setCustomColor] = useState('#2563EB');
   const [outline, setOutline] = useState<PPTOutline | null>(null);
   const [selectedSlide, setSelectedSlide] = useState(0);
@@ -144,11 +147,14 @@ export default function PPTPanel() {
     try {
       const effectiveColorId = colorScheme === 'custom' ? 'custom' : colorScheme;
       
+      const fontConfig = PPT_FONTS.find(f => f.id === fontFamily) || PPT_FONTS[0];
+      const fontSizeConfig = PPT_FONT_SIZES.find(f => f.id === fontSize) || PPT_FONT_SIZES[1];
+      
       if (format === 'pptx' || format === 'both') {
-        await exportPPTX(outline, effectiveColorId, template);
+        await exportPPTX(outline, effectiveColorId, template, fontConfig.fontFace, fontSizeConfig);
       }
       if (format === 'pdf' || format === 'both') {
-        await exportPDF(outline, effectiveColorId);
+        await exportPDF(outline, effectiveColorId, fontSizeConfig);
       }
       
       // Save to history
@@ -159,6 +165,8 @@ export default function PPTPanel() {
         template,
         style,
         colorScheme,
+        fontFamily,
+        fontSize,
         createdAt: new Date().toISOString(),
       };
       savePPTProject(project);
@@ -174,6 +182,8 @@ export default function PPTPanel() {
     setTemplate(project.template);
     setStyle(project.style);
     setColorScheme(project.colorScheme);
+    setFontFamily(project.fontFamily || 'yahei');
+    setFontSize(project.fontSize || 'standard');
     setStep('preview');
     setShowHistory(false);
   };
@@ -415,6 +425,66 @@ export default function PPTPanel() {
                       <span className="text-sm">{t('ppt.color.custom')}</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Font Family */}
+                <div>
+                  <Label className="text-base font-medium mb-2 block">{t('ppt.fontLabel')}</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {PPT_FONTS.map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setFontFamily(f.id)}
+                        className={`px-3 py-2 rounded-lg border-2 text-center transition-colors ${
+                          fontFamily === f.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="text-sm font-medium" style={{ fontFamily: f.fontFace }}>
+                          {f.sample}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{t(f.nameKey)}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Font Size */}
+                <div>
+                  <Label className="text-base font-medium mb-2 block">{t('ppt.fontSizeLabel')}</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {PPT_FONT_SIZES.map(fs => (
+                      <button
+                        key={fs.id}
+                        onClick={() => setFontSize(fs.id)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          fontSize === fs.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                        }`}
+                      >
+                        {t(fs.nameKey)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Layout hints */}
+                <div>
+                  <Label className="text-base font-medium mb-2 block">{t('ppt.layoutLabel')}</Label>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {PPT_LAYOUTS.map(l => (
+                      <div
+                        key={l.id}
+                        className="p-2 rounded-lg border border-border text-center"
+                      >
+                        <div className="text-lg">{l.icon}</div>
+                        <div className="text-xs text-muted-foreground">{t(l.nameKey)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{t('ppt.layoutHint')}</p>
                 </div>
 
                 <div className="flex gap-3">
