@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.analyze-text]
 verify_jwt = false
+
+[functions.load-test-board]
+verify_jwt = false
