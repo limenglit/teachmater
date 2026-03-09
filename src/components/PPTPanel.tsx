@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X } from 'lucide-react';
+import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown } from 'lucide-react';
 import { 
   PPTOutline, PPTProject, 
   PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES 
@@ -16,6 +16,7 @@ import {
 import PPTSlidePreview from './ppt/PPTSlidePreview';
 import PPTHistoryPanel, { savePPTProject, getPPTHistory } from './ppt/PPTHistoryPanel';
 import { exportPPTX } from './ppt/pptExport';
+import { exportPDF } from './ppt/pptPdfExport';
 import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
 
 type Step = 'input' | 'design' | 'preview';
@@ -136,13 +137,17 @@ export default function PPTPanel() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'pptx' | 'pdf' | 'both') => {
     if (!outline) return;
     try {
-      const effectiveColor = colorScheme === 'custom' 
-        ? { id: 'custom', nameKey: 'custom', primary: customColor, secondary: customColor, accent: customColor, background: '#FFFFFF', text: '#1E293B' }
-        : colorScheme;
-      await exportPPTX(outline, typeof effectiveColor === 'string' ? effectiveColor : effectiveColor.id, template);
+      const effectiveColorId = colorScheme === 'custom' ? 'custom' : colorScheme;
+      
+      if (format === 'pptx' || format === 'both') {
+        await exportPPTX(outline, effectiveColorId, template);
+      }
+      if (format === 'pdf' || format === 'both') {
+        await exportPDF(outline, effectiveColorId);
+      }
       
       // Save to history
       const project: PPTProject = {
@@ -155,7 +160,7 @@ export default function PPTPanel() {
         createdAt: new Date().toISOString(),
       };
       savePPTProject(project);
-      toast.success(t('ppt.exportSuccess'));
+      toast.success(format === 'both' ? t('ppt.exportBothSuccess') : t('ppt.exportSuccess'));
     } catch (error) {
       console.error(error);
       toast.error(t('ppt.exportError'));
@@ -484,14 +489,22 @@ export default function PPTPanel() {
                       )}
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 flex-wrap">
                       <Button variant="outline" onClick={() => setStep('design')}>
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         {t('ppt.back')}
                       </Button>
-                      <Button onClick={handleExport} className="flex-1">
+                      <Button variant="outline" onClick={() => handleExport('pdf')}>
+                        <FileDown className="w-4 h-4 mr-2" />
+                        {t('ppt.exportPDF')}
+                      </Button>
+                      <Button onClick={() => handleExport('pptx')} className="flex-1">
                         <Download className="w-4 h-4 mr-2" />
                         {t('ppt.exportPPTX')}
+                      </Button>
+                      <Button onClick={() => handleExport('both')} variant="secondary">
+                        <Download className="w-4 h-4 mr-2" />
+                        {t('ppt.exportBoth')}
                       </Button>
                     </div>
                   </div>
