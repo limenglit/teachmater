@@ -16,8 +16,9 @@ function getCorsHeaders(req: Request) {
 }
 
 serve(async (req) => {
+  const cors = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: getCorsHeaders(req) });
+    return new Response(null, { headers: cors });
   }
 
   try {
@@ -26,7 +27,7 @@ serve(async (req) => {
     if (!prompt || prompt.trim().length < 2) {
       return new Response(
         JSON.stringify({ error: "Prompt too short" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -56,13 +57,13 @@ serve(async (req) => {
     if (response.status === 429) {
       return new Response(
         JSON.stringify({ error: "Rate limited" }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 429, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
     if (response.status === 402) {
       return new Response(
         JSON.stringify({ error: "Payment required" }),
-        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 402, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
     if (!response.ok) {
@@ -106,13 +107,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ imageUrl: urlData.publicUrl }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("generate-ppt-image error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
     );
   }
 });
