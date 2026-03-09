@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SmartClassroom from '@/components/seating/SmartClassroom';
@@ -410,8 +410,12 @@ export default function SeatChart() {
           </div>
           {seats.length > 0 && <ExportButtons targetRef={printRef} filename={t('seat.exportName')} />}
           {seats.length > 0 && (
-            <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-              <QrCode className="w-4 h-4" /> {t('seat.checkin')}
+            <Button
+              onClick={() => setCheckinOpen(true)}
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ring-2 ring-primary/30 font-semibold"
+            >
+              <ClipboardCheck className="w-4 h-4" />
+              {t('seat.checkin')}
             </Button>
           )}
           <Button onClick={autoSeat} className="gap-2 ml-auto">
