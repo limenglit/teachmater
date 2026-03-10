@@ -10,10 +10,10 @@ import {
   RotateCcw,
   Square,
   Trash2,
-  Users,
 } from 'lucide-react';
 
 import ClassRosterPicker from '@/components/ClassRosterPicker';
+import RosterQuickBind from '@/components/RosterQuickBind';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -570,16 +570,18 @@ export default function TaskChecklist() {
           <ClipboardList className="w-4 h-4 text-primary" />
           {t('task.title')}
         </h3>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setShowRoster(true)}>
-            <Users className="w-3.5 h-3.5" />
-            {linkedNames.length > 0 ? `${t('board.classLinked')}(${linkedNames.length}${t('sidebar.persons')})` : t('board.selectClass')}
-          </Button>
-          <Button variant="ghost" size="sm" className="gap-1" onClick={clearDraft}>
-            <RotateCcw className="w-3.5 h-3.5" /> {t('task.reset')}
-          </Button>
-        </div>
+        <Button variant="ghost" size="sm" className="gap-1" onClick={clearDraft}>
+          <RotateCcw className="w-3.5 h-3.5" /> {t('task.reset')}
+        </Button>
       </div>
+
+      <RosterQuickBind
+        className="mb-4 space-y-2"
+        linkedCount={linkedNames.length}
+        sidebarCount={students.length}
+        onOpenRoster={() => setShowRoster(true)}
+        onUseSidebar={() => setLinkedNames(students.map((student) => student.name))}
+      />
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -590,12 +592,6 @@ export default function TaskChecklist() {
             placeholder={t('task.titlePlaceholder')}
           />
         </div>
-
-        {linkedNames.length === 0 && students.length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map((student) => student.name))}>
-            {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
-          </Button>
-        )}
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">{t('task.tasksLabel')}</p>

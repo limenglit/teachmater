@@ -6,11 +6,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, PieChart, Plus, Trash2, QrCode, ArrowLeft, Lock, Unlock, X, Download, Copy, Users } from 'lucide-react';
+import { BarChart3, PieChart, Plus, Trash2, QrCode, ArrowLeft, Lock, Unlock, X, Download, Copy } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
+import RosterQuickBind from '@/components/RosterQuickBind';
 
 interface PollOption {
   label: string;
@@ -349,24 +350,18 @@ export default function PollManager() {
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <BarChart3 className="w-4 h-4" /> {t('poll.title')}
         </h3>
-        <div className="flex items-center gap-2">
-          <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setShowRoster(true)}>
-            <Users className="w-3 h-3" />
-            {linkedNames.length > 0 ? `${t('board.classLinked')}(${linkedNames.length}${t('sidebar.persons')})` : t('board.selectClass')}
-          </Button>
-          <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}>
-            <Plus className="w-3 h-3" /> {t('poll.create')}
-          </Button>
-        </div>
+        <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}>
+          <Plus className="w-3 h-3" /> {t('poll.create')}
+        </Button>
       </div>
 
-      {linkedNames.length === 0 && students.length > 0 && (
-        <div className="mb-3">
-          <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
-            {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
-          </Button>
-        </div>
-      )}
+      <RosterQuickBind
+        className="mb-3 space-y-2"
+        linkedCount={linkedNames.length}
+        sidebarCount={students.length}
+        onOpenRoster={() => setShowRoster(true)}
+        onUseSidebar={() => setLinkedNames(students.map((s) => s.name))}
+      />
 
       {/* Poll list */}
       {polls.length === 0 && !loading && (

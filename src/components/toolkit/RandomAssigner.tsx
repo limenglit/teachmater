@@ -3,8 +3,9 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shuffle, Plus, X, RotateCcw, Users } from 'lucide-react';
+import { Shuffle, Plus, X, RotateCcw } from 'lucide-react';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
+import RosterQuickBind from '@/components/RosterQuickBind';
 
 interface Assignment {
   task: string;
@@ -59,17 +60,13 @@ export default function RandomAssigner() {
         <Shuffle className="w-4 h-4" /> {t('assign.title')}
       </h3>
 
-      <div className="flex items-center gap-2 mb-3">
-        <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1.5" onClick={() => setShowRoster(true)}>
-          <Users className="w-3.5 h-3.5" />
-          {linkedNames.length > 0 ? `${t('board.classLinked')}(${linkedNames.length}${t('sidebar.persons')})` : t('board.selectClass')}
-        </Button>
-        {linkedNames.length === 0 && students.length > 0 && (
-          <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
-            {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
-          </Button>
-        )}
-      </div>
+      <RosterQuickBind
+        className="mb-3 space-y-2"
+        linkedCount={linkedNames.length}
+        sidebarCount={students.length}
+        onOpenRoster={() => setShowRoster(true)}
+        onUseSidebar={() => setLinkedNames(students.map((s) => s.name))}
+      />
 
       {/* Task input */}
       <div className="flex gap-2 mb-3">

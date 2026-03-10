@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { recordGuestAIUsage } from '@/lib/guest-ai-limit';
+import RosterQuickBind from '@/components/RosterQuickBind';
 import ClassRosterPicker from './ClassRosterPicker';
 
 interface BarrageMessage {
@@ -328,16 +329,12 @@ export default function BarrageDiscussion() {
       <div className="bg-card rounded-2xl border border-border shadow-card p-6">
         <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">{t('barrage.title')}</h3>
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" onClick={() => setShowRoster(true)}>
-              {linkedNames.length > 0 ? `${t('board.classLinked')}(${linkedNames.length}${t('sidebar.persons')})` : t('board.selectClass')}
-            </Button>
-            {linkedNames.length === 0 && students.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
-                {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
-              </Button>
-            )}
-          </div>
+          <RosterQuickBind
+            linkedCount={linkedNames.length}
+            sidebarCount={students.length}
+            onOpenRoster={() => setShowRoster(true)}
+            onUseSidebar={() => setLinkedNames(students.map((s) => s.name))}
+          />
           <Input
             value={topicTitle}
             onChange={e => setTopicTitle(e.target.value)}
