@@ -6,10 +6,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { ClipboardList, Plus, Trash2, Maximize2, Minimize2, Users, QrCode, Send, X } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Maximize2, Minimize2, Users, Send, X, Save, CheckCircle2, CircleX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
+import { toast } from 'sonner';
 
 interface TaskSession {
   id: string;
@@ -23,6 +24,35 @@ interface TaskSession {
 interface TaskCompletion {
   student_name: string;
   task_index: number;
+}
+
+interface TaskActivitySnapshot {
+  sessionId: string;
+  title: string;
+  tasks: string[];
+  studentNames: string[];
+  completionPairs: Array<{ student_name: string; task_index: number }>;
+  completedStudentNames: string[];
+  pendingStudentNames: string[];
+  progressPct: number;
+  status: 'active' | 'ended';
+  savedAt: string;
+}
+
+const ACTIVITY_STORAGE_KEY = 'teachmater-task-activity-history';
+
+function loadActivityHistory(): TaskActivitySnapshot[] {
+  try {
+    const raw = localStorage.getItem(ACTIVITY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveActivityHistory(records: TaskActivitySnapshot[]) {
+  localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(records.slice(0, 20)));
 }
 
 export default function TaskChecklist() {
@@ -40,6 +70,7 @@ export default function TaskChecklist() {
   const [session, setSession] = useState<TaskSession | null>(null);
   const [completions, setCompletions] = useState<TaskCompletion[]>([]);
   const [fullscreen, setFullscreen] = useState(false);
+  const [savedActivities, setSavedActivities] = useState<TaskActivitySnapshot[]>(() => loadActivityHistory());
 
   const sessionUrl = session ? `${window.location.origin}/task/${session.id}` : '';
 
@@ -105,8 +136,87 @@ export default function TaskChecklist() {
     });
   };
 
+  const getTaskCompletionCount = (taskIdx: number) => {
+    return new Set(completions.filter(c => c.task_index === taskIdx).map(c => c.student_name)).size;
+  };
+
+  const totalStudents = session?.student_names?.length || 0;
+
+  const buildSnapshot = useCallback((nextStatus: 'active' | 'ended'): TaskActivitySnapshot | null => {
+    if (!session) return null;
+
+    const uniquePairs = Array.from(new Set(completions.map(c => `${c.student_name}#${c.task_index}`))).map(pair => {
+      const [student_name, idx] = pair.split('#');
+      return { student_name, task_index: Number(idx) };
+    });
+
+    const completeSet = new Set(uniquePairs.map(c => `${c.student_name}#${c.task_index}`));
+    const completedStudentNames = session.student_names.filter((name) => {
+      if (session.tasks.length === 0) return false;
+      return session.tasks.every((_, taskIdx) => completeSet.has(`${name}#${taskIdx}`));
+    });
+    const pendingStudentNames = session.student_names.filter(name => !completedStudentNames.includes(name));
+
+    const overallTotal = session.tasks.length * Math.max(session.student_names.length, 1);
+    const progressPct = overallTotal > 0 ? Math.round((uniquePairs.length / overallTotal) * 100) : 0;
+
+    return {
+      sessionId: session.id,
+      title: session.title,
+      tasks: session.tasks,
+      studentNames: session.student_names,
+      completionPairs: uniquePairs,
+      completedStudentNames,
+      pendingStudentNames,
+      progressPct,
+      status: nextStatus,
+      savedAt: new Date().toISOString(),
+    };
+  }, [session, completions]);
+
+  const upsertSnapshot = useCallback((snapshot: TaskActivitySnapshot) => {
+    setSavedActivities(prev => {
+      const next = [snapshot, ...prev.filter(item => item.sessionId !== snapshot.sessionId)]
+        .sort((a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime())
+        .slice(0, 20);
+      saveActivityHistory(next);
+      return next;
+    });
+  }, []);
+
+  const saveCurrentActivity = useCallback(async (status: 'active' | 'ended', showToast = true) => {
+    const snapshot = buildSnapshot(status);
+    if (!snapshot) return;
+
+    upsertSnapshot(snapshot);
+
+    if (user) {
+      const { error } = await supabase.from('teamwork_history').insert([{
+        user_id: user.id,
+        type: 'task-checklist',
+        title: `${snapshot.title} - ${new Date(snapshot.savedAt).toLocaleString()}`,
+        data: snapshot as any,
+        student_count: snapshot.studentNames.length,
+      }]);
+      if (error) {
+        if (showToast) toast.error(t('task.saveFailed'));
+        return;
+      }
+    }
+
+    if (showToast) toast.success(t('task.saved'));
+  }, [buildSnapshot, upsertSnapshot, user, t]);
+
+  const loadSnapshotToDraft = useCallback((snapshot: TaskActivitySnapshot) => {
+    setSessionTitle(snapshot.title);
+    setTasks(snapshot.tasks);
+    setStudentNames(snapshot.studentNames);
+    toast.success(t('task.loadedToDraft'));
+  }, [t]);
+
   const endSession = async () => {
     if (!session) return;
+    await saveCurrentActivity('ended', false);
     await supabase.rpc('update_task_session', {
       p_session_id: session.id,
       p_token: session.creator_token,
@@ -118,12 +228,6 @@ export default function TaskChecklist() {
     setSessionTitle('');
     setStudentNames([]);
   };
-
-  const getTaskCompletionCount = (taskIdx: number) => {
-    return new Set(completions.filter(c => c.task_index === taskIdx).map(c => c.student_name)).size;
-  };
-
-  const totalStudents = session?.student_names?.length || 0;
 
   // Select roster callback
   const onSelectRoster = useCallback((names: string[]) => {
@@ -210,14 +314,44 @@ export default function TaskChecklist() {
             <Send className="w-4 h-4 mr-1" /> {t('task.publish')}
           </Button>
         )}
+
+        {savedActivities.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <p className="text-xs text-muted-foreground mb-2">{t('task.savedActivities')}</p>
+            <div className="space-y-2 max-h-44 overflow-y-auto">
+              {savedActivities.map((item) => (
+                <div key={item.sessionId} className="rounded-lg border border-border p-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm text-foreground font-medium line-clamp-1">{item.title}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {new Date(item.savedAt).toLocaleString()} - {item.completedStudentNames.length}/{item.studentNames.length} - {item.progressPct}%
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => loadSnapshotToDraft(item)}>
+                      {t('task.loadToDraft')}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   // --- PUBLISHED SESSION VIEW ---
-  const overallDone = completions.length;
+  const uniqueCompletionPairs = new Set(completions.map(c => `${c.student_name}#${c.task_index}`));
+  const overallDone = uniqueCompletionPairs.size;
   const overallTotal = tasks.length * Math.max(totalStudents, 1);
   const overallPct = overallTotal > 0 ? Math.round((overallDone / overallTotal) * 100) : 0;
+
+  const completedStudentNames = session.student_names.filter((name) => {
+    if (session.tasks.length === 0) return false;
+    return session.tasks.every((_, taskIdx) => uniqueCompletionPairs.has(`${name}#${taskIdx}`));
+  });
+  const pendingStudentNames = session.student_names.filter(name => !completedStudentNames.includes(name));
 
   const sessionContent = (
     <>
@@ -241,6 +375,44 @@ export default function TaskChecklist() {
         <span>{t('task.progress')}: {overallPct}%</span>
         <span>{t('task.students')}: {new Set(completions.map(c => c.student_name)).size}/{totalStudents}</span>
       </div>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border p-3 bg-muted/20">
+          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+            {t('task.completedList')} ({completedStudentNames.length})
+          </p>
+          {completedStudentNames.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {completedStudentNames.map(name => (
+                <span key={name} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  {name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{t('task.noCompleted')}</p>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-border p-3 bg-muted/20">
+          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+            <CircleX className="w-3.5 h-3.5 text-orange-500" />
+            {t('task.pendingList')} ({pendingStudentNames.length})
+          </p>
+          {pendingStudentNames.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {pendingStudentNames.map(name => (
+                <span key={name} className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20">
+                  {name}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{t('task.allCompleted')}</p>
+          )}
+        </div>
+      </div>
     </>
   );
 
@@ -263,6 +435,10 @@ export default function TaskChecklist() {
 
         {/* Exit fullscreen */}
         <div className="absolute top-4 right-4 flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => saveCurrentActivity('active')}>
+            <Save className="w-4 h-4 mr-1" />
+            {t('task.saveActivity')}
+          </Button>
           <Button variant="outline" size="sm" onClick={endSession}>
             {t('task.end')}
           </Button>
@@ -288,6 +464,9 @@ export default function TaskChecklist() {
           {session.title}
         </h3>
         <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={() => saveCurrentActivity('active')}>
+            <Save className="w-4 h-4" />
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setFullscreen(true)}>
             <Maximize2 className="w-4 h-4" />
           </Button>
