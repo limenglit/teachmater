@@ -113,9 +113,6 @@ export default function TaskSubmitPage() {
 
   if (!joined) {
     const hasNameList = session.student_names && session.student_names.length > 0;
-    const filteredNames = hasNameList
-      ? session.student_names.filter(name => name.toLowerCase().includes(nameQuery.trim().toLowerCase()))
-      : [];
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-card p-6">
@@ -127,46 +124,27 @@ export default function TaskSubmitPage() {
             {session.tasks.length} {t('task.taskCount')}
           </p>
 
-          {hasNameList ? (
-            <div className="mb-4 space-y-2">
-              <Input
-                value={nameQuery}
-                onChange={e => setNameQuery(e.target.value)}
-                placeholder={t('board.searchName')}
-                onKeyDown={e => { if (e.key === 'Enter') joinSession(); }}
-              />
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-              {filteredNames.map(name => (
-                <button
-                  key={name}
-                  onClick={() => {
-                    setStudentName(name);
-                    setNameQuery(name);
-                  }}
-                  className={`w-full text-left p-2 rounded-lg border transition-colors text-sm ${
-                    (nameQuery || studentName) === name
-                      ? 'border-primary bg-primary/10 text-primary font-medium'
-                      : 'border-border hover:bg-muted text-foreground'
-                  }`}
-                >
-                  {name}
-                </button>
-              ))}
-              </div>
+          <Input
+            value={nameQuery}
+            onChange={e => setNameQuery(e.target.value)}
+            placeholder={hasNameList ? t('board.searchName') : t('quiz.enterName')}
+            className="mb-2"
+            list={hasNameList ? 'task-roster-suggestions' : undefined}
+            onKeyDown={e => { if (e.key === 'Enter') joinSession(); }}
+          />
 
-              {filteredNames.length === 0 && (
-                <p className="text-sm text-muted-foreground">{t('board.nameNotFound')}</p>
-              )}
-            </div>
-          ) : (
-            <Input
-              value={nameQuery}
-              onChange={e => setNameQuery(e.target.value)}
-              placeholder={t('quiz.enterName')}
-              className="mb-4"
-              onKeyDown={e => { if (e.key === 'Enter') joinSession(); }}
-            />
+          {hasNameList && (
+            <>
+              <datalist id="task-roster-suggestions">
+                {session.student_names.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground mb-4">{t('board.selectYourName')}</p>
+            </>
           )}
+
+          {!hasNameList && <div className="mb-2" />}
 
           <Button onClick={joinSession} disabled={!(nameQuery || studentName).trim()} className="w-full">
             {t('task.joinSession')}
