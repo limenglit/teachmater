@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import { translations } from './translations';
+
+type LangTranslations = Record<string, Record<string, string>>;
+const translations: LangTranslations = { zh: {}, en: {}, ru: {}, ja: {}, ko: {}, es: {} };
 
 export type LangCode = 'zh' | 'en' | 'ru' | 'ja' | 'ko' | 'es';
 
