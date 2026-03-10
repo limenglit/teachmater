@@ -1177,6 +1177,23 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.paper.filterByTags': '按标签筛选（选填，逗号分隔）',
     'quiz.paper.insufficientQuestions': '题目不足',
     'quiz.paper.noMatchingQuestions': '没有匹配的题目',
+    // Task Checklist
+    'task.title': '📋 课堂任务清单',
+    'task.addPlaceholder': '输入任务...',
+    'task.progress': '完成进度',
+    'task.empty': '添加任务开始管理课堂活动',
+    'task.reset': '清空',
+    // Roll Call
+    'rollcall.title': '✋ 互动点名',
+    'rollcall.roster': '名单',
+    'rollcall.people': '人',
+    'rollcall.selectRoster': '选择名单',
+    'rollcall.clickToStart': '点击下方按钮随机点名',
+    'rollcall.noNames': '请先添加学生名单',
+    'rollcall.allCalled': '全部已点',
+    'rollcall.pick': '随机点名',
+    'rollcall.reset': '重置',
+    'rollcall.called': '已点名',
   },
   en: {
     'app.title': 'TeachMate',
