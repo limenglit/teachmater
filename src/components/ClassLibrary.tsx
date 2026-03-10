@@ -408,10 +408,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       ['计算机学院', '计科2201', '220101001', '张三'],
       ['计算机学院', '计科2201', '220101002', '李四'],
     ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '学生信息');
-    XLSX.writeFile(wb, '学生信息导入模板.xlsx');
+    writeExcelFile(data, '学生信息', '学生信息导入模板.xlsx');
   };
 
   const exportAllToExcel = () => {
