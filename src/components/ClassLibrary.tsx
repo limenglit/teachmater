@@ -399,10 +399,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       [t('library.college'), t('library.class'), t('library.studentNumber'), t('library.studentName')],
       ...classStudents.map(s => [college?.name || '', cls?.name || '', s.student_number, s.name]),
     ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('sidebar.studentList'));
-    XLSX.writeFile(wb, `${cls?.name || t('sidebar.studentList')}.xlsx`);
+    writeExcelFile(data, t('sidebar.studentList'), `${cls?.name || t('sidebar.studentList')}.xlsx`);
   };
 
   const downloadTemplate = () => {
