@@ -157,7 +157,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const data = ev.target?.result as ArrayBuffer;
         const rows: any[][] = await readExcelFile(data);

@@ -58,7 +58,7 @@ export default function QuizImporter({ onImport }: Props) {
 
   const parseFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = e.target?.result as ArrayBuffer;
         const rows: any[][] = await readExcelFile(data);
