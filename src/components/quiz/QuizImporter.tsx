@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { Download, Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
 
 interface ImportedQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
@@ -48,25 +48,20 @@ export default function QuizImporter({ onImport }: Props) {
       ['判断', 'HTML是一种编程语言', '', '', '', '', 'B', 'Web基础'],
       ['简答', '请简述HTTP和HTTPS的区别', '', '', '', '', '', '网络'],
     ];
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 8 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 12 },
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('quiz.imp.sheetName'));
-    XLSX.writeFile(wb, `quiz-template.xlsx`);
-    toast({ title: t('quiz.imp.templateDownloaded') });
+    writeExcelFile(
+      [headers, ...examples],
+      t('quiz.imp.sheetName'),
+      'quiz-template.xlsx',
+      [8, 40, 15, 15, 15, 15, 10, 12]
+    ).then(() => toast({ title: t('quiz.imp.templateDownloaded') }));
   };
 
   const parseFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        const data = e.target?.result as ArrayBuffer;
+        const rows: any[][] = await readExcelFile(data);
 
         if (rows.length < 2) {
           setErrors([t('quiz.imp.emptyFile')]);
