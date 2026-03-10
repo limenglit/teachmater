@@ -5,8 +5,6 @@ import {
   CheckCircle2,
   ClipboardList,
   Copy,
-  Maximize,
-  Minimize,
   Play,
   Plus,
   RotateCcw,
@@ -130,7 +128,6 @@ export default function TaskChecklist() {
   const [showRoster, setShowRoster] = useState(false);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const detailRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -140,15 +137,6 @@ export default function TaskChecklist() {
   useEffect(() => {
     loadSessions();
   }, [user?.id]);
-
-  useEffect(() => {
-    const onFullScreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-
-    document.addEventListener('fullscreenchange', onFullScreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullScreenChange);
-  }, []);
 
   useEffect(() => {
     if (!activeSession) return;
@@ -328,18 +316,6 @@ export default function TaskChecklist() {
     }
   };
 
-  const toggleFullscreen = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await detailRef.current?.requestFullscreen();
-      } else {
-        await document.exitFullscreen();
-      }
-    } catch {
-      toast({ title: t('task.fullscreenFailed'), variant: 'destructive' });
-    }
-  };
-
   const detailSubmitUrl = activeSession ? `${window.location.origin}/task/${activeSession.id}` : '';
   const isCreator = activeSession ? Boolean(getCreatorToken(activeSession.id)) : false;
 
@@ -414,10 +390,6 @@ export default function TaskChecklist() {
           <span className="text-xs text-muted-foreground">{tFormat(t('task.taskTotal'), activeSession.tasks.length)}</span>
 
           <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={toggleFullscreen}>
-              {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
-              {isFullscreen ? t('task.exitFullscreen') : t('task.fullscreen')}
-            </Button>
             {isCreator && (
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={toggleSessionStatus}>
                 {activeSession.status === 'active' ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
@@ -426,44 +398,31 @@ export default function TaskChecklist() {
             )}
           </div>
 
-          {isFullscreen && (
-            <div className="absolute left-4 top-16 bg-card/95 border border-border rounded-xl shadow-card p-3 w-32">
-              <div className="flex items-center gap-1 text-xs font-medium text-foreground mb-2">
-                <Users className="w-3 h-3" /> {t('task.scanToReport')}
-              </div>
-              <div className="flex justify-center mb-2">
-                <QRCodeSVG value={detailSubmitUrl} size={96} level="M" />
-              </div>
-              <p className="text-[10px] text-muted-foreground break-all">{detailSubmitUrl}</p>
-            </div>
-          )}
         </div>
 
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div className="space-y-4">
-              {!isFullscreen && (
-                <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <h3 className="text-sm font-semibold text-foreground">{t('task.scanToReport')}</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2"
-                      onClick={() => {
-                        navigator.clipboard.writeText(detailSubmitUrl);
-                        toast({ title: t('common.copied') });
-                      }}
-                    >
-                      <Copy className="w-3 h-3" />
-                    </Button>
-                  </div>
-                  <div className="flex justify-center mb-3">
-                    <QRCodeSVG value={detailSubmitUrl} size={180} level="M" />
-                  </div>
-                  <p className="text-xs text-muted-foreground break-all">{detailSubmitUrl}</p>
+              <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="text-sm font-semibold text-foreground">{t('task.scanToReport')}</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => {
+                      navigator.clipboard.writeText(detailSubmitUrl);
+                      toast({ title: t('common.copied') });
+                    }}
+                  >
+                    <Copy className="w-3 h-3" />
+                  </Button>
                 </div>
-              )}
+                <div className="flex justify-center mb-3">
+                  <QRCodeSVG value={detailSubmitUrl} size={180} level="M" />
+                </div>
+                <p className="text-xs text-muted-foreground break-all">{detailSubmitUrl}</p>
+              </div>
 
               <div className="bg-card border border-border rounded-2xl p-4 shadow-card space-y-4">
                 <div>
