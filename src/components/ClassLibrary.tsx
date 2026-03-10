@@ -13,7 +13,7 @@ import {
   Building2, GraduationCap, Plus, Trash2, Edit2, Upload, Download, Check, X,
   ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
 
 interface College { id: string; name: string; user_id: string; }
 interface ClassItem { id: string; college_id: string; name: string; user_id: string; }
