@@ -25,6 +25,7 @@ export default function TaskSubmitPage() {
   const [joined, setJoined] = useState(false);
   const [completedTasks, setCompletedTasks] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
+  const [nameQuery, setNameQuery] = useState(() => localStorage.getItem(NAME_KEY) || '');
 
   useEffect(() => {
     loadSession();
@@ -56,8 +57,9 @@ export default function TaskSubmitPage() {
   };
 
   const joinSession = async () => {
-    const name = studentName.trim();
+    const name = (nameQuery || studentName).trim();
     if (!name || !session) return;
+    setStudentName(name);
     localStorage.setItem(NAME_KEY, name);
 
     // Load existing completions for this student
@@ -111,6 +113,9 @@ export default function TaskSubmitPage() {
 
   if (!joined) {
     const hasNameList = session.student_names && session.student_names.length > 0;
+    const filteredNames = hasNameList
+      ? session.student_names.filter(name => name.toLowerCase().includes(nameQuery.trim().toLowerCase()))
+      : [];
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-card p-6">
@@ -123,13 +128,23 @@ export default function TaskSubmitPage() {
           </p>
 
           {hasNameList ? (
-            <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
-              {session.student_names.map(name => (
+            <div className="mb-4 space-y-2">
+              <Input
+                value={nameQuery}
+                onChange={e => setNameQuery(e.target.value)}
+                placeholder={t('board.searchName')}
+                onKeyDown={e => { if (e.key === 'Enter') joinSession(); }}
+              />
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+              {filteredNames.map(name => (
                 <button
                   key={name}
-                  onClick={() => { setStudentName(name); }}
+                  onClick={() => {
+                    setStudentName(name);
+                    setNameQuery(name);
+                  }}
                   className={`w-full text-left p-2 rounded-lg border transition-colors text-sm ${
-                    studentName === name
+                    (nameQuery || studentName) === name
                       ? 'border-primary bg-primary/10 text-primary font-medium'
                       : 'border-border hover:bg-muted text-foreground'
                   }`}
@@ -137,18 +152,23 @@ export default function TaskSubmitPage() {
                   {name}
                 </button>
               ))}
+              </div>
+
+              {filteredNames.length === 0 && (
+                <p className="text-sm text-muted-foreground">{t('board.nameNotFound')}</p>
+              )}
             </div>
           ) : (
             <Input
-              value={studentName}
-              onChange={e => setStudentName(e.target.value)}
+              value={nameQuery}
+              onChange={e => setNameQuery(e.target.value)}
               placeholder={t('quiz.enterName')}
               className="mb-4"
               onKeyDown={e => { if (e.key === 'Enter') joinSession(); }}
             />
           )}
 
-          <Button onClick={joinSession} disabled={!studentName.trim()} className="w-full">
+          <Button onClick={joinSession} disabled={!(nameQuery || studentName).trim()} className="w-full">
             {t('task.joinSession')}
           </Button>
         </div>
