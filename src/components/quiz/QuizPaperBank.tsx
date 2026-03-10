@@ -28,7 +28,7 @@ import {
   deleteLocalPaper,
   duplicateLocalPaper,
 } from '@/lib/quiz-utils';
-import * as XLSX from 'xlsx';
+import { writeExcelFile } from '@/lib/excel-utils';
 import jsPDF from 'jspdf';
 
 interface Props {
