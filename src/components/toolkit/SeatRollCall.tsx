@@ -82,12 +82,15 @@ export default function SeatRollCall() {
         </Button>
       </div>
 
-      {showRoster && (
-        <ClassRosterPicker
-          onSelect={handleRosterSelect}
-          onClose={() => setShowRoster(false)}
-        />
-      )}
+      <ClassRosterPicker
+        open={showRoster}
+        onOpenChange={setShowRoster}
+        onSelect={(selected) => {
+          setNames(selected);
+          setCalledRecords([]);
+          setCurrentPick(null);
+        }}
+      />
 
       {/* Current pick display */}
       <div className="flex flex-col items-center py-4">
