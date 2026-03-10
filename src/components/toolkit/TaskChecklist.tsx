@@ -128,7 +128,6 @@ export default function TaskChecklist() {
   const [activeSession, setActiveSession] = useState<TaskSessionRecord | null>(null);
   const [completions, setCompletions] = useState<TaskCompletionRecord[]>([]);
   const [showRoster, setShowRoster] = useState(false);
-  const [showQRInline, setShowQRInline] = useState(true);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -224,7 +223,6 @@ export default function TaskChecklist() {
 
   const openSession = async (session: TaskSessionRecord) => {
     setActiveSession(session);
-    setShowQRInline(true);
     try {
       const { data, error } = await supabase
         .from('task_completions')
@@ -342,9 +340,6 @@ export default function TaskChecklist() {
     }
   };
 
-  const draftTaskCount = tasks.length;
-  const draftStudentCount = linkedNames.length > 0 ? linkedNames.length : students.length;
-
   const detailSubmitUrl = activeSession ? `${window.location.origin}/task/${activeSession.id}` : '';
   const isCreator = activeSession ? Boolean(getCreatorToken(activeSession.id)) : false;
 
@@ -419,9 +414,6 @@ export default function TaskChecklist() {
           <span className="text-xs text-muted-foreground">{tFormat(t('task.taskTotal'), activeSession.tasks.length)}</span>
 
           <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowQRInline((prev) => !prev)}>
-              <ClipboardList className="w-3 h-3" /> {showQRInline ? t('task.hideQr') : t('task.showQr')}
-            </Button>
             <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={toggleFullscreen}>
               {isFullscreen ? <Minimize className="w-3 h-3" /> : <Maximize className="w-3 h-3" />}
               {isFullscreen ? t('task.exitFullscreen') : t('task.fullscreen')}
@@ -434,7 +426,7 @@ export default function TaskChecklist() {
             )}
           </div>
 
-          {isFullscreen && showQRInline && (
+          {isFullscreen && (
             <div className="absolute left-4 top-16 bg-card/95 border border-border rounded-xl shadow-card p-3 w-32">
               <div className="flex items-center gap-1 text-xs font-medium text-foreground mb-2">
                 <Users className="w-3 h-3" /> {t('task.scanToReport')}
@@ -450,7 +442,7 @@ export default function TaskChecklist() {
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
             <div className="space-y-4">
-              {showQRInline && !isFullscreen && (
+              {!isFullscreen && (
                 <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <h3 className="text-sm font-semibold text-foreground">{t('task.scanToReport')}</h3>
@@ -503,37 +495,74 @@ export default function TaskChecklist() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid gap-4 xl:grid-cols-2">
-                <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">{t('task.completedStudents')}</h3>
-                  <div className="flex flex-wrap gap-2 max-h-44 overflow-auto">
-                    {detailStats.completedStudents.length > 0 ? detailStats.completedStudents.map((name) => (
-                      <span key={name} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm">
-                        {name}
-                      </span>
-                    )) : (
-                      <p className="text-sm text-muted-foreground">{t('task.noneCompletedYet')}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-                  <h3 className="text-sm font-semibold text-foreground mb-3">{t('task.pendingStudents')}</h3>
-                  <div className="flex flex-wrap gap-2 max-h-44 overflow-auto">
-                    {detailStats.pendingStudents.length > 0 ? detailStats.pendingStudents.map((name) => (
-                      <span key={name} className="px-2.5 py-1 rounded-full bg-muted text-foreground text-sm">
-                        {name}
-                      </span>
-                    )) : (
-                      <p className="text-sm text-muted-foreground">{t('task.everyoneCompleted')}</p>
-                    )}
-                  </div>
+              <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+                <h3 className="text-sm font-semibold text-foreground mb-3">{t('task.byTask')}</h3>
+                <div className="space-y-3 max-h-[34vh] overflow-auto pr-1">
+                  {detailStats.taskStats.map((item, index) => {
+                    const pct = detailStats.roster.length > 0 ? Math.round((item.count / detailStats.roster.length) * 100) : 0;
+                    return (
+                      <div key={`${item.task}-${index}`} className="rounded-xl border border-border p-3">
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground break-words">{index + 1}. {item.task}</p>
+                            <p className="text-xs text-muted-foreground">{item.count}/{detailStats.roster.length}</p>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{pct}%</span>
+                        </div>
+                        <Progress value={pct} className="h-2 mb-2" />
+                        <div className="flex flex-wrap gap-1.5">
+                          {item.completedStudents.length > 0 ? item.completedStudents.map((name) => (
+                            <span key={`${item.task}-${name}`} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                              {name}
+                            </span>
+                          )) : (
+                            <p className="text-xs text-muted-foreground">{t('task.noReportsYet')}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-                <h3 className="text-sm font-semibold text-foreground mb-3">{t('task.byStudent')}</h3>
-                <div className="space-y-3 max-h-[32vh] overflow-auto pr-1">
+              <details className="bg-card border border-border rounded-2xl p-4 shadow-card">
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">{t('task.completedStudents')}</h3>
+                  <span className="text-xs text-muted-foreground">{detailStats.completedStudents.length}</span>
+                </summary>
+                <div className="flex flex-wrap gap-2 max-h-44 overflow-auto mt-3">
+                  {detailStats.completedStudents.length > 0 ? detailStats.completedStudents.map((name) => (
+                    <span key={name} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm">
+                      {name}
+                    </span>
+                  )) : (
+                    <p className="text-sm text-muted-foreground">{t('task.noneCompletedYet')}</p>
+                  )}
+                </div>
+              </details>
+
+              <details className="bg-card border border-border rounded-2xl p-4 shadow-card">
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">{t('task.pendingStudents')}</h3>
+                  <span className="text-xs text-muted-foreground">{detailStats.pendingStudents.length}</span>
+                </summary>
+                <div className="flex flex-wrap gap-2 max-h-44 overflow-auto mt-3">
+                  {detailStats.pendingStudents.length > 0 ? detailStats.pendingStudents.map((name) => (
+                    <span key={name} className="px-2.5 py-1 rounded-full bg-muted text-foreground text-sm">
+                      {name}
+                    </span>
+                  )) : (
+                    <p className="text-sm text-muted-foreground">{t('task.everyoneCompleted')}</p>
+                  )}
+                </div>
+              </details>
+
+              <details className="bg-card border border-border rounded-2xl p-4 shadow-card">
+                <summary className="cursor-pointer list-none flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">{t('task.byStudent')}</h3>
+                  <span className="text-xs text-muted-foreground">{detailStats.studentProgress.length}</span>
+                </summary>
+                <div className="space-y-3 max-h-[32vh] overflow-auto pr-1 mt-3">
                   {detailStats.studentProgress.map((student) => {
                     const studentProgress = activeSession.tasks.length > 0
                       ? Math.round((student.completedCount / activeSession.tasks.length) * 100)
@@ -567,37 +596,7 @@ export default function TaskChecklist() {
                     );
                   })}
                 </div>
-              </div>
-
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-                <h3 className="text-sm font-semibold text-foreground mb-3">{t('task.byTask')}</h3>
-                <div className="space-y-3 max-h-[34vh] overflow-auto pr-1">
-                  {detailStats.taskStats.map((item, index) => {
-                    const pct = detailStats.roster.length > 0 ? Math.round((item.count / detailStats.roster.length) * 100) : 0;
-                    return (
-                      <div key={`${item.task}-${index}`} className="rounded-xl border border-border p-3">
-                        <div className="flex items-center justify-between gap-3 mb-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-foreground break-words">{index + 1}. {item.task}</p>
-                            <p className="text-xs text-muted-foreground">{item.count}/{detailStats.roster.length}</p>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{pct}%</span>
-                        </div>
-                        <Progress value={pct} className="h-2 mb-2" />
-                        <div className="flex flex-wrap gap-1.5">
-                          {item.completedStudents.length > 0 ? item.completedStudents.map((name) => (
-                            <span key={`${item.task}-${name}`} className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                              {name}
-                            </span>
-                          )) : (
-                            <p className="text-xs text-muted-foreground">{t('task.noReportsYet')}</p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              </details>
             </div>
           </div>
         </div>
@@ -638,21 +637,6 @@ export default function TaskChecklist() {
             {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
           </Button>
         )}
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-border p-3 bg-muted/30">
-            <p className="text-xs text-muted-foreground mb-1">{t('task.linkedRoster')}</p>
-            <p className="text-lg font-semibold text-foreground">{draftStudentCount}</p>
-          </div>
-          <div className="rounded-xl border border-border p-3 bg-muted/30">
-            <p className="text-xs text-muted-foreground mb-1">{t('task.taskTotalLabel')}</p>
-            <p className="text-lg font-semibold text-foreground">{draftTaskCount}</p>
-          </div>
-          <div className="rounded-xl border border-border p-3 bg-muted/30">
-            <p className="text-xs text-muted-foreground mb-1">{t('task.publishHintTitle')}</p>
-            <p className="text-sm text-foreground">{t('task.publishHint')}</p>
-          </div>
-        </div>
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">{t('task.tasksLabel')}</p>
