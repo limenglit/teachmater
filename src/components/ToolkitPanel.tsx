@@ -93,7 +93,6 @@ export default function ToolkitPanel() {
           <BreathingExercise />
           <TextMagnifier />
           <TaskChecklist />
-          <SeatRollCall />
           <CommandCards />
           <QRCodeGenerator />
         </div>
