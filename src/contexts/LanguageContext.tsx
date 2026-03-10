@@ -5241,6 +5241,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'admin.pleaseRelogin': 'Inicie sesión nuevamente',
     'admin.batchResult': '{0} {1} usuarios',
     'sysconfig.title': 'Configuración de funciones', 'sysconfig.desc': 'Controlar visibilidad y límites por tipo de usuario', 'sysconfig.guest': 'Invitados', 'sysconfig.registered': 'Usuarios registrados', 'sysconfig.featureAccess': 'Módulos', 'sysconfig.aiLimit': 'Límite diario IA', 'sysconfig.unlimited': 'Ilimitado', 'sysconfig.perDay': '/día', 'sysconfig.save': 'Guardar', 'sysconfig.saved': 'Configuración guardada', 'sysconfig.saveFailed': 'Error al guardar', 'admin.tabUsers': 'Usuarios', 'admin.tabConfig': 'Configuración',
+    'task.title': '📋 Lista de tareas', 'task.addPlaceholder': 'Ingrese una tarea...', 'task.progress': 'Progreso', 'task.empty': 'Agregue tareas para gestionar la clase', 'task.reset': 'Limpiar',
+    'rollcall.title': '✋ Pase de lista', 'rollcall.roster': 'Lista', 'rollcall.people': ' alumnos', 'rollcall.selectRoster': 'Seleccionar lista', 'rollcall.clickToStart': 'Haga clic para elegir al azar', 'rollcall.noNames': 'Agregue nombres de alumnos', 'rollcall.allCalled': 'Todos nombrados', 'rollcall.pick': 'Elegir', 'rollcall.reset': 'Reiniciar', 'rollcall.called': 'Nombrados',
     'checkinPage.loading': 'Cargando...',
     'checkinPage.expired': 'Asistencia finalizada',
     'checkinPage.expiredDesc': 'Esta sesión ha expirado o no existe',
