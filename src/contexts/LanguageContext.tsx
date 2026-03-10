@@ -5919,10 +5919,19 @@ interface LanguageContextValue {
   t: (key: string) => string;
 }
 
+function resolveTranslation(lang: LangCode, key: string): string {
+  return (
+    translations[lang]?.[key] ??
+    translations.en?.[key] ??
+    translations.zh?.[key] ??
+    key
+  );
+}
+
 const fallbackLanguageContext: LanguageContextValue = {
   lang: 'zh',
   setLang: () => {},
-  t: (key: string) => translations.zh?.[key] ?? key,
+  t: (key: string) => resolveTranslation('zh', key),
 };
 
 const LanguageContext = createContext<LanguageContextValue>(fallbackLanguageContext);
@@ -5939,7 +5948,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback((key: string) => {
-    return translations[lang]?.[key] ?? translations['zh']?.[key] ?? key;
+    return resolveTranslation(lang, key);
   }, [lang]);
 
   return (
