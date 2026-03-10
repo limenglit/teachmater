@@ -159,10 +159,8 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        const data = ev.target?.result as ArrayBuffer;
+        const rows: any[][] = await readExcelFile(data);
         
         if (rows.length < 2) {
           toast({ title: t('library.fileEmpty'), variant: 'destructive' });
