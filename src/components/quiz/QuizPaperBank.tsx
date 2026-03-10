@@ -28,7 +28,7 @@ import {
   deleteLocalPaper,
   duplicateLocalPaper,
 } from '@/lib/quiz-utils';
-import * as XLSX from 'xlsx';
+import { writeExcelFile } from '@/lib/excel-utils';
 import jsPDF from 'jspdf';
 
 interface Props {
@@ -195,11 +195,12 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
       pq.score,
     ]);
     const headers = ['序号', '题型', '题目', '选项A', '选项B', '选项C', '选项D', '答案', '分值'];
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    ws['!cols'] = [{ wch: 5 }, { wch: 6 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 8 }, { wch: 5 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, p.title.slice(0, 30));
-    XLSX.writeFile(wb, `${p.title}.xlsx`);
+    writeExcelFile(
+      [headers, ...rows],
+      p.title.slice(0, 30),
+      `${p.title}.xlsx`,
+      [5, 6, 40, 15, 15, 15, 15, 8, 5]
+    );
   };
 
   const exportPaperPDF = (p: QuizPaper) => {

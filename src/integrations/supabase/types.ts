@@ -862,6 +862,71 @@ export type Database = {
         }
         Relationships: []
       }
+      task_completions: {
+        Row: {
+          completed_at: string
+          id: string
+          session_id: string
+          student_name: string
+          task_index: number
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          session_id: string
+          student_name: string
+          task_index?: number
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          session_id?: string
+          student_name?: string
+          task_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_completions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "task_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_sessions: {
+        Row: {
+          created_at: string
+          creator_token: string
+          id: string
+          status: string
+          student_names: Json | null
+          tasks: Json
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_token?: string
+          id?: string
+          status?: string
+          student_names?: Json | null
+          tasks?: Json
+          title?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_token?: string
+          id?: string
+          status?: string
+          student_names?: Json | null
+          tasks?: Json
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       teamwork_history: {
         Row: {
           created_at: string
@@ -951,6 +1016,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_quiz_session_for_student: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -968,6 +1037,10 @@ export type Database = {
         Returns: undefined
       }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
+      submit_quiz_answers: {
+        Args: { p_answers: Json; p_session_id: string; p_student_name: string }
+        Returns: undefined
+      }
       update_board:
         | {
             Args: {
@@ -1000,6 +1073,10 @@ export type Database = {
             }
             Returns: undefined
           }
+      update_checkin_session: {
+        Args: { p_session_id: string; p_status?: string; p_token: string }
+        Returns: undefined
+      }
       update_poll: {
         Args: {
           p_poll_id: string
@@ -1016,6 +1093,14 @@ export type Database = {
           p_title?: string
           p_token: string
         }
+        Returns: undefined
+      }
+      update_seat_checkin_session: {
+        Args: { p_session_id: string; p_status?: string }
+        Returns: undefined
+      }
+      update_task_session: {
+        Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined
       }
       update_topic: {

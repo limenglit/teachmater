@@ -13,7 +13,7 @@ import {
   Building2, GraduationCap, Plus, Trash2, Edit2, Upload, Download, Check, X,
   ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
 
 interface College { id: string; name: string; user_id: string; }
 interface ClassItem { id: string; college_id: string; name: string; user_id: string; }
@@ -157,12 +157,10 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
-        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        const data = ev.target?.result as ArrayBuffer;
+        const rows: any[][] = await readExcelFile(data);
         
         if (rows.length < 2) {
           toast({ title: t('library.fileEmpty'), variant: 'destructive' });
@@ -401,10 +399,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       [t('library.college'), t('library.class'), t('library.studentNumber'), t('library.studentName')],
       ...classStudents.map(s => [college?.name || '', cls?.name || '', s.student_number, s.name]),
     ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('sidebar.studentList'));
-    XLSX.writeFile(wb, `${cls?.name || t('sidebar.studentList')}.xlsx`);
+    writeExcelFile(data, t('sidebar.studentList'), `${cls?.name || t('sidebar.studentList')}.xlsx`);
   };
 
   const downloadTemplate = () => {
@@ -413,10 +408,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       ['计算机学院', '计科2201', '220101001', '张三'],
       ['计算机学院', '计科2201', '220101002', '李四'],
     ];
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '学生信息');
-    XLSX.writeFile(wb, '学生信息导入模板.xlsx');
+    writeExcelFile(data, '学生信息', '学生信息导入模板.xlsx');
   };
 
   const exportAllToExcel = () => {
@@ -430,10 +422,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
         }
       }
     }
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('library.title'));
-    XLSX.writeFile(wb, `${t('library.title')}.xlsx`);
+    writeExcelFile(data, t('library.title'), `${t('library.title')}.xlsx`);
   };
 
   const toggleExpand = (id: string) => {

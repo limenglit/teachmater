@@ -11,7 +11,6 @@ interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
   content: string;
   options: string[];
-  correct_answer: string | string[];
 }
 
 interface Session {
@@ -41,7 +40,7 @@ export default function QuizSubmitPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    supabase.from('quiz_sessions').select('*').eq('id', sessionId).single()
+    supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId })
       .then(({ data }) => {
         if (data) setSession(data as any);
         setLoading(false);
@@ -87,26 +86,12 @@ export default function QuizSubmitPage() {
     if (!session || submitting) return;
     setSubmitting(true);
     const questions = session.questions;
-    const rows = questions.map((q, i) => {
-      const ans = answers[i] ?? '';
-      let isCorrect: boolean | null = null;
-      if (q.type === 'single' || q.type === 'tf') {
-        isCorrect = ans === q.correct_answer;
-      } else if (q.type === 'multi') {
-        const ca = Array.isArray(q.correct_answer) ? [...q.correct_answer].sort() : [];
-        const ua = Array.isArray(ans) ? [...ans].sort() : [];
-        isCorrect = JSON.stringify(ca) === JSON.stringify(ua);
-      }
-      // short answer: is_correct stays null for teacher review
-      return {
-        session_id: session.id,
-        student_name: name.trim(),
-        question_index: i,
-        answer: ans,
-        is_correct: isCorrect,
-      };
-    });
-    await supabase.from('quiz_answers').insert(rows as any);
+    const answersArray = questions.map((_q: any, i: number) => answers[i] ?? '');
+    await supabase.rpc('submit_quiz_answers', {
+      p_session_id: session.id,
+      p_student_name: name.trim(),
+      p_answers: answersArray,
+    } as any);
     setSubmitted(true);
     setSubmitting(false);
   };

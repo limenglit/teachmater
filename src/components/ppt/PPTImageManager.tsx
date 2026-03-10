@@ -97,11 +97,15 @@ export default function PPTImageManager({ open, onClose, onSelectImage }: Props)
 
     setAiLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ppt-image`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify({ prompt: aiPrompt }),
         }
       );
