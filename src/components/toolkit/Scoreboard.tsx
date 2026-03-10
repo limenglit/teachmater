@@ -102,11 +102,11 @@ export default function Scoreboard() {
       <div className="flex items-center gap-2 mb-3">
         <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1.5" onClick={() => setShowRoster(true)}>
           <Users className="w-3.5 h-3.5" />
-          {linkedNames.length > 0 ? `已关联班级(${linkedNames.length}${t('sidebar.persons')})` : '关联班级'}
+          {linkedNames.length > 0 ? `${t('board.classLinked')}(${linkedNames.length}${t('sidebar.persons')})` : t('board.selectClass')}
         </Button>
         {linkedNames.length === 0 && students.length > 0 && (
           <Button variant="outline" size="sm" onClick={() => applyRoster(students.map(s => s.name))}>
-            使用当前名单({students.length}{t('sidebar.persons')})
+            {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
           </Button>
         )}
       </div>

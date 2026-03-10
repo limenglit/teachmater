@@ -100,7 +100,7 @@ export default function PollManager() {
   const createPoll = async () => {
     const resolvedNames = linkedNames.length > 0 ? linkedNames : students.map(s => s.name);
     if (resolvedNames.length === 0) {
-      toast({ title: '请先关联班级或维护当前学生名单', variant: 'destructive' });
+      toast({ title: t('board.requireRosterFirst'), variant: 'destructive' });
       return;
     }
 
@@ -352,7 +352,7 @@ export default function PollManager() {
         <div className="flex items-center gap-2">
           <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" className="gap-1" onClick={() => setShowRoster(true)}>
             <Users className="w-3 h-3" />
-            {linkedNames.length > 0 ? `已关联班级(${linkedNames.length}${t('sidebar.persons')})` : '关联班级'}
+            {linkedNames.length > 0 ? `${t('board.classLinked')}(${linkedNames.length}${t('sidebar.persons')})` : t('board.selectClass')}
           </Button>
           <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}>
             <Plus className="w-3 h-3" /> {t('poll.create')}
@@ -363,7 +363,7 @@ export default function PollManager() {
       {linkedNames.length === 0 && students.length > 0 && (
         <div className="mb-3">
           <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
-            使用当前名单({students.length}{t('sidebar.persons')})
+            {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
           </Button>
         </div>
       )}

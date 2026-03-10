@@ -153,7 +153,7 @@ export default function BarrageDiscussion() {
 
     const resolvedNames = linkedNames.length > 0 ? linkedNames : students.map(s => s.name);
     if (resolvedNames.length === 0) {
-      toast({ title: '请先关联班级或维护当前学生名单', variant: 'destructive' });
+      toast({ title: t('board.requireRosterFirst'), variant: 'destructive' });
       return;
     }
 
@@ -330,11 +330,11 @@ export default function BarrageDiscussion() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Button variant={linkedNames.length > 0 ? 'default' : 'outline'} size="sm" onClick={() => setShowRoster(true)}>
-              {linkedNames.length > 0 ? `已关联班级(${linkedNames.length}${t('sidebar.persons')})` : '关联班级'}
+              {linkedNames.length > 0 ? `${t('board.classLinked')}(${linkedNames.length}${t('sidebar.persons')})` : t('board.selectClass')}
             </Button>
             {linkedNames.length === 0 && students.length > 0 && (
               <Button variant="outline" size="sm" onClick={() => setLinkedNames(students.map(s => s.name))}>
-                使用当前名单({students.length}{t('sidebar.persons')})
+                {t('board.useSidebarList')}({students.length}{t('sidebar.persons')})
               </Button>
             )}
           </div>
