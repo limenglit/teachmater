@@ -60,10 +60,8 @@ export default function QuizImporter({ onImport }: Props) {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const wb = XLSX.read(data, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        const data = e.target?.result as ArrayBuffer;
+        const rows: any[][] = await readExcelFile(data);
 
         if (rows.length < 2) {
           setErrors([t('quiz.imp.emptyFile')]);

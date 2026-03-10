@@ -422,10 +422,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
         }
       }
     }
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('library.title'));
-    XLSX.writeFile(wb, `${t('library.title')}.xlsx`);
+    writeExcelFile(data, t('library.title'), `${t('library.title')}.xlsx`);
   };
 
   const toggleExpand = (id: string) => {
