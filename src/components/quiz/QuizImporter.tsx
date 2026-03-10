@@ -48,15 +48,12 @@ export default function QuizImporter({ onImport }: Props) {
       ['判断', 'HTML是一种编程语言', '', '', '', '', 'B', 'Web基础'],
       ['简答', '请简述HTTP和HTTPS的区别', '', '', '', '', '', '网络'],
     ];
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 8 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 12 },
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('quiz.imp.sheetName'));
-    XLSX.writeFile(wb, `quiz-template.xlsx`);
-    toast({ title: t('quiz.imp.templateDownloaded') });
+    writeExcelFile(
+      [headers, ...examples],
+      t('quiz.imp.sheetName'),
+      'quiz-template.xlsx',
+      [8, 40, 15, 15, 15, 15, 10, 12]
+    ).then(() => toast({ title: t('quiz.imp.templateDownloaded') }));
   };
 
   const parseFile = (file: File) => {
