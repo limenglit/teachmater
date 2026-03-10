@@ -862,6 +862,71 @@ export type Database = {
         }
         Relationships: []
       }
+      task_completions: {
+        Row: {
+          completed_at: string
+          id: string
+          session_id: string
+          student_name: string
+          task_index: number
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          session_id: string
+          student_name: string
+          task_index?: number
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          session_id?: string
+          student_name?: string
+          task_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_completions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "task_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_sessions: {
+        Row: {
+          created_at: string
+          creator_token: string
+          id: string
+          status: string
+          student_names: Json | null
+          tasks: Json
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          creator_token?: string
+          id?: string
+          status?: string
+          student_names?: Json | null
+          tasks?: Json
+          title?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          creator_token?: string
+          id?: string
+          status?: string
+          student_names?: Json | null
+          tasks?: Json
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       teamwork_history: {
         Row: {
           created_at: string
@@ -1032,6 +1097,10 @@ export type Database = {
       }
       update_seat_checkin_session: {
         Args: { p_session_id: string; p_status?: string }
+        Returns: undefined
+      }
+      update_task_session: {
+        Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined
       }
       update_topic: {

@@ -21,6 +21,7 @@ const BoardPage = lazy(() => import("./pages/BoardPage"));
 const BoardSubmitPage = lazy(() => import("./pages/BoardSubmitPage"));
 const QuizSubmitPage = lazy(() => import("./pages/QuizSubmitPage"));
 const PollVotePage = lazy(() => import("./pages/PollVotePage"));
+const TaskSubmitPage = lazy(() => import("./pages/TaskSubmitPage"));
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/board/:boardId/submit" element={<Suspense fallback={<Loading />}><BoardSubmitPage /></Suspense>} />
                 <Route path="/quiz/:sessionId" element={<Suspense fallback={<Loading />}><QuizSubmitPage /></Suspense>} />
                 <Route path="/poll/:pollId" element={<Suspense fallback={<Loading />}><PollVotePage /></Suspense>} />
+                <Route path="/task/:sessionId" element={<Suspense fallback={<Loading />}><TaskSubmitPage /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

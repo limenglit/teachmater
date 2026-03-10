@@ -24,7 +24,7 @@ import TrafficLight from './toolkit/TrafficLight';
 import BreathingExercise from './toolkit/BreathingExercise';
 import TextMagnifier from './toolkit/TextMagnifier';
 import TaskChecklist from './toolkit/TaskChecklist';
-import SeatRollCall from './toolkit/SeatRollCall';
+
 
 // Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
@@ -93,7 +93,6 @@ export default function ToolkitPanel() {
           <BreathingExercise />
           <TextMagnifier />
           <TaskChecklist />
-          <SeatRollCall />
           <CommandCards />
           <QRCodeGenerator />
         </div>
