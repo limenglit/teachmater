@@ -277,6 +277,22 @@ export default function ScreenCaptureTool() {
     if (!video) return;
     video.srcObject = stream;
 
+    if (stream) {
+      const ensurePlaying = () => {
+        void video.play().catch(() => {
+          // Some browsers require a delayed play attempt after metadata is ready.
+        });
+      };
+
+      video.addEventListener('loadedmetadata', ensurePlaying);
+      ensurePlaying();
+
+      return () => {
+        video.removeEventListener('loadedmetadata', ensurePlaying);
+        video.srcObject = null;
+      };
+    }
+
     return () => {
       video.srcObject = null;
     };
@@ -350,6 +366,20 @@ export default function ScreenCaptureTool() {
       throw new Error('no-stream');
     }
 
+    // Keep capture in sync with what user sees in preview by preferring the video frame.
+    const video = videoRef.current;
+    if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('no-context');
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/png');
+    }
+
     const track = stream.getVideoTracks()[0];
     if (!track) {
       throw new Error('no-track');
@@ -366,7 +396,6 @@ export default function ScreenCaptureTool() {
       if (!ctx) throw new Error('no-context');
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     } else {
-      const video = videoRef.current;
       if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
         throw new Error('no-frame');
       }
