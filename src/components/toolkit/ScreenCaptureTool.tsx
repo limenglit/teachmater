@@ -278,6 +278,7 @@ export default function ScreenCaptureTool() {
   const [selectedDpi, setSelectedDpi] = useState<number>(360);
   const [recordAudioSource, setRecordAudioSource] = useState<RecordAudioSource>('system');
   const [isRecording, setIsRecording] = useState(false);
+  const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
   const [liveRegion, setLiveRegion] = useState<LiveRegion>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
 
   const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
@@ -551,6 +552,7 @@ export default function ScreenCaptureTool() {
   }, [selectedDpi, stream]);
 
   const cleanupRecordingResources = useCallback(() => {
+    setRecordCountdown(null);
     recordingActiveRef.current = false;
     if (recordRafRef.current !== null) {
       cancelAnimationFrame(recordRafRef.current);
@@ -610,7 +612,7 @@ export default function ScreenCaptureTool() {
     cleanupRecordingResources();
   };
 
-  const downloadSelectedRegionScreenshot = async () => {
+  const captureSelectedRegionToEditor = async () => {
     const frameDataUrl = await getFrameDataUrl();
     const img = await loadImage(frameDataUrl);
 
@@ -627,27 +629,14 @@ export default function ScreenCaptureTool() {
 
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
 
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1));
-    if (!blob) {
-      throw new Error('blob-failed');
-    }
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `capture-${Date.now()}.png`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    toast({ title: t('capture.captured') });
-    stopShare();
-    setWorkspaceOpen(false);
-    setWorkspaceMode('capture');
+    await applyCapturedImage(canvas.toDataURL('image/png'), { notice: t('capture.captured') });
   };
 
-  const startRecording = async () => {
+  const startRecordPreview = async () => {
     try {
-      stopShare();
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
@@ -661,6 +650,24 @@ export default function ScreenCaptureTool() {
       });
 
       setStream(displayStream);
+      const [displayTrack] = displayStream.getVideoTracks();
+      displayTrack.onended = () => {
+        cleanupRecordingResources();
+        setStream(null);
+      };
+    } catch {
+      toast({ title: t('capture.permissionDenied'), variant: 'destructive' });
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      if (!stream) {
+        toast({ title: t('capture.start'), variant: 'destructive' });
+        return;
+      }
+
+      const displayStream = stream;
 
       const previewVideo = videoRef.current;
       if (previewVideo) {
@@ -825,6 +832,27 @@ export default function ScreenCaptureTool() {
     if (recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
     }
+  };
+
+  const startRecordingWithCountdown = () => {
+    if (isRecording || recordCountdown !== null) return;
+    if (!stream) {
+      toast({ title: t('capture.start'), variant: 'destructive' });
+      return;
+    }
+
+    setRecordCountdown(3);
+    let count = 3;
+    const timer = window.setInterval(() => {
+      count -= 1;
+      if (count <= 0) {
+        window.clearInterval(timer);
+        setRecordCountdown(null);
+        void startRecording();
+        return;
+      }
+      setRecordCountdown(count);
+    }, 1000);
   };
 
   const closeWorkspace = () => {
@@ -1343,13 +1371,13 @@ export default function ScreenCaptureTool() {
                     <option value="browser">{t('capture.sourceTab')}</option>
                   </select>
 
-                  {!isRecording ? (
-                    <Button size="sm" onClick={() => void startRecording()} className="gap-1">
-                      <Video className="w-4 h-4" /> {t('capture.startRecord')}
+                  {!stream ? (
+                    <Button size="sm" onClick={() => void startRecordPreview()} className="gap-1" disabled={isRecording}>
+                      <Monitor className="w-4 h-4" /> {t('capture.start')}
                     </Button>
                   ) : (
-                    <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1">
-                      <StopCircle className="w-4 h-4" /> {t('capture.stopRecord')}
+                    <Button size="sm" variant="outline" onClick={stopShare} className="gap-1" disabled={isRecording}>
+                      <StopCircle className="w-4 h-4" /> {t('capture.stop')}
                     </Button>
                   )}
                 </>
@@ -1390,6 +1418,11 @@ export default function ScreenCaptureTool() {
                           <div className="absolute -left-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nesw-resize" onMouseDown={(event) => beginRegionAdjust(event, 'sw')} />
                           <div className="absolute -right-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize" onMouseDown={(event) => beginRegionAdjust(event, 'se')} />
                         </div>
+                        {recordCountdown !== null && (
+                          <div className="absolute inset-0 z-30 flex items-center justify-center rounded-lg bg-black/45">
+                            <div className="text-white text-6xl font-bold tabular-nums">{recordCountdown}</div>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -1398,6 +1431,31 @@ export default function ScreenCaptureTool() {
                   <p className="text-xs text-muted-foreground mt-3 leading-5">{t('capture.recordingHint')}</p>
                 )}
               </div>
+
+              {stream && (
+                <div className="fixed left-1/2 bottom-4 z-[121] -translate-x-1/2 rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {!isRecording ? (
+                      <Button size="sm" onClick={startRecordingWithCountdown} className="gap-1" disabled={recordCountdown !== null}>
+                        <Video className="w-4 h-4" /> {t('capture.startRecord')}
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1">
+                        <StopCircle className="w-4 h-4" /> {t('capture.stopRecord')}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLiveRegion({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })}
+                      className="gap-1"
+                      disabled={isRecording}
+                    >
+                      <RefreshCcw className="w-4 h-4" /> {t('capture.resetSelection')}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : !captured ? (
             <div className="flex-1 min-h-0 p-4 pt-20 pb-28 sm:p-6 sm:pt-20 sm:pb-28 overflow-auto">
@@ -1440,8 +1498,11 @@ export default function ScreenCaptureTool() {
               {stream && (
                 <div className="fixed left-1/2 bottom-4 z-[121] -translate-x-1/2 rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg">
                   <div className="flex flex-wrap items-center justify-center gap-2">
-                    <Button size="sm" onClick={() => void downloadSelectedRegionScreenshot()} className="gap-1">
-                      <Camera className="w-4 h-4" /> {t('capture.confirmSelection')}
+                    <Button size="sm" onClick={() => void captureVisibleArea()} className="gap-1">
+                      <Camera className="w-4 h-4" /> {t('capture.captureVisible')}
+                    </Button>
+                    <Button size="sm" onClick={() => void captureSelectedRegionToEditor()} className="gap-1">
+                      <Crop className="w-4 h-4" /> {t('capture.captureRegion')}
                     </Button>
                     <Button
                       size="sm"
