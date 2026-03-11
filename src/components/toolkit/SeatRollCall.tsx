@@ -84,8 +84,9 @@ export default function SeatRollCall() {
 
       {showRoster && (
         <ClassRosterPicker
+          open={showRoster}
+          onOpenChange={setShowRoster}
           onSelect={handleRosterSelect}
-          onClose={() => setShowRoster(false)}
         />
       )}
 
