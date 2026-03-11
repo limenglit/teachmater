@@ -19,6 +19,7 @@ import PPTHistoryPanel, { savePPTProject, getPPTHistory } from './ppt/PPTHistory
 import { exportPPTX } from './ppt/pptExport';
 import { exportPDF } from './ppt/pptPdfExport';
 import PPTImageManager from './ppt/PPTImageManager';
+import PPTDraggableImage from './ppt/PPTDraggableImage';
 import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
 
 type Step = 'input' | 'design' | 'preview';
