@@ -1250,7 +1250,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.paper.filterByTags': '按标签筛选（选填，逗号分隔）',
     'quiz.paper.insufficientQuestions': '题目不足',
     'quiz.paper.noMatchingQuestions': '没有匹配的题目',
-    'admin.sessionExpired': '登录会话已过期',
+  },
     'admin.pleaseRelogin': '请重新登录后再试',
     'admin.noPermission': '权限不足',
     'admin.adminOnly': '仅管理员可执行此操作',
