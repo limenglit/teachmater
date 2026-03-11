@@ -657,17 +657,22 @@ export default function ScreenCaptureTool() {
         audio: recordAudioSource !== 'mic',
       });
 
-      if ((recordAudioSource === 'mic' || recordAudioSource === 'both') && !recordMicStreamRef.current) {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        recordMicStreamRef.current = micStream;
-      }
-
       setStream(displayStream);
       const [displayTrack] = displayStream.getVideoTracks();
       displayTrack.onended = () => {
         cleanupRecordingResources();
         setStream(null);
       };
+
+      // Do not block screen sharing if microphone permission fails.
+      if ((recordAudioSource === 'mic' || recordAudioSource === 'both') && !recordMicStreamRef.current) {
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          recordMicStreamRef.current = micStream;
+        } catch {
+          toast({ title: t('capture.permissionDenied'), variant: 'destructive' });
+        }
+      }
     } catch {
       toast({ title: t('capture.permissionDenied'), variant: 'destructive' });
     }
@@ -711,9 +716,20 @@ export default function ScreenCaptureTool() {
       }
 
       if (recordAudioSource === 'mic' || recordAudioSource === 'both') {
-        const micStream = recordMicStreamRef.current ?? await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        recordMicStreamRef.current = micStream;
-        audioTracks.push(...micStream.getAudioTracks());
+        let micStream = recordMicStreamRef.current;
+        if (!micStream) {
+          try {
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            recordMicStreamRef.current = micStream;
+          } catch {
+            micStream = null;
+            toast({ title: t('capture.permissionDenied'), variant: 'destructive' });
+          }
+        }
+
+        if (micStream) {
+          audioTracks.push(...micStream.getAudioTracks());
+        }
       }
 
       if (audioTracks.length === 1) {
