@@ -114,6 +114,22 @@ type Annotation = StrokeAnnotation | RectAnnotation | ArrowAnnotation | TextAnno
 const DPI_OPTIONS = [360, 600, 900, 1200, 1500, 1800] as const;
 const MIN_REGION_SIZE = 0.08;
 
+function getPreferredRecorderMimeType() {
+  const candidates = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
+  ];
+
+  for (const mimeType of candidates) {
+    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mimeType)) {
+      return mimeType;
+    }
+  }
+
+  return undefined;
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
@@ -606,21 +622,24 @@ export default function ScreenCaptureTool() {
   };
 
   const captureSelectedRegionToEditor = async () => {
-    const frameDataUrl = await getFrameDataUrl();
-    const img = await loadImage(frameDataUrl);
+    const preview = videoRef.current;
+    if (!preview || preview.videoWidth === 0 || preview.videoHeight === 0) {
+      throw new Error('preview-size-empty');
+    }
 
-    const sx = Math.round(liveRegion.x * img.width);
-    const sy = Math.round(liveRegion.y * img.height);
-    const sw = Math.max(2, Math.round(liveRegion.w * img.width));
-    const sh = Math.max(2, Math.round(liveRegion.h * img.height));
+    const dpiScale = Math.max(1, selectedDpi / 360);
+    const sx = Math.round(liveRegion.x * preview.videoWidth);
+    const sy = Math.round(liveRegion.y * preview.videoHeight);
+    const sw = Math.max(2, Math.round(liveRegion.w * preview.videoWidth));
+    const sh = Math.max(2, Math.round(liveRegion.h * preview.videoHeight));
 
     const canvas = document.createElement('canvas');
-    canvas.width = sw;
-    canvas.height = sh;
+    canvas.width = Math.round(sw * dpiScale);
+    canvas.height = Math.round(sh * dpiScale);
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('no-context');
 
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+    ctx.drawImage(preview, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
     await applyCapturedImage(canvas.toDataURL('image/png'), { notice: t('capture.captured') });
   };
@@ -637,6 +656,11 @@ export default function ScreenCaptureTool() {
         } as MediaTrackConstraints,
         audio: recordAudioSource !== 'mic',
       });
+
+      if ((recordAudioSource === 'mic' || recordAudioSource === 'both') && !recordMicStreamRef.current) {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        recordMicStreamRef.current = micStream;
+      }
 
       setStream(displayStream);
       const [displayTrack] = displayStream.getVideoTracks();
@@ -687,7 +711,7 @@ export default function ScreenCaptureTool() {
       }
 
       if (recordAudioSource === 'mic' || recordAudioSource === 'both') {
-        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const micStream = recordMicStreamRef.current ?? await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         recordMicStreamRef.current = micStream;
         audioTracks.push(...micStream.getAudioTracks());
       }
@@ -697,6 +721,9 @@ export default function ScreenCaptureTool() {
       } else if (audioTracks.length > 1) {
         const audioContext = new AudioContext();
         recordAudioContextRef.current = audioContext;
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
         const destination = audioContext.createMediaStreamDestination();
 
         for (const track of audioTracks) {
@@ -754,7 +781,10 @@ export default function ScreenCaptureTool() {
         finalStream.addTrack(mixedAudioTrack);
       }
 
-      const recorder = new MediaRecorder(finalStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      const preferredMimeType = getPreferredRecorderMimeType();
+      const recorder = preferredMimeType
+        ? new MediaRecorder(finalStream, { mimeType: preferredMimeType })
+        : new MediaRecorder(finalStream);
       recorderRef.current = recorder;
       recordingChunksRef.current = [];
 
@@ -1402,7 +1432,7 @@ export default function ScreenCaptureTool() {
               </div>
 
               {stream && (
-                <div className="fixed left-1/2 bottom-4 z-[121] -translate-x-1/2 rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg">
+                <div className="fixed right-4 top-20 z-[121] rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg max-w-[calc(100vw-32px)]">
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     {!isRecording ? (
                       <Button size="sm" onClick={startRecordingWithCountdown} className="gap-1" disabled={recordCountdown !== null}>
@@ -1465,7 +1495,7 @@ export default function ScreenCaptureTool() {
                 )}
               </div>
               {stream && (
-                <div className="fixed left-1/2 bottom-4 z-[121] -translate-x-1/2 rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg">
+                <div className="fixed right-4 top-20 z-[121] rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg max-w-[calc(100vw-32px)]">
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     <Button size="sm" onClick={() => void captureVisibleArea()} className="gap-1">
                       <Camera className="w-4 h-4" /> {t('capture.captureVisible')}
