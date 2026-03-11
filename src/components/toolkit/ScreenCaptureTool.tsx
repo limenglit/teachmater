@@ -26,6 +26,7 @@ type SourceMode = 'screen' | 'window' | 'browser';
 type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 'text' | 'mosaic';
 type WorkspaceMode = 'capture' | 'record';
 type RecordAudioSource = 'system' | 'mic' | 'both';
+type RegionHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
 
 interface ImagePoint {
   x: number;
@@ -44,6 +45,13 @@ interface ImageBox {
   top: number;
   width: number;
   height: number;
+}
+
+interface LiveRegion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 interface StrokeAnnotation {
@@ -105,6 +113,7 @@ interface MosaicAnnotation {
 type Annotation = StrokeAnnotation | RectAnnotation | ArrowAnnotation | TextAnnotation | MosaicAnnotation;
 
 const DPI_OPTIONS = [360, 600, 900, 1200, 1500, 1800] as const;
+const MIN_REGION_SIZE = 0.08;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -241,10 +250,14 @@ export default function ScreenCaptureTool() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const liveVideoWrapRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
   const recordMicStreamRef = useRef<MediaStream | null>(null);
   const recordAudioContextRef = useRef<AudioContext | null>(null);
+  const recordRafRef = useRef<number | null>(null);
+  const recordingActiveRef = useRef(false);
+  const regionDragRef = useRef<{ handle: RegionHandle; startX: number; startY: number; startRegion: LiveRegion } | null>(null);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [sourceMode, setSourceMode] = useState<SourceMode>('screen');
@@ -265,6 +278,81 @@ export default function ScreenCaptureTool() {
   const [selectedDpi, setSelectedDpi] = useState<number>(360);
   const [recordAudioSource, setRecordAudioSource] = useState<RecordAudioSource>('system');
   const [isRecording, setIsRecording] = useState(false);
+  const [liveRegion, setLiveRegion] = useState<LiveRegion>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
+
+  const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
+    const w = clamp(region.w, MIN_REGION_SIZE, 1);
+    const h = clamp(region.h, MIN_REGION_SIZE, 1);
+    const x = clamp(region.x, 0, 1 - w);
+    const y = clamp(region.y, 0, 1 - h);
+    return { x, y, w, h };
+  }, []);
+
+  const beginRegionAdjust = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>, handle: RegionHandle) => {
+      if (isRecording) return;
+      event.preventDefault();
+      event.stopPropagation();
+      regionDragRef.current = {
+        handle,
+        startX: event.clientX,
+        startY: event.clientY,
+        startRegion: liveRegion,
+      };
+    },
+    [isRecording, liveRegion],
+  );
+
+  const moveRegionAdjust = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const drag = regionDragRef.current;
+      const wrap = liveVideoWrapRef.current;
+      if (!drag || !wrap) return;
+
+      const rect = wrap.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const dx = (event.clientX - drag.startX) / rect.width;
+      const dy = (event.clientY - drag.startY) / rect.height;
+
+      let next = { ...drag.startRegion };
+      if (drag.handle === 'move') {
+        next.x = drag.startRegion.x + dx;
+        next.y = drag.startRegion.y + dy;
+      }
+
+      if (drag.handle === 'nw') {
+        next.x = drag.startRegion.x + dx;
+        next.y = drag.startRegion.y + dy;
+        next.w = drag.startRegion.w - dx;
+        next.h = drag.startRegion.h - dy;
+      }
+
+      if (drag.handle === 'ne') {
+        next.y = drag.startRegion.y + dy;
+        next.w = drag.startRegion.w + dx;
+        next.h = drag.startRegion.h - dy;
+      }
+
+      if (drag.handle === 'sw') {
+        next.x = drag.startRegion.x + dx;
+        next.w = drag.startRegion.w - dx;
+        next.h = drag.startRegion.h + dy;
+      }
+
+      if (drag.handle === 'se') {
+        next.w = drag.startRegion.w + dx;
+        next.h = drag.startRegion.h + dy;
+      }
+
+      setLiveRegion(clampRegion(next));
+    },
+    [clampRegion],
+  );
+
+  const endRegionAdjust = useCallback(() => {
+    regionDragRef.current = null;
+  }, []);
 
   const updateImageBox = useCallback(() => {
     const preview = previewRef.current;
@@ -309,7 +397,7 @@ export default function ScreenCaptureTool() {
     return () => {
       video.srcObject = null;
     };
-  }, [stream]);
+  }, [captured, isRecording, stream, workspaceMode, workspaceOpen]);
 
   useEffect(() => {
     return () => {
@@ -326,6 +414,12 @@ export default function ScreenCaptureTool() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [captured, updateImageBox]);
+
+  useEffect(() => {
+    if (!workspaceOpen) return;
+    setLiveRegion({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
+    endRegionAdjust();
+  }, [endRegionAdjust, workspaceMode, workspaceOpen]);
 
   const resetEditorState = useCallback(() => {
     setTool('none');
@@ -457,6 +551,12 @@ export default function ScreenCaptureTool() {
   }, [selectedDpi, stream]);
 
   const cleanupRecordingResources = useCallback(() => {
+    recordingActiveRef.current = false;
+    if (recordRafRef.current !== null) {
+      cancelAnimationFrame(recordRafRef.current);
+      recordRafRef.current = null;
+    }
+
     if (recorderRef.current) {
       recorderRef.current.ondataavailable = null;
       recorderRef.current.onstop = null;
@@ -510,6 +610,41 @@ export default function ScreenCaptureTool() {
     cleanupRecordingResources();
   };
 
+  const downloadSelectedRegionScreenshot = async () => {
+    const frameDataUrl = await getFrameDataUrl();
+    const img = await loadImage(frameDataUrl);
+
+    const sx = Math.round(liveRegion.x * img.width);
+    const sy = Math.round(liveRegion.y * img.height);
+    const sw = Math.max(2, Math.round(liveRegion.w * img.width));
+    const sh = Math.max(2, Math.round(liveRegion.h * img.height));
+
+    const canvas = document.createElement('canvas');
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('no-context');
+
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1));
+    if (!blob) {
+      throw new Error('blob-failed');
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `capture-${Date.now()}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({ title: t('capture.captured') });
+    stopShare();
+    setWorkspaceOpen(false);
+    setWorkspaceMode('capture');
+  };
+
   const startRecording = async () => {
     try {
       stopShare();
@@ -518,11 +653,30 @@ export default function ScreenCaptureTool() {
         video: {
           displaySurface: sourceMode === 'screen' ? 'monitor' : sourceMode,
           cursor: 'always',
+          ...(sourceMode === 'browser'
+            ? ({ preferCurrentTab: true, selfBrowserSurface: 'include' } as MediaTrackConstraints)
+            : {}),
         } as MediaTrackConstraints,
         audio: recordAudioSource !== 'mic',
       });
 
       setStream(displayStream);
+
+      const previewVideo = videoRef.current;
+      if (previewVideo) {
+        previewVideo.srcObject = displayStream;
+        void previewVideo.play().catch(() => undefined);
+      }
+
+      const refreshPreview = () => {
+        const activeVideo = videoRef.current;
+        if (!activeVideo) return;
+        activeVideo.srcObject = displayStream;
+        void activeVideo.play().catch(() => undefined);
+      };
+
+      const [displayTrack] = displayStream.getVideoTracks();
+      displayTrack.onunmute = refreshPreview;
 
       const mergedStream = new MediaStream();
       const videoTrack = displayStream.getVideoTracks()[0];
@@ -561,7 +715,50 @@ export default function ScreenCaptureTool() {
         }
       }
 
-      const recorder = new MediaRecorder(mergedStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      const preview = videoRef.current;
+      if (!preview) throw new Error('preview-missing');
+      if (preview.videoWidth === 0 || preview.videoHeight === 0) {
+        await new Promise<void>((resolve) => {
+          const onLoaded = () => {
+            preview.removeEventListener('loadedmetadata', onLoaded);
+            resolve();
+          };
+          preview.addEventListener('loadedmetadata', onLoaded);
+        });
+      }
+
+      const sourceWidth = preview.videoWidth;
+      const sourceHeight = preview.videoHeight;
+      if (!sourceWidth || !sourceHeight) {
+        throw new Error('preview-size-empty');
+      }
+
+      const cropX = Math.round(liveRegion.x * sourceWidth);
+      const cropY = Math.round(liveRegion.y * sourceHeight);
+      const cropW = Math.max(2, Math.round(liveRegion.w * sourceWidth));
+      const cropH = Math.max(2, Math.round(liveRegion.h * sourceHeight));
+
+      const outputCanvas = document.createElement('canvas');
+      outputCanvas.width = cropW;
+      outputCanvas.height = cropH;
+      const outputCtx = outputCanvas.getContext('2d');
+      if (!outputCtx) {
+        throw new Error('output-context-missing');
+      }
+
+      const canvasStream = outputCanvas.captureStream(30);
+      const canvasVideoTrack = canvasStream.getVideoTracks()[0];
+      if (!canvasVideoTrack) {
+        throw new Error('canvas-video-track-missing');
+      }
+
+      const finalStream = new MediaStream([canvasVideoTrack]);
+      const mixedAudioTrack = mergedStream.getAudioTracks()[0];
+      if (mixedAudioTrack) {
+        finalStream.addTrack(mixedAudioTrack);
+      }
+
+      const recorder = new MediaRecorder(finalStream, { mimeType: 'video/webm;codecs=vp8,opus' });
       recorderRef.current = recorder;
       recordingChunksRef.current = [];
 
@@ -585,17 +782,28 @@ export default function ScreenCaptureTool() {
         displayStream.getTracks().forEach((track) => track.stop());
         setStream(null);
         cleanupRecordingResources();
+        setWorkspaceOpen(false);
+        setWorkspaceMode('capture');
       };
 
-      const [displayTrack] = displayStream.getVideoTracks();
       displayTrack.onended = () => {
         if (recorderRef.current && recorderRef.current.state !== 'inactive') {
           recorderRef.current.stop();
         } else {
           cleanupRecordingResources();
           setStream(null);
+          setWorkspaceOpen(false);
+          setWorkspaceMode('capture');
         }
       };
+
+      recordingActiveRef.current = true;
+      const renderFrame = () => {
+        if (!recordingActiveRef.current) return;
+        outputCtx.drawImage(preview, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+        recordRafRef.current = requestAnimationFrame(renderFrame);
+      };
+      renderFrame();
 
       recorder.start(1000);
       setIsRecording(true);
@@ -608,6 +816,11 @@ export default function ScreenCaptureTool() {
   };
 
   const stopRecording = () => {
+    recordingActiveRef.current = false;
+    if (recordRafRef.current !== null) {
+      cancelAnimationFrame(recordRafRef.current);
+      recordRafRef.current = null;
+    }
     if (!recorderRef.current) return;
     if (recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
@@ -1032,7 +1245,6 @@ export default function ScreenCaptureTool() {
         <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
           <Monitor className="w-4 h-4" /> {t('capture.title')}
         </h3>
-        <p className="text-xs text-muted-foreground mb-3">{t('capture.workspaceHint')}</p>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <label className="text-xs text-muted-foreground">{t('capture.resolutionLabel')}</label>
           <select
@@ -1152,29 +1364,92 @@ export default function ScreenCaptureTool() {
             <div className="flex-1 min-h-0 p-4 pt-20 pb-16 sm:p-6 sm:pt-20 sm:pb-16 overflow-auto">
               <div className="max-w-6xl mx-auto h-full">
                 <div className="rounded-xl border border-border bg-background/50 p-2 h-full flex items-center justify-center">
-                  <video ref={videoRef} autoPlay muted playsInline className="max-h-full max-w-full object-contain rounded-lg" />
+                  <div
+                    ref={liveVideoWrapRef}
+                    className="relative inline-block max-h-full max-w-full"
+                    onMouseMove={moveRegionAdjust}
+                    onMouseUp={endRegionAdjust}
+                    onMouseLeave={endRegionAdjust}
+                  >
+                    <video ref={videoRef} autoPlay muted playsInline className="max-h-[72vh] max-w-full object-contain rounded-lg" />
+                    {stream && (
+                      <>
+                        <div className="absolute inset-0 pointer-events-none bg-black/20 rounded-lg" />
+                        <div
+                          className="absolute border-2 border-primary shadow-[0_0_0_9999px_rgba(0,0,0,0.38)]"
+                          style={{
+                            left: `${liveRegion.x * 100}%`,
+                            top: `${liveRegion.y * 100}%`,
+                            width: `${liveRegion.w * 100}%`,
+                            height: `${liveRegion.h * 100}%`,
+                          }}
+                        >
+                          <div className="absolute inset-0 cursor-move" onMouseDown={(event) => beginRegionAdjust(event, 'move')} />
+                          <div className="absolute -left-2 -top-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize" onMouseDown={(event) => beginRegionAdjust(event, 'nw')} />
+                          <div className="absolute -right-2 -top-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nesw-resize" onMouseDown={(event) => beginRegionAdjust(event, 'ne')} />
+                          <div className="absolute -left-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nesw-resize" onMouseDown={(event) => beginRegionAdjust(event, 'sw')} />
+                          <div className="absolute -right-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize" onMouseDown={(event) => beginRegionAdjust(event, 'se')} />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 leading-5">
-                  {isRecording ? t('capture.recordingHint') : t('capture.recordReadyHint')}
-                </p>
+                {isRecording && (
+                  <p className="text-xs text-muted-foreground mt-3 leading-5">{t('capture.recordingHint')}</p>
+                )}
               </div>
             </div>
           ) : !captured ? (
             <div className="flex-1 min-h-0 p-4 pt-20 pb-28 sm:p-6 sm:pt-20 sm:pb-28 overflow-auto">
               <div className="max-w-6xl mx-auto h-full">
                 <div className="rounded-xl border border-border bg-background/50 p-2 h-full flex items-center justify-center">
-                  <video ref={videoRef} autoPlay muted playsInline className="max-h-full max-w-full object-contain rounded-lg" />
+                  <div
+                    ref={liveVideoWrapRef}
+                    className="relative inline-block max-h-full max-w-full"
+                    onMouseMove={moveRegionAdjust}
+                    onMouseUp={endRegionAdjust}
+                    onMouseLeave={endRegionAdjust}
+                  >
+                    <video ref={videoRef} autoPlay muted playsInline className="max-h-[72vh] max-w-full object-contain rounded-lg" />
+                    {stream && (
+                      <>
+                        <div className="absolute inset-0 pointer-events-none bg-black/20 rounded-lg" />
+                        <div
+                          className="absolute border-2 border-primary shadow-[0_0_0_9999px_rgba(0,0,0,0.38)]"
+                          style={{
+                            left: `${liveRegion.x * 100}%`,
+                            top: `${liveRegion.y * 100}%`,
+                            width: `${liveRegion.w * 100}%`,
+                            height: `${liveRegion.h * 100}%`,
+                          }}
+                        >
+                          <div className="absolute inset-0 cursor-move" onMouseDown={(event) => beginRegionAdjust(event, 'move')} />
+                          <div className="absolute -left-2 -top-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize" onMouseDown={(event) => beginRegionAdjust(event, 'nw')} />
+                          <div className="absolute -right-2 -top-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nesw-resize" onMouseDown={(event) => beginRegionAdjust(event, 'ne')} />
+                          <div className="absolute -left-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nesw-resize" onMouseDown={(event) => beginRegionAdjust(event, 'sw')} />
+                          <div className="absolute -right-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize" onMouseDown={(event) => beginRegionAdjust(event, 'se')} />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 leading-5">{t('capture.limitHint')}</p>
+                {!stream && (
+                  <p className="text-xs text-muted-foreground mt-3 leading-5">{t('capture.limitHint')}</p>
+                )}
               </div>
               {stream && (
                 <div className="fixed left-1/2 bottom-4 z-[121] -translate-x-1/2 rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg">
                   <div className="flex flex-wrap items-center justify-center gap-2">
-                    <Button size="sm" onClick={() => void captureVisibleArea()} className="gap-1">
-                      <Camera className="w-4 h-4" /> {t('capture.captureVisible')}
+                    <Button size="sm" onClick={() => void downloadSelectedRegionScreenshot()} className="gap-1">
+                      <Camera className="w-4 h-4" /> {t('capture.confirmSelection')}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => void captureRegion()} className="gap-1">
-                      <Crop className="w-4 h-4" /> {t('capture.captureRegion')}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLiveRegion({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 })}
+                      className="gap-1"
+                    >
+                      <RefreshCcw className="w-4 h-4" /> {t('capture.resetSelection')}
                     </Button>
                   </div>
                 </div>
