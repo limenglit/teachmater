@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import PPTHistoryPanel, { savePPTProject, getPPTHistory } from './ppt/PPTHistory
 import { exportPPTX } from './ppt/pptExport';
 import { exportPDF } from './ppt/pptPdfExport';
 import PPTImageManager from './ppt/PPTImageManager';
+import PPTDraggableImage from './ppt/PPTDraggableImage';
 import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
 
 type Step = 'input' | 'design' | 'preview';
@@ -45,6 +46,7 @@ export default function PPTPanel() {
   const [fileLoading, setFileLoading] = useState(false);
   const [showImageManager, setShowImageManager] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const slidePreviewRef = useRef<HTMLDivElement>(null);
 
   const guestRemaining = getGuestAIRemaining(isLoggedIn);
 
@@ -474,21 +476,35 @@ export default function PPTPanel() {
                   </div>
                 </div>
 
-                {/* Layout hints */}
+                {/* Layout - apply to selected slide */}
                 <div>
                   <Label className="text-base font-medium mb-2 block">{t('ppt.layoutLabel')}</Label>
+                  <p className="text-xs text-muted-foreground mb-2">{t('ppt.layoutHint')}</p>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {PPT_LAYOUTS.map(l => (
-                      <div
-                        key={l.id}
-                        className="p-2 rounded-lg border border-border text-center"
-                      >
-                        <div className="text-lg">{l.icon}</div>
-                        <div className="text-xs text-muted-foreground">{t(l.nameKey)}</div>
-                      </div>
-                    ))}
+                    {PPT_LAYOUTS.map(l => {
+                      const currentSlide = outline.slides[selectedSlide];
+                      const isActive = currentSlide?.type === l.id;
+                      return (
+                        <button
+                          key={l.id}
+                          onClick={() => {
+                            if (!outline) return;
+                            const newSlides = [...outline.slides];
+                            newSlides[selectedSlide] = { ...newSlides[selectedSlide], type: l.id };
+                            setOutline({ ...outline, slides: newSlides });
+                          }}
+                          className={`p-2 rounded-lg border-2 text-center transition-colors cursor-pointer ${
+                            isActive
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="text-lg">{l.icon}</div>
+                          <div className="text-xs text-muted-foreground">{t(l.nameKey)}</div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{t('ppt.layoutHint')}</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -554,21 +570,26 @@ export default function PPTPanel() {
                     </div>
                     
                     <div 
-                      className="aspect-video rounded-lg border border-border p-6 overflow-auto"
+                      ref={slidePreviewRef}
+                      className="aspect-video rounded-lg border border-border p-6 overflow-hidden relative"
                       style={{ backgroundColor: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.background || '#FFF' }}
+                      onClick={() => {/* deselect image handled by PPTDraggableImage */}}
                     >
                       {outline.slides[selectedSlide] && (
-                        <div className="h-full flex gap-4">
+                        <>
                           {outline.slides[selectedSlide].imageUrl && (
-                            <div className="w-1/3 flex-shrink-0">
-                              <img 
-                                src={outline.slides[selectedSlide].imageUrl} 
-                                alt="" 
-                                className="w-full h-full object-contain rounded"
-                              />
-                            </div>
+                            <PPTDraggableImage
+                              src={outline.slides[selectedSlide].imageUrl!}
+                              containerRef={slidePreviewRef}
+                              position={outline.slides[selectedSlide].imagePosition || { x: 0, y: 10, width: 33, height: 80 }}
+                              onChange={(pos) => {
+                                const newSlides = [...outline.slides];
+                                newSlides[selectedSlide] = { ...newSlides[selectedSlide], imagePosition: pos };
+                                setOutline({ ...outline, slides: newSlides });
+                              }}
+                            />
                           )}
-                          <div className="flex-1">
+                          <div className={outline.slides[selectedSlide].imageUrl ? 'ml-[36%]' : ''}>
                             <h3 
                               className="text-xl font-bold mb-4"
                               style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.primary }}
@@ -589,7 +610,7 @@ export default function PPTPanel() {
                               </ul>
                             )}
                           </div>
-                        </div>
+                        </>
                       )}
                     </div>
 
