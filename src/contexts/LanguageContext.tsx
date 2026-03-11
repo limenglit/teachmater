@@ -2742,7 +2742,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.paper.filterByTags': 'Filter by tags (optional, comma-separated)',
     'quiz.paper.insufficientQuestions': 'Not enough questions',
     'quiz.paper.noMatchingQuestions': 'No matching questions',
-    'admin.sessionExpired': 'Session expired',
+  },
     'admin.pleaseRelogin': 'Please log in again',
     'admin.noPermission': 'Permission denied',
     'admin.adminOnly': 'Admin only operation',
