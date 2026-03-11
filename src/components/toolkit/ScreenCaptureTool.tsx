@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   Brush,
   Camera,
+  Clipboard,
   Crop,
   Download,
   Highlighter,
@@ -22,7 +23,6 @@ import { toast } from '@/hooks/use-toast';
 
 type SourceMode = 'screen' | 'window' | 'browser';
 type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 'text' | 'mosaic';
-type WorkflowStep = 'source' | 'capture' | 'edit' | 'export';
 
 interface ImagePoint {
   x: number;
@@ -122,23 +122,6 @@ function arrowHeadPoints(x1: number, y1: number, x2: number, y2: number, size: n
   ];
 }
 
-function drawArrowOnCanvas(ctx: CanvasRenderingContext2D, annotation: ArrowAnnotation) {
-  ctx.beginPath();
-  ctx.moveTo(annotation.x1, annotation.y1);
-  ctx.lineTo(annotation.x2, annotation.y2);
-  ctx.stroke();
-
-  const [tip, left, right] = arrowHeadPoints(annotation.x1, annotation.y1, annotation.x2, annotation.y2, annotation.size);
-  ctx.beginPath();
-  ctx.moveTo(tip.x, tip.y);
-  ctx.lineTo(left.x, left.y);
-  ctx.lineTo(right.x, right.y);
-  ctx.closePath();
-  ctx.fillStyle = annotation.color;
-  ctx.globalAlpha = annotation.opacity;
-  ctx.fill();
-}
-
 function drawMosaicOnCanvas(ctx: CanvasRenderingContext2D, annotation: MosaicAnnotation) {
   const x = Math.round(annotation.x);
   const y = Math.round(annotation.y);
@@ -203,7 +186,18 @@ function drawAnnotations(ctx: CanvasRenderingContext2D, annotations: Annotation[
     if (annotation.kind === 'rect') {
       ctx.strokeRect(annotation.x, annotation.y, annotation.w, annotation.h);
     } else if (annotation.kind === 'arrow') {
-      drawArrowOnCanvas(ctx, annotation);
+      ctx.beginPath();
+      ctx.moveTo(annotation.x1, annotation.y1);
+      ctx.lineTo(annotation.x2, annotation.y2);
+      ctx.stroke();
+      const [tip, left, right] = arrowHeadPoints(annotation.x1, annotation.y1, annotation.x2, annotation.y2, annotation.size);
+      ctx.beginPath();
+      ctx.moveTo(tip.x, tip.y);
+      ctx.lineTo(left.x, left.y);
+      ctx.lineTo(right.x, right.y);
+      ctx.closePath();
+      ctx.fillStyle = annotation.color;
+      ctx.fill();
     } else if (annotation.kind === 'text') {
       ctx.fillStyle = annotation.color;
       ctx.font = `${Math.max(14, annotation.size * 4)}px sans-serif`;
@@ -211,9 +205,6 @@ function drawAnnotations(ctx: CanvasRenderingContext2D, annotations: Annotation[
       ctx.fillText(annotation.text, annotation.x, annotation.y);
     } else if (annotation.kind === 'mosaic') {
       drawMosaicOnCanvas(ctx, annotation);
-      ctx.strokeStyle = 'rgba(15,23,42,0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(annotation.x, annotation.y, annotation.w, annotation.h);
     } else if (annotation.points.length > 0) {
       ctx.beginPath();
       ctx.moveTo(annotation.points[0].x, annotation.points[0].y);
@@ -240,8 +231,6 @@ async function loadImage(src: string) {
   return promise;
 }
 
-const WORKFLOW_STEPS: WorkflowStep[] = ['source', 'capture', 'edit', 'export'];
-
 export default function ScreenCaptureTool() {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -262,7 +251,7 @@ export default function ScreenCaptureTool() {
   const [dragging, setDragging] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [draftAnnotation, setDraftAnnotation] = useState<Annotation | null>(null);
-  const [workflowStep, setWorkflowStep] = useState<WorkflowStep>('source');
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
 
   const updateImageBox = useCallback(() => {
     const preview = previewRef.current;
@@ -326,7 +315,6 @@ export default function ScreenCaptureTool() {
       setCaptured(dataUrl);
       setImageSize({ width: img.width, height: img.height });
       resetEditorState();
-      setWorkflowStep('edit');
       if (options?.notice) {
         toast({ title: options.notice });
       }
@@ -402,7 +390,6 @@ export default function ScreenCaptureTool() {
         audio: false,
       });
       setStream(media);
-      setWorkflowStep('capture');
       const [track] = media.getVideoTracks();
       track.onended = () => setStream(null);
     } catch {
@@ -414,6 +401,11 @@ export default function ScreenCaptureTool() {
     if (!stream) return;
     stream.getTracks().forEach((track) => track.stop());
     setStream(null);
+  };
+
+  const closeWorkspace = () => {
+    stopShare();
+    setWorkspaceOpen(false);
   };
 
   const captureVisibleArea = async () => {
@@ -686,8 +678,6 @@ export default function ScreenCaptureTool() {
     const canvas = await buildMergedCanvas();
     if (!canvas) return;
 
-    setWorkflowStep('export');
-
     if (format === 'jpeg') {
       const jpgCanvas = document.createElement('canvas');
       jpgCanvas.width = canvas.width;
@@ -723,13 +713,35 @@ export default function ScreenCaptureTool() {
     const canvas = await buildMergedCanvas();
     if (!canvas) return;
 
-    setWorkflowStep('export');
-
     const dataUrl = canvas.toDataURL('image/png');
     const orientation = canvas.width > canvas.height ? 'l' : 'p';
     const pdf = new jsPDF({ orientation, unit: 'pt', format: [canvas.width, canvas.height] });
     pdf.addImage(dataUrl, 'PNG', 0, 0, canvas.width, canvas.height);
     pdf.save(`capture-${Date.now()}.pdf`);
+  };
+
+  const copyToClipboard = async () => {
+    const canvas = await buildMergedCanvas();
+    if (!canvas) return;
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png', 1));
+    if (!blob) {
+      toast({ title: t('capture.copyFailed'), variant: 'destructive' });
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && 'write' in navigator.clipboard && 'ClipboardItem' in window) {
+        const item = new ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([item]);
+        toast({ title: t('capture.copySuccess') });
+        return;
+      }
+
+      throw new Error('clipboard-image-not-supported');
+    } catch {
+      toast({ title: t('capture.copyFailed'), variant: 'destructive' });
+    }
   };
 
   const renderAnnotation = (annotation: Annotation) => {
@@ -800,212 +812,196 @@ export default function ScreenCaptureTool() {
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-card p-6">
-      <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-        <Monitor className="w-4 h-4" /> {t('capture.title')}
-      </h3>
-
-      <div className="mb-3 rounded-xl border border-border bg-background/60 p-3">
-        <p className="text-xs text-muted-foreground mb-2">{t('capture.workflowTitle')}</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {WORKFLOW_STEPS.map((step, index) => {
-            const active = step === workflowStep;
-            const done = WORKFLOW_STEPS.indexOf(workflowStep) > index;
-            return (
-              <div
-                key={step}
-                className={`rounded-lg px-2 py-2 text-xs border ${
-                  active
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : done
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                      : 'border-border text-muted-foreground'
-                }`}
-              >
-                {index + 1}. {t(`capture.step.${step}` as any)}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <p className="text-xs text-muted-foreground mb-2">{t('capture.desc')}</p>
-      <p className="text-[11px] text-muted-foreground mb-3 leading-5">{t('capture.limitHint')}</p>
-
-      <div className="mb-3">
-        <label className="text-xs text-muted-foreground block mb-1">{t('capture.sourceLabel')}</label>
-        <select
-          value={sourceMode}
-          onChange={(event) => setSourceMode(event.target.value as SourceMode)}
-          className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
-          disabled={!!stream}
-        >
-          <option value="screen">{t('capture.sourceScreen')}</option>
-          <option value="window">{t('capture.sourceWindow')}</option>
-          <option value="browser">{t('capture.sourceTab')}</option>
-        </select>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-3">
-        {!stream ? (
-          <Button size="sm" onClick={startShare} className="gap-1">
-            <Monitor className="w-4 h-4" /> {t('capture.start')}
-          </Button>
-        ) : (
-          <>
-            <Button size="sm" onClick={() => void captureVisibleArea()} className="gap-1">
-              <Camera className="w-4 h-4" /> {t('capture.captureVisible')}
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => void captureRegion()} className="gap-1">
-              <Crop className="w-4 h-4" /> {t('capture.captureRegion')}
-            </Button>
-            <Button size="sm" variant="outline" onClick={stopShare} className="gap-1">
-              <StopCircle className="w-4 h-4" /> {t('capture.stop')}
-            </Button>
-          </>
-        )}
-        <Button size="sm" variant="secondary" onClick={() => void captureCurrentPageLong()} className="gap-1">
-          <Square className="w-4 h-4" /> {t('capture.captureLongPage')}
+    <>
+      <div className="bg-card rounded-2xl border border-border shadow-card p-6">
+        <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
+          <Monitor className="w-4 h-4" /> {t('capture.title')}
+        </h3>
+        <p className="text-xs text-muted-foreground mb-3">{t('capture.workspaceHint')}</p>
+        <Button size="sm" className="gap-1" onClick={() => setWorkspaceOpen(true)}>
+          <Monitor className="w-4 h-4" /> {t('capture.openWorkspace')}
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border bg-background/50 p-2 mb-3">
-        <video ref={videoRef} autoPlay muted playsInline className="w-full max-h-[min(55vh,28rem)] object-contain rounded-lg" />
-      </div>
-
-      {captured && (
-        <>
-          <div className="rounded-xl border border-border bg-background/70 p-3 mb-3 space-y-3">
+      {workspaceOpen && (
+        <div className="fixed inset-0 z-[120] bg-background flex flex-col">
+          <div className="fixed left-0 right-0 top-0 z-[121] border-b border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-foreground">{t('capture.editorLabel')}</span>
-              <Button size="sm" variant={tool === 'none' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('none')}>
-                {t('capture.toolNone')}
-              </Button>
-              <Button size="sm" variant={tool === 'crop' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('crop')}>
-                <Crop className="w-3.5 h-3.5" /> {t('capture.toolCrop')}
-              </Button>
-              <Button size="sm" variant={tool === 'draw' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('draw')}>
-                <Brush className="w-3.5 h-3.5" /> {t('capture.toolDraw')}
-              </Button>
-              <Button size="sm" variant={tool === 'highlight' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('highlight')}>
-                <Highlighter className="w-3.5 h-3.5" /> {t('capture.toolHighlight')}
-              </Button>
-              <Button size="sm" variant={tool === 'rect' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('rect')}>
-                <Square className="w-3.5 h-3.5" /> {t('capture.toolRect')}
-              </Button>
-              <Button size="sm" variant={tool === 'arrow' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('arrow')}>
-                <ArrowUpRight className="w-3.5 h-3.5" /> {t('capture.toolArrow')}
-              </Button>
-              <Button size="sm" variant={tool === 'text' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('text')}>
-                <Type className="w-3.5 h-3.5" /> {t('capture.toolText')}
-              </Button>
-              <Button size="sm" variant={tool === 'mosaic' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('mosaic')}>
-                <Square className="w-3.5 h-3.5" /> {t('capture.toolMosaic')}
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-4">
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                {t('capture.color')}
-                <input type="color" value={color} onChange={(event) => setColor(event.target.value)} className="h-8 w-8 rounded border border-border bg-transparent p-0" />
-              </label>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                {t('capture.brushSize')}
-                <input type="range" min={2} max={24} step={1} value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} />
-                <span className="text-foreground">{brushSize}px</span>
-              </label>
-              {tool === 'text' && (
-                <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                  {t('capture.textLabel')}
-                  <input
-                    value={textDraft}
-                    onChange={(event) => setTextDraft(event.target.value)}
-                    placeholder={t('capture.textPlaceholder')}
-                    className="h-8 min-w-[180px] rounded-md border border-input bg-background px-2 text-xs text-foreground"
-                  />
-                </label>
-              )}
-              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={undoAnnotation} disabled={annotations.length === 0}>
-                <Undo2 className="w-3.5 h-3.5" /> {t('capture.toolUndo')}
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={clearAnnotations} disabled={annotations.length === 0 && !draftAnnotation}>
-                <RefreshCcw className="w-3.5 h-3.5" /> {t('capture.toolClear')}
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void applyCrop()} disabled={tool !== 'crop'}>
-                <Crop className="w-3.5 h-3.5" /> {t('capture.applyCrop')}
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void resetCapture()}>
-                <RefreshCcw className="w-3.5 h-3.5" /> {t('capture.resetCrop')}
-              </Button>
-            </div>
-          </div>
-
-          <div
-            ref={previewRef}
-            className="rounded-xl border border-border bg-background/50 p-2 mb-3 relative select-none"
-            onMouseDown={handlePreviewMouseDown}
-            onMouseMove={handlePreviewMouseMove}
-            onMouseUp={handlePreviewMouseUp}
-            onMouseLeave={handlePreviewMouseUp}
-          >
-            <img
-              ref={imageRef}
-              src={captured}
-              alt={t('capture.previewAlt')}
-              className="w-full max-h-[min(60vh,32rem)] object-contain rounded-lg"
-              draggable={false}
-              onLoad={() => updateImageBox()}
-            />
-
-            {imageBox && (
-              <svg
-                className="absolute pointer-events-none"
-                style={{
-                  left: `${imageBox.left}px`,
-                  top: `${imageBox.top}px`,
-                  width: `${imageBox.width}px`,
-                  height: `${imageBox.height}px`,
-                }}
-                viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
+              <span className="text-sm font-medium text-foreground mr-2">{t('capture.title')}</span>
+              <label className="text-xs text-muted-foreground">{t('capture.sourceLabel')}</label>
+              <select
+                value={sourceMode}
+                onChange={(event) => setSourceMode(event.target.value as SourceMode)}
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                disabled={!!stream}
               >
-                {annotations.map(renderAnnotation)}
-                {draftAnnotation ? renderAnnotation(draftAnnotation) : null}
-                {cropRect && tool === 'crop' ? (
-                  <rect
-                    x={cropRect.x}
-                    y={cropRect.y}
-                    width={cropRect.w}
-                    height={cropRect.h}
-                    fill="rgba(59, 130, 246, 0.18)"
-                    stroke="rgb(59, 130, 246)"
-                    strokeWidth={Math.max(2, brushSize / 2)}
-                    rx={8}
+                <option value="screen">{t('capture.sourceScreen')}</option>
+                <option value="window">{t('capture.sourceWindow')}</option>
+                <option value="browser">{t('capture.sourceTab')}</option>
+              </select>
+
+              {!stream ? (
+                <Button size="sm" onClick={startShare} className="gap-1">
+                  <Monitor className="w-4 h-4" /> {t('capture.start')}
+                </Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={stopShare} className="gap-1">
+                  <StopCircle className="w-4 h-4" /> {t('capture.stop')}
+                </Button>
+              )}
+
+              <Button size="sm" variant="secondary" onClick={() => void captureCurrentPageLong()} className="gap-1">
+                <Square className="w-4 h-4" /> {t('capture.captureLongPage')}
+              </Button>
+              <div className="ml-auto" />
+              <Button size="sm" variant="outline" onClick={closeWorkspace}>{t('capture.exitWorkspace')}</Button>
+            </div>
+          </div>
+
+          {!captured ? (
+            <div className="flex-1 min-h-0 p-4 pt-20 pb-28 sm:p-6 sm:pt-20 sm:pb-28 overflow-auto">
+              <div className="max-w-6xl mx-auto h-full">
+                <div className="rounded-xl border border-border bg-background/50 p-2 h-full flex items-center justify-center">
+                  <video ref={videoRef} autoPlay muted playsInline className="max-h-full max-w-full object-contain rounded-lg" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 leading-5">{t('capture.limitHint')}</p>
+              </div>
+              {stream && (
+                <div className="fixed left-1/2 bottom-4 z-[121] -translate-x-1/2 rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg">
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button size="sm" onClick={() => void captureVisibleArea()} className="gap-1">
+                      <Camera className="w-4 h-4" /> {t('capture.captureVisible')}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void captureRegion()} className="gap-1">
+                      <Crop className="w-4 h-4" /> {t('capture.captureRegion')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 p-4 pt-20 pb-36 sm:p-6 sm:pt-20 sm:pb-36 overflow-auto">
+              <div className="max-w-7xl mx-auto">
+                <div
+                  ref={previewRef}
+                  className={`rounded-xl border border-border bg-background/50 p-2 mb-3 relative select-none ${tool === 'crop' ? 'cursor-crosshair' : ''}`}
+                  onMouseDown={handlePreviewMouseDown}
+                  onMouseMove={handlePreviewMouseMove}
+                  onMouseUp={handlePreviewMouseUp}
+                  onMouseLeave={handlePreviewMouseUp}
+                >
+                  <img
+                    ref={imageRef}
+                    src={captured}
+                    alt={t('capture.previewAlt')}
+                    className="w-full max-h-[70vh] object-contain rounded-lg"
+                    draggable={false}
+                    onLoad={() => updateImageBox()}
                   />
-                ) : null}
-              </svg>
-            )}
-          </div>
 
-          <div className="text-xs text-muted-foreground mb-3 leading-5">
-            {tool === 'crop' ? t('capture.cropHint') : t('capture.annotateHint')}
-          </div>
+                  {imageBox && (
+                    <svg
+                      className="absolute pointer-events-none"
+                      style={{
+                        left: `${imageBox.left}px`,
+                        top: `${imageBox.top}px`,
+                        width: `${imageBox.width}px`,
+                        height: `${imageBox.height}px`,
+                      }}
+                      viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
+                    >
+                      {tool === 'crop' ? (
+                        cropRect && cropRect.w > 0 && cropRect.h > 0 ? (
+                          <>
+                            <rect x={0} y={0} width={imageSize.width} height={cropRect.y} fill="rgba(15, 23, 42, 0.35)" />
+                            <rect x={0} y={cropRect.y + cropRect.h} width={imageSize.width} height={Math.max(0, imageSize.height - cropRect.y - cropRect.h)} fill="rgba(15, 23, 42, 0.35)" />
+                            <rect x={0} y={cropRect.y} width={cropRect.x} height={cropRect.h} fill="rgba(15, 23, 42, 0.35)" />
+                            <rect x={cropRect.x + cropRect.w} y={cropRect.y} width={Math.max(0, imageSize.width - cropRect.x - cropRect.w)} height={cropRect.h} fill="rgba(15, 23, 42, 0.35)" />
+                          </>
+                        ) : (
+                          <>
+                            <rect x={0} y={0} width={imageSize.width} height={imageSize.height} fill="rgba(15, 23, 42, 0.18)" />
+                            <line x1={imageSize.width / 2} y1={0} x2={imageSize.width / 2} y2={imageSize.height} stroke="rgba(59,130,246,0.65)" strokeWidth={1.5} strokeDasharray="6 6" />
+                            <line x1={0} y1={imageSize.height / 2} x2={imageSize.width} y2={imageSize.height / 2} stroke="rgba(59,130,246,0.65)" strokeWidth={1.5} strokeDasharray="6 6" />
+                          </>
+                        )
+                      ) : null}
+                      {annotations.map(renderAnnotation)}
+                      {draftAnnotation ? renderAnnotation(draftAnnotation) : null}
+                      {cropRect && tool === 'crop' ? (
+                        <rect
+                          x={cropRect.x}
+                          y={cropRect.y}
+                          width={cropRect.w}
+                          height={cropRect.h}
+                          fill="rgba(59, 130, 246, 0.18)"
+                          stroke="rgb(59, 130, 246)"
+                          strokeWidth={Math.max(2, brushSize / 2)}
+                          rx={8}
+                        />
+                      ) : null}
+                    </svg>
+                  )}
+                </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => void downloadImage('png')}>
-              <Download className="w-3.5 h-3.5" /> {t('capture.formatPng')}
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => void downloadImage('jpeg')}>
-              <Download className="w-3.5 h-3.5" /> {t('capture.formatJpg')}
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => void downloadImage('webp')}>
-              <Download className="w-3.5 h-3.5" /> {t('capture.formatWebp')}
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1" onClick={() => void downloadPdf()}>
-              <Square className="w-3.5 h-3.5" /> {t('capture.formatPdf')}
-            </Button>
-          </div>
-        </>
+                <div className="text-xs text-muted-foreground mb-3 leading-5">
+                  {tool === 'crop' ? t('capture.cropHint') : t('capture.annotateHint')}
+                </div>
+              </div>
+
+              <div className="fixed left-1/2 bottom-4 z-[121] -translate-x-1/2 w-[min(1180px,calc(100vw-20px))] rounded-xl border border-border bg-card/95 backdrop-blur px-2 py-2 shadow-lg">
+                <div className="overflow-x-auto">
+                  <div className="flex min-w-max items-center gap-2 whitespace-nowrap">
+                    <Button size="sm" variant={tool === 'none' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('none')}>{t('capture.toolNone')}</Button>
+                    <Button size="sm" variant={tool === 'crop' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('crop')}><Crop className="w-3.5 h-3.5" /> {t('capture.toolCrop')}</Button>
+                    <Button size="sm" variant={tool === 'draw' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('draw')}><Brush className="w-3.5 h-3.5" /> {t('capture.toolDraw')}</Button>
+                    <Button size="sm" variant={tool === 'highlight' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('highlight')}><Highlighter className="w-3.5 h-3.5" /> {t('capture.toolHighlight')}</Button>
+                    <Button size="sm" variant={tool === 'rect' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('rect')}><Square className="w-3.5 h-3.5" /> {t('capture.toolRect')}</Button>
+                    <Button size="sm" variant={tool === 'arrow' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('arrow')}><ArrowUpRight className="w-3.5 h-3.5" /> {t('capture.toolArrow')}</Button>
+                    <Button size="sm" variant={tool === 'text' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('text')}><Type className="w-3.5 h-3.5" /> {t('capture.toolText')}</Button>
+                    <Button size="sm" variant={tool === 'mosaic' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('mosaic')}><Square className="w-3.5 h-3.5" /> {t('capture.toolMosaic')}</Button>
+
+                    <div className="h-5 w-px bg-border mx-1" />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground ml-1">
+                      {t('capture.color')}
+                      <input type="color" value={color} onChange={(event) => setColor(event.target.value)} className="h-8 w-8 rounded border border-border bg-transparent p-0" />
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {t('capture.brushSize')}
+                      <input className="w-20" type="range" min={2} max={24} step={1} value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} />
+                      <span className="text-foreground">{brushSize}px</span>
+                    </label>
+                    {tool === 'text' && (
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {t('capture.textLabel')}
+                        <input
+                          value={textDraft}
+                          onChange={(event) => setTextDraft(event.target.value)}
+                          placeholder={t('capture.textPlaceholder')}
+                          className="h-8 w-36 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                        />
+                      </label>
+                    )}
+
+                    <div className="h-5 w-px bg-border mx-1" />
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={undoAnnotation} disabled={annotations.length === 0}><Undo2 className="w-3.5 h-3.5" /> {t('capture.toolUndo')}</Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={clearAnnotations} disabled={annotations.length === 0 && !draftAnnotation}><RefreshCcw className="w-3.5 h-3.5" /> {t('capture.toolClear')}</Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void applyCrop()} disabled={tool !== 'crop'}><Crop className="w-3.5 h-3.5" /> {t('capture.applyCrop')}</Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void resetCapture()}><RefreshCcw className="w-3.5 h-3.5" /> {t('capture.resetCrop')}</Button>
+
+                    <div className="h-5 w-px bg-border mx-1" />
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void copyToClipboard()}><Clipboard className="w-3.5 h-3.5" /> {t('capture.copyClipboard')}</Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void downloadImage('png')}><Download className="w-3.5 h-3.5" /> {t('capture.formatPng')}</Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void downloadImage('jpeg')}><Download className="w-3.5 h-3.5" /> {t('capture.formatJpg')}</Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void downloadImage('webp')}><Download className="w-3.5 h-3.5" /> {t('capture.formatWebp')}</Button>
+                    <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => void downloadPdf()}><Square className="w-3.5 h-3.5" /> {t('capture.formatPdf')}</Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }
