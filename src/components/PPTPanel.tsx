@@ -474,21 +474,35 @@ export default function PPTPanel() {
                   </div>
                 </div>
 
-                {/* Layout hints */}
+                {/* Layout - apply to selected slide */}
                 <div>
                   <Label className="text-base font-medium mb-2 block">{t('ppt.layoutLabel')}</Label>
+                  <p className="text-xs text-muted-foreground mb-2">{t('ppt.layoutHint')}</p>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                    {PPT_LAYOUTS.map(l => (
-                      <div
-                        key={l.id}
-                        className="p-2 rounded-lg border border-border text-center"
-                      >
-                        <div className="text-lg">{l.icon}</div>
-                        <div className="text-xs text-muted-foreground">{t(l.nameKey)}</div>
-                      </div>
-                    ))}
+                    {PPT_LAYOUTS.map(l => {
+                      const currentSlide = outline.slides[selectedSlide];
+                      const isActive = currentSlide?.type === l.id;
+                      return (
+                        <button
+                          key={l.id}
+                          onClick={() => {
+                            if (!outline) return;
+                            const newSlides = [...outline.slides];
+                            newSlides[selectedSlide] = { ...newSlides[selectedSlide], type: l.id };
+                            setOutline({ ...outline, slides: newSlides });
+                          }}
+                          className={`p-2 rounded-lg border-2 text-center transition-colors cursor-pointer ${
+                            isActive
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          <div className="text-lg">{l.icon}</div>
+                          <div className="text-xs text-muted-foreground">{t(l.nameKey)}</div>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{t('ppt.layoutHint')}</p>
                 </div>
 
                 <div className="flex gap-3">
