@@ -150,7 +150,7 @@ const Index = () => {
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!isApproved} userEmail={user?.email} />
 
           {/* Main Content */}
-          <div className="flex flex-1 overflow-hidden relative">
+          <div className="flex flex-1 min-h-0 overflow-hidden relative">
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
               <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -192,7 +192,7 @@ const Index = () => {
               </div>
             ) : null}
 
-            <div className="flex-1 min-w-0 overflow-hidden transition-[width] duration-150 ease-out">
+            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
               {renderContent()}
             </div>
           </div>
