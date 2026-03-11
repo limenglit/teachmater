@@ -115,6 +115,7 @@ function uniqNames(names: string[]) {
 export default function TaskChecklist() {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const taskTitleText = t('task.title') === 'task.title' ? '课堂任务清单' : t('task.title');
   const { students } = useStudents();
   const draft = useMemo(() => loadDraft(), []);
 
@@ -568,7 +569,7 @@ export default function TaskChecklist() {
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-primary" />
-          {t('task.title')}
+          {taskTitleText}
         </h3>
         <Button variant="ghost" size="sm" className="gap-1" onClick={clearDraft}>
           <RotateCcw className="w-3.5 h-3.5" /> {t('task.reset')}
