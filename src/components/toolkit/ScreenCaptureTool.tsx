@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 
-type SourceMode = 'screen' | 'window' | 'browser';
 type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 'text' | 'mosaic';
 type WorkspaceMode = 'capture' | 'record';
 type RecordAudioSource = 'system' | 'mic' | 'both';
@@ -260,7 +259,6 @@ export default function ScreenCaptureTool() {
   const regionDragRef = useRef<{ handle: RegionHandle; startX: number; startY: number; startRegion: LiveRegion } | null>(null);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [sourceMode, setSourceMode] = useState<SourceMode>('screen');
   const [captured, setCaptured] = useState('');
   const [originalCapture, setOriginalCapture] = useState('');
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
@@ -583,12 +581,7 @@ export default function ScreenCaptureTool() {
     try {
       const media = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          displaySurface: sourceMode === 'screen' ? 'monitor' : sourceMode,
           cursor: 'always',
-          // Browser-specific hints: prefer tab capture and include tab content updates.
-          ...(sourceMode === 'browser'
-            ? ({ preferCurrentTab: true, selfBrowserSurface: 'include' } as MediaTrackConstraints)
-            : {}),
         } as MediaTrackConstraints,
         audio: false,
       });
@@ -640,11 +633,7 @@ export default function ScreenCaptureTool() {
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          displaySurface: sourceMode === 'screen' ? 'monitor' : sourceMode,
           cursor: 'always',
-          ...(sourceMode === 'browser'
-            ? ({ preferCurrentTab: true, selfBrowserSurface: 'include' } as MediaTrackConstraints)
-            : {}),
         } as MediaTrackConstraints,
         audio: recordAudioSource !== 'mic',
       });
@@ -862,6 +851,16 @@ export default function ScreenCaptureTool() {
       stopShare();
     }
     setWorkspaceOpen(false);
+  };
+
+  const openWorkspace = (mode: WorkspaceMode) => {
+    if (stream) {
+      stopShare();
+    }
+    setCaptured('');
+    setOriginalCapture('');
+    setWorkspaceMode(mode);
+    setWorkspaceOpen(true);
   };
 
   const captureVisibleArea = async () => {
@@ -1290,10 +1289,7 @@ export default function ScreenCaptureTool() {
           <Button
             size="sm"
             className="gap-1"
-            onClick={() => {
-              setWorkspaceMode('capture');
-              setWorkspaceOpen(true);
-            }}
+            onClick={() => openWorkspace('capture')}
           >
             <Camera className="w-4 h-4" /> {t('capture.actionScreenshot')}
           </Button>
@@ -1301,10 +1297,7 @@ export default function ScreenCaptureTool() {
             size="sm"
             variant="outline"
             className="gap-1"
-            onClick={() => {
-              setWorkspaceMode('record');
-              setWorkspaceOpen(true);
-            }}
+            onClick={() => openWorkspace('record')}
           >
             <Video className="w-4 h-4" /> {t('capture.actionRecord')}
           </Button>
@@ -1319,18 +1312,6 @@ export default function ScreenCaptureTool() {
 
               {workspaceMode === 'capture' ? (
                 <>
-                  <label className="text-xs text-muted-foreground">{t('capture.sourceLabel')}</label>
-                  <select
-                    value={sourceMode}
-                    onChange={(event) => setSourceMode(event.target.value as SourceMode)}
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                    disabled={!!stream}
-                  >
-                    <option value="screen">{t('capture.sourceScreen')}</option>
-                    <option value="window">{t('capture.sourceWindow')}</option>
-                    <option value="browser">{t('capture.sourceTab')}</option>
-                  </select>
-
                   {!stream ? (
                     <Button size="sm" onClick={startShare} className="gap-1">
                       <Monitor className="w-4 h-4" /> {t('capture.start')}
@@ -1357,18 +1338,6 @@ export default function ScreenCaptureTool() {
                     <option value="system">{t('capture.audioSystem')}</option>
                     <option value="mic">{t('capture.audioMic')}</option>
                     <option value="both">{t('capture.audioBoth')}</option>
-                  </select>
-
-                  <label className="text-xs text-muted-foreground">{t('capture.sourceLabel')}</label>
-                  <select
-                    value={sourceMode}
-                    onChange={(event) => setSourceMode(event.target.value as SourceMode)}
-                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                    disabled={isRecording}
-                  >
-                    <option value="screen">{t('capture.sourceScreen')}</option>
-                    <option value="window">{t('capture.sourceWindow')}</option>
-                    <option value="browser">{t('capture.sourceTab')}</option>
                   </select>
 
                   {!stream ? (
