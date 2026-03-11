@@ -131,7 +131,7 @@ export default function VisualizationPanel() {
           {history.length === 0 ? (
             <p className="text-xs text-muted-foreground">{t('visual.noHistory')}</p>
           ) : (
-            <div className="space-y-1 max-h-48 overflow-auto">
+            <div className="space-y-1 max-h-[min(45vh,20rem)] overflow-auto">
               {history.map(item => (
                 <button
                   key={item.id}

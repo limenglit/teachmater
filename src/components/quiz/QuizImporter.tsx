@@ -225,14 +225,14 @@ export default function QuizImporter({ onImport }: Props) {
                 <p className="text-sm font-medium text-foreground">
                   {t('quiz.imp.preview')} ({preview.length} {t('quiz.imp.questionsUnit')})
                 </p>
-                <div className="max-h-48 overflow-auto space-y-1.5 border border-border rounded-lg p-2">
+                <div className="max-h-[min(50vh,22rem)] overflow-auto space-y-1.5 border border-border rounded-lg p-2">
                   {preview.map((q, i) => (
                     <div key={i} className="flex items-start gap-2 p-2 rounded-md bg-muted/30 text-xs">
                       <span className="text-muted-foreground font-mono w-5 shrink-0">{i + 1}</span>
                       <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] shrink-0">
                         {typeLabel(q.type)}
                       </span>
-                      <span className="text-foreground line-clamp-1 flex-1">{q.content}</span>
+                      <span className="text-foreground flex-1 break-words">{q.content}</span>
                       {q.tags && (
                         <span className="text-[10px] bg-muted px-1 py-0.5 rounded shrink-0">{q.tags}</span>
                       )}

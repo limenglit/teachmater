@@ -274,7 +274,7 @@ export default function ScreenCaptureTool() {
       </div>
 
       <div className="rounded-xl border border-border bg-background/50 p-2 mb-3">
-        <video ref={videoRef} autoPlay muted playsInline className="w-full max-h-48 object-contain rounded-lg" />
+        <video ref={videoRef} autoPlay muted playsInline className="w-full max-h-[min(55vh,28rem)] object-contain rounded-lg" />
       </div>
 
       {captured && (
@@ -287,7 +287,7 @@ export default function ScreenCaptureTool() {
             onMouseUp={onCropEnd}
             onMouseLeave={onCropEnd}
           >
-            <img src={captured} alt={t('capture.previewAlt')} className="w-full max-h-48 object-contain rounded-lg" draggable={false} />
+            <img src={captured} alt={t('capture.previewAlt')} className="w-full max-h-[min(60vh,32rem)] object-contain rounded-lg" draggable={false} />
             {cropRect && (
               <div
                 className="absolute border-2 border-primary bg-primary/20"

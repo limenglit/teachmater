@@ -134,7 +134,7 @@ export default function StoryboardPanel() {
   const guestRemaining = getGuestAIRemaining(!!user);
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 p-4 overflow-y-auto overflow-x-hidden">
       {/* Left Panel - Form */}
       <Card className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col">
         <CardHeader className="pb-3">
@@ -148,7 +148,7 @@ export default function StoryboardPanel() {
             </p>
           )}
         </CardHeader>
-        <CardContent className="flex-1 overflow-hidden">
+        <CardContent className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full pr-4">
             <div className="space-y-6">
               <StoryboardTemplates onSelect={handleSelectTemplate} />

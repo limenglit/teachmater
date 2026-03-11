@@ -672,7 +672,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
             <p className="text-sm text-muted-foreground">
               {t('library.recordsParsed')} <span className="font-medium text-foreground">{previewData.length}</span> {t('library.records')}
             </p>
-            <div className="max-h-60 overflow-y-auto border border-border rounded-lg">
+            <div className="max-h-[min(55vh,26rem)] overflow-y-auto border border-border rounded-lg">
               <table className="w-full text-xs">
                 <thead className="bg-muted sticky top-0">
                   <tr>

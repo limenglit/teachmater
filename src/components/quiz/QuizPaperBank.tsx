@@ -309,7 +309,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
               <p className="text-xs">{t('quiz.paper.emptyHint')}</p>
             </div>
           ) : (
-            <div className="space-y-1 max-h-[50vh] overflow-auto">
+            <div className="space-y-1">
               {paperQs.map((pq, i) => (
                 <div key={pq.question_id + '-' + i} className="flex items-center gap-2 p-2 rounded-md border border-border bg-card text-xs group">
                   <span className="text-muted-foreground font-mono w-5">{i + 1}</span>

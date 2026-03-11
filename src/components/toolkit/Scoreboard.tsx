@@ -142,7 +142,7 @@ export default function Scoreboard() {
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">{t('score.empty')}</p>
       ) : (
-        <div className="space-y-2 max-h-[260px] overflow-auto">
+        <div className="space-y-2 max-h-[min(50vh,26rem)] overflow-auto">
           {sorted.map((entry, i) => {
             const originalIdx = entries.findIndex(e => e.name === entry.name);
             return (

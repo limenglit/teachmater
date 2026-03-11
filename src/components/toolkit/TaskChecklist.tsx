@@ -400,9 +400,9 @@ export default function TaskChecklist() {
 
         </div>
 
-        <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="space-y-4">
+        <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:min-h-0">
+            <div className="space-y-4 min-w-0">
               <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="text-sm font-semibold text-foreground">{t('task.scanToReport')}</h3>
@@ -453,10 +453,10 @@ export default function TaskChecklist() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 min-w-0">
               <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
                 <h3 className="text-sm font-semibold text-foreground mb-3">{t('task.byTask')}</h3>
-                <div className="space-y-3 max-h-[34vh] overflow-auto pr-1">
+                <div className="space-y-3">
                   {detailStats.taskStats.map((item, index) => {
                     const pct = detailStats.roster.length > 0 ? Math.round((item.count / detailStats.roster.length) * 100) : 0;
                     return (
@@ -489,7 +489,7 @@ export default function TaskChecklist() {
                   <h3 className="text-sm font-semibold text-foreground">{t('task.completedStudents')}</h3>
                   <span className="text-xs text-muted-foreground">{detailStats.completedStudents.length}</span>
                 </summary>
-                <div className="flex flex-wrap gap-2 max-h-44 overflow-auto mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {detailStats.completedStudents.length > 0 ? detailStats.completedStudents.map((name) => (
                     <span key={name} className="px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm">
                       {name}
@@ -505,7 +505,7 @@ export default function TaskChecklist() {
                   <h3 className="text-sm font-semibold text-foreground">{t('task.pendingStudents')}</h3>
                   <span className="text-xs text-muted-foreground">{detailStats.pendingStudents.length}</span>
                 </summary>
-                <div className="flex flex-wrap gap-2 max-h-44 overflow-auto mt-3">
+                <div className="flex flex-wrap gap-2 mt-3">
                   {detailStats.pendingStudents.length > 0 ? detailStats.pendingStudents.map((name) => (
                     <span key={name} className="px-2.5 py-1 rounded-full bg-muted text-foreground text-sm">
                       {name}
@@ -521,7 +521,7 @@ export default function TaskChecklist() {
                   <h3 className="text-sm font-semibold text-foreground">{t('task.byStudent')}</h3>
                   <span className="text-xs text-muted-foreground">{detailStats.studentProgress.length}</span>
                 </summary>
-                <div className="space-y-3 max-h-[32vh] overflow-auto pr-1 mt-3">
+                <div className="space-y-3 mt-3">
                   {detailStats.studentProgress.map((student) => {
                     const studentProgress = activeSession.tasks.length > 0
                       ? Math.round((student.completedCount / activeSession.tasks.length) * 100)
@@ -613,7 +613,7 @@ export default function TaskChecklist() {
           </div>
         </div>
 
-        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-[min(45vh,24rem)] overflow-y-auto pr-1">
           {tasks.map((task, index) => (
             <div key={task.id} className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
               <span className="text-xs text-muted-foreground w-5">{index + 1}</span>

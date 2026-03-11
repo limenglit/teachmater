@@ -293,7 +293,7 @@ export default function PollManager() {
             {isCreator && votes.length > 0 && (
               <div className="mt-8">
                 <h3 className="text-sm font-semibold text-foreground mb-3">{t('poll.voterList')}</h3>
-                <div className="max-h-60 overflow-auto border border-border rounded-lg">
+                <div className="max-h-[min(50vh,24rem)] overflow-auto border border-border rounded-lg">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 sticky top-0">
                       <tr>
