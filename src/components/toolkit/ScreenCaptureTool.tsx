@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import {
+  ArrowUpRight,
   Brush,
   Camera,
   Crop,
@@ -11,6 +12,7 @@ import {
   RefreshCcw,
   Square,
   StopCircle,
+  Type,
   Undo2,
 } from 'lucide-react';
 
@@ -19,7 +21,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 
 type SourceMode = 'screen' | 'window' | 'browser';
-type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect';
+type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 'text' | 'mosaic';
+type WorkflowStep = 'source' | 'capture' | 'edit' | 'export';
 
 interface ImagePoint {
   x: number;
@@ -61,7 +64,42 @@ interface RectAnnotation {
   h: number;
 }
 
-type Annotation = StrokeAnnotation | RectAnnotation;
+interface ArrowAnnotation {
+  id: string;
+  kind: 'arrow';
+  color: string;
+  size: number;
+  opacity: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+interface TextAnnotation {
+  id: string;
+  kind: 'text';
+  color: string;
+  size: number;
+  opacity: number;
+  x: number;
+  y: number;
+  text: string;
+}
+
+interface MosaicAnnotation {
+  id: string;
+  kind: 'mosaic';
+  size: number;
+  opacity: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  block: number;
+}
+
+type Annotation = StrokeAnnotation | RectAnnotation | ArrowAnnotation | TextAnnotation | MosaicAnnotation;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -73,16 +111,108 @@ function pointsToSvgPath(points: ImagePoint[]) {
   return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
 }
 
+function arrowHeadPoints(x1: number, y1: number, x2: number, y2: number, size: number) {
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const len = Math.max(10, size * 3.5);
+  const spread = Math.PI / 7;
+  return [
+    { x: x2, y: y2 },
+    { x: x2 - len * Math.cos(angle - spread), y: y2 - len * Math.sin(angle - spread) },
+    { x: x2 - len * Math.cos(angle + spread), y: y2 - len * Math.sin(angle + spread) },
+  ];
+}
+
+function drawArrowOnCanvas(ctx: CanvasRenderingContext2D, annotation: ArrowAnnotation) {
+  ctx.beginPath();
+  ctx.moveTo(annotation.x1, annotation.y1);
+  ctx.lineTo(annotation.x2, annotation.y2);
+  ctx.stroke();
+
+  const [tip, left, right] = arrowHeadPoints(annotation.x1, annotation.y1, annotation.x2, annotation.y2, annotation.size);
+  ctx.beginPath();
+  ctx.moveTo(tip.x, tip.y);
+  ctx.lineTo(left.x, left.y);
+  ctx.lineTo(right.x, right.y);
+  ctx.closePath();
+  ctx.fillStyle = annotation.color;
+  ctx.globalAlpha = annotation.opacity;
+  ctx.fill();
+}
+
+function drawMosaicOnCanvas(ctx: CanvasRenderingContext2D, annotation: MosaicAnnotation) {
+  const x = Math.round(annotation.x);
+  const y = Math.round(annotation.y);
+  const w = Math.round(annotation.w);
+  const h = Math.round(annotation.h);
+  if (w < 2 || h < 2) return;
+
+  const imageData = ctx.getImageData(x, y, w, h);
+  const pixels = imageData.data;
+  const block = Math.max(4, annotation.block);
+
+  for (let by = 0; by < h; by += block) {
+    for (let bx = 0; bx < w; bx += block) {
+      const bw = Math.min(block, w - bx);
+      const bh = Math.min(block, h - by);
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let count = 0;
+
+      for (let py = 0; py < bh; py += 1) {
+        for (let px = 0; px < bw; px += 1) {
+          const idx = ((by + py) * w + (bx + px)) * 4;
+          r += pixels[idx];
+          g += pixels[idx + 1];
+          b += pixels[idx + 2];
+          a += pixels[idx + 3];
+          count += 1;
+        }
+      }
+
+      const avgR = Math.round(r / count);
+      const avgG = Math.round(g / count);
+      const avgB = Math.round(b / count);
+      const avgA = Math.round(a / count);
+
+      for (let py = 0; py < bh; py += 1) {
+        for (let px = 0; px < bw; px += 1) {
+          const idx = ((by + py) * w + (bx + px)) * 4;
+          pixels[idx] = avgR;
+          pixels[idx + 1] = avgG;
+          pixels[idx + 2] = avgB;
+          pixels[idx + 3] = avgA;
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, x, y);
+}
+
 function drawAnnotations(ctx: CanvasRenderingContext2D, annotations: Annotation[]) {
   for (const annotation of annotations) {
     ctx.save();
     ctx.globalAlpha = annotation.opacity;
-    ctx.strokeStyle = annotation.color;
+    ctx.strokeStyle = 'color' in annotation ? annotation.color : '#0f172a';
     ctx.lineWidth = annotation.size;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     if (annotation.kind === 'rect') {
+      ctx.strokeRect(annotation.x, annotation.y, annotation.w, annotation.h);
+    } else if (annotation.kind === 'arrow') {
+      drawArrowOnCanvas(ctx, annotation);
+    } else if (annotation.kind === 'text') {
+      ctx.fillStyle = annotation.color;
+      ctx.font = `${Math.max(14, annotation.size * 4)}px sans-serif`;
+      ctx.textBaseline = 'top';
+      ctx.fillText(annotation.text, annotation.x, annotation.y);
+    } else if (annotation.kind === 'mosaic') {
+      drawMosaicOnCanvas(ctx, annotation);
+      ctx.strokeStyle = 'rgba(15,23,42,0.35)';
+      ctx.lineWidth = 1;
       ctx.strokeRect(annotation.x, annotation.y, annotation.w, annotation.h);
     } else if (annotation.points.length > 0) {
       ctx.beginPath();
@@ -110,6 +240,8 @@ async function loadImage(src: string) {
   return promise;
 }
 
+const WORKFLOW_STEPS: WorkflowStep[] = ['source', 'capture', 'edit', 'export'];
+
 export default function ScreenCaptureTool() {
   const { t } = useLanguage();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -125,10 +257,12 @@ export default function ScreenCaptureTool() {
   const [tool, setTool] = useState<EditorTool>('none');
   const [color, setColor] = useState('#ef4444');
   const [brushSize, setBrushSize] = useState(6);
+  const [textDraft, setTextDraft] = useState('');
   const [cropRect, setCropRect] = useState<CropRect | null>(null);
   const [dragging, setDragging] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [draftAnnotation, setDraftAnnotation] = useState<Annotation | null>(null);
+  const [workflowStep, setWorkflowStep] = useState<WorkflowStep>('source');
 
   const updateImageBox = useCallback(() => {
     const preview = previewRef.current;
@@ -192,6 +326,7 @@ export default function ScreenCaptureTool() {
       setCaptured(dataUrl);
       setImageSize({ width: img.width, height: img.height });
       resetEditorState();
+      setWorkflowStep('edit');
       if (options?.notice) {
         toast({ title: options.notice });
       }
@@ -267,6 +402,7 @@ export default function ScreenCaptureTool() {
         audio: false,
       });
       setStream(media);
+      setWorkflowStep('capture');
       const [track] = media.getVideoTracks();
       track.onended = () => setStream(null);
     } catch {
@@ -376,6 +512,23 @@ export default function ScreenCaptureTool() {
     const point = getImagePoint(event);
     if (!point) return;
 
+    if (tool === 'text') {
+      setAnnotations((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          kind: 'text',
+          color,
+          size: Math.max(4, brushSize),
+          opacity: 1,
+          x: point.x,
+          y: point.y,
+          text: textDraft.trim() || t('capture.textDefault'),
+        },
+      ]);
+      return;
+    }
+
     setDragging(true);
 
     if (tool === 'crop') {
@@ -407,6 +560,36 @@ export default function ScreenCaptureTool() {
         w: 0,
         h: 0,
       });
+      return;
+    }
+
+    if (tool === 'arrow') {
+      setDraftAnnotation({
+        id: crypto.randomUUID(),
+        kind: 'arrow',
+        color,
+        size: brushSize,
+        opacity: 1,
+        x1: point.x,
+        y1: point.y,
+        x2: point.x,
+        y2: point.y,
+      });
+      return;
+    }
+
+    if (tool === 'mosaic') {
+      setDraftAnnotation({
+        id: crypto.randomUUID(),
+        kind: 'mosaic',
+        size: 1,
+        opacity: 1,
+        x: point.x,
+        y: point.y,
+        w: 0,
+        h: 0,
+        block: Math.max(6, Math.round(brushSize * 1.2)),
+      });
     }
   };
 
@@ -429,7 +612,7 @@ export default function ScreenCaptureTool() {
 
     if (!draftAnnotation) return;
 
-    if (draftAnnotation.kind === 'rect') {
+    if (draftAnnotation.kind === 'rect' || draftAnnotation.kind === 'mosaic') {
       setDraftAnnotation({
         ...draftAnnotation,
         x: Math.min(draftAnnotation.x, point.x),
@@ -440,23 +623,41 @@ export default function ScreenCaptureTool() {
       return;
     }
 
-    setDraftAnnotation({
-      ...draftAnnotation,
-      points: [...draftAnnotation.points, point],
-    });
+    if (draftAnnotation.kind === 'arrow') {
+      setDraftAnnotation({
+        ...draftAnnotation,
+        x2: point.x,
+        y2: point.y,
+      });
+      return;
+    }
+
+    if (draftAnnotation.kind === 'draw' || draftAnnotation.kind === 'highlight') {
+      setDraftAnnotation({
+        ...draftAnnotation,
+        points: [...draftAnnotation.points, point],
+      });
+    }
   };
 
   const commitDraftAnnotation = () => {
     if (!draftAnnotation) return;
 
-    if (draftAnnotation.kind === 'rect') {
+    if (draftAnnotation.kind === 'rect' || draftAnnotation.kind === 'mosaic') {
       if (draftAnnotation.w < 4 || draftAnnotation.h < 4) {
         setDraftAnnotation(null);
         return;
       }
-    } else if (draftAnnotation.points.length === 0) {
-      setDraftAnnotation(null);
-      return;
+    } else if (draftAnnotation.kind === 'arrow') {
+      if (Math.abs(draftAnnotation.x2 - draftAnnotation.x1) < 4 && Math.abs(draftAnnotation.y2 - draftAnnotation.y1) < 4) {
+        setDraftAnnotation(null);
+        return;
+      }
+    } else if (draftAnnotation.kind === 'draw' || draftAnnotation.kind === 'highlight') {
+      if (draftAnnotation.points.length === 0) {
+        setDraftAnnotation(null);
+        return;
+      }
     }
 
     setAnnotations((prev) => [...prev, draftAnnotation]);
@@ -484,6 +685,8 @@ export default function ScreenCaptureTool() {
   const downloadImage = async (format: 'png' | 'jpeg' | 'webp') => {
     const canvas = await buildMergedCanvas();
     if (!canvas) return;
+
+    setWorkflowStep('export');
 
     if (format === 'jpeg') {
       const jpgCanvas = document.createElement('canvas');
@@ -520,6 +723,8 @@ export default function ScreenCaptureTool() {
     const canvas = await buildMergedCanvas();
     if (!canvas) return;
 
+    setWorkflowStep('export');
+
     const dataUrl = canvas.toDataURL('image/png');
     const orientation = canvas.width > canvas.height ? 'l' : 'p';
     const pdf = new jsPDF({ orientation, unit: 'pt', format: [canvas.width, canvas.height] });
@@ -545,6 +750,41 @@ export default function ScreenCaptureTool() {
       );
     }
 
+    if (annotation.kind === 'mosaic') {
+      return (
+        <g key={annotation.id} opacity={0.55}>
+          <rect x={annotation.x} y={annotation.y} width={annotation.w} height={annotation.h} fill="rgba(15,23,42,0.32)" stroke="rgba(15,23,42,0.55)" strokeDasharray="4 3" />
+          <text x={annotation.x + 6} y={annotation.y + 16} fill="#e2e8f0" fontSize="12">{t('capture.mosaicLabel')}</text>
+        </g>
+      );
+    }
+
+    if (annotation.kind === 'arrow') {
+      const [tip, left, right] = arrowHeadPoints(annotation.x1, annotation.y1, annotation.x2, annotation.y2, annotation.size);
+      return (
+        <g key={annotation.id} opacity={annotation.opacity}>
+          <line x1={annotation.x1} y1={annotation.y1} x2={annotation.x2} y2={annotation.y2} stroke={annotation.color} strokeWidth={annotation.size} strokeLinecap="round" />
+          <polygon points={`${tip.x},${tip.y} ${left.x},${left.y} ${right.x},${right.y}`} fill={annotation.color} />
+        </g>
+      );
+    }
+
+    if (annotation.kind === 'text') {
+      return (
+        <text
+          key={annotation.id}
+          x={annotation.x}
+          y={annotation.y}
+          fill={annotation.color}
+          fontSize={Math.max(14, annotation.size * 4)}
+          opacity={annotation.opacity}
+          dominantBaseline="text-before-edge"
+        >
+          {annotation.text}
+        </text>
+      );
+    }
+
     return (
       <path
         key={annotation.id}
@@ -564,6 +804,30 @@ export default function ScreenCaptureTool() {
       <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
         <Monitor className="w-4 h-4" /> {t('capture.title')}
       </h3>
+
+      <div className="mb-3 rounded-xl border border-border bg-background/60 p-3">
+        <p className="text-xs text-muted-foreground mb-2">{t('capture.workflowTitle')}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {WORKFLOW_STEPS.map((step, index) => {
+            const active = step === workflowStep;
+            const done = WORKFLOW_STEPS.indexOf(workflowStep) > index;
+            return (
+              <div
+                key={step}
+                className={`rounded-lg px-2 py-2 text-xs border ${
+                  active
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : done
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
+                      : 'border-border text-muted-foreground'
+                }`}
+              >
+                {index + 1}. {t(`capture.step.${step}` as any)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       <p className="text-xs text-muted-foreground mb-2">{t('capture.desc')}</p>
       <p className="text-[11px] text-muted-foreground mb-3 leading-5">{t('capture.limitHint')}</p>
@@ -629,6 +893,15 @@ export default function ScreenCaptureTool() {
               <Button size="sm" variant={tool === 'rect' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('rect')}>
                 <Square className="w-3.5 h-3.5" /> {t('capture.toolRect')}
               </Button>
+              <Button size="sm" variant={tool === 'arrow' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('arrow')}>
+                <ArrowUpRight className="w-3.5 h-3.5" /> {t('capture.toolArrow')}
+              </Button>
+              <Button size="sm" variant={tool === 'text' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('text')}>
+                <Type className="w-3.5 h-3.5" /> {t('capture.toolText')}
+              </Button>
+              <Button size="sm" variant={tool === 'mosaic' ? 'default' : 'outline'} className="h-8 gap-1" onClick={() => setTool('mosaic')}>
+                <Square className="w-3.5 h-3.5" /> {t('capture.toolMosaic')}
+              </Button>
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
@@ -641,6 +914,17 @@ export default function ScreenCaptureTool() {
                 <input type="range" min={2} max={24} step={1} value={brushSize} onChange={(event) => setBrushSize(Number(event.target.value))} />
                 <span className="text-foreground">{brushSize}px</span>
               </label>
+              {tool === 'text' && (
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  {t('capture.textLabel')}
+                  <input
+                    value={textDraft}
+                    onChange={(event) => setTextDraft(event.target.value)}
+                    placeholder={t('capture.textPlaceholder')}
+                    className="h-8 min-w-[180px] rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                  />
+                </label>
+              )}
               <Button size="sm" variant="outline" className="h-8 gap-1" onClick={undoAnnotation} disabled={annotations.length === 0}>
                 <Undo2 className="w-3.5 h-3.5" /> {t('capture.toolUndo')}
               </Button>
