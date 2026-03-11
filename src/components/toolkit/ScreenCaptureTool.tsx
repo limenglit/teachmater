@@ -15,6 +15,7 @@ import {
   StopCircle,
   Type,
   Undo2,
+  Video,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ import { toast } from '@/hooks/use-toast';
 
 type SourceMode = 'screen' | 'window' | 'browser';
 type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 'text' | 'mosaic';
+type WorkspaceMode = 'capture' | 'record';
+type RecordAudioSource = 'system' | 'mic' | 'both';
 
 interface ImagePoint {
   x: number;
@@ -100,6 +103,8 @@ interface MosaicAnnotation {
 }
 
 type Annotation = StrokeAnnotation | RectAnnotation | ArrowAnnotation | TextAnnotation | MosaicAnnotation;
+
+const DPI_OPTIONS = [360, 600, 900, 1200, 1500, 1800] as const;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -236,6 +241,10 @@ export default function ScreenCaptureTool() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<BlobPart[]>([]);
+  const recordMicStreamRef = useRef<MediaStream | null>(null);
+  const recordAudioContextRef = useRef<AudioContext | null>(null);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [sourceMode, setSourceMode] = useState<SourceMode>('screen');
@@ -252,6 +261,10 @@ export default function ScreenCaptureTool() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [draftAnnotation, setDraftAnnotation] = useState<Annotation | null>(null);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('capture');
+  const [selectedDpi, setSelectedDpi] = useState<number>(360);
+  const [recordAudioSource, setRecordAudioSource] = useState<RecordAudioSource>('system');
+  const [isRecording, setIsRecording] = useState(false);
 
   const updateImageBox = useCallback(() => {
     const preview = previewRef.current;
@@ -366,12 +379,29 @@ export default function ScreenCaptureTool() {
       throw new Error('no-stream');
     }
 
+    const dpiScale = Math.max(1, selectedDpi / 360);
+
     // Keep capture in sync with what user sees in preview by preferring the video frame.
     const video = videoRef.current;
     if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
+      if (video.paused) {
+        await video.play().catch(() => undefined);
+      }
+
+      // Wait until the browser presents a fresh frame to avoid stale captures for shared tabs.
+      if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+        await new Promise<void>((resolve) => {
+          (video as HTMLVideoElement & {
+            requestVideoFrameCallback: (callback: () => void) => number;
+          }).requestVideoFrameCallback(() => resolve());
+        });
+      } else {
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+      }
+
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = Math.round(video.videoWidth * dpiScale);
+      canvas.height = Math.round(video.videoHeight * dpiScale);
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         throw new Error('no-context');
@@ -385,13 +415,30 @@ export default function ScreenCaptureTool() {
       throw new Error('no-track');
     }
 
+    // Some browsers momentarily report 0-size video; wait briefly before fallback capture.
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    const retryVideo = videoRef.current;
+    if (retryVideo && retryVideo.readyState >= 2 && retryVideo.videoWidth > 0 && retryVideo.videoHeight > 0) {
+      if (retryVideo.paused) {
+        await retryVideo.play().catch(() => undefined);
+      }
+      const retryCanvas = document.createElement('canvas');
+      retryCanvas.width = Math.round(retryVideo.videoWidth * dpiScale);
+      retryCanvas.height = Math.round(retryVideo.videoHeight * dpiScale);
+      const retryCtx = retryCanvas.getContext('2d');
+      if (!retryCtx) throw new Error('no-context');
+      retryCtx.drawImage(retryVideo, 0, 0, retryCanvas.width, retryCanvas.height);
+      return retryCanvas.toDataURL('image/png');
+    }
+
     const canvas = document.createElement('canvas');
 
     if ('ImageCapture' in window) {
       const imageCapture = new (window as any).ImageCapture(track);
       const bitmap = await imageCapture.grabFrame();
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
+      canvas.width = Math.round(bitmap.width * dpiScale);
+      canvas.height = Math.round(bitmap.height * dpiScale);
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('no-context');
       ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
@@ -399,15 +446,36 @@ export default function ScreenCaptureTool() {
       if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
         throw new Error('no-frame');
       }
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = Math.round(video.videoWidth * dpiScale);
+      canvas.height = Math.round(video.videoHeight * dpiScale);
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('no-context');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
 
     return canvas.toDataURL('image/png');
-  }, [stream]);
+  }, [selectedDpi, stream]);
+
+  const cleanupRecordingResources = useCallback(() => {
+    if (recorderRef.current) {
+      recorderRef.current.ondataavailable = null;
+      recorderRef.current.onstop = null;
+      recorderRef.current = null;
+    }
+
+    if (recordMicStreamRef.current) {
+      recordMicStreamRef.current.getTracks().forEach((track) => track.stop());
+      recordMicStreamRef.current = null;
+    }
+
+    if (recordAudioContextRef.current) {
+      void recordAudioContextRef.current.close();
+      recordAudioContextRef.current = null;
+    }
+
+    recordingChunksRef.current = [];
+    setIsRecording(false);
+  }, []);
 
   const startShare = async () => {
     try {
@@ -415,6 +483,10 @@ export default function ScreenCaptureTool() {
         video: {
           displaySurface: sourceMode === 'screen' ? 'monitor' : sourceMode,
           cursor: 'always',
+          // Browser-specific hints: prefer tab capture and include tab content updates.
+          ...(sourceMode === 'browser'
+            ? ({ preferCurrentTab: true, selfBrowserSurface: 'include' } as MediaTrackConstraints)
+            : {}),
         } as MediaTrackConstraints,
         audio: false,
       });
@@ -427,13 +499,127 @@ export default function ScreenCaptureTool() {
   };
 
   const stopShare = () => {
-    if (!stream) return;
-    stream.getTracks().forEach((track) => track.stop());
-    setStream(null);
+    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+      recorderRef.current.stop();
+    }
+
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+      setStream(null);
+    }
+    cleanupRecordingResources();
+  };
+
+  const startRecording = async () => {
+    try {
+      stopShare();
+
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: sourceMode === 'screen' ? 'monitor' : sourceMode,
+          cursor: 'always',
+        } as MediaTrackConstraints,
+        audio: recordAudioSource !== 'mic',
+      });
+
+      setStream(displayStream);
+
+      const mergedStream = new MediaStream();
+      const videoTrack = displayStream.getVideoTracks()[0];
+      if (!videoTrack) {
+        throw new Error('no-video-track');
+      }
+      mergedStream.addTrack(videoTrack);
+
+      const audioTracks: MediaStreamTrack[] = [];
+      if (recordAudioSource === 'system' || recordAudioSource === 'both') {
+        audioTracks.push(...displayStream.getAudioTracks());
+      }
+
+      if (recordAudioSource === 'mic' || recordAudioSource === 'both') {
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        recordMicStreamRef.current = micStream;
+        audioTracks.push(...micStream.getAudioTracks());
+      }
+
+      if (audioTracks.length === 1) {
+        mergedStream.addTrack(audioTracks[0]);
+      } else if (audioTracks.length > 1) {
+        const audioContext = new AudioContext();
+        recordAudioContextRef.current = audioContext;
+        const destination = audioContext.createMediaStreamDestination();
+
+        for (const track of audioTracks) {
+          const srcStream = new MediaStream([track]);
+          const src = audioContext.createMediaStreamSource(srcStream);
+          src.connect(destination);
+        }
+
+        const [mixedTrack] = destination.stream.getAudioTracks();
+        if (mixedTrack) {
+          mergedStream.addTrack(mixedTrack);
+        }
+      }
+
+      const recorder = new MediaRecorder(mergedStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      recorderRef.current = recorder;
+      recordingChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordingChunksRef.current, { type: 'video/webm' });
+        if (blob.size > 0) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `record-${Date.now()}.webm`;
+          a.click();
+          URL.revokeObjectURL(url);
+          toast({ title: t('capture.recordSaved') });
+        }
+        displayStream.getTracks().forEach((track) => track.stop());
+        setStream(null);
+        cleanupRecordingResources();
+      };
+
+      const [displayTrack] = displayStream.getVideoTracks();
+      displayTrack.onended = () => {
+        if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+          recorderRef.current.stop();
+        } else {
+          cleanupRecordingResources();
+          setStream(null);
+        }
+      };
+
+      recorder.start(1000);
+      setIsRecording(true);
+      toast({ title: t('capture.recordStarted') });
+    } catch {
+      cleanupRecordingResources();
+      setStream(null);
+      toast({ title: t('capture.recordFailed'), variant: 'destructive' });
+    }
+  };
+
+  const stopRecording = () => {
+    if (!recorderRef.current) return;
+    if (recorderRef.current.state !== 'inactive') {
+      recorderRef.current.stop();
+    }
   };
 
   const closeWorkspace = () => {
-    stopShare();
+    if (isRecording) {
+      stopRecording();
+    } else {
+      stopShare();
+    }
     setWorkspaceOpen(false);
   };
 
@@ -461,7 +647,7 @@ export default function ScreenCaptureTool() {
       const root = document.documentElement;
       const canvas = await html2canvas(root, {
         backgroundColor: '#ffffff',
-        scale: Math.min(window.devicePixelRatio || 1, 2),
+        scale: Math.min((window.devicePixelRatio || 1) * (selectedDpi / 360), 6),
         useCORS: true,
         width: root.scrollWidth,
         height: root.scrollHeight,
@@ -847,9 +1033,42 @@ export default function ScreenCaptureTool() {
           <Monitor className="w-4 h-4" /> {t('capture.title')}
         </h3>
         <p className="text-xs text-muted-foreground mb-3">{t('capture.workspaceHint')}</p>
-        <Button size="sm" className="gap-1" onClick={() => setWorkspaceOpen(true)}>
-          <Monitor className="w-4 h-4" /> {t('capture.openWorkspace')}
-        </Button>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <label className="text-xs text-muted-foreground">{t('capture.resolutionLabel')}</label>
+          <select
+            value={selectedDpi}
+            onChange={(event) => setSelectedDpi(Number(event.target.value))}
+            className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+          >
+            {DPI_OPTIONS.map((dpi) => (
+              <option key={dpi} value={dpi}>{dpi} DPI</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            className="gap-1"
+            onClick={() => {
+              setWorkspaceMode('capture');
+              setWorkspaceOpen(true);
+            }}
+          >
+            <Camera className="w-4 h-4" /> {t('capture.actionScreenshot')}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1"
+            onClick={() => {
+              setWorkspaceMode('record');
+              setWorkspaceOpen(true);
+            }}
+          >
+            <Video className="w-4 h-4" /> {t('capture.actionRecord')}
+          </Button>
+        </div>
       </div>
 
       {workspaceOpen && (
@@ -857,37 +1076,90 @@ export default function ScreenCaptureTool() {
           <div className="fixed left-0 right-0 top-0 z-[121] border-b border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-foreground mr-2">{t('capture.title')}</span>
-              <label className="text-xs text-muted-foreground">{t('capture.sourceLabel')}</label>
-              <select
-                value={sourceMode}
-                onChange={(event) => setSourceMode(event.target.value as SourceMode)}
-                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                disabled={!!stream}
-              >
-                <option value="screen">{t('capture.sourceScreen')}</option>
-                <option value="window">{t('capture.sourceWindow')}</option>
-                <option value="browser">{t('capture.sourceTab')}</option>
-              </select>
 
-              {!stream ? (
-                <Button size="sm" onClick={startShare} className="gap-1">
-                  <Monitor className="w-4 h-4" /> {t('capture.start')}
-                </Button>
+              {workspaceMode === 'capture' ? (
+                <>
+                  <label className="text-xs text-muted-foreground">{t('capture.sourceLabel')}</label>
+                  <select
+                    value={sourceMode}
+                    onChange={(event) => setSourceMode(event.target.value as SourceMode)}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    disabled={!!stream}
+                  >
+                    <option value="screen">{t('capture.sourceScreen')}</option>
+                    <option value="window">{t('capture.sourceWindow')}</option>
+                    <option value="browser">{t('capture.sourceTab')}</option>
+                  </select>
+
+                  {!stream ? (
+                    <Button size="sm" onClick={startShare} className="gap-1">
+                      <Monitor className="w-4 h-4" /> {t('capture.start')}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={stopShare} className="gap-1">
+                      <StopCircle className="w-4 h-4" /> {t('capture.stop')}
+                    </Button>
+                  )}
+
+                  <Button size="sm" variant="secondary" onClick={() => void captureCurrentPageLong()} className="gap-1">
+                    <Square className="w-4 h-4" /> {t('capture.captureLongPage')}
+                  </Button>
+                </>
               ) : (
-                <Button size="sm" variant="outline" onClick={stopShare} className="gap-1">
-                  <StopCircle className="w-4 h-4" /> {t('capture.stop')}
-                </Button>
+                <>
+                  <label className="text-xs text-muted-foreground">{t('capture.recordAudioSource')}</label>
+                  <select
+                    value={recordAudioSource}
+                    onChange={(event) => setRecordAudioSource(event.target.value as RecordAudioSource)}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    disabled={isRecording}
+                  >
+                    <option value="system">{t('capture.audioSystem')}</option>
+                    <option value="mic">{t('capture.audioMic')}</option>
+                    <option value="both">{t('capture.audioBoth')}</option>
+                  </select>
+
+                  <label className="text-xs text-muted-foreground">{t('capture.sourceLabel')}</label>
+                  <select
+                    value={sourceMode}
+                    onChange={(event) => setSourceMode(event.target.value as SourceMode)}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                    disabled={isRecording}
+                  >
+                    <option value="screen">{t('capture.sourceScreen')}</option>
+                    <option value="window">{t('capture.sourceWindow')}</option>
+                    <option value="browser">{t('capture.sourceTab')}</option>
+                  </select>
+
+                  {!isRecording ? (
+                    <Button size="sm" onClick={() => void startRecording()} className="gap-1">
+                      <Video className="w-4 h-4" /> {t('capture.startRecord')}
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1">
+                      <StopCircle className="w-4 h-4" /> {t('capture.stopRecord')}
+                    </Button>
+                  )}
+                </>
               )}
 
-              <Button size="sm" variant="secondary" onClick={() => void captureCurrentPageLong()} className="gap-1">
-                <Square className="w-4 h-4" /> {t('capture.captureLongPage')}
-              </Button>
               <div className="ml-auto" />
               <Button size="sm" variant="outline" onClick={closeWorkspace}>{t('capture.exitWorkspace')}</Button>
             </div>
           </div>
 
-          {!captured ? (
+          {workspaceMode === 'record' ? (
+            <div className="flex-1 min-h-0 p-4 pt-20 pb-16 sm:p-6 sm:pt-20 sm:pb-16 overflow-auto">
+              <div className="max-w-6xl mx-auto h-full">
+                <div className="rounded-xl border border-border bg-background/50 p-2 h-full flex items-center justify-center">
+                  <video ref={videoRef} autoPlay muted playsInline className="max-h-full max-w-full object-contain rounded-lg" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 leading-5">
+                  {isRecording ? t('capture.recordingHint') : t('capture.recordReadyHint')}
+                </p>
+              </div>
+            </div>
+          ) : !captured ? (
             <div className="flex-1 min-h-0 p-4 pt-20 pb-28 sm:p-6 sm:pt-20 sm:pb-28 overflow-auto">
               <div className="max-w-6xl mx-auto h-full">
                 <div className="rounded-xl border border-border bg-background/50 p-2 h-full flex items-center justify-center">
