@@ -570,21 +570,26 @@ export default function PPTPanel() {
                     </div>
                     
                     <div 
-                      className="aspect-video rounded-lg border border-border p-6 overflow-auto"
+                      ref={slidePreviewRef}
+                      className="aspect-video rounded-lg border border-border p-6 overflow-hidden relative"
                       style={{ backgroundColor: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.background || '#FFF' }}
+                      onClick={() => {/* deselect image handled by PPTDraggableImage */}}
                     >
                       {outline.slides[selectedSlide] && (
-                        <div className="h-full flex gap-4">
+                        <>
                           {outline.slides[selectedSlide].imageUrl && (
-                            <div className="w-1/3 flex-shrink-0">
-                              <img 
-                                src={outline.slides[selectedSlide].imageUrl} 
-                                alt="" 
-                                className="w-full h-full object-contain rounded"
-                              />
-                            </div>
+                            <PPTDraggableImage
+                              src={outline.slides[selectedSlide].imageUrl!}
+                              containerRef={slidePreviewRef}
+                              position={outline.slides[selectedSlide].imagePosition || { x: 0, y: 10, width: 33, height: 80 }}
+                              onChange={(pos) => {
+                                const newSlides = [...outline.slides];
+                                newSlides[selectedSlide] = { ...newSlides[selectedSlide], imagePosition: pos };
+                                setOutline({ ...outline, slides: newSlides });
+                              }}
+                            />
                           )}
-                          <div className="flex-1">
+                          <div className={outline.slides[selectedSlide].imageUrl ? 'ml-[36%]' : ''}>
                             <h3 
                               className="text-xl font-bold mb-4"
                               style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.primary }}
@@ -605,7 +610,7 @@ export default function PPTPanel() {
                               </ul>
                             )}
                           </div>
-                        </div>
+                        </>
                       )}
                     </div>
 
