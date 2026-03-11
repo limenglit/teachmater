@@ -24,6 +24,7 @@ import TrafficLight from './toolkit/TrafficLight';
 import BreathingExercise from './toolkit/BreathingExercise';
 import TextMagnifier from './toolkit/TextMagnifier';
 import TaskChecklist from './toolkit/TaskChecklist';
+import ScreenCaptureTool from './toolkit/ScreenCaptureTool';
 
 
 // Command card flash overlay
@@ -92,6 +93,7 @@ export default function ToolkitPanel() {
           <TrafficLight />
           <BreathingExercise />
           <TextMagnifier />
+          <ScreenCaptureTool />
           <TaskChecklist />
           <CommandCards />
           <QRCodeGenerator />
