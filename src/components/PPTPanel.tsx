@@ -46,6 +46,7 @@ export default function PPTPanel() {
   const [fileLoading, setFileLoading] = useState(false);
   const [showImageManager, setShowImageManager] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const slidePreviewRef = useRef<HTMLDivElement>(null);
 
   const guestRemaining = getGuestAIRemaining(isLoggedIn);
 
