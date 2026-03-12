@@ -2,6 +2,20 @@
 
 export type PPTSlideType = 'title' | 'toc' | 'content' | 'section' | 'conclusion' | 'two-column' | 'image-text' | 'comparison' | 'quote' | 'timeline';
 
+export interface TextStyle {
+  fontFamily?: string;
+  fontSize?: number;
+  bold?: boolean;
+  italic?: boolean;
+  color?: string;
+}
+
+export interface TextBlockPosition {
+  x: number;
+  y: number;
+  width: number;
+}
+
 export interface PPTSlide {
   type: PPTSlideType;
   title: string;
@@ -17,6 +31,10 @@ export interface PPTSlide {
   imageUrl?: string;
   imagePosition?: { x: number; y: number; width: number; height: number };
   timelineItems?: { year: string; text: string }[];
+  titleStyle?: TextStyle;
+  titlePosition?: TextBlockPosition;
+  bodyStyle?: TextStyle;
+  bodyPosition?: TextBlockPosition;
 }
 
 export interface PPTOutline {
