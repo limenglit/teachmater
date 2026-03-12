@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ClipboardList,
   Copy,
-  Pencil,
   Play,
   Plus,
   RotateCcw,
@@ -171,9 +170,6 @@ export default function TaskChecklist() {
   const [showHistory, setShowHistory] = useState(false);
   const [historyQuery, setHistoryQuery] = useState('');
   const [historyClassFilter, setHistoryClassFilter] = useState('__all__');
-  const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
-  const [renameTitle, setRenameTitle] = useState('');
-  const [renaming, setRenaming] = useState(false);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -373,66 +369,6 @@ export default function TaskChecklist() {
     }
   };
 
-  const beginRenameSession = (session: TaskSessionRecord) => {
-    setRenameSessionId(session.id);
-    setRenameTitle(session.title);
-  };
-
-  const submitRenameSession = async () => {
-    if (!renameSessionId) return;
-    const nextTitle = renameTitle.trim();
-    if (!nextTitle) {
-      toast({ title: t('task.needTitle'), variant: 'destructive' });
-      return;
-    }
-
-    const targetSession = sessions.find((session) => session.id === renameSessionId)
-      || (activeSession?.id === renameSessionId ? activeSession : null);
-    const token = targetSession ? getSessionManageToken(targetSession) : getCreatorToken(renameSessionId);
-    if (!token) {
-      toast({ title: t('task.actionDenied'), variant: 'destructive' });
-      return;
-    }
-
-    setRenaming(true);
-    try {
-      let renameError: Error | null = null;
-
-      const { error } = await supabase.rpc('rename_task_session', {
-        p_session_id: renameSessionId,
-        p_token: token,
-        p_title: nextTitle,
-      });
-      renameError = error;
-
-      if (renameError) {
-        const fallback = await supabase.rpc('update_task_session', {
-          p_session_id: renameSessionId,
-          p_token: token,
-          p_status: null,
-          p_title: nextTitle,
-          p_class_name: null,
-        });
-
-        if (fallback.error) {
-          throw fallback.error;
-        }
-      }
-
-      setSessions((prev) => prev.map((session) => (
-        session.id === renameSessionId ? { ...session, title: nextTitle } : session
-      )));
-      setActiveSession((prev) => (prev && prev.id === renameSessionId ? { ...prev, title: nextTitle } : prev));
-      setRenameSessionId(null);
-      setRenameTitle('');
-      toast({ title: t('task.renameSuccess') });
-    } catch (error: any) {
-      toast({ title: error.message || t('task.updateFailed'), variant: 'destructive' });
-    } finally {
-      setRenaming(false);
-    }
-  };
-
   const confirmDeleteSession = async () => {
     if (!deleteSessionId) return;
     const targetSession = sessions.find((session) => session.id === deleteSessionId)
@@ -571,10 +507,6 @@ export default function TaskChecklist() {
           <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
             {isCreator && (
               <>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => beginRenameSession(activeSession)}>
-                  <Pencil className="w-3 h-3" />
-                  {t('task.rename')}
-                </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={toggleSessionStatus}>
                   {activeSession.status === 'active' ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
                   {activeSession.status === 'active' ? t('task.saveAndEnd') : t('task.reopenSession')}
@@ -750,25 +682,6 @@ export default function TaskChecklist() {
           </div>
         </div>
 
-        <Dialog open={Boolean(renameSessionId)} onOpenChange={(open) => {
-          if (!open) {
-            setRenameSessionId(null);
-            setRenameTitle('');
-          }
-        }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t('task.renameDialogTitle')}</DialogTitle>
-              <DialogDescription>{t('task.renameDialogDesc')}</DialogDescription>
-            </DialogHeader>
-            <Input value={renameTitle} onChange={(event) => setRenameTitle(event.target.value)} placeholder={t('task.titlePlaceholder')} />
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setRenameSessionId(null); setRenameTitle(''); }}>{t('common.cancel')}</Button>
-              <Button onClick={submitRenameSession} disabled={renaming || !renameTitle.trim()}>{renaming ? t('common.saving') : t('common.save')}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
         <AlertDialog open={Boolean(deleteSessionId)} onOpenChange={(open) => { if (!open) setDeleteSessionId(null); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -911,10 +824,6 @@ export default function TaskChecklist() {
                 </button>
                 {canManage && (
                   <div className="mt-3 flex justify-end gap-2">
-                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => beginRenameSession(session)}>
-                      <Pencil className="w-3 h-3" />
-                      {t('task.rename')}
-                    </Button>
                     <Button variant="outline" size="sm" className="h-8 text-xs text-destructive" onClick={() => setDeleteSessionId(session.id)}>
                       <Trash2 className="w-3 h-3" />
                       {t('task.delete')}
@@ -1005,10 +914,6 @@ export default function TaskChecklist() {
 
                     {canManage && (
                       <div className="flex items-center gap-2 shrink-0">
-                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => beginRenameSession(session)}>
-                          <Pencil className="w-3 h-3" />
-                          {t('task.rename')}
-                        </Button>
                         <Button variant="outline" size="sm" className="h-8 text-xs text-destructive" onClick={() => setDeleteSessionId(session.id)}>
                           <Trash2 className="w-3 h-3" />
                           {t('task.delete')}
@@ -1023,25 +928,6 @@ export default function TaskChecklist() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowHistory(false)}>{t('common.close')}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(renameSessionId)} onOpenChange={(open) => {
-        if (!open) {
-          setRenameSessionId(null);
-          setRenameTitle('');
-        }
-      }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('task.renameDialogTitle')}</DialogTitle>
-            <DialogDescription>{t('task.renameDialogDesc')}</DialogDescription>
-          </DialogHeader>
-          <Input value={renameTitle} onChange={(event) => setRenameTitle(event.target.value)} placeholder={t('task.titlePlaceholder')} />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setRenameSessionId(null); setRenameTitle(''); }}>{t('common.cancel')}</Button>
-            <Button onClick={submitRenameSession} disabled={renaming || !renameTitle.trim()}>{renaming ? t('common.saving') : t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
