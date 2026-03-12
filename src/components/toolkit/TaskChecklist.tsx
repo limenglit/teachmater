@@ -396,12 +396,26 @@ export default function TaskChecklist() {
 
     setRenaming(true);
     try {
+      let renameError: Error | null = null;
+
       const { error } = await supabase.rpc('rename_task_session', {
         p_session_id: renameSessionId,
         p_token: token,
         p_title: nextTitle,
       });
-      if (error) throw error;
+      renameError = error;
+
+      if (renameError) {
+        const fallback = await supabase.rpc('update_task_session', {
+          p_session_id: renameSessionId,
+          p_token: token,
+          p_title: nextTitle,
+        });
+
+        if (fallback.error) {
+          throw fallback.error;
+        }
+      }
 
       setSessions((prev) => prev.map((session) => (
         session.id === renameSessionId ? { ...session, title: nextTitle } : session
