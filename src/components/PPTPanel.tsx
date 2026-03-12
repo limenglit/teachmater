@@ -645,6 +645,10 @@ export default function PPTPanel() {
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         {t('ppt.back')}
                       </Button>
+                      <Button variant="default" onClick={() => setShowPresenter(true)}>
+                        <Maximize2 className="w-4 h-4 mr-2" />
+                        {t('ppt.present')}
+                      </Button>
                       <Button variant="outline" onClick={() => handleExport('pdf')}>
                         <FileDown className="w-4 h-4 mr-2" />
                         {t('ppt.exportPDF')}
@@ -658,6 +662,15 @@ export default function PPTPanel() {
                         {t('ppt.exportBoth')}
                       </Button>
                     </div>
+
+                    {showPresenter && (
+                      <PPTPresenter
+                        outline={outline}
+                        colorSchemeId={colorScheme}
+                        startIndex={selectedSlide}
+                        onExit={() => setShowPresenter(false)}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
