@@ -896,7 +896,6 @@ export type Database = {
       }
       task_sessions: {
         Row: {
-          class_name: string
           created_at: string
           creator_token: string
           id: string
@@ -907,7 +906,6 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          class_name?: string
           created_at?: string
           creator_token?: string
           id?: string
@@ -918,7 +916,6 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
-          class_name?: string
           created_at?: string
           creator_token?: string
           id?: string
@@ -1107,13 +1104,7 @@ export type Database = {
         Returns: undefined
       }
       update_task_session: {
-        Args: {
-          p_class_name?: string
-          p_session_id: string
-          p_status?: string
-          p_title?: string
-          p_token: string
-        }
+        Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined
       }
       update_topic: {

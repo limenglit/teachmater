@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown, Image, Trash2 } from 'lucide-react';
+import { Sparkles, Download, History, RefreshCw, ChevronLeft, ChevronRight, Upload, FileText, X, FileDown, Image, Trash2, Maximize2 } from 'lucide-react';
 import { 
   PPTOutline, PPTProject, 
   PPT_TEMPLATES, PPT_STYLES, PPT_COLOR_SCHEMES, PPT_AUDIENCES,
@@ -20,6 +20,8 @@ import { exportPPTX } from './ppt/pptExport';
 import { exportPDF } from './ppt/pptPdfExport';
 import PPTImageManager from './ppt/PPTImageManager';
 import PPTDraggableImage from './ppt/PPTDraggableImage';
+import PPTEditableText from './ppt/PPTEditableText';
+import PPTPresenter from './ppt/PPTPresenter';
 import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
 
 type Step = 'input' | 'design' | 'preview';
@@ -45,6 +47,7 @@ export default function PPTPanel() {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [fileLoading, setFileLoading] = useState(false);
   const [showImageManager, setShowImageManager] = useState(false);
+  const [showPresenter, setShowPresenter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const slidePreviewRef = useRef<HTMLDivElement>(null);
 
@@ -571,47 +574,59 @@ export default function PPTPanel() {
                     
                     <div 
                       ref={slidePreviewRef}
-                      className="aspect-video rounded-lg border border-border p-6 overflow-hidden relative"
+                      className="aspect-video rounded-lg border border-border overflow-hidden relative"
                       style={{ backgroundColor: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.background || '#FFF' }}
-                      onClick={() => {/* deselect image handled by PPTDraggableImage */}}
                     >
-                      {outline.slides[selectedSlide] && (
-                        <>
-                          {outline.slides[selectedSlide].imageUrl && (
-                            <PPTDraggableImage
-                              src={outline.slides[selectedSlide].imageUrl!}
-                              containerRef={slidePreviewRef}
-                              position={outline.slides[selectedSlide].imagePosition || { x: 0, y: 10, width: 33, height: 80 }}
-                              onChange={(pos) => {
-                                const newSlides = [...outline.slides];
-                                newSlides[selectedSlide] = { ...newSlides[selectedSlide], imagePosition: pos };
-                                setOutline({ ...outline, slides: newSlides });
-                              }}
-                            />
-                          )}
-                          <div className={outline.slides[selectedSlide].imageUrl ? 'ml-[36%]' : ''}>
-                            <h3 
-                              className="text-xl font-bold mb-4"
-                              style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.primary }}
-                            >
-                              {outline.slides[selectedSlide].title}
-                            </h3>
-                            {outline.slides[selectedSlide].bullets && (
-                              <ul className="space-y-2">
-                                {outline.slides[selectedSlide].bullets.map((b, i) => (
-                                  <li 
-                                    key={i} 
-                                    className="text-sm"
-                                    style={{ color: PPT_COLOR_SCHEMES.find(c => c.id === colorScheme)?.text }}
-                                  >
-                                    • {b}
-                                  </li>
-                                ))}
-                              </ul>
+                      {outline.slides[selectedSlide] && (() => {
+                        const slide = outline.slides[selectedSlide];
+                        const colors = PPT_COLOR_SCHEMES.find(c => c.id === colorScheme) || PPT_COLOR_SCHEMES[0];
+                        const bulletsText = slide.bullets?.join('\n') || '';
+
+                        const updateSlide = (patch: Partial<typeof slide>) => {
+                          const newSlides = [...outline.slides];
+                          newSlides[selectedSlide] = { ...newSlides[selectedSlide], ...patch };
+                          setOutline({ ...outline, slides: newSlides });
+                        };
+
+                        return (
+                          <>
+                            {slide.imageUrl && (
+                              <PPTDraggableImage
+                                src={slide.imageUrl}
+                                containerRef={slidePreviewRef}
+                                position={slide.imagePosition || { x: 0, y: 10, width: 33, height: 80 }}
+                                onChange={(pos) => updateSlide({ imagePosition: pos })}
+                              />
                             )}
-                          </div>
-                        </>
-                      )}
+
+                            {/* Editable title */}
+                            <PPTEditableText
+                              text={slide.title}
+                              textStyle={slide.titleStyle}
+                              position={slide.titlePosition}
+                              containerRef={slidePreviewRef}
+                              defaultColor={colors.primary}
+                              isTitle
+                              onChange={(val) => updateSlide({ title: val })}
+                              onStyleChange={(s) => updateSlide({ titleStyle: s })}
+                              onPositionChange={(p) => updateSlide({ titlePosition: p })}
+                            />
+
+                            {/* Editable body (bullets joined by newline) */}
+                            <PPTEditableText
+                              text={bulletsText}
+                              textStyle={slide.bodyStyle}
+                              position={slide.bodyPosition || { x: 5, y: 30, width: 90 }}
+                              containerRef={slidePreviewRef}
+                              defaultColor={colors.text}
+                              isTitle={false}
+                              onChange={(val) => updateSlide({ bullets: val.split('\n').filter(Boolean) })}
+                              onStyleChange={(s) => updateSlide({ bodyStyle: s })}
+                              onPositionChange={(p) => updateSlide({ bodyPosition: p })}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
 
                     <PPTImageManager
@@ -630,6 +645,10 @@ export default function PPTPanel() {
                         <ChevronLeft className="w-4 h-4 mr-1" />
                         {t('ppt.back')}
                       </Button>
+                      <Button variant="default" onClick={() => setShowPresenter(true)}>
+                        <Maximize2 className="w-4 h-4 mr-2" />
+                        {t('ppt.present')}
+                      </Button>
                       <Button variant="outline" onClick={() => handleExport('pdf')}>
                         <FileDown className="w-4 h-4 mr-2" />
                         {t('ppt.exportPDF')}
@@ -643,6 +662,15 @@ export default function PPTPanel() {
                         {t('ppt.exportBoth')}
                       </Button>
                     </div>
+
+                    {showPresenter && (
+                      <PPTPresenter
+                        outline={outline}
+                        colorSchemeId={colorScheme}
+                        startIndex={selectedSlide}
+                        onExit={() => setShowPresenter(false)}
+                      />
+                    )}
                   </div>
                 </div>
               </div>
