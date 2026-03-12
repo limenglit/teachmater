@@ -409,7 +409,9 @@ export default function TaskChecklist() {
         const fallback = await supabase.rpc('update_task_session', {
           p_session_id: renameSessionId,
           p_token: token,
+          p_status: null,
           p_title: nextTitle,
+          p_class_name: null,
         });
 
         if (fallback.error) {
