@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 
 interface Props {
   seatData: unknown;
@@ -39,9 +40,10 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const svgH = tableH + seatH * 2 + 60;
   const tableX = (svgW - tableW) / 2;
   const tableY = (svgH - tableH) / 2;
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos.side, myPos.index]);
 
   const renderSeat = (x: number, y: number, name: string, isMine: boolean) => (
-    <g key={`${x}-${y}`}>
+    <g key={`${x}-${y}`} data-my-seat={isMine ? 'true' : undefined}>
       <rect x={x} y={y} width={seatW} height={seatH} rx={6}
         className={isMine
           ? 'fill-primary stroke-primary'
@@ -50,8 +52,8 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       />
       {name && (
         <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-          className={`text-[10px] ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-          {name.length > 3 ? name.slice(0, 3) : name}
+          className={`${name.length >= 4 ? 'text-[8px]' : 'text-[10px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+          {name}
         </text>
       )}
     </g>
@@ -66,7 +68,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
       </div>
 
-      <div className="flex justify-center overflow-auto pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
         <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans">
           <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={10}
             className="fill-primary/10 stroke-primary/30" strokeWidth={2} />

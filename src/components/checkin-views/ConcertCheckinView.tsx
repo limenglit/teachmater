@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 
 interface Props {
   seatData: unknown;
@@ -30,6 +31,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
   const startRadius = 70;
   const radiusStep = 40;
   const seatR = 12;
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos.row, myPos.col]);
 
   return (
     <>
@@ -40,7 +42,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
       </div>
 
-      <div className="flex justify-center overflow-auto pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
         <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans">
           <rect x={cx - 60} y={stageY - 15} width={120} height={28} rx={8}
             className="fill-primary/15 stroke-primary/30" strokeWidth={2} />
@@ -62,7 +64,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
               const isMine = ri === myPos.row && ci === myPos.col;
 
               return (
-                <g key={`${ri}-${ci}`}>
+                <g key={`${ri}-${ci}`} data-my-seat={isMine ? 'true' : undefined}>
                   <circle cx={sx} cy={sy} r={seatR}
                     className={isMine
                       ? 'fill-primary stroke-primary'
@@ -71,8 +73,8 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
                   />
                   {name && (
                     <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
-                      className={`text-[9px] pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-                      {name.length > 2 ? name.slice(0, 2) : name}
+                      className={`${name.length >= 4 ? 'text-[7px]' : 'text-[9px]'} pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+                      {name}
                     </text>
                   )}
                 </g>

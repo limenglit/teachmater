@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
+import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 
 interface Props {
   seatData: unknown;
@@ -56,6 +57,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   };
   const isOnPath = (r: number, c: number) => pathCells.some(p => p.r === r && p.c === c);
   const isMyPos = (r: number, c: number) => myPosition.r === r && myPosition.c === c;
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPosition?.r, myPosition?.c]);
 
   return (
     <>
@@ -75,7 +77,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
           ? <span className="text-base">🚪</span>
           : <span className="inline-flex items-center justify-center w-6 h-6 border border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span>}</span>
       </div>
-      <div className="flex justify-center overflow-auto pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
         <div className="inline-grid gap-1" style={{
           gridTemplateColumns: `repeat(${totalVisualCols}, 2.5rem)`,
         }}>
@@ -89,7 +91,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 <div key={`${ri}-${ci}`} style={{
                   gridRow: getVisualRow(ri) + 1,
                   gridColumn: realToVisualCol(ci) + 1,
-                }} className={`w-10 h-8 rounded text-xs flex items-center justify-center border transition-all ${
+                }} data-my-seat={isMine ? 'true' : undefined} className={`w-10 h-8 rounded text-xs flex items-center justify-center border transition-all ${
                   isMine ? 'bg-primary text-primary-foreground border-primary font-bold shadow-lg scale-110 z-10 ring-2 ring-primary/40'
                   : onPath ? 'bg-primary/20 border-primary/40 text-primary/80'
                   : isDoor ? 'bg-accent border-accent-foreground/20 text-accent-foreground'
@@ -97,7 +99,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                   : 'bg-muted/30 border-dashed border-border/50 text-muted-foreground/40'
                 }`}>
                   {isDoor && !isMine ? <Navigation className="w-3 h-3" />
-                    : <span className="truncate px-0.5 text-[10px]">{isMine ? seatName : (seatName || '')}</span>}
+                    : <span className={`${isMine ? 'text-[10px] sm:text-xs font-bold' : 'text-[9px] sm:text-[10px]'} px-0.5 leading-tight whitespace-nowrap`}>{isMine ? seatName : (seatName || '')}</span>}
                 </div>
               );
             })

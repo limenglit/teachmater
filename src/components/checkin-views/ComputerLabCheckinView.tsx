@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 
 interface Props {
   seatData: unknown;
@@ -32,6 +33,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const rowH = seatH * 2 + 20 + 16; // top + table + bottom + spacing
   const svgW = tableW + 60;
   const svgH = rowCount * rowH + 40;
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos.rowIndex, myPos.side, myPos.col]);
 
   return (
     <>
@@ -42,7 +44,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
       </div>
 
-      <div className="flex justify-center overflow-auto pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
         <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans">
           {Array.from({ length: rowCount }).map((_, ri) => {
             const baseY = 20 + ri * rowH;
@@ -65,14 +67,14 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                   const name = topRow?.students[ci] || '';
                   const isMine = myPos.rowIndex === ri && myPos.side === 'top' && myPos.col === ci;
                   return (
-                    <g key={`t-${ci}`}>
+                    <g key={`t-${ci}`} data-my-seat={isMine ? 'true' : undefined}>
                       <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                         className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
                         strokeWidth={isMine ? 2.5 : 1}
                       />
                       {name && <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                        className={`text-[8px] ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-                        {name.length > 2 ? name.slice(0, 2) : name}
+                        className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+                        {name}
                       </text>}
                     </g>
                   );
@@ -85,14 +87,14 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                   const name = bottomRow?.students[ci] || '';
                   const isMine = myPos.rowIndex === ri && myPos.side === 'bottom' && myPos.col === ci;
                   return (
-                    <g key={`b-${ci}`}>
+                    <g key={`b-${ci}`} data-my-seat={isMine ? 'true' : undefined}>
                       <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                         className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
                         strokeWidth={isMine ? 2.5 : 1}
                       />
                       {name && <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                        className={`text-[8px] ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-                        {name.length > 2 ? name.slice(0, 2) : name}
+                        className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+                        {name}
                       </text>}
                     </g>
                   );

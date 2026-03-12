@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 
 interface Props {
   seatData: unknown;
@@ -26,6 +27,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
   const label = sceneType === 'banquet' ? '宴会厅' : '智能教室';
   const tableRow = Math.floor(myPos.table / tableCols);
   const tableCol = myPos.table % tableCols;
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos.table, myPos.seat]);
 
   return (
     <>
@@ -43,7 +45,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
         </div>
       </div>
 
-      <div className="flex justify-center overflow-auto pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
         <div className="inline-grid gap-4" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)` }}>
           {tables.map((people, ti) => {
             const isMyTable = ti === myPos.table;
@@ -68,7 +70,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
                     const seatName = people[si] || '';
                     const isMine = ti === myPos.table && si === myPos.seat;
                     return (
-                      <g key={si}>
+                      <g key={si} data-my-seat={isMine ? 'true' : undefined}>
                         <circle cx={sx} cy={sy} r={seatR}
                           className={isMine
                             ? 'fill-primary stroke-primary'
@@ -80,8 +82,8 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
                         />
                         {seatName && (
                           <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
-                            className={`text-[10px] pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-                            {seatName.length > 2 ? seatName.slice(0, 2) : seatName}
+                            className={`${seatName.length >= 4 ? 'text-[7px]' : 'text-[9px]'} pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+                            {seatName}
                           </text>
                         )}
                       </g>
