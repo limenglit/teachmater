@@ -4214,6 +4214,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'ppt.exportPPTX': 'PPTX 내보내기',
     'ppt.exportPDF': 'PDF 내보내기',
     'ppt.exportBoth': '전체 내보내기',
+    'ppt.present': '프레젠테이션',
     'ppt.exportSuccess': '내보내기 성공',
     'ppt.exportBothSuccess': 'PPTX와 PDF 내보내기 성공',
     'ppt.exportError': '내보내기 실패',
