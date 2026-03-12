@@ -1001,6 +1001,10 @@ export type Database = {
         Args: { p_point_id: string; p_token: string }
         Returns: undefined
       }
+      delete_task_session: {
+        Args: { p_session_id: string; p_token: string }
+        Returns: undefined
+      }
       delete_topic: {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
