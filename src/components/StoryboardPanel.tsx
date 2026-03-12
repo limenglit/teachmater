@@ -134,7 +134,7 @@ export default function StoryboardPanel() {
   const guestRemaining = getGuestAIRemaining(!!user);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-3 sm:gap-4 p-3 sm:p-4 overflow-y-auto overflow-x-hidden">
+    <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-3 sm:gap-4 p-3 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))] overflow-y-auto overflow-x-hidden">
       {/* Left Panel - Form */}
       <Card className="w-full xl:w-[380px] xl:max-w-[380px] shrink-0 flex flex-col max-h-[64vh] xl:max-h-none">
         <CardHeader className="pb-3">

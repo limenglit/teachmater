@@ -85,12 +85,12 @@ export default function PollVotePage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t('common.loading')}</div>;
-  if (!poll) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t('poll.notFound')}</div>;
+  if (loading) return <div className="min-h-[100dvh] flex items-center justify-center px-4 text-muted-foreground">{t('common.loading')}</div>;
+  if (!poll) return <div className="min-h-[100dvh] flex items-center justify-center px-4 text-muted-foreground">{t('poll.notFound')}</div>;
 
   if (poll.status !== 'active') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
           <Lock className="w-12 h-12 text-muted-foreground mx-auto" />
           <h1 className="text-xl font-bold text-foreground">{t('poll.pollEnded')}</h1>
@@ -102,7 +102,7 @@ export default function PollVotePage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
           <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
           <h1 className="text-xl font-bold text-foreground">{t('poll.voteSuccess')}</h1>
@@ -114,8 +114,8 @@ export default function PollVotePage() {
 
   if (!nicknameConfirmed) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <div className="w-full max-w-sm space-y-6 text-center">
+      <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+        <div className="w-full max-w-sm space-y-6 text-center mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div>
             <div className="text-4xl mb-3">📊</div>
             <h1 className="text-xl font-bold text-foreground">{poll.title}</h1>
@@ -144,8 +144,8 @@ export default function PollVotePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+      <div className="w-full max-w-md space-y-6 mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="text-center">
           <div className="text-sm text-muted-foreground mb-1">📊 {poll.title}</div>
           <h1 className="text-xl font-bold text-foreground">{t('poll.castYourVote')}</h1>

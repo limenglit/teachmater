@@ -79,7 +79,7 @@ export default function ToolkitPanel() {
   const { t } = useLanguage();
   return (
     <div className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 pr-2 sm:p-8 sm:pr-4">
-      <div className="max-w-5xl mx-auto pb-4">
+      <div className="max-w-5xl mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">{t('toolkit.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <BarrageDiscussion />

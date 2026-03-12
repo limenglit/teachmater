@@ -451,7 +451,7 @@ export default function BoardPanel() {
             </span>
           )}
 
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-1 max-w-full overflow-x-auto pb-1">
             {/* View mode switcher */}
             {(['wall', 'kanban', 'timeline', 'canvas'] as const).map(mode => (
               <Button
@@ -648,7 +648,7 @@ export default function BoardPanel() {
 
   // Board list view
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6">
+    <div className="flex-1 overflow-auto p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="max-w-4xl mx-auto">
         <h3 className="font-semibold text-foreground mb-5 flex items-center gap-2 text-lg">
           🎨 {t('board.title')}

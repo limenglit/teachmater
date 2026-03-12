@@ -432,7 +432,7 @@ export default function BanquetHall({ students }: Props) {
         </div>
 
         {assignment.length > 0 ? (
-          <div className="flex justify-center overflow-auto">
+          <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>

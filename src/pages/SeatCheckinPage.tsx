@@ -76,17 +76,17 @@ export default function SeatCheckinPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen text-muted-foreground">{t('seatCheckin.loading')}</div>;
+    return <div className="flex items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{t('seatCheckin.loading')}</div>;
   }
 
   if (!session) {
-    return <div className="flex items-center justify-center min-h-screen text-muted-foreground">{t('seatCheckin.notFound')}</div>;
+    return <div className="flex items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{t('seatCheckin.notFound')}</div>;
   }
 
   if (!checkedIn) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm space-y-6">
+      <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+        <div className="w-full max-w-sm space-y-6 mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="text-center space-y-2">
             <MapPin className="w-12 h-12 mx-auto text-primary" />
             <h1 className="text-xl font-bold text-foreground">{t('seatCheckin.title')}</h1>
@@ -101,7 +101,7 @@ export default function SeatCheckinPage() {
               onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             />
             {suggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg overflow-hidden">
+              <div className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-lg shadow-lg">
                 {suggestions.map(s => (
                   <button key={s} onClick={() => { setName(s); setSuggestions([]); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors">
                     {s}
@@ -122,8 +122,8 @@ export default function SeatCheckinPage() {
   const studentName = name.trim();
 
   return (
-    <div className="min-h-screen bg-background p-4 overflow-auto">
-      <div className="max-w-2xl mx-auto space-y-4">
+    <div className="min-h-[100dvh] bg-background overflow-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+      <div className="max-w-2xl mx-auto space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="text-center space-y-1">
           <div className="flex items-center justify-center gap-2 text-primary">
             <CheckCircle2 className="w-6 h-6" />

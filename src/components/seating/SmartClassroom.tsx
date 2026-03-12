@@ -412,7 +412,7 @@ export default function SmartClassroom({ students }: Props) {
 
       <div ref={printRef}>
         {assignment.length > 0 ? (
-          <div className="flex justify-center overflow-auto">
+          <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <div
               className="relative rounded-xl border border-border bg-card/40"
               style={{ width: roomWidth, height: roomHeight }}

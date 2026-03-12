@@ -93,7 +93,7 @@ export default function TaskSubmitPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4">
         <p className="text-muted-foreground">{t('checkinPage.loading')}</p>
       </div>
     );
@@ -101,7 +101,7 @@ export default function TaskSubmitPage() {
 
   if (!session || session.status !== 'active') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4">
         <div className="text-center">
           <ClipboardList className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
           <p className="text-foreground font-medium">{t('task.sessionEnded')}</p>
@@ -114,7 +114,7 @@ export default function TaskSubmitPage() {
   if (!joined) {
     const hasNameList = session.student_names && session.student_names.length > 0;
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-card p-6">
           <h2 className="text-lg font-semibold text-foreground mb-1 flex items-center gap-2">
             <ClipboardList className="w-5 h-5 text-primary" />
@@ -160,8 +160,8 @@ export default function TaskSubmitPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+      <div className="max-w-md mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="bg-card rounded-2xl border border-border shadow-card p-6">
           <h2 className="text-lg font-semibold text-foreground mb-1">{session.title}</h2>
           <p className="text-sm text-muted-foreground mb-4">{studentName}</p>
@@ -179,7 +179,7 @@ export default function TaskSubmitPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[min(58dvh,30rem)] overflow-y-auto pr-1">
             {session.tasks.map((task, idx) => {
               const done = completedTasks.has(idx);
               return (

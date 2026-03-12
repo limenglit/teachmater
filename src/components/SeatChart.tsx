@@ -343,9 +343,9 @@ export default function SeatChart() {
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-8 overflow-auto">
+    <div className="flex-1 p-4 sm:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] overflow-auto">
       <div className="max-w-6xl mx-auto">
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="flex flex-wrap gap-2 mb-5 pb-1">
           {SCENES.map(s => (
             <button key={s.id} onClick={() => setScene(s.id)}
               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${scene === s.id ? 'bg-primary text-primary-foreground border-primary shadow-soft' : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted'}`}
@@ -467,7 +467,7 @@ export default function SeatChart() {
           </div>
 
           {seats.length > 0 ? (
-            <div className="flex justify-center items-stretch gap-2">
+            <div className="flex justify-center items-stretch gap-2 overflow-auto pb-2">
               <div className="flex items-center">
                 <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
                   <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>

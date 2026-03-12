@@ -120,7 +120,7 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
           onClick={() => setFullscreen(false)}
         >
           <button
-            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white transition-colors"
+            className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] p-2 text-white/80 hover:text-white transition-colors"
             onClick={() => setFullscreen(false)}
           >
             <X className="w-8 h-8" />

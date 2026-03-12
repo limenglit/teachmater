@@ -102,7 +102,7 @@ export default function CheckInPage() {
 
   if (sessionValid === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
         <div className="text-muted-foreground">{t('checkinPage.loading')}</div>
       </div>
     );
@@ -110,7 +110,7 @@ export default function CheckInPage() {
 
   if (!sessionValid || status === 'expired') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
           <Clock className="w-12 h-12 text-muted-foreground mx-auto" />
           <h1 className="text-xl font-bold text-foreground">{t('checkinPage.expired')}</h1>
@@ -122,7 +122,7 @@ export default function CheckInPage() {
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
         <div className="text-center space-y-4">
           <CheckCircle2 className="w-16 h-16 text-primary mx-auto" />
           <h1 className="text-xl font-bold text-foreground">{t('checkinPage.success')}</h1>
@@ -133,8 +133,8 @@ export default function CheckInPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-6">
+    <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+      <div className="w-full max-w-sm space-y-6 mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="text-center space-y-2">
           <div className="text-5xl">📋</div>
           <h1 className="text-xl font-bold text-foreground">{t('checkinPage.title')}</h1>
@@ -154,7 +154,7 @@ export default function CheckInPage() {
               autoFocus
             />
             {showSuggestions && suggestions.length > 0 && (
-              <div ref={suggestionsRef} className="absolute z-50 w-full mt-1 rounded-md border border-border bg-popover shadow-md overflow-hidden">
+              <div ref={suggestionsRef} className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
                 {suggestions.map((s, i) => (
                   <button key={i} className="w-full text-left px-4 py-2.5 text-sm text-popover-foreground hover:bg-accent hover:text-accent-foreground transition-colors" onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}>
                     {s}

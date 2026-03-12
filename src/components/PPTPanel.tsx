@@ -209,7 +209,7 @@ export default function PPTPanel() {
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card">
+      <div className="flex items-center justify-between gap-2 p-4 border-b border-border bg-card">
         <div className="flex items-center gap-3">
           <span className="text-2xl">📊</span>
           <div>
@@ -217,7 +217,7 @@ export default function PPTPanel() {
             <p className="text-xs text-muted-foreground">{t('ppt.subtitle')}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {!isLoggedIn && (
             <span className="text-xs text-muted-foreground">
               {t('ppt.guestRemaining')}: {guestRemaining}/{GUEST_AI_DAILY_MAX}
@@ -237,7 +237,7 @@ export default function PPTPanel() {
       ) : (
         <>
           {/* Steps indicator */}
-          <div className="flex items-center justify-center gap-2 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-center gap-2 py-3 border-b border-border bg-muted/30 overflow-x-auto px-3 sm:px-4">
             {(['input', 'design', 'preview'] as Step[]).map((s, i) => (
               <div key={s} className="flex items-center">
                 <button
@@ -257,7 +257,7 @@ export default function PPTPanel() {
           </div>
 
           {/* Content area */}
-          <div className="flex-1 overflow-auto p-4">
+          <div className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {step === 'input' && (
               <div className="max-w-2xl mx-auto space-y-6">
                 {/* File Upload */}

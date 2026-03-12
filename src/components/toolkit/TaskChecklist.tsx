@@ -552,8 +552,9 @@ export default function TaskChecklist() {
 
   if (activeSession) {
     return (
-      <div ref={detailRef} className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap relative">
+      <>
+        <div ref={detailRef} className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap relative">
           <Button variant="ghost" size="sm" onClick={() => setActiveSession(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
@@ -586,12 +587,12 @@ export default function TaskChecklist() {
             )}
           </div>
 
-        </div>
+          </div>
 
-        <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:min-h-0">
-            <div className="space-y-4 min-w-0">
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+          <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:min-h-0">
+              <div className="space-y-4 min-w-0">
+                <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <h3 className="text-sm font-semibold text-foreground">{t('task.scanToReport')}</h3>
                   <Button
@@ -612,7 +613,7 @@ export default function TaskChecklist() {
                 <p className="text-xs text-muted-foreground break-all">{detailSubmitUrl}</p>
               </div>
 
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-card space-y-4">
+                <div className="bg-card border border-border rounded-2xl p-4 shadow-card space-y-4">
                 <div>
                   <p className="text-xs text-muted-foreground">{t('task.classCompletion')}</p>
                   <div className="mt-2 flex items-end justify-between gap-3">
@@ -638,11 +639,11 @@ export default function TaskChecklist() {
                     <p className="text-lg font-semibold text-foreground">{detailStats.pendingStudents.length}</p>
                   </div>
                 </div>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-4 min-w-0">
-              <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
+              <div className="space-y-4 min-w-0">
+                <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
                 <h3 className="text-sm font-semibold text-foreground mb-3">{t('task.byTask')}</h3>
                 <div className="space-y-3">
                   {detailStats.taskStats.map((item, index) => {
@@ -743,11 +744,46 @@ export default function TaskChecklist() {
                     );
                   })}
                 </div>
-              </details>
+                </details>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+
+        <Dialog open={Boolean(renameSessionId)} onOpenChange={(open) => {
+          if (!open) {
+            setRenameSessionId(null);
+            setRenameTitle('');
+          }
+        }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t('task.renameDialogTitle')}</DialogTitle>
+              <DialogDescription>{t('task.renameDialogDesc')}</DialogDescription>
+            </DialogHeader>
+            <Input value={renameTitle} onChange={(event) => setRenameTitle(event.target.value)} placeholder={t('task.titlePlaceholder')} />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setRenameSessionId(null); setRenameTitle(''); }}>{t('common.cancel')}</Button>
+              <Button onClick={submitRenameSession} disabled={renaming || !renameTitle.trim()}>{renaming ? t('common.saving') : t('common.save')}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={Boolean(deleteSessionId)} onOpenChange={(open) => { if (!open) setDeleteSessionId(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('task.deleteDialogTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('task.deleteDialogDesc')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSession} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleting}>
+                {deleting ? t('common.deleting') : t('task.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
     );
   }
 

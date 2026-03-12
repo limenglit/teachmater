@@ -101,7 +101,7 @@ const Index = () => {
   return (
     <ThemeProvider>
       <StudentProvider>
-        <div className="flex flex-col h-screen bg-surface overflow-hidden">
+        <div className="flex flex-col h-[100dvh] bg-surface overflow-hidden">
           <WeChatBanner />
 
           {/* Header */}
@@ -177,7 +177,7 @@ const Index = () => {
                   }`}
                 >
                   {isApproved && sidebarMode === 'library' ? (
-                    <div className="h-full min-h-0 flex flex-col w-[500px] lg:w-[560px]">
+                    <div className="h-full min-h-0 flex flex-col w-[min(100vw,500px)] max-w-[100vw] lg:w-[560px] lg:max-w-[560px]">
                       <ClassLibrary onBackToList={() => switchSidebarMode('list')} />
                     </div>
                   ) : (

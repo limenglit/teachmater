@@ -448,7 +448,7 @@ export default function ComputerLab({ students }: Props) {
 
       <div ref={printRef}>
         {seated ? (
-          <div className="flex justify-center overflow-auto">
+          <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>

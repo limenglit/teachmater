@@ -96,10 +96,10 @@ export default function QuizSubmitPage() {
     setSubmitting(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t('common.loading')}</div>;
-  if (!session) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{t('quiz.sessionNotFound')}</div>;
+  if (loading) return <div className="min-h-[100dvh] flex items-center justify-center px-4 text-muted-foreground">{t('common.loading')}</div>;
+  if (!session) return <div className="min-h-[100dvh] flex items-center justify-center px-4 text-muted-foreground">{t('quiz.sessionNotFound')}</div>;
   if (session.status !== 'active') return (
-    <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+    <div className="min-h-[100dvh] flex items-center justify-center px-4 text-muted-foreground">
       <div className="text-center">
         <div className="text-4xl mb-3">⏰</div>
         <p className="text-lg font-medium text-foreground mb-1">{session.title}</p>
@@ -109,7 +109,7 @@ export default function QuizSubmitPage() {
   );
 
   if (submitted) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
       <div className="text-center p-8">
         <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
           <CheckCircle2 className="w-8 h-8 text-green-600" />
@@ -122,8 +122,8 @@ export default function QuizSubmitPage() {
 
   // Name entry
   if (!entered) return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-sm space-y-4">
+    <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+      <div className="w-full max-w-sm space-y-4 mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="text-center mb-6">
           <h1 className="text-xl font-bold text-foreground mb-1">{session.title}</h1>
           <p className="text-sm text-muted-foreground">{session.questions.length} {t('quiz.questionsCount')}</p>
@@ -138,7 +138,7 @@ export default function QuizSubmitPage() {
             onKeyDown={e => e.key === 'Enter' && enterQuiz()}
           />
           {showSuggestions && filteredSuggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-40 overflow-auto">
+            <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-56 overflow-auto">
               {filteredSuggestions.map(s => (
                 <button key={s} className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
                   onClick={() => { setName(s); setShowSuggestions(false); }}>
@@ -162,9 +162,9 @@ export default function QuizSubmitPage() {
   const allAnswered = questions.every((_, i) => answers[i] !== undefined && answers[i] !== '');
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
       {/* Progress */}
-      <div className="bg-card border-b border-border px-4 py-3">
+      <div className="bg-card border-b border-border px-4 py-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-foreground">{session.title}</span>
           <span className="text-xs text-muted-foreground">{name}</span>
@@ -182,7 +182,7 @@ export default function QuizSubmitPage() {
       </div>
 
       {/* Question */}
-      <div className="flex-1 p-4 sm:p-6 max-w-2xl mx-auto w-full">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 max-w-2xl mx-auto w-full pb-6">
         <div className="mb-6">
           <span className="text-xs font-medium text-primary">Q{currentQ + 1}/{questions.length}</span>
           <p className="text-base sm:text-lg font-medium text-foreground mt-1">{q.content}</p>
@@ -267,7 +267,7 @@ export default function QuizSubmitPage() {
       </div>
 
       {/* Navigation */}
-      <div className="bg-card border-t border-border px-4 py-3 flex items-center justify-between">
+      <div className="bg-card border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-3 sticky bottom-0">
         <Button variant="outline" size="sm" onClick={() => setCurrentQ(Math.max(0, currentQ - 1))} disabled={currentQ === 0}>
           <ChevronLeft className="w-4 h-4 mr-1" /> {t('quiz.prev')}
         </Button>
