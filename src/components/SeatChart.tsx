@@ -343,7 +343,7 @@ export default function SeatChart() {
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] overflow-auto">
+    <div data-testid="seat-chart-panel" className="flex-1 p-4 sm:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] overflow-auto">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-wrap gap-2 mb-5 pb-1">
           {SCENES.map(s => (

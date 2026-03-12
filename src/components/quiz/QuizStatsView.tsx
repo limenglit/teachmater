@@ -53,7 +53,7 @@ export default function QuizStatsView({ session }: Props) {
   const submittedCount = studentNames.length;
 
   return (
-    <div className="flex-1 overflow-auto p-4 space-y-6">
+    <div className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-6">
       {/* Summary bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-card border border-border rounded-xl p-4 text-center">
