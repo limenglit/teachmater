@@ -176,6 +176,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'ppt.exportPPTX': '导出 PPTX',
     'ppt.exportPDF': '导出 PDF',
     'ppt.exportBoth': '全部导出',
+    'ppt.present': '全屏演示',
     'ppt.exportSuccess': '导出成功',
     'ppt.exportBothSuccess': 'PPTX 和 PDF 导出成功',
     'ppt.exportError': '导出失败',
