@@ -29,7 +29,7 @@ export default function StoryboardHistory({ history, onSelect, onClear }: Props)
           {t('storyboard.clearHistory')}
         </Button>
       </div>
-      <ScrollArea className="h-32">
+      <ScrollArea className="h-28 sm:h-32">
         <div className="space-y-2 pr-4">
           {history.map((item) => (
             <button

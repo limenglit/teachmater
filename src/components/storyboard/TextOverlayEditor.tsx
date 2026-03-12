@@ -47,6 +47,9 @@ const FONT_WEIGHTS = [
 export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }: Props) {
   const { t } = useLanguage();
   const canvasRef = useRef<HTMLDivElement>(null);
+  const propsPanelRef = useRef<HTMLDivElement>(null);
+  const layerItemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [mobilePane, setMobilePane] = useState<'canvas' | 'props'>('canvas');
   const [layers, setLayers] = useState<TextLayer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -70,6 +73,17 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
   }, [initialKeywords]);
 
   const selectedLayer = layers.find(l => l.id === selectedId);
+
+  useEffect(() => {
+    if (mobilePane !== 'props' || !selectedId) return;
+
+    const panel = propsPanelRef.current;
+    const selectedRow = layerItemRefs.current[selectedId];
+
+    // Bring property controls back to the top on mobile and keep selected layer row visible.
+    panel?.scrollTo({ top: 0, behavior: 'smooth' });
+    selectedRow?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [mobilePane, selectedId]);
 
   const addLayer = () => {
     const newLayer: TextLayer = {
@@ -158,26 +172,45 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
   return (
     <div className="fixed inset-0 z-50 bg-background/95 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <h2 className="text-lg font-semibold">{t('storyboard.editText')}</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={addLayer}>
+      <div className="flex flex-wrap items-center justify-between gap-2 p-3 sm:p-4 border-b border-border">
+        <h2 className="text-base sm:text-lg font-semibold">{t('storyboard.editText')}</h2>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Button variant="outline" size="sm" onClick={addLayer} className="h-8">
             <Plus className="w-4 h-4 mr-1" />
             {t('storyboard.addText')}
           </Button>
-          <Button variant="default" size="sm" onClick={handleExport}>
+          <Button variant="default" size="sm" onClick={handleExport} className="h-8">
             <Download className="w-4 h-4 mr-1" />
             {t('storyboard.exportImage')}
           </Button>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
             <X className="w-5 h-5" />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="lg:hidden grid grid-cols-2 gap-2 px-3 pb-2 border-b border-border bg-card">
+        <Button
+          variant={mobilePane === 'canvas' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8"
+          onClick={() => setMobilePane('canvas')}
+        >
+          {t('board.viewCanvas')}
+        </Button>
+        <Button
+          variant={mobilePane === 'props' ? 'default' : 'outline'}
+          size="sm"
+          className="h-8"
+          onClick={() => setMobilePane('props')}
+        >
+          {t('storyboard.textProperties')}
+        </Button>
+      </div>
+
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
         {/* Canvas Area */}
-        <div className="flex-1 p-4 overflow-auto bg-muted/30">
+        <div className={`flex-1 min-h-[40vh] lg:min-h-0 p-2 sm:p-4 overflow-auto bg-muted/30 ${mobilePane === 'canvas' ? 'block' : 'hidden'} lg:block`}>
           <div
             ref={canvasRef}
             className="relative mx-auto bg-white shadow-lg"
@@ -222,7 +255,7 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
         </div>
 
         {/* Properties Panel */}
-        <div className="w-72 border-l border-border p-4 overflow-y-auto bg-card">
+        <div ref={propsPanelRef} className={`w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-border p-3 sm:p-4 overflow-y-auto bg-card max-h-[42vh] lg:max-h-none ${mobilePane === 'props' ? 'block' : 'hidden'} lg:block`}>
           <h3 className="font-medium mb-4 flex items-center gap-2">
             <Move className="w-4 h-4" />
             {t('storyboard.textProperties')}
@@ -332,6 +365,9 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
                 {layers.map((layer, idx) => (
                   <div
                     key={layer.id}
+                    ref={(el) => {
+                      layerItemRefs.current[layer.id] = el;
+                    }}
                     className={`px-2 py-1.5 rounded text-sm cursor-pointer truncate ${
                       selectedId === layer.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
                     }`}

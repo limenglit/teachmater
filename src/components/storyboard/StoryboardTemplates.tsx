@@ -52,7 +52,7 @@ export default function StoryboardTemplates({ onSelect }: Props) {
         ))}
       </div>
 
-      <ScrollArea className="h-[180px]">
+      <ScrollArea className="h-[150px] sm:h-[180px]">
         <div className="grid grid-cols-2 gap-2 pr-4">
           {filteredTemplates.map((template) => (
             <HoverCard key={template.name} openDelay={200} closeDelay={100}>

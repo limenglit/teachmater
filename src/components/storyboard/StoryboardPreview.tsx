@@ -60,7 +60,7 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
 
   return (
     <>
-      <div className="flex-1 flex flex-col bg-muted/30 rounded-xl overflow-hidden">
+      <div className="flex-1 flex flex-col bg-muted/30 rounded-xl overflow-hidden pb-20 sm:pb-0">
         {/* Image */}
         <div className="flex-1 relative p-4 flex items-center justify-center min-h-0">
           <img
@@ -72,7 +72,7 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-center gap-2 p-4 border-t border-border bg-card flex-wrap">
+        <div className="hidden sm:flex items-center justify-center gap-2 p-4 border-t border-border bg-card flex-wrap">
           <Button variant="default" size="sm" onClick={() => setShowEditor(true)}>
             <Type className="w-4 h-4 mr-1" />
             {t('storyboard.editText')}
@@ -92,6 +92,23 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
           <Button variant="outline" size="sm" onClick={onRegenerate}>
             <RefreshCw className="w-4 h-4 mr-1" />
             {t('storyboard.regenerate')}
+          </Button>
+        </div>
+      </div>
+
+      <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        <div className="grid grid-cols-3 gap-2">
+          <Button variant="outline" size="sm" className="h-9" onClick={handleDownload}>
+            <Download className="w-4 h-4 mr-1" />
+            {t('storyboard.download')}
+          </Button>
+          <Button variant="outline" size="sm" className="h-9" onClick={onRegenerate}>
+            <RefreshCw className="w-4 h-4 mr-1" />
+            {t('storyboard.regenerate')}
+          </Button>
+          <Button variant="default" size="sm" className="h-9" onClick={() => setShowEditor(true)}>
+            <Type className="w-4 h-4 mr-1" />
+            {t('storyboard.editText')}
           </Button>
         </div>
       </div>

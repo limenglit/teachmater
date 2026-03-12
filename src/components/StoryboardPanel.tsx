@@ -134,9 +134,9 @@ export default function StoryboardPanel() {
   const guestRemaining = getGuestAIRemaining(!!user);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 p-4 overflow-y-auto overflow-x-hidden">
+    <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-3 sm:gap-4 p-3 sm:p-4 overflow-y-auto overflow-x-hidden">
       {/* Left Panel - Form */}
-      <Card className="w-full lg:w-80 xl:w-96 shrink-0 flex flex-col">
+      <Card className="w-full xl:w-[380px] xl:max-w-[380px] shrink-0 flex flex-col max-h-[64vh] xl:max-h-none">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Pencil className="w-5 h-5" />
@@ -149,7 +149,7 @@ export default function StoryboardPanel() {
           )}
         </CardHeader>
         <CardContent className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full pr-4">
+          <ScrollArea className="h-full pr-2 sm:pr-4">
             <div className="space-y-6">
               <StoryboardTemplates onSelect={handleSelectTemplate} />
               <Separator />
@@ -172,7 +172,7 @@ export default function StoryboardPanel() {
       </Card>
 
       {/* Right Panel - Preview */}
-      <div className="flex-1 flex flex-col min-h-[400px] lg:min-h-0">
+      <div className="flex-1 flex flex-col min-h-[45vh] xl:min-h-0">
         <StoryboardPreview
           imageUrl={imageUrl}
           prompt={prompt}
