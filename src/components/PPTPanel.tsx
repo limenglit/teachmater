@@ -47,6 +47,7 @@ export default function PPTPanel() {
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [fileLoading, setFileLoading] = useState(false);
   const [showImageManager, setShowImageManager] = useState(false);
+  const [showPresenter, setShowPresenter] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const slidePreviewRef = useRef<HTMLDivElement>(null);
 
