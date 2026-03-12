@@ -17,7 +17,7 @@ interface ClassOption {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelect: (names: string[]) => void;
+  onSelect: (names: string[], meta?: { className: string }) => void;
   currentCount?: number;
   onClear?: () => void;
 }
@@ -58,7 +58,7 @@ export default function ClassRosterPicker({ open, onOpenChange, onSelect, curren
         <div className="space-y-2 mt-2">
           {sidebarStudents.length > 0 && (
             <button
-              onClick={() => { onSelect(sidebarStudents.map(s => s.name)); onOpenChange(false); }}
+              onClick={() => { onSelect(sidebarStudents.map(s => s.name), { className: '' }); onOpenChange(false); }}
               className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors"
             >
               <div className="flex items-center justify-between">
@@ -74,7 +74,7 @@ export default function ClassRosterPicker({ open, onOpenChange, onSelect, curren
           {classes.map(cls => (
             <button
               key={cls.id}
-              onClick={() => { onSelect(cls.students); onOpenChange(false); }}
+              onClick={() => { onSelect(cls.students, { className: cls.name }); onOpenChange(false); }}
               className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors"
               disabled={cls.students.length === 0}
             >

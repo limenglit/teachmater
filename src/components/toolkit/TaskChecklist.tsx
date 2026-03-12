@@ -5,18 +5,39 @@ import {
   CheckCircle2,
   ClipboardList,
   Copy,
+  Pencil,
   Play,
   Plus,
   RotateCcw,
+  Search,
   Square,
   Trash2,
 } from 'lucide-react';
 
 import ClassRosterPicker from '@/components/ClassRosterPicker';
 import RosterQuickBind from '@/components/RosterQuickBind';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { useStudents } from '@/contexts/StudentContext';
@@ -33,6 +54,7 @@ interface TaskSessionRecord {
   title: string;
   tasks: string[];
   student_names: string[];
+  class_name: string;
   status: string;
   creator_token: string;
   created_at: string;
@@ -49,6 +71,7 @@ interface TaskCompletionRecord {
 
 interface StoredDraft {
   title: string;
+  className: string;
   linkedNames: string[];
   tasks: TaskDraftItem[];
 }
@@ -61,6 +84,7 @@ function loadDraft(): StoredDraft {
     const raw = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}') as Partial<StoredDraft>;
     return {
       title: raw.title || '',
+      className: raw.className || '',
       linkedNames: Array.isArray(raw.linkedNames) ? raw.linkedNames : [],
       tasks: Array.isArray(raw.tasks)
         ? raw.tasks
@@ -69,7 +93,7 @@ function loadDraft(): StoredDraft {
         : [],
     };
   } catch {
-    return { title: '', linkedNames: [], tasks: [] };
+    return { title: '', className: '', linkedNames: [], tasks: [] };
   }
 }
 
@@ -101,6 +125,7 @@ function parseTaskSession(row: any): TaskSessionRecord {
     title: row.title,
     tasks: Array.isArray(row.tasks) ? row.tasks : [],
     student_names: Array.isArray(row.student_names) ? row.student_names : [],
+    class_name: typeof row.class_name === 'string' ? row.class_name : '',
     status: row.status,
     creator_token: row.creator_token,
     created_at: row.created_at,
@@ -112,6 +137,10 @@ function uniqNames(names: string[]) {
   return Array.from(new Set(names.map((name) => name.trim()).filter(Boolean)));
 }
 
+function getSessionClassLabel(session: Pick<TaskSessionRecord, 'class_name'>, fallback: string) {
+  return session.class_name.trim() || fallback;
+}
+
 export default function TaskChecklist() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -119,6 +148,7 @@ export default function TaskChecklist() {
   const draft = useMemo(() => loadDraft(), []);
 
   const [title, setTitle] = useState(draft.title);
+  const [className, setClassName] = useState(draft.className);
   const [linkedNames, setLinkedNames] = useState<string[]>(draft.linkedNames);
   const [tasks, setTasks] = useState<TaskDraftItem[]>(draft.tasks);
   const [newTask, setNewTask] = useState('');
@@ -128,11 +158,19 @@ export default function TaskChecklist() {
   const [showRoster, setShowRoster] = useState(false);
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState('');
+  const [historyClassFilter, setHistoryClassFilter] = useState('__all__');
+  const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [renameTitle, setRenameTitle] = useState('');
+  const [renaming, setRenaming] = useState(false);
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const detailRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    saveDraft({ title, linkedNames, tasks });
-  }, [title, linkedNames, tasks]);
+    saveDraft({ title, className, linkedNames, tasks });
+  }, [title, className, linkedNames, tasks]);
 
   useEffect(() => {
     loadSessions();
@@ -238,6 +276,7 @@ export default function TaskChecklist() {
 
   const clearDraft = () => {
     setTitle('');
+    setClassName('');
     setTasks([]);
     setNewTask('');
     setLinkedNames([]);
@@ -269,6 +308,7 @@ export default function TaskChecklist() {
         title: trimmedTitle,
         tasks: taskList,
         student_names: roster,
+        class_name: className.trim(),
       };
       if (user) insertData.user_id = user.id;
 
@@ -316,8 +356,106 @@ export default function TaskChecklist() {
     }
   };
 
+  const beginRenameSession = (session: TaskSessionRecord) => {
+    setRenameSessionId(session.id);
+    setRenameTitle(session.title);
+  };
+
+  const submitRenameSession = async () => {
+    if (!renameSessionId) return;
+    const nextTitle = renameTitle.trim();
+    if (!nextTitle) {
+      toast({ title: t('task.needTitle'), variant: 'destructive' });
+      return;
+    }
+
+    const token = getCreatorToken(renameSessionId);
+    if (!token) {
+      toast({ title: t('task.actionDenied'), variant: 'destructive' });
+      return;
+    }
+
+    setRenaming(true);
+    try {
+      const { error } = await supabase.rpc('update_task_session', {
+        p_session_id: renameSessionId,
+        p_token: token,
+        p_title: nextTitle,
+      });
+      if (error) throw error;
+
+      setSessions((prev) => prev.map((session) => (
+        session.id === renameSessionId ? { ...session, title: nextTitle } : session
+      )));
+      setActiveSession((prev) => (prev && prev.id === renameSessionId ? { ...prev, title: nextTitle } : prev));
+      setRenameSessionId(null);
+      setRenameTitle('');
+      toast({ title: t('task.renameSuccess') });
+    } catch (error: any) {
+      toast({ title: error.message || t('task.updateFailed'), variant: 'destructive' });
+    } finally {
+      setRenaming(false);
+    }
+  };
+
+  const confirmDeleteSession = async () => {
+    if (!deleteSessionId) return;
+    const token = getCreatorToken(deleteSessionId);
+    if (!token) {
+      toast({ title: t('task.actionDenied'), variant: 'destructive' });
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase.rpc('delete_task_session', {
+        p_session_id: deleteSessionId,
+        p_token: token,
+      });
+      if (error) throw error;
+
+      setSessions((prev) => prev.filter((session) => session.id !== deleteSessionId));
+      setActiveSession((prev) => (prev?.id === deleteSessionId ? null : prev));
+      setDeleteSessionId(null);
+      toast({ title: t('task.deleteSuccess') });
+    } catch (error: any) {
+      toast({ title: error.message || t('task.deleteFailed'), variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const detailSubmitUrl = activeSession ? `${window.location.origin}/task/${activeSession.id}` : '';
   const isCreator = activeSession ? Boolean(getCreatorToken(activeSession.id)) : false;
+  const uncategorizedLabel = t('task.uncategorized');
+
+  const historyClassOptions = useMemo(() => {
+    const names = Array.from(new Set(sessions.map((session) => session.class_name.trim()).filter(Boolean))).sort((left, right) => left.localeCompare(right));
+    return names;
+  }, [sessions]);
+
+  const filteredSessions = useMemo(() => {
+    const query = historyQuery.trim().toLowerCase();
+    return sessions.filter((session) => {
+      const matchesClass = historyClassFilter === '__all__'
+        ? true
+        : historyClassFilter === '__uncategorized__'
+          ? !session.class_name.trim()
+          : session.class_name === historyClassFilter;
+      if (!matchesClass) return false;
+      if (!query) return true;
+
+      const haystacks = [
+        session.title,
+        session.class_name,
+        ...session.tasks,
+        ...session.student_names,
+      ];
+      return haystacks.some((value) => value.toLowerCase().includes(query));
+    });
+  }, [historyClassFilter, historyQuery, sessions]);
+
+  const recentSessions = useMemo(() => sessions.slice(0, 3), [sessions]);
 
   const dedupedCompletions = useMemo(() => {
     const unique = new Map<string, TaskCompletionRecord>();
@@ -383,6 +521,9 @@ export default function TaskChecklist() {
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
           <h2 className="font-semibold text-foreground text-sm sm:text-base truncate">{activeSession.title}</h2>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+            {getSessionClassLabel(activeSession, uncategorizedLabel)}
+          </span>
           <span className={`text-xs px-2 py-0.5 rounded-full ${activeSession.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
             {activeSession.status === 'active' ? t('task.active') : t('task.ended')}
           </span>
@@ -391,10 +532,20 @@ export default function TaskChecklist() {
 
           <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
             {isCreator && (
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={toggleSessionStatus}>
-                {activeSession.status === 'active' ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-                {activeSession.status === 'active' ? t('task.saveAndEnd') : t('task.reopenSession')}
-              </Button>
+              <>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => beginRenameSession(activeSession)}>
+                  <Pencil className="w-3 h-3" />
+                  {t('task.rename')}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={toggleSessionStatus}>
+                  {activeSession.status === 'active' ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                  {activeSession.status === 'active' ? t('task.saveAndEnd') : t('task.reopenSession')}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1 text-destructive" onClick={() => setDeleteSessionId(activeSession.id)}>
+                  <Trash2 className="w-3 h-3" />
+                  {t('task.delete')}
+                </Button>
+              </>
             )}
           </div>
 
@@ -580,10 +731,20 @@ export default function TaskChecklist() {
         linkedCount={linkedNames.length}
         sidebarCount={students.length}
         onOpenRoster={() => setShowRoster(true)}
-        onUseSidebar={() => setLinkedNames(students.map((student) => student.name))}
+        onUseSidebar={() => {
+          setLinkedNames(students.map((student) => student.name));
+          setClassName('');
+        }}
       />
 
       <div className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">{t('task.archiveClass')}</p>
+          <div className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+            {className.trim() || t('task.archiveUncategorized')}
+          </div>
+        </div>
+
         <div className="space-y-2">
           <p className="text-sm font-medium text-foreground">{t('task.sessionTitle')}</p>
           <Input
@@ -637,7 +798,12 @@ export default function TaskChecklist() {
       <div className="mt-6 pt-5 border-t border-border">
         <div className="flex items-center justify-between gap-2 mb-3">
           <h4 className="text-sm font-semibold text-foreground">{t('task.recentSessions')}</h4>
-          {loading && <span className="text-xs text-muted-foreground">{t('checkinPage.loading')}</span>}
+          <div className="flex items-center gap-2">
+            {loading && <span className="text-xs text-muted-foreground">{t('checkinPage.loading')}</span>}
+            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setShowHistory(true)}>
+              {t('task.viewAllHistory')}
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -645,36 +811,182 @@ export default function TaskChecklist() {
             <p className="text-sm text-muted-foreground text-center py-4">{t('task.noSessions')}</p>
           )}
 
-          {sessions.map((session) => (
-            <button
-              key={session.id}
-              onClick={() => openSession(session)}
-              className="w-full text-left rounded-xl border border-border p-3 hover:bg-accent/50 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-3 mb-1">
-                <p className="text-sm font-medium text-foreground truncate">{session.title}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${session.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
-                  {session.status === 'active' ? t('task.active') : t('task.ended')}
-                </span>
+          {recentSessions.map((session) => {
+            const canManage = Boolean(getCreatorToken(session.id));
+            return (
+              <div key={session.id} className="rounded-xl border border-border p-3">
+                <button
+                  onClick={() => openSession(session)}
+                  className="w-full text-left hover:bg-accent/50 transition-colors rounded-lg"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-1">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{session.title}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {getSessionClassLabel(session, uncategorizedLabel)}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${session.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                          {session.status === 'active' ? t('task.active') : t('task.ended')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {tFormat(t('task.historyMeta'), session.student_names.length, session.tasks.length)} · {new Date(session.created_at).toLocaleString()}
+                  </p>
+                </button>
+                {canManage && (
+                  <div className="mt-3 flex justify-end gap-2">
+                    <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => beginRenameSession(session)}>
+                      <Pencil className="w-3 h-3" />
+                      {t('task.rename')}
+                    </Button>
+                    <Button variant="outline" size="sm" className="h-8 text-xs text-destructive" onClick={() => setDeleteSessionId(session.id)}>
+                      <Trash2 className="w-3 h-3" />
+                      {t('task.delete')}
+                    </Button>
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {tFormat(t('task.historyMeta'), session.student_names.length, session.tasks.length)} · {new Date(session.created_at).toLocaleString()}
-              </p>
-            </button>
-          ))}
+            );
+          })}
+
+          {!loading && sessions.length > 3 && (
+            <p className="text-xs text-muted-foreground text-center pt-1">
+              {tFormat(t('task.moreHistoryHint'), sessions.length - 3)}
+            </p>
+          )}
         </div>
       </div>
 
       <ClassRosterPicker
         open={showRoster}
         onOpenChange={setShowRoster}
-        onSelect={(names) => {
+        onSelect={(names, meta) => {
           setLinkedNames(uniqNames(names));
+          setClassName(meta?.className || '');
           toast({ title: t('board.classLinked'), description: tFormat(t('board.studentCount'), uniqNames(names).length) });
         }}
         currentCount={linkedNames.length}
-        onClear={() => setLinkedNames([])}
+        onClear={() => {
+          setLinkedNames([]);
+          setClassName('');
+        }}
       />
+
+      <Dialog open={showHistory} onOpenChange={setShowHistory}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>{t('task.historyTitle')}</DialogTitle>
+            <DialogDescription>{t('task.historyDesc')}</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="relative">
+              <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                value={historyQuery}
+                onChange={(event) => setHistoryQuery(event.target.value)}
+                placeholder={t('task.searchPlaceholder')}
+                className="pl-9"
+              />
+            </div>
+
+            <Select value={historyClassFilter} onValueChange={setHistoryClassFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder={t('task.filterByClass')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('task.allClasses')}</SelectItem>
+                <SelectItem value="__uncategorized__">{uncategorizedLabel}</SelectItem>
+                {historyClassOptions.map((option) => (
+                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="min-h-0 overflow-y-auto pr-1 space-y-3">
+            {filteredSessions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-10">{t('task.noSearchResults')}</p>
+            ) : filteredSessions.map((session) => {
+              const canManage = Boolean(getCreatorToken(session.id));
+              return (
+                <div key={session.id} className="rounded-xl border border-border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <button onClick={() => { void openSession(session); setShowHistory(false); }} className="flex-1 text-left">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-foreground">{session.title}</p>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {getSessionClassLabel(session, uncategorizedLabel)}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${session.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                          {session.status === 'active' ? t('task.active') : t('task.ended')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {tFormat(t('task.historyMeta'), session.student_names.length, session.tasks.length)} · {new Date(session.created_at).toLocaleString()}
+                      </p>
+                    </button>
+
+                    {canManage && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => beginRenameSession(session)}>
+                          <Pencil className="w-3 h-3" />
+                          {t('task.rename')}
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 text-xs text-destructive" onClick={() => setDeleteSessionId(session.id)}>
+                          <Trash2 className="w-3 h-3" />
+                          {t('task.delete')}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowHistory(false)}>{t('common.close')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(renameSessionId)} onOpenChange={(open) => {
+        if (!open) {
+          setRenameSessionId(null);
+          setRenameTitle('');
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('task.renameDialogTitle')}</DialogTitle>
+            <DialogDescription>{t('task.renameDialogDesc')}</DialogDescription>
+          </DialogHeader>
+          <Input value={renameTitle} onChange={(event) => setRenameTitle(event.target.value)} placeholder={t('task.titlePlaceholder')} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRenameSessionId(null); setRenameTitle(''); }}>{t('common.cancel')}</Button>
+            <Button onClick={submitRenameSession} disabled={renaming || !renameTitle.trim()}>{renaming ? t('common.saving') : t('common.save')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(deleteSessionId)} onOpenChange={(open) => { if (!open) setDeleteSessionId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('task.deleteDialogTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('task.deleteDialogDesc')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteSession} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={deleting}>
+              {deleting ? t('common.deleting') : t('task.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
