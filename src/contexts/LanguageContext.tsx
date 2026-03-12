@@ -1477,6 +1477,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'ppt.exportPPTX': 'Export PPTX',
     'ppt.exportPDF': 'Export PDF',
     'ppt.exportBoth': 'Export All',
+    'ppt.present': 'Present',
     'ppt.exportSuccess': 'Exported successfully',
     'ppt.exportBothSuccess': 'PPTX and PDF exported successfully',
     'ppt.exportError': 'Export failed',
