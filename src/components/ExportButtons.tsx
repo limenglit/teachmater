@@ -8,9 +8,10 @@ import { toast } from '@/hooks/use-toast';
 interface Props {
   targetRef: React.RefObject<HTMLElement>;
   filename: string;
+  resolveQrCode?: () => Promise<{ value: string; className?: string } | null>;
 }
 
-export default function ExportButtons({ targetRef, filename }: Props) {
+export default function ExportButtons({ targetRef, filename, resolveQrCode }: Props) {
   const [customTitle, setCustomTitle] = useState('');
 
   const getExportTitle = () => {
@@ -22,10 +23,14 @@ export default function ExportButtons({ targetRef, filename }: Props) {
     if (!targetRef.current) return;
     const exportTitle = getExportTitle();
     try {
+      const qrCode = (type === 'png' || type === 'pdf') && resolveQrCode
+        ? await resolveQrCode()
+        : null;
+
       if (type === 'png') {
-        await exportToPNG(targetRef.current, exportTitle, exportTitle);
+        await exportToPNG(targetRef.current, exportTitle, exportTitle, qrCode ? { qrCode } : undefined);
       } else if (type === 'pdf') {
-        await exportToPDF(targetRef.current, exportTitle, exportTitle);
+        await exportToPDF(targetRef.current, exportTitle, exportTitle, qrCode ? { qrCode } : undefined);
       } else {
         await exportToSVG(targetRef.current, exportTitle, exportTitle);
       }

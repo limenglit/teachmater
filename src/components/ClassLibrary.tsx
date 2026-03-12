@@ -14,6 +14,7 @@ import {
   ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen
 } from 'lucide-react';
 import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
+import { setActiveClassName } from '@/lib/class-context';
 
 interface College { id: string; name: string; user_id: string; }
 interface ClassItem { id: string; college_id: string; name: string; user_id: string; }
@@ -145,11 +146,13 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const loadToWorkspace = () => {
     if (!selectedClass) return;
     const classStudents = students.filter(s => s.class_id === selectedClass);
+    const selectedClassItem = classes.find(c => c.id === selectedClass);
     if (classStudents.length === 0) {
       toast({ title: t('library.noStudentsInClass'), variant: 'destructive' });
       return;
     }
     importFromText(classStudents.map(s => s.name).join('\n'));
+    setActiveClassName(selectedClassItem?.name || '');
     toast({ title: t('library.loadedToList'), description: `${classStudents.length} ${t('library.students')}` });
   };
 

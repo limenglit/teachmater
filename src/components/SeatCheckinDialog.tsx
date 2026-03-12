@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Check, QrCode } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { createSeatCheckinSession } from '@/lib/seat-checkin-session';
 
 interface Props {
   open: boolean;
@@ -13,9 +14,20 @@ interface Props {
   studentNames: string[];
   sceneConfig: Record<string, unknown>;
   sceneType: string;
+  className?: string;
+  onSessionCreated?: (payload: { sessionId: string; checkinUrl: string }) => void;
 }
 
-export default function SeatCheckinDialog({ open, onOpenChange, seatData, studentNames, sceneConfig, sceneType }: Props) {
+export default function SeatCheckinDialog({
+  open,
+  onOpenChange,
+  seatData,
+  studentNames,
+  sceneConfig,
+  sceneType,
+  className,
+  onSessionCreated,
+}: Props) {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -24,24 +36,22 @@ export default function SeatCheckinDialog({ open, onOpenChange, seatData, studen
   const createSession = async () => {
     setLoading(true);
     try {
-      const insertData = {
-        seat_data: JSON.parse(JSON.stringify(seatData)),
-        student_names: JSON.parse(JSON.stringify(studentNames)),
-        scene_config: JSON.parse(JSON.stringify(sceneConfig)),
-        scene_type: sceneType,
-      };
-      const { data, error } = await supabase.from('seat_checkin_sessions').insert([insertData]).select('id').single();
-
-      if (error) throw error;
-      setSessionId(data.id);
+      const created = await createSeatCheckinSession({
+        seatData,
+        studentNames,
+        sceneConfig,
+        sceneType,
+      });
+      setSessionId(created.sessionId);
+      onSessionCreated?.({ sessionId: created.sessionId, checkinUrl: created.checkinUrl });
 
       supabase
-        .channel(`seat-checkin-${data.id}`)
+        .channel(`seat-checkin-${created.sessionId}`)
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
           table: 'seat_checkin_records',
-          filter: `session_id=eq.${data.id}`,
+          filter: `session_id=eq.${created.sessionId}`,
         }, (payload) => {
           const record = payload.new as { student_name: string };
           setCheckedIn(prev => [...prev, record.student_name]);
@@ -89,6 +99,10 @@ export default function SeatCheckinDialog({ open, onOpenChange, seatData, studen
                 <QRCodeSVG value={checkinUrl} size={200} />
               </div>
             </div>
+
+            {className && (
+              <p className="text-center text-sm font-medium text-foreground">{className}</p>
+            )}
 
             <div className="flex items-center gap-2">
               <input

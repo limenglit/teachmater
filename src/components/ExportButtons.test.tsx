@@ -6,6 +6,7 @@ import * as exportLib from '@/lib/export';
 vi.mock('@/lib/export', () => ({
   exportToPNG: vi.fn().mockResolvedValue(undefined),
   exportToPDF: vi.fn().mockResolvedValue(undefined),
+  exportToSVG: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('ExportButtons', () => {
@@ -20,7 +21,7 @@ describe('ExportButtons', () => {
     render(<ExportButtons targetRef={ref} filename="test-file" />);
     fireEvent.click(screen.getByText('PNG'));
     await waitFor(() => {
-      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file');
+      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file', undefined);
     });
   });
 
@@ -28,7 +29,7 @@ describe('ExportButtons', () => {
     render(<ExportButtons targetRef={ref} filename="test-file" />);
     fireEvent.click(screen.getByText('PDF'));
     await waitFor(() => {
-      expect(exportLib.exportToPDF).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file');
+      expect(exportLib.exportToPDF).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file', undefined);
     });
   });
 
@@ -38,7 +39,7 @@ describe('ExportButtons', () => {
     fireEvent.change(input, { target: { value: '自定义标题' } });
     fireEvent.click(screen.getByText('PNG'));
     await waitFor(() => {
-      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, '自定义标题', '自定义标题');
+      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, '自定义标题', '自定义标题', undefined);
     });
   });
 

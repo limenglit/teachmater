@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import { useSeatExportQr } from './useSeatExportQr';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -92,6 +93,16 @@ export default function ConferenceRoom({ students }: Props) {
 
   const roomWidth = Math.max(920, contentWidth + 160);
   const roomHeight = Math.max(640, contentHeight + 220);
+  const exportSceneConfig = {
+    seatsPerSide,
+    companionRows: showCompanionSeats ? companionRows : 0,
+  };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: assignment,
+    studentNames: students.map(s => s.name),
+    sceneConfig: exportSceneConfig,
+    sceneType: 'conference',
+  });
 
   const tableX = (roomWidth - tableW) / 2;
   const tableY = (roomHeight - tableH) / 2;
@@ -536,7 +547,7 @@ export default function ConferenceRoom({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        {seated && <ExportButtons targetRef={printRef} filename="会议室座位" />}
+        {seated && <ExportButtons targetRef={printRef} filename="会议室座位" resolveQrCode={resolveQrCode} />}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到
@@ -656,10 +667,9 @@ export default function ConferenceRoom({ students }: Props) {
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         sceneType="conference"
-        sceneConfig={{
-          seatsPerSide,
-          companionRows: showCompanionSeats ? companionRows : 0,
-        }}
+        sceneConfig={exportSceneConfig}
+        className={exportClassName}
+        onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
   );

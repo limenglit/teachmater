@@ -11,6 +11,7 @@ import ConferenceRoom from '@/components/seating/ConferenceRoom';
 import ConcertHall from '@/components/seating/ConcertHall';
 import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
+import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
@@ -195,6 +196,13 @@ export default function SeatChart() {
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
   const isExamMode = mode === 'exam';
   const printRef = useRef<HTMLDivElement>(null);
+  const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: seats,
+    studentNames: students.map(s => s.name),
+    sceneConfig: exportSceneConfig,
+    sceneType: 'classroom',
+  });
   const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-sm';
   const sideMarkerIconClass = 'inline-flex items-center justify-center w-6 h-6 rounded-md border border-primary/30 bg-primary/10 text-sm leading-none';
 
@@ -408,7 +416,7 @@ export default function SeatChart() {
               <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
             </Button>
           </div>
-          {seats.length > 0 && <ExportButtons targetRef={printRef} filename={t('seat.exportName')} />}
+          {seats.length > 0 && <ExportButtons targetRef={printRef} filename={t('seat.exportName')} resolveQrCode={resolveQrCode} />}
           {seats.length > 0 && (
             <Button
               onClick={() => setCheckinOpen(true)}
@@ -486,7 +494,7 @@ export default function SeatChart() {
           <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
         )}
         <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} sceneType="classroom"
-          sceneConfig={{ rows, cols, windowOnLeft, colAisles, rowAisles }} />
+          sceneConfig={exportSceneConfig} className={exportClassName} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
         </>)}
       </div>
     </div>

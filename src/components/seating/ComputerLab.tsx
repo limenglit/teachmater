@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import { useSeatExportQr } from './useSeatExportQr';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -67,6 +68,13 @@ export default function ComputerLab({ students }: Props) {
 
   const roomWidth = Math.max(980, tableW + tableMargin * 2 + 220);
   const roomHeight = Math.max(760, maxRows * rowGap + 220);
+  const exportSceneConfig = { rowCount, seatsPerSide, dualSide };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: assignment,
+    studentNames: students.map(s => s.name),
+    sceneConfig: exportSceneConfig,
+    sceneType: 'computerLab',
+  });
   const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 760));
 
@@ -422,7 +430,7 @@ export default function ComputerLab({ students }: Props) {
           </label>
         </div>
         <span className="text-xs text-muted-foreground">可容纳 {rowCount * seatsPerSide * 2} 人 | 当前 {students.length} 人</span>
-        {seated && <ExportButtons targetRef={printRef} filename="机房座位" />}
+        {seated && <ExportButtons targetRef={printRef} filename="机房座位" resolveQrCode={resolveQrCode} />}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到
@@ -537,7 +545,9 @@ export default function ComputerLab({ students }: Props) {
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         sceneType="computerLab"
-        sceneConfig={{ rowCount, seatsPerSide, dualSide }}
+        sceneConfig={exportSceneConfig}
+        className={exportClassName}
+        onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
   );

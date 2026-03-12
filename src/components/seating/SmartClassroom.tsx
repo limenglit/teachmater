@@ -5,6 +5,7 @@ import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
+import { useSeatExportQr } from './useSeatExportQr';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -145,6 +146,13 @@ export default function SmartClassroom({ students }: Props) {
   const tableRows = Math.ceil(tableCount / tableCols);
   const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
   const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
+  const exportSceneConfig = { seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: assignment,
+    studentNames: students.map(s => s.name),
+    sceneConfig: exportSceneConfig,
+    sceneType: 'smartClassroom',
+  });
   const defaultRefPositions = useMemo(() => getDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
@@ -386,7 +394,7 @@ export default function SmartClassroom({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" />}
+        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" resolveQrCode={resolveQrCode} />}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到
@@ -490,7 +498,9 @@ export default function SmartClassroom({ students }: Props) {
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         sceneType="smartClassroom"
-        sceneConfig={{ seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) }}
+        sceneConfig={exportSceneConfig}
+        className={exportClassName}
+        onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
   );

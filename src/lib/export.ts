@@ -1,9 +1,82 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { QRCodeSVG } from 'qrcode.react';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
-async function captureWithHeaderFooter(element: HTMLElement, title: string) {
+interface ExportQrCodeOptions {
+  value: string;
+  className?: string;
+}
+
+interface ExportCaptureOptions {
+  qrCode?: ExportQrCodeOptions;
+}
+
+async function renderQrBadge(container: HTMLElement, qrCode: ExportQrCodeOptions) {
+  const host = document.createElement('div');
+  host.style.position = 'absolute';
+  host.style.right = '20px';
+  host.style.bottom = '12px';
+  host.style.background = '#ffffff';
+  host.style.border = '1px solid #e5e7eb';
+  host.style.borderRadius = '10px';
+  host.style.padding = '10px';
+  host.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+  host.style.display = 'flex';
+  host.style.flexDirection = 'column';
+  host.style.alignItems = 'center';
+  host.style.gap = '4px';
+
+  const root = createRoot(host);
+  root.render(
+    createElement(
+      'div',
+      { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' } },
+      createElement(QRCodeSVG, { value: qrCode.value, size: 92, level: 'M' }),
+      createElement(
+        'div',
+        {
+          style: {
+            fontSize: '11px',
+            color: '#111827',
+            fontFamily: '"Microsoft YaHei", sans-serif',
+            fontWeight: '600',
+            textAlign: 'center',
+            maxWidth: '120px',
+            wordBreak: 'break-word',
+            lineHeight: '1.2',
+          },
+        },
+        qrCode.className || '当前班级'
+      ),
+      createElement(
+        'div',
+        {
+          style: {
+            fontSize: '10px',
+            color: '#4b5563',
+            fontFamily: '"Microsoft YaHei", sans-serif',
+            textAlign: 'center',
+          },
+        },
+        '签到二维码'
+      )
+    )
+  );
+
+  container.appendChild(host);
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+  return () => {
+    root.unmount();
+    if (host.parentNode) host.parentNode.removeChild(host);
+  };
+}
+
+async function captureWithHeaderFooter(element: HTMLElement, title: string, options?: ExportCaptureOptions) {
   const clone = element.cloneNode(true) as HTMLElement;
   const width = Math.max(element.scrollWidth, element.clientWidth, 900);
 
@@ -15,6 +88,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   wrapper.style.width = `${width}px`;
   wrapper.style.padding = '22px 20px 16px';
   wrapper.style.boxSizing = 'border-box';
+  wrapper.style.position = 'fixed';
 
   const heading = document.createElement('div');
   heading.textContent = title;
@@ -46,6 +120,11 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   wrapper.appendChild(footer);
   document.body.appendChild(wrapper);
 
+  let cleanupQr: (() => void) | null = null;
+  if (options?.qrCode?.value) {
+    cleanupQr = await renderQrBadge(wrapper, options.qrCode);
+  }
+
   try {
     return await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
@@ -53,20 +132,21 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       useCORS: true,
     });
   } finally {
+    cleanupQr?.();
     document.body.removeChild(wrapper);
   }
 }
 
-export async function exportToPNG(element: HTMLElement, filename: string, title?: string) {
-  const canvas = await captureWithHeaderFooter(element, title || filename);
+export async function exportToPNG(element: HTMLElement, filename: string, title?: string, options?: ExportCaptureOptions) {
+  const canvas = await captureWithHeaderFooter(element, title || filename, options);
   const link = document.createElement('a');
   link.download = `${filename}.png`;
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
 
-export async function exportToPDF(element: HTMLElement, filename: string, title?: string) {
-  const canvas = await captureWithHeaderFooter(element, title || filename);
+export async function exportToPDF(element: HTMLElement, filename: string, title?: string, options?: ExportCaptureOptions) {
+  const canvas = await captureWithHeaderFooter(element, title || filename, options);
   const imgData = canvas.toDataURL('image/png');
   const imgW = canvas.width;
   const imgH = canvas.height;

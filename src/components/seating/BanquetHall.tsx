@@ -5,6 +5,7 @@ import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
+import { useSeatExportQr } from './useSeatExportQr';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -69,6 +70,13 @@ export default function BanquetHall({ students }: Props) {
   const tableRows = Math.ceil(tableCount / tableCols);
   const roomWidth = Math.max(980, tableCols * 180 + Math.max(0, tableCols - 1) * tableGap + 260);
   const roomHeight = Math.max(720, tableRows * 180 + Math.max(0, tableRows - 1) * tableGap + 280);
+  const exportSceneConfig = { seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: assignment,
+    studentNames: students.map(s => s.name),
+    sceneConfig: exportSceneConfig,
+    sceneType: 'banquet',
+  });
   const tableCellSize = 170;
   const tStageRunwayWidth = 56;
   const hasTStage = refVisible.podium;
@@ -400,7 +408,7 @@ export default function BanquetHall({ students }: Props) {
         <span className="text-xs text-muted-foreground">
           共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
         </span>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" />}
+        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" resolveQrCode={resolveQrCode} />}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到
@@ -523,7 +531,9 @@ export default function BanquetHall({ students }: Props) {
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         sceneType="banquet"
-        sceneConfig={{ seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) }}
+        sceneConfig={exportSceneConfig}
+        className={exportClassName}
+        onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import { useSeatExportQr } from './useSeatExportQr';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -148,6 +149,13 @@ export default function ConcertHall({ students }: Props) {
   const roomWidth = Math.max(960, Math.round(maxArcWidth + 220));
   const lowestSeatY = stageY + 20 + maxRadius + seatR;
   const roomHeight = Math.max(700, Math.round(lowestSeatY + 100));
+  const exportSceneConfig = { seatsPerRow, rowCount };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: assignment,
+    studentNames: students.map(s => s.name),
+    sceneConfig: exportSceneConfig,
+    sceneType: 'concertHall',
+  });
 
   const cx = roomWidth / 2;
   const defaultRefPositions = useMemo(
@@ -359,7 +367,7 @@ export default function ConcertHall({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" />}
+        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" resolveQrCode={resolveQrCode} />}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到
@@ -518,7 +526,9 @@ export default function ConcertHall({ students }: Props) {
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         sceneType="concertHall"
-        sceneConfig={{ seatsPerRow, rowCount }}
+        sceneConfig={exportSceneConfig}
+        className={exportClassName}
+        onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
   );
