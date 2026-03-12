@@ -119,6 +119,16 @@ function getCreatorToken(sessionId: string): string | null {
   return getCreatorTokens()[sessionId] || null;
 }
 
+function getSessionManageToken(session: Pick<TaskSessionRecord, 'id' | 'creator_token'>): string | null {
+  const localToken = getCreatorToken(session.id);
+  if (localToken) return localToken;
+
+  const rowToken = session.creator_token?.trim();
+  if (rowToken) return rowToken;
+
+  return null;
+}
+
 function parseTaskSession(row: any): TaskSessionRecord {
   return {
     id: row.id,
@@ -235,6 +245,13 @@ export default function TaskChecklist() {
           if (!merged.some((item) => item.id === session.id)) {
             merged.push(session);
           }
+        }
+      }
+
+      for (const session of merged) {
+        const rowToken = session.creator_token?.trim();
+        if (rowToken) {
+          saveCreatorToken(session.id, rowToken);
         }
       }
 
@@ -369,7 +386,9 @@ export default function TaskChecklist() {
       return;
     }
 
-    const token = getCreatorToken(renameSessionId);
+    const targetSession = sessions.find((session) => session.id === renameSessionId)
+      || (activeSession?.id === renameSessionId ? activeSession : null);
+    const token = targetSession ? getSessionManageToken(targetSession) : getCreatorToken(renameSessionId);
     if (!token) {
       toast({ title: t('task.actionDenied'), variant: 'destructive' });
       return;
@@ -377,7 +396,7 @@ export default function TaskChecklist() {
 
     setRenaming(true);
     try {
-      const { error } = await supabase.rpc('update_task_session', {
+      const { error } = await supabase.rpc('rename_task_session', {
         p_session_id: renameSessionId,
         p_token: token,
         p_title: nextTitle,
@@ -400,7 +419,9 @@ export default function TaskChecklist() {
 
   const confirmDeleteSession = async () => {
     if (!deleteSessionId) return;
-    const token = getCreatorToken(deleteSessionId);
+    const targetSession = sessions.find((session) => session.id === deleteSessionId)
+      || (activeSession?.id === deleteSessionId ? activeSession : null);
+    const token = targetSession ? getSessionManageToken(targetSession) : getCreatorToken(deleteSessionId);
     if (!token) {
       toast({ title: t('task.actionDenied'), variant: 'destructive' });
       return;
@@ -426,7 +447,7 @@ export default function TaskChecklist() {
   };
 
   const detailSubmitUrl = activeSession ? `${window.location.origin}/task/${activeSession.id}` : '';
-  const isCreator = activeSession ? Boolean(getCreatorToken(activeSession.id)) : false;
+  const isCreator = activeSession ? Boolean(getSessionManageToken(activeSession)) : false;
   const uncategorizedLabel = t('task.uncategorized');
 
   const historyClassOptions = useMemo(() => {
@@ -812,7 +833,7 @@ export default function TaskChecklist() {
           )}
 
           {recentSessions.map((session) => {
-            const canManage = Boolean(getCreatorToken(session.id));
+            const canManage = Boolean(getSessionManageToken(session));
             return (
               <div key={session.id} className="rounded-xl border border-border p-3">
                 <button
@@ -911,7 +932,7 @@ export default function TaskChecklist() {
             {filteredSessions.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-10">{t('task.noSearchResults')}</p>
             ) : filteredSessions.map((session) => {
-              const canManage = Boolean(getCreatorToken(session.id));
+              const canManage = Boolean(getSessionManageToken(session));
               return (
                 <div key={session.id} className="rounded-xl border border-border p-4">
                   <div className="flex items-start justify-between gap-3">
