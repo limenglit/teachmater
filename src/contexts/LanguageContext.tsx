@@ -2677,6 +2677,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'ppt.exportPPTX': 'Экспорт PPTX',
     'ppt.exportPDF': 'Экспорт PDF',
     'ppt.exportBoth': 'Экспорт всего',
+    'ppt.present': 'Презентация',
     'ppt.exportSuccess': 'Экспорт успешен',
     'ppt.exportBothSuccess': 'PPTX и PDF экспортированы',
     'ppt.exportError': 'Ошибка экспорта',
