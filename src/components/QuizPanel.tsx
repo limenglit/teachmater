@@ -147,7 +147,7 @@ export default function QuizPanel() {
   if (showSession && activeSession) {
     const submitUrl = `${window.location.origin}/quiz/${activeSession.id}`;
     return (
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div data-testid="quiz-panel-session" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
           <Button variant="ghost" size="sm" onClick={() => setShowSession(false)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
@@ -193,7 +193,7 @@ export default function QuizPanel() {
   ];
 
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div data-testid="quiz-panel" className="flex-1 overflow-auto p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">

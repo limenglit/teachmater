@@ -359,7 +359,7 @@ export default function BarrageDiscussion() {
   }
 
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-card p-4 sm:p-6 col-span-1 md:col-span-2 lg:col-span-3">
+    <div data-testid="barrage-discussion" className="bg-card rounded-2xl border border-border shadow-card p-4 sm:p-6 col-span-1 md:col-span-2 lg:col-span-3">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           💬 {topicTitle}
@@ -370,7 +370,7 @@ export default function BarrageDiscussion() {
             </Button>
           )}
         </h3>
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap max-w-full overflow-x-auto pb-1">
           <Button variant={view === 'barrage' ? 'default' : 'outline'} size="sm" onClick={() => setView('barrage')}>
             {t('barrage.wall')}
           </Button>

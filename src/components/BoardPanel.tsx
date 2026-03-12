@@ -433,7 +433,7 @@ export default function BoardPanel() {
     const isCreator = !!getCreatorToken(activeBoard.id);
 
     return (
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
         {/* Board header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
           <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
@@ -648,7 +648,7 @@ export default function BoardPanel() {
 
   // Board list view
   return (
-    <div className="flex-1 overflow-auto p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div data-testid="board-panel" className="flex-1 overflow-auto p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="max-w-4xl mx-auto">
         <h3 className="font-semibold text-foreground mb-5 flex items-center gap-2 text-lg">
           🎨 {t('board.title')}
