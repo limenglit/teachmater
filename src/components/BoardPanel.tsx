@@ -6,11 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, Columns3, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
-import BoardKanbanView from './board/BoardKanbanView';
 import BoardTimelineView from './board/BoardTimelineView';
 import BoardCanvasView from './board/BoardCanvasView';
 import BoardStoryboardView from './board/BoardStoryboardView';
@@ -439,11 +438,9 @@ export default function BoardPanel() {
     if (!a.is_pinned && b.is_pinned) return 1;
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
-  const currentViewMode = activeBoard?.view_mode === 'columns'
-    ? 'kanban'
-    : activeBoard?.view_mode === 'map'
-      ? 'wall'
-      : activeBoard?.view_mode;
+  const currentViewMode = activeBoard?.view_mode === 'columns' || activeBoard?.view_mode === 'kanban' || activeBoard?.view_mode === 'map'
+    ? 'wall'
+    : activeBoard?.view_mode;
 
   // Word cloud mode
   if (showWordCloud && activeBoard) {
@@ -486,7 +483,7 @@ export default function BoardPanel() {
 
           <div className="ml-auto flex items-center gap-1 max-w-full overflow-x-auto pb-1">
             {/* View mode switcher */}
-            {(['wall', 'kanban', 'timeline', 'canvas', 'storyboard'] as const).map(mode => (
+            {(['wall', 'timeline', 'canvas', 'storyboard'] as const).map(mode => (
               <Button
                 key={mode}
                 variant={currentViewMode === mode ? 'default' : 'outline'}
@@ -495,7 +492,6 @@ export default function BoardPanel() {
                 onClick={() => switchViewMode(mode)}
               >
                 {mode === 'wall' && <LayoutGrid className="w-3 h-3 mr-1" />}
-                {mode === 'kanban' && <Columns3 className="w-3 h-3 mr-1" />}
                 {mode === 'timeline' && <Clock className="w-3 h-3 mr-1" />}
                 {mode === 'canvas' && <PenBox className="w-3 h-3 mr-1" />}
                 {mode === 'storyboard' && <Clapperboard className="w-3 h-3 mr-1" />}
@@ -591,9 +587,6 @@ export default function BoardPanel() {
         <div className="flex-1 overflow-auto p-4">
           {currentViewMode === 'wall' && (
             <BoardWallView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
-          )}
-          {currentViewMode === 'kanban' && (
-            <BoardKanbanView cards={sortedCards} columns={activeBoard.columns} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
           )}
           {currentViewMode === 'timeline' && (
             <BoardTimelineView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />

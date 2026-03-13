@@ -34,7 +34,7 @@ export default function BoardSubmitPage() {
   const [nameSearch, setNameSearch] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const needsColumnStep = (board?.view_mode === 'kanban' || board?.view_mode === 'storyboard')
+  const needsColumnStep = board?.view_mode === 'storyboard'
     && Array.isArray(board?.columns)
     && (board?.columns?.length || 0) > 0;
 
@@ -46,7 +46,7 @@ export default function BoardSubmitPage() {
           setBoard(data as any);
           const cols = (data as any).columns;
           if (Array.isArray(cols) && cols.length > 0) setColumnId(cols[0]);
-          if (!((data as any).view_mode === 'kanban' || (data as any).view_mode === 'storyboard')) {
+          if ((data as any).view_mode !== 'storyboard') {
             setColumnConfirmed(true);
           }
         }
@@ -289,15 +289,22 @@ export default function BoardSubmitPage() {
           </div>
 
           <div className="space-y-3">
-            <select
-              value={columnId}
-              onChange={e => setColumnId(e.target.value)}
-              className="w-full h-12 rounded-md border border-border bg-background px-3 text-base"
-            >
-              {(board.columns as string[]).map(col => (
-                <option key={col} value={col}>{col}</option>
+            <div className="grid grid-cols-1 gap-3">
+              {(board.columns as string[]).map((col, idx) => (
+                <button
+                  key={col}
+                  type="button"
+                  onClick={() => {
+                    setColumnId(col);
+                    setColumnConfirmed(true);
+                  }}
+                  className={`w-full text-left rounded-xl border p-4 transition-all ${columnId === col ? 'border-primary bg-primary/10 shadow-sm' : 'border-border bg-card hover:bg-muted/60'}`}
+                >
+                  <div className="text-xs text-muted-foreground mb-1">{t('board.storyPanel')} {idx + 1}</div>
+                  <div className="text-base font-semibold text-foreground">{col}</div>
+                </button>
               ))}
-            </select>
+            </div>
 
             <Button onClick={confirmColumn} disabled={!columnId} className="w-full h-12 text-base gap-2">
               {t('board.enterEditor')}
@@ -375,18 +382,6 @@ export default function BoardSubmitPage() {
               {uploading ? t('board.uploading') : t('board.uploadFile')}
             </Button>
           </div>
-
-          {(board.view_mode === 'kanban' || board.view_mode === 'storyboard') && Array.isArray(board.columns) && board.columns.length > 0 && (
-            <select
-              value={columnId}
-              onChange={e => setColumnId(e.target.value)}
-              className="w-full h-10 rounded-md border border-border bg-background px-3 text-sm"
-            >
-              {(board.columns as string[]).map(col => (
-                <option key={col} value={col}>{col}</option>
-              ))}
-            </select>
-          )}
 
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{t('board.cardColor')}:</span>
