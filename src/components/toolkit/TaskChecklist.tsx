@@ -317,16 +317,41 @@ export default function TaskChecklist() {
 
     setPublishing(true);
     try {
+      const classLabel = className.trim();
       const insertData: Record<string, any> = {
         title: trimmedTitle,
         tasks: taskList,
         student_names: roster,
-        class_name: className.trim(),
+        class_name: classLabel,
       };
       if (user) insertData.user_id = user.id;
 
-      const { data, error } = await supabase.from('task_sessions').insert(insertData).select('*').single();
-      if (error) throw error;
+      let data: any = null;
+      const firstAttempt = await supabase.from('task_sessions').insert(insertData).select('*').single();
+
+      if (firstAttempt.error) {
+        const msg = String(firstAttempt.error.message || '').toLowerCase();
+        const missingClassNameInSchema =
+          msg.includes('class_name') &&
+          (msg.includes('schema cache') || msg.includes('could not find'));
+
+        if (!missingClassNameInSchema) {
+          throw firstAttempt.error;
+        }
+
+        const fallbackInsertData: Record<string, any> = {
+          title: trimmedTitle,
+          tasks: taskList,
+          student_names: roster,
+        };
+        if (user) fallbackInsertData.user_id = user.id;
+
+        const fallback = await supabase.from('task_sessions').insert(fallbackInsertData).select('*').single();
+        if (fallback.error) throw fallback.error;
+        data = fallback.data;
+      } else {
+        data = firstAttempt.data;
+      }
 
       const session = parseTaskSession(data);
       saveCreatorToken(session.id, session.creator_token);
