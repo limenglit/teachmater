@@ -192,6 +192,8 @@ Constraints:
 
 Quality rules:
 - Questions must align with listed knowledge points and avoid repetition.
+- IMPORTANT: Ensure EVERY knowledge point is covered by at least one question. Distribute questions evenly across all knowledge points.
+- Each question's tags field MUST include the specific knowledge point it covers.
 - single: exactly one correct option, 4 options preferred.
 - multi: at least two correct options, 4-5 options preferred.
 - tf: correct_answer must be "A" (true) or "B" (false).
