@@ -20,6 +20,7 @@ export default function BoardSubmitPage() {
   const [loading, setLoading] = useState(true);
   const [nickname, setNickname] = useState('');
   const [nicknameConfirmed, setNicknameConfirmed] = useState(false);
+  const [columnConfirmed, setColumnConfirmed] = useState(false);
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
   const [color, setColor] = useState('#ffffff');
@@ -33,6 +34,9 @@ export default function BoardSubmitPage() {
   const [nameSearch, setNameSearch] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const needsColumnStep = (board?.view_mode === 'kanban' || board?.view_mode === 'storyboard')
+    && Array.isArray(board?.columns)
+    && (board?.columns?.length || 0) > 0;
 
   useEffect(() => {
     if (!boardId) return;
@@ -42,6 +46,9 @@ export default function BoardSubmitPage() {
           setBoard(data as any);
           const cols = (data as any).columns;
           if (Array.isArray(cols) && cols.length > 0) setColumnId(cols[0]);
+          if (!((data as any).view_mode === 'kanban' || (data as any).view_mode === 'storyboard')) {
+            setColumnConfirmed(true);
+          }
         }
         setLoading(false);
       });
@@ -56,13 +63,24 @@ export default function BoardSubmitPage() {
   const confirmNickname = () => {
     if (!nickname.trim()) return;
     setNicknameConfirmed(true);
+    if (needsColumnStep) {
+      setColumnConfirmed(false);
+    }
     localStorage.setItem(`board-nick-${boardId}`, nickname.trim());
   };
 
   const selectName = (name: string) => {
     setNickname(name);
     setNicknameConfirmed(true);
+    if (needsColumnStep) {
+      setColumnConfirmed(false);
+    }
     localStorage.setItem(`board-nick-${boardId}`, name);
+  };
+
+  const confirmColumn = () => {
+    if (!columnId) return;
+    setColumnConfirmed(true);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,6 +276,45 @@ export default function BoardSubmitPage() {
     );
   }
 
+  if (needsColumnStep && !columnConfirmed) {
+    return (
+      <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
+        <div className="w-full max-w-sm space-y-6 mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <div className="text-center">
+            <div className="text-sm text-muted-foreground mb-1">🎨 {board.title}</div>
+            <h1 className="text-xl font-bold text-foreground">{t('board.chooseColumnFirst')}</h1>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('board.nickname')}: <span className="text-foreground font-medium">{nickname}</span>
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <select
+              value={columnId}
+              onChange={e => setColumnId(e.target.value)}
+              className="w-full h-12 rounded-md border border-border bg-background px-3 text-base"
+            >
+              {(board.columns as string[]).map(col => (
+                <option key={col} value={col}>{col}</option>
+              ))}
+            </select>
+
+            <Button onClick={confirmColumn} disabled={!columnId} className="w-full h-12 text-base gap-2">
+              {t('board.enterEditor')}
+            </Button>
+
+            <button
+              onClick={() => { setNicknameConfirmed(false); setShowManualInput(false); }}
+              className="w-full text-center text-xs text-primary hover:underline py-1"
+            >
+              {t('common.edit')} {t('board.nickname')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
       <div className="w-full max-w-md space-y-6 mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -266,8 +323,14 @@ export default function BoardSubmitPage() {
           <h1 className="text-xl font-bold text-foreground">{t('board.submitPage')}</h1>
           <div className="text-xs text-muted-foreground mt-1">
             {t('board.nickname')}: <span className="text-foreground font-medium">{nickname}</span>
-            <button onClick={() => { setNicknameConfirmed(false); setShowManualInput(false); }} className="ml-2 underline text-primary">{t('common.edit')}</button>
+            <button onClick={() => { setNicknameConfirmed(false); setColumnConfirmed(false); setShowManualInput(false); }} className="ml-2 underline text-primary">{t('common.edit')}</button>
           </div>
+          {needsColumnStep && (
+            <div className="text-xs text-muted-foreground mt-1">
+              {t('board.selectedColumn')}: <span className="text-foreground font-medium">{columnId}</span>
+              <button onClick={() => setColumnConfirmed(false)} className="ml-2 underline text-primary">{t('common.edit')}</button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -313,7 +376,7 @@ export default function BoardSubmitPage() {
             </Button>
           </div>
 
-          {board.view_mode === 'kanban' && Array.isArray(board.columns) && board.columns.length > 0 && (
+          {(board.view_mode === 'kanban' || board.view_mode === 'storyboard') && Array.isArray(board.columns) && board.columns.length > 0 && (
             <select
               value={columnId}
               onChange={e => setColumnId(e.target.value)}

@@ -17,11 +17,9 @@ interface Props {
   defaultNickname?: string;
   isCloud?: boolean;
   boardId?: string;
-  presetPosition?: { x: number; y: number } | null;
-  onClearPresetPosition?: () => void;
 }
 
-export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNickname, isCloud, boardId, presetPosition, onClearPresetPosition }: Props) {
+export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNickname, isCloud, boardId }: Props) {
   const { t } = useLanguage();
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
@@ -75,13 +73,10 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
       card_type: mediaUrl ? getCardType(fileCategory) : url.trim() ? 'url' : 'text',
       column_id: columnId,
       media_url: mediaUrl,
-      position_x: presetPosition?.x,
-      position_y: presetPosition?.y,
     });
     setContent('');
     setUrl('');
     clearMedia();
-    onClearPresetPosition?.();
   };
 
   return (
@@ -153,7 +148,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
             ))}
           </select>
         )}
-        {(viewMode === 'columns' || viewMode === 'storyboard') && columns && columns.length > 0 && (
+        {((viewMode === 'kanban') || (viewMode === 'storyboard')) && columns && columns.length > 0 && (
           <select
             value={columnId}
             onChange={e => setColumnId(e.target.value)}
@@ -163,14 +158,6 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
               <option key={col} value={col}>{col}</option>
             ))}
           </select>
-        )}
-        {viewMode === 'map' && presetPosition && (
-          <div className="h-8 px-2 rounded-md border border-primary/30 bg-primary/5 text-[11px] text-primary flex items-center gap-1">
-            <span>{t('board.mapPointReady')}</span>
-            <button type="button" onClick={onClearPresetPosition} className="underline underline-offset-2">
-              {t('board.clear')}
-            </button>
-          </div>
         )}
         <div className="flex gap-1">
           {CARD_COLORS.map(c => (
