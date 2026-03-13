@@ -261,7 +261,7 @@ export default function BoardPanel() {
         p_columns: patch.columns,
         p_background_color: patch.background_color,
         p_banned_words: patch.banned_words,
-        p_student_names: patch.student_names,
+        p_student_names: patch.student_names ?? activeBoard.student_names ?? [],
       } as any);
 
       if (error) {
