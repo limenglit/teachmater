@@ -22,17 +22,13 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
   const [importOpen, setImportOpen] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const previewTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    return () => {
-      if (previewTimerRef.current !== null) {
-        window.clearTimeout(previewTimerRef.current);
-      }
-    };
-  }, []);
+    if (collapsed) {
+      setImportOpen(false);
+    }
+  }, [collapsed]);
 
   const handleIconKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, action?: () => void) => {
     if (!action) return;
@@ -40,25 +36,6 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       event.preventDefault();
       action();
     }
-  };
-
-  const handleCollapsedMouseEnter = () => {
-    if (previewTimerRef.current !== null) {
-      window.clearTimeout(previewTimerRef.current);
-    }
-    // Small delay avoids accidental hover flash when cursor briefly passes by.
-    previewTimerRef.current = window.setTimeout(() => {
-      setShowPreview(true);
-      previewTimerRef.current = null;
-    }, 120);
-  };
-
-  const handleCollapsedMouseLeave = () => {
-    if (previewTimerRef.current !== null) {
-      window.clearTimeout(previewTimerRef.current);
-      previewTimerRef.current = null;
-    }
-    setShowPreview(false);
   };
 
   const handleAdd = () => {
@@ -117,9 +94,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     return (
       <TooltipProvider delayDuration={250}>
         <div
-          className="relative w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2 transition-[width] duration-150 ease-out"
-          onMouseEnter={handleCollapsedMouseEnter}
-          onMouseLeave={handleCollapsedMouseLeave}
+          className="w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2 transition-[width] duration-150 ease-out"
         >
           <Tooltip>
             <TooltipTrigger asChild>
@@ -137,35 +112,6 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
             <TooltipContent side="right">{t('sidebar.expandPanel')}</TooltipContent>
           </Tooltip>
         <span className="text-xs text-muted-foreground font-medium writing-vertical">{students.length}{t('sidebar.persons')}</span>
-
-        {/* Desktop hover preview in collapsed state */}
-        <div
-          className={`pointer-events-none hidden lg:block absolute left-full top-3 ml-2 w-56 rounded-lg border border-border bg-card shadow-lg p-2 translate-x-1 transition-all duration-150 z-50 ${
-            showPreview ? 'opacity-100 translate-x-0' : 'opacity-0'
-          }`}
-        >
-          <div className="text-xs font-semibold text-foreground px-1 pb-1 border-b border-border mb-1">
-            {t('sidebar.studentList')} ({students.length}{t('sidebar.persons')})
-          </div>
-          <div className="max-h-52 overflow-y-auto space-y-0.5">
-            {students.slice(0, 8).map((student) => (
-              <div key={student.id} className="px-1 py-1 text-xs text-foreground truncate rounded hover:bg-muted">
-                {student.name}
-              </div>
-            ))}
-            {students.length > 8 && (
-              <div className="px-1 py-1 text-xs text-muted-foreground">
-                +{students.length - 8}
-              </div>
-            )}
-            {students.length === 0 && (
-              <div className="px-1 py-2 text-xs text-muted-foreground">{t('sidebar.noStudents')}</div>
-            )}
-          </div>
-          <div className="text-[11px] text-muted-foreground px-1 pt-1 border-t border-border mt-1">
-            {t('sidebar.expandPanel')}
-          </div>
-        </div>
         </div>
       </TooltipProvider>
     );
