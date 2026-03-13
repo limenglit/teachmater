@@ -1347,6 +1347,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.ai.addToBankAndSwitch': '加入题库并去组卷',
     'quiz.ai.addedToBank': '已加入题库 {0} 道题',
     'quiz.ai.loginRequired': '请先登录后使用 AI 出题',
+    'quiz.ai.dedupRemoved': '已自动去重 {0} 道与题库重复的题目',
+    'quiz.ai.coverageWarning': '以下知识点未被覆盖：',
   },
   en: {
     'app.title': 'TeachMate',
