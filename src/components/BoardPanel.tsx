@@ -694,9 +694,6 @@ export default function BoardPanel() {
             <p className="text-sm text-muted-foreground mb-6 max-w-xs">
               {t('board.emptyHint')}
             </p>
-            <Button onClick={createBoard} className="gap-1.5 px-6">
-              <Plus className="w-4 h-4" /> {t('board.create')}
-            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
