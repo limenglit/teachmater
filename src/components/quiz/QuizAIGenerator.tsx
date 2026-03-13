@@ -109,6 +109,63 @@ function normalizeGeneratedQuestion(raw: any, index: number, defaultTag: string)
   };
 }
 
+// ── Dedup: check content similarity against existing bank ──
+function isSimilarContent(a: string, b: string): boolean {
+  const na = a.replace(/\s+/g, '').toLowerCase();
+  const nb = b.replace(/\s+/g, '').toLowerCase();
+  if (na === nb) return true;
+  // Jaccard on bigrams for fuzzy match
+  if (na.length < 4 || nb.length < 4) return na === nb;
+  const bigrams = (s: string) => {
+    const set = new Set<string>();
+    for (let i = 0; i < s.length - 1; i++) set.add(s.slice(i, i + 2));
+    return set;
+  };
+  const setA = bigrams(na);
+  const setB = bigrams(nb);
+  let inter = 0;
+  for (const b of setA) if (setB.has(b)) inter++;
+  const union = setA.size + setB.size - inter;
+  return union > 0 && inter / union > 0.7;
+}
+
+function deduplicateGenerated(
+  generated: GeneratedQuestion[],
+  existingBank: QuizQuestion[],
+): { unique: GeneratedQuestion[]; dupCount: number } {
+  const unique: GeneratedQuestion[] = [];
+  let dupCount = 0;
+  for (const q of generated) {
+    const isDup =
+      existingBank.some((e) => isSimilarContent(e.content, q.content)) ||
+      unique.some((u) => isSimilarContent(u.content, q.content));
+    if (isDup) {
+      dupCount++;
+    } else {
+      unique.push(q);
+    }
+  }
+  return { unique, dupCount };
+}
+
+// ── Coverage: check each knowledge point has at least 1 question ──
+function checkKnowledgeCoverage(
+  questions: GeneratedQuestion[],
+  knowledgePoints: string[],
+): string[] {
+  const uncovered: string[] = [];
+  for (const kp of knowledgePoints) {
+    const kpLower = kp.toLowerCase();
+    const found = questions.some(
+      (q) =>
+        q.content.toLowerCase().includes(kpLower) ||
+        q.tags.toLowerCase().includes(kpLower),
+    );
+    if (!found) uncovered.push(kp);
+  }
+  return uncovered;
+}
+
 export default function QuizAIGenerator({
   isGuest,
   userId,
@@ -126,6 +183,8 @@ export default function QuizAIGenerator({
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState<GeneratedQuestion[]>([]);
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [dedupInfo, setDedupInfo] = useState<string | null>(null);
+  const [coverageWarning, setCoverageWarning] = useState<string[] | null>(null);
 
   const totalCount = useMemo(
     () => counts.single + counts.multi + counts.tf + counts.short,
@@ -165,6 +224,8 @@ export default function QuizAIGenerator({
     }
 
     setGenerating(true);
+    setDedupInfo(null);
+    setCoverageWarning(null);
     try {
       const { data, error } = await supabase.functions.invoke('generate-quiz-questions', {
         body: {
@@ -183,9 +244,21 @@ export default function QuizAIGenerator({
         .map((item: any, index: number) => normalizeGeneratedQuestion(item, index, defaultTag))
         .filter((item: GeneratedQuestion | null): item is GeneratedQuestion => Boolean(item));
 
-      setGenerated(normalized);
-      setPicked(new Set(normalized.map((item) => item.id)));
-      toast({ title: tFormat(t('quiz.ai.generatedCount'), normalized.length) });
+      // Dedup against existing bank
+      const { unique, dupCount } = deduplicateGenerated(normalized, questions);
+      if (dupCount > 0) {
+        setDedupInfo(tFormat(t('quiz.ai.dedupRemoved'), dupCount));
+      }
+
+      // Coverage check
+      const uncovered = checkKnowledgeCoverage(unique, points);
+      if (uncovered.length > 0) {
+        setCoverageWarning(uncovered);
+      }
+
+      setGenerated(unique);
+      setPicked(new Set(unique.map((item) => item.id)));
+      toast({ title: tFormat(t('quiz.ai.generatedCount'), unique.length) });
     } catch (err: any) {
       toast({ title: err?.message || t('visual.analyzeError'), variant: 'destructive' });
     } finally {
