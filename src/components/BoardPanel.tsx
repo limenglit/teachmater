@@ -237,12 +237,50 @@ export default function BoardPanel() {
     }
   };
 
+  const updateBoardSettings = async (patch: Partial<Board>) => {
+    if (!activeBoard) return;
+
+    const previousBoard = activeBoard;
+    const updated = { ...activeBoard, ...patch };
+    setActiveBoard(updated);
+    setBoards(prev => prev.map(b => b.id === updated.id ? updated : b));
+
+    if (isCloud) {
+      const token = getCreatorToken(activeBoard.id);
+      if (!token) return;
+
+      const { error } = await supabase.rpc('update_board', {
+        p_board_id: activeBoard.id,
+        p_token: token,
+        p_title: patch.title,
+        p_description: patch.description,
+        p_view_mode: patch.view_mode,
+        p_is_locked: patch.is_locked,
+        p_moderation_enabled: patch.moderation_enabled,
+        p_columns: patch.columns,
+        p_background_color: patch.background_color,
+        p_banned_words: patch.banned_words,
+        p_student_names: patch.student_names,
+      } as any);
+
+      if (error) {
+        setActiveBoard(previousBoard);
+        setBoards(prev => prev.map(b => b.id === previousBoard.id ? previousBoard : b));
+        toast({ title: error.message, variant: 'destructive' });
+      }
+      return;
+    }
+
+    saveLocalBoards(boards.map(b => b.id === updated.id ? updated : b));
+  };
+
   const switchViewMode = async (mode: string) => {
     if (!activeBoard) return;
+    const patch: Partial<Board> = { view_mode: mode };
     if (mode === 'storyboard' && (!activeBoard.columns || activeBoard.columns.length < 2)) {
-      await updateBoardSetting('columns', DEFAULT_STORYBOARD);
+      patch.columns = DEFAULT_STORYBOARD;
     }
-    await updateBoardSetting('view_mode', mode);
+    await updateBoardSettings(patch);
   };
 
   const saveStoryboardLayout = async () => {
