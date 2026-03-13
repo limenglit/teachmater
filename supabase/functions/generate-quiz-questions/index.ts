@@ -106,7 +106,7 @@ function sanitizeQuestions(rawList: any[], fallbackTag: string): GeneratedQuesti
 }
 
 serve(async (req) => {
-  const cors = getCorsHeaders(req);
+  const cors = getCorsHeaders();
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
   try {
