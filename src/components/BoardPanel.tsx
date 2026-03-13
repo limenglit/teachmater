@@ -6,13 +6,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, Columns3, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, Columns3, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, PanelsTopLeft, Clapperboard, MapPinned } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
 import BoardKanbanView from './board/BoardKanbanView';
 import BoardTimelineView from './board/BoardTimelineView';
 import BoardCanvasView from './board/BoardCanvasView';
+import BoardStoryboardView from './board/BoardStoryboardView';
+import BoardMapView from './board/BoardMapView';
 import BoardPPTMode from './board/BoardPPTMode';
 import BoardCardForm from './board/BoardCardForm';
 import BoardWordCloud from './board/BoardWordCloud';
@@ -55,6 +57,9 @@ export interface BoardCard {
 
 const BOARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 const STORAGE_KEY = 'board-creator-tokens';
+
+const DEFAULT_COLUMNS = ['栏目 1', '栏目 2', '栏目 3'];
+const DEFAULT_STORYBOARD = ['开场', '冲突', '转折', '结尾'];
 
 function getCreatorTokens(): Record<string, string> {
   try {
@@ -113,6 +118,11 @@ export default function BoardPanel() {
   const [showSettings, setShowSettings] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [layoutInput, setLayoutInput] = useState('');
+  const [storyCount, setStoryCount] = useState(4);
+  const [storyThemes, setStoryThemes] = useState('');
+  const [mapCity, setMapCity] = useState('beijing');
+  const [mapPresetPosition, setMapPresetPosition] = useState<{ x: number; y: number } | null>(null);
   const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
 
   // Load boards
@@ -123,6 +133,20 @@ export default function BoardPanel() {
       setBoards(getLocalBoards());
     }
   }, [isCloud]);
+
+  useEffect(() => {
+    if (!activeBoard) return;
+    setLayoutInput((activeBoard.columns || []).join('\n'));
+    setStoryThemes((activeBoard.columns || []).join('\n'));
+    setStoryCount(Math.max(2, (activeBoard.columns || []).length || 4));
+    setMapPresetPosition(null);
+    try {
+      const meta = activeBoard.description ? JSON.parse(activeBoard.description) : {};
+      setMapCity(typeof meta?.mapCity === 'string' ? meta.mapCity : 'beijing');
+    } catch {
+      setMapCity('beijing');
+    }
+  }, [activeBoard?.id, activeBoard?.description, activeBoard?.columns]);
 
   const loadCloudBoards = async () => {
     setLoading(true);
@@ -227,6 +251,59 @@ export default function BoardPanel() {
     }
   };
 
+  const updateBoardMeta = async (patch: Record<string, any>) => {
+    if (!activeBoard) return;
+    let currentMeta: Record<string, any> = {};
+    try {
+      currentMeta = activeBoard.description ? JSON.parse(activeBoard.description) : {};
+    } catch {
+      currentMeta = {};
+    }
+    await updateBoardSetting('description', JSON.stringify({ ...currentMeta, ...patch }));
+  };
+
+  const switchViewMode = async (mode: string) => {
+    if (!activeBoard) return;
+
+    if (mode === 'columns' && (!activeBoard.columns || activeBoard.columns.length === 0)) {
+      await updateBoardSetting('columns', DEFAULT_COLUMNS);
+    }
+    if (mode === 'storyboard' && (!activeBoard.columns || activeBoard.columns.length < 2)) {
+      await updateBoardSetting('columns', DEFAULT_STORYBOARD);
+    }
+    setMapPresetPosition(null);
+    await updateBoardSetting('view_mode', mode);
+  };
+
+  const saveColumnsLayout = async () => {
+    if (!activeBoard) return;
+    const items = layoutInput.split('\n').map(s => s.trim()).filter(Boolean);
+    if (items.length < 2) {
+      toast({ title: t('board.needAtLeastTwoColumns'), variant: 'destructive' });
+      return;
+    }
+    await updateBoardSetting('columns', items);
+    setShowSettings(false);
+  };
+
+  const saveStoryboardLayout = async () => {
+    if (!activeBoard) return;
+    const targetCount = Math.max(2, Math.min(12, storyCount));
+    const rawThemes = storyThemes.split('\n').map(s => s.trim()).filter(Boolean);
+    const normalized = Array.from({ length: targetCount }, (_, idx) => rawThemes[idx] || `${t('board.storyPanel')} ${idx + 1}`);
+    await updateBoardSetting('columns', normalized);
+    setShowSettings(false);
+  };
+
+  const handleMapPickPoint = (point: { x: number; y: number }) => {
+    setMapPresetPosition(point);
+  };
+
+  const handleMapCityChange = async (city: string) => {
+    setMapCity(city);
+    await updateBoardMeta({ mapCity: city });
+  };
+
   const addCard = async (card: Partial<BoardCard>) => {
     if (!activeBoard) return;
     // Check banned words
@@ -253,8 +330,8 @@ export default function BoardPanel() {
         author_nickname: card.author_nickname || t('board.anonymous'),
         is_approved: card.is_approved !== false,
         column_id: card.column_id || '',
-        position_x: card.position_x || Math.random() * 600,
-        position_y: card.position_y || Math.random() * 400,
+        position_x: card.position_x ?? Math.random() * 600,
+        position_y: card.position_y ?? Math.random() * 400,
         sort_order: cards.length,
       }).select().single();
       if (data) setCards(prev => [...prev, data as any as BoardCard]);
@@ -272,8 +349,8 @@ export default function BoardPanel() {
         is_approved: card.is_approved !== false,
         likes_count: 0,
         column_id: card.column_id || '',
-        position_x: card.position_x || Math.random() * 600,
-        position_y: card.position_y || Math.random() * 400,
+        position_x: card.position_x ?? Math.random() * 600,
+        position_y: card.position_y ?? Math.random() * 400,
         sort_order: cards.length,
         created_at: new Date().toISOString(),
       };
@@ -453,21 +530,30 @@ export default function BoardPanel() {
 
           <div className="ml-auto flex items-center gap-1 max-w-full overflow-x-auto pb-1">
             {/* View mode switcher */}
-            {(['wall', 'kanban', 'timeline', 'canvas'] as const).map(mode => (
+            {(['wall', 'kanban', 'timeline', 'canvas', 'columns', 'storyboard', 'map'] as const).map(mode => (
               <Button
                 key={mode}
                 variant={activeBoard.view_mode === mode ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs px-2"
-                onClick={() => updateBoardSetting('view_mode', mode)}
+                onClick={() => switchViewMode(mode)}
               >
                 {mode === 'wall' && <LayoutGrid className="w-3 h-3 mr-1" />}
                 {mode === 'kanban' && <Columns3 className="w-3 h-3 mr-1" />}
                 {mode === 'timeline' && <Clock className="w-3 h-3 mr-1" />}
                 {mode === 'canvas' && <PenBox className="w-3 h-3 mr-1" />}
+                {mode === 'columns' && <PanelsTopLeft className="w-3 h-3 mr-1" />}
+                {mode === 'storyboard' && <Clapperboard className="w-3 h-3 mr-1" />}
+                {mode === 'map' && <MapPinned className="w-3 h-3 mr-1" />}
                 {t(`board.view${mode.charAt(0).toUpperCase() + mode.slice(1)}` as any)}
               </Button>
             ))}
+
+            {isCreator && ['columns', 'storyboard'].includes(activeBoard.view_mode) && (
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowSettings(true)}>
+                <Settings className="w-3 h-3" /> {t('board.layoutSettings')}
+              </Button>
+            )}
 
             {isCreator && (
               <>
@@ -524,6 +610,8 @@ export default function BoardPanel() {
               viewMode={activeBoard.view_mode}
               isCloud={isCloud}
               boardId={activeBoard.id}
+              presetPosition={activeBoard.view_mode === 'map' ? mapPresetPosition : null}
+              onClearPresetPosition={() => setMapPresetPosition(null)}
             />
           </div>
         )}
@@ -561,7 +649,59 @@ export default function BoardPanel() {
           {activeBoard.view_mode === 'canvas' && (
             <BoardCanvasView cards={sortedCards} onManage={manageCard} onLike={likeCard} isCreator={isCreator} />
           )}
+          {activeBoard.view_mode === 'columns' && (
+            <BoardKanbanView cards={sortedCards} columns={activeBoard.columns} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
+          )}
+          {activeBoard.view_mode === 'storyboard' && (
+            <BoardStoryboardView cards={sortedCards} panels={activeBoard.columns} onManage={manageCard} onLike={likeCard} isCreator={isCreator} isCloud={isCloud} />
+          )}
+          {activeBoard.view_mode === 'map' && (
+            <BoardMapView cards={sortedCards} city={mapCity} onCityChange={handleMapCityChange} onPickPoint={handleMapPickPoint} />
+          )}
         </div>
+
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{t('board.layoutSettings')}</DialogTitle>
+            </DialogHeader>
+            {activeBoard.view_mode === 'columns' && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">{t('board.columnsHint')}</p>
+                <textarea
+                  value={layoutInput}
+                  onChange={(e) => setLayoutInput(e.target.value)}
+                  className="w-full min-h-[180px] rounded-md border border-border bg-background p-3 text-sm"
+                  placeholder={t('board.columnsPlaceholder')}
+                />
+                <Button onClick={saveColumnsLayout}>{t('common.confirm')}</Button>
+              </div>
+            )}
+            {activeBoard.view_mode === 'storyboard' && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">{t('board.storyboardHint')}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-foreground">{t('board.storyboardCount')}</span>
+                  <Input
+                    type="number"
+                    min={2}
+                    max={12}
+                    value={storyCount}
+                    onChange={(e) => setStoryCount(Number(e.target.value) || 2)}
+                    className="w-24 h-9"
+                  />
+                </div>
+                <textarea
+                  value={storyThemes}
+                  onChange={(e) => setStoryThemes(e.target.value)}
+                  className="w-full min-h-[180px] rounded-md border border-border bg-background p-3 text-sm"
+                  placeholder={t('board.storyboardThemesPlaceholder')}
+                />
+                <Button onClick={saveStoryboardLayout}>{t('common.confirm')}</Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* QR Code Dialog */}
         <Dialog open={showQR} onOpenChange={setShowQR}>

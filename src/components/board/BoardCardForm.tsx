@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,11 @@ interface Props {
   defaultNickname?: string;
   isCloud?: boolean;
   boardId?: string;
+  presetPosition?: { x: number; y: number } | null;
+  onClearPresetPosition?: () => void;
 }
 
-export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNickname, isCloud, boardId }: Props) {
+export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNickname, isCloud, boardId, presetPosition, onClearPresetPosition }: Props) {
   const { t } = useLanguage();
   const [content, setContent] = useState('');
   const [url, setUrl] = useState('');
@@ -31,6 +33,13 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'document'>('image');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!columns || columns.length === 0) return;
+    if (!columnId || !columns.includes(columnId)) {
+      setColumnId(columns[0]);
+    }
+  }, [columns, columnId]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -66,10 +75,13 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
       card_type: mediaUrl ? getCardType(fileCategory) : url.trim() ? 'url' : 'text',
       column_id: columnId,
       media_url: mediaUrl,
+      position_x: presetPosition?.x,
+      position_y: presetPosition?.y,
     });
     setContent('');
     setUrl('');
     clearMedia();
+    onClearPresetPosition?.();
   };
 
   return (
@@ -140,6 +152,25 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
               <option key={col} value={col}>{col}</option>
             ))}
           </select>
+        )}
+        {(viewMode === 'columns' || viewMode === 'storyboard') && columns && columns.length > 0 && (
+          <select
+            value={columnId}
+            onChange={e => setColumnId(e.target.value)}
+            className="h-8 text-xs rounded-md border border-border bg-background px-2 max-w-44"
+          >
+            {columns.map(col => (
+              <option key={col} value={col}>{col}</option>
+            ))}
+          </select>
+        )}
+        {viewMode === 'map' && presetPosition && (
+          <div className="h-8 px-2 rounded-md border border-primary/30 bg-primary/5 text-[11px] text-primary flex items-center gap-1">
+            <span>{t('board.mapPointReady')}</span>
+            <button type="button" onClick={onClearPresetPosition} className="underline underline-offset-2">
+              {t('board.clear')}
+            </button>
+          </div>
         )}
         <div className="flex gap-1">
           {CARD_COLORS.map(c => (
