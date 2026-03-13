@@ -2632,6 +2632,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.ai.addToBankAndSwitch': 'Add to Bank and Compose',
     'quiz.ai.addedToBank': '{0} questions added to bank',
     'quiz.ai.loginRequired': 'Please log in to use AI question generation',
+    'quiz.ai.dedupRemoved': '{0} duplicate question(s) removed automatically',
+    'quiz.ai.coverageWarning': 'Uncovered knowledge points: ',
   },
   ru: {
     'app.title': 'TeachMate',
