@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Sparkles, Plus, CheckCircle2, ListChecks, ToggleLeft, FileText } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { Sparkles, Plus, CheckCircle2, ListChecks, ToggleLeft, FileText, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
