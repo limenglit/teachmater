@@ -165,7 +165,7 @@ export default function QuizImporter({ onImport }: Props) {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={() => setOpen(true)}>
+      <Button variant="outline" size="sm" className="gap-1 text-xs h-8" onClick={() => setOpen(true)}>
         <Upload className="w-3.5 h-3.5" /> {t('quiz.imp.import')}
       </Button>
 

@@ -369,7 +369,7 @@ export default function QuizQuestionBank({
 
   // List view
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[180px]">
@@ -404,21 +404,21 @@ export default function QuizQuestionBank({
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-xs text-muted-foreground">
           {filteredQuestions.length}/{questions.length} {t('quiz.imp.questionsUnit')}
         </span>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap justify-end">
           {filteredQuestions.length > 0 && (
-            <Button variant="outline" size="sm" className="text-xs h-7" onClick={selectAll}>
+            <Button variant="outline" size="sm" className="text-xs h-8" onClick={selectAll}>
               {selectedIds.size === filteredQuestions.length ? t('quiz.deselectAll') : t('quiz.selectAll')}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowCategoryDialog(true)}>
+          <Button variant="outline" size="sm" className="text-xs h-8 gap-1" onClick={() => setShowCategoryDialog(true)}>
             <Folder className="w-3 h-3" /> {t('quiz.manageCategories')}
           </Button>
           <QuizImporter onImport={handleImport} />
-          <Button size="sm" className="text-xs h-7 gap-1" onClick={() => { resetForm(); setView('add'); }}>
+          <Button size="sm" className="text-xs h-8 gap-1" onClick={() => { resetForm(); setView('add'); }}>
             <Plus className="w-3 h-3" /> {t('quiz.addQuestion')}
           </Button>
         </div>
@@ -430,7 +430,6 @@ export default function QuizQuestionBank({
           <HelpCircle className="w-10 h-10 mx-auto mb-3 text-primary/20" />
           <p className="text-sm font-medium text-foreground mb-1">{t('quiz.noQuestions')}</p>
           <p className="text-xs mb-3">{t('quiz.noQuestionsHint')}</p>
-          <Button size="sm" onClick={() => setView('add')} className="gap-1"><Plus className="w-3.5 h-3.5" /> {t('quiz.addQuestion')}</Button>
         </div>
       ) : (
         <div className="space-y-1.5">
