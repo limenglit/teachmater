@@ -71,8 +71,8 @@ function sanitizeQuestions(rawList: any[], fallbackTag: string): GeneratedQuesti
 
     if (type === 'multi') {
       const options = Array.isArray(raw?.options) ? raw.options.map((o: any) => String(o).trim()).filter(Boolean) : [];
-      const answers = Array.isArray(raw?.correct_answer)
-        ? Array.from(new Set(raw.correct_answer.map((a: any) => String(a).trim().toUpperCase()).filter((a: string) => /^[A-F]$/.test(a))))
+      const answers: string[] = Array.isArray(raw?.correct_answer)
+        ? Array.from(new Set(raw.correct_answer.map((a: any) => String(a).trim().toUpperCase()).filter((a: string) => /^[A-F]$/.test(a)))) as string[]
         : [];
       if (options.length < 2) continue;
       result.push({

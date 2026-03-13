@@ -72,11 +72,11 @@ function normalizeGeneratedQuestion(raw: any, index: number, defaultTag: string)
 
   if (type === 'multi') {
     const options = Array.isArray(raw?.options) ? raw.options.map((o: any) => String(o).trim()).filter(Boolean) : [];
-    const arr = Array.isArray(raw?.correct_answer)
+    const arr: string[] = Array.isArray(raw?.correct_answer)
       ? raw.correct_answer.map((a: any) => String(a).trim().toUpperCase()).filter((a: string) => /^[A-F]$/.test(a))
       : [];
     if (options.length < 2) return null;
-    const unique = Array.from(new Set(arr));
+    const unique: string[] = Array.from(new Set(arr)) as string[];
     return {
       id: `ai-${crypto.randomUUID()}-${index}`,
       type,

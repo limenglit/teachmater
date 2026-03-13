@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.analyze-board]
 verify_jwt = false
+
+[functions.generate-quiz-questions]
+verify_jwt = false
