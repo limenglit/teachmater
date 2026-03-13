@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOpen, FileCheck, History, Users } from 'lucide-react';
+import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOpen, FileCheck, History, Users, Sparkles } from 'lucide-react';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
 import { useStudents } from '@/contexts/StudentContext';
 import { tFormat } from '@/contexts/LanguageContext';
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import QuizStatsView from '@/components/quiz/QuizStatsView';
 import QuizQuestionBank from '@/components/quiz/QuizQuestionBank';
 import QuizPaperBank from '@/components/quiz/QuizPaperBank';
+import QuizAIGenerator from '@/components/quiz/QuizAIGenerator';
 import type { QuizQuestion, QuizSession, QuizCategory, QuizPaper } from '@/components/quiz/quizTypes';
 import {
   getSessionTokens, saveSessionToken, getSessionToken,
@@ -38,7 +39,7 @@ export default function QuizPanel() {
   const [sessions, setSessions] = useState<QuizSession[]>([]);
   const [activeSession, setActiveSession] = useState<QuizSession | null>(null);
 
-  const [tab, setTab] = useState<'bank' | 'papers' | 'sessions'>('bank');
+  const [tab, setTab] = useState<'bank' | 'ai' | 'papers' | 'sessions'>('bank');
   const [showSession, setShowSession] = useState(false);
 
   const [sessionTitle, setSessionTitle] = useState('');
@@ -188,6 +189,7 @@ export default function QuizPanel() {
   // Main view with tabs
   const tabs = [
     { id: 'bank' as const, label: t('quiz.questionBank'), icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { id: 'ai' as const, label: t('quiz.ai.tab'), icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'papers' as const, label: t('quiz.paper.paperBank'), icon: <FileCheck className="w-3.5 h-3.5" /> },
     { id: 'sessions' as const, label: t('quiz.recentSessions'), icon: <History className="w-3.5 h-3.5" /> },
   ];
@@ -243,6 +245,18 @@ export default function QuizPanel() {
                   : t('board.selectClass')}
               </Button>
             }
+          />
+        )}
+
+        {tab === 'ai' && (
+          <QuizAIGenerator
+            isGuest={isGuest}
+            userId={user?.id ?? null}
+            questions={questions}
+            setQuestions={setQuestions}
+            selectedIds={selectedIds}
+            setSelectedIds={setSelectedIds}
+            onSwitchToBank={() => setTab('bank')}
           />
         )}
 
