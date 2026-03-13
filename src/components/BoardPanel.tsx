@@ -230,6 +230,7 @@ export default function BoardPanel() {
           p_board_id: activeBoard.id,
           p_token: token,
           [`p_${key}`]: value,
+          p_student_names: updated.student_names ?? [],
         } as any);
       }
     } else {
