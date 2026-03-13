@@ -424,6 +424,20 @@ export default function QuizAIGenerator({
       </div>
 
       <div className="rounded-xl border border-border p-4 bg-card space-y-3">
+        {/* Dedup & coverage warnings */}
+        {dedupInfo && (
+          <div className="flex items-center gap-2 text-xs rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-primary">
+            <ShieldCheck className="w-4 h-4 shrink-0" />
+            <span>{dedupInfo}</span>
+          </div>
+        )}
+        {coverageWarning && coverageWarning.length > 0 && (
+          <div className="flex items-start gap-2 text-xs rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{t('quiz.ai.coverageWarning')}{coverageWarning.join('、')}</span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <p className="text-sm font-medium text-foreground">{t('quiz.ai.generatedList')}</p>
           {generated.length > 0 && (
