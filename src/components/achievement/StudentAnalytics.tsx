@@ -25,7 +25,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
 
   const [rules, setRules] = useState<ScoringRules>(DEFAULT_RULES);
   const [showRulesConfig, setShowRulesConfig] = useState(false);
-  const [subView, setSubView] = useState<SubView>('overall');
+  const [subView, setSubView] = useState<SubView>('classOverview');
   const [activeDimension, setActiveDimension] = useState<DimensionKey>('board_participate');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
