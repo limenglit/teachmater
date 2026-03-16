@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import StoryboardForm from './storyboard/StoryboardForm';
@@ -149,7 +148,7 @@ export default function StoryboardPanel() {
           )}
         </CardHeader>
         <CardContent className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full pr-2 sm:pr-4">
+          <div className="h-full overflow-y-auto overflow-x-hidden pr-2 sm:pr-4">
             <div className="space-y-6">
               <StoryboardTemplates onSelect={handleSelectTemplate} />
               <Separator />
@@ -167,7 +166,7 @@ export default function StoryboardPanel() {
                 onClear={handleClearHistory}
               />
             </div>
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
 
