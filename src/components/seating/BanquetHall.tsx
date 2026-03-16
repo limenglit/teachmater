@@ -212,7 +212,7 @@ export default function BanquetHall({ students }: Props) {
       .filter(group => group.members.length > 0);
 
     if (filteredGroups.length === 0) {
-      toast.error('No usable group data found.');
+      toast.error('未找到可用的分组数据。');
       return false;
     }
 
@@ -297,17 +297,17 @@ export default function BanquetHall({ students }: Props) {
 
   const saveCurrentSnapshot = () => {
     if (assignment.length === 0) {
-      toast.error('No seat layout to save yet.');
+      toast.error('当前还没有可保存的座位布局。');
       return;
     }
     saveBanquetHallSnapshot(buildSnapshot());
-    toast.success('Current banquet layout saved.');
+    toast.success('已保存当前宴会厅布局。');
   };
 
   const restoreLastSnapshot = () => {
     const snapshot = loadBanquetHallSnapshot();
     if (!snapshot || snapshot.assignment.length === 0) {
-      toast.error('No previous banquet layout found.');
+      toast.error('未找到上次宴会厅布局。');
       return;
     }
 
@@ -326,28 +326,28 @@ export default function BanquetHall({ students }: Props) {
     setAssignment(sanitizedAssignment);
     setClosedSeats(new Set(snapshot.closedSeats || []));
     setReservedTables(new Set(snapshot.reservedTables || []));
-    toast.success('Previous banquet layout restored.');
+    toast.success('已恢复上次宴会厅布局。');
   };
 
   const saveToHistory = () => {
     if (assignment.length === 0) {
-      toast.error('Generate seats before saving to history.');
+      toast.error('请先生成座位，再保存到历史。');
       return;
     }
-    const name = recordName.trim() || `Banquet-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `宴会厅-${new Date().toLocaleString()}`;
     const item = saveBanquetHallHistory(name, buildSnapshot());
     const nextItems = [item, ...historyItems].slice(0, 50);
     setHistoryItems(nextItems);
     setSelectedHistoryId(item.id);
     setRecordName(name);
     saveBanquetHallSnapshot(item.snapshot);
-    toast.success('Saved to banquet history.');
+    toast.success('已保存到宴会厅历史记录。');
   };
 
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('Please select a history record.');
+      toast.error('请先选择一条历史记录。');
       return;
     }
     const snapshot = item.snapshot;
@@ -368,18 +368,18 @@ export default function BanquetHall({ students }: Props) {
     setReservedTables(new Set(snapshot.reservedTables || []));
     setRecordName(item.name);
     saveBanquetHallSnapshot({ ...snapshot, assignment: sanitizedAssignment });
-    toast.success('History restored. Continue adjusting as needed.');
+    toast.success('历史记录已恢复，可继续调整。');
   };
 
   const seatByLastGroups = () => {
     const cachedGroups = loadLastGroups();
     if (cachedGroups.length === 0) {
-      toast.error('No saved group data available.');
+      toast.error('暂无可用的已保存分组数据。');
       return;
     }
     const ok = applyGroupsToSeat(cachedGroups);
     if (ok) {
-      toast.success('Seating generated from groups.');
+      toast.success('已按分组生成座位。');
     }
   };
 
@@ -391,8 +391,13 @@ export default function BanquetHall({ students }: Props) {
   }, [students.length, seatsPerTable, tableCols, tableCount]);
 
   useEffect(() => {
-    setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
+    setTablePositions(Array.from({ length: tableCount }, () => ({ x: 0, y: 0 })));
   }, [tableCount]);
+
+  useEffect(() => {
+    if (!hasTStage) return;
+    setTablePositions(Array.from({ length: tableCount }, () => ({ x: 0, y: 0 })));
+  }, [hasTStage, tableCount]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -503,6 +508,7 @@ export default function BanquetHall({ students }: Props) {
 
   const startTableDrag = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
+    if (hasTStage) return;
     if (seatDraggingRef.current) return;
     draggingRef.current = {
       index,
@@ -562,7 +568,7 @@ export default function BanquetHall({ students }: Props) {
               T{tableIndex + 1}
             </text>
             <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-primary/60 text-xs'}>
-              {isReservedTable ? 'RES' : `${assignedCount}`}
+              {isReservedTable ? '保留' : `${assignedCount}`}
             </text>
           </g>
           {Array.from({ length: totalSlots }).map((_, i) => {
@@ -636,73 +642,73 @@ export default function BanquetHall({ students }: Props) {
     >
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          Name
+          名称
           <Input
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
-            placeholder="One field for history name and export filename"
+            placeholder="同一输入框用于历史名称与导出文件名"
             className="w-72 h-8"
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          Seats/Table
+          每桌座位
           <Input type="number" min={6} max={20} value={seatsPerTable}
             onChange={e => setSeatsPerTable(Math.max(6, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          Rows
+          行数
           <Input type="number" min={1} value={tableRows}
             onChange={e => handleRowsChange(e.target.value)} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          Cols
+          列数
           <Input type="number" min={1} value={tableCols}
             onChange={e => handleColsChange(e.target.value)} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          Tables
+          桌数
           <Input type="number" min={1} value={tableCount}
             onChange={e => handleTableCountChange(e.target.value)} className="w-20 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          Mode
+          模式
           <select
             value={mode}
             onChange={e => setMode(e.target.value as BanquetSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="tableRoundRobin">Round Robin</option>
-            <option value="tableGrouped">One Group One Table</option>
-            <option value="verticalS">Vertical S</option>
-            <option value="horizontalS">Horizontal S</option>
+            <option value="tableRoundRobin">轮转排座</option>
+            <option value="tableGrouped">每组一桌</option>
+            <option value="verticalS">纵向 S 型</option>
+            <option value="horizontalS">横向 S 型</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            Groups
+            分组数
             <Input type="number" min={2} max={30} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          Gap
+          间距
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
 
         <Button variant="outline" onClick={saveCurrentSnapshot} className="gap-2">
-          <Save className="w-4 h-4" /> Save Layout
+          <Save className="w-4 h-4" /> 保存布局
         </Button>
         <Button variant="outline" onClick={saveToHistory} className="gap-2">
-          <Save className="w-4 h-4" /> Save History
+          <Save className="w-4 h-4" /> 保存历史
         </Button>
         <select
           value={selectedHistoryId}
           onChange={e => setSelectedHistoryId(e.target.value)}
           className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
         >
-          <option value="">Select history</option>
+          <option value="">选择历史记录</option>
           {historyItems.map(item => (
             <option key={item.id} value={item.id}>
               {item.name} ({new Date(item.createdAt).toLocaleString()})
@@ -710,48 +716,48 @@ export default function BanquetHall({ students }: Props) {
           ))}
         </select>
         <Button variant="outline" onClick={restoreFromHistory} className="gap-2">
-          <RotateCcw className="w-4 h-4" /> Restore History
+          <RotateCcw className="w-4 h-4" /> 恢复历史
         </Button>
         <Button variant="outline" onClick={restoreLastSnapshot} className="gap-2">
-          <RotateCcw className="w-4 h-4" /> Restore Last
+          <RotateCcw className="w-4 h-4" /> 恢复上次
         </Button>
         <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
-          <Users className="w-4 h-4" /> Seat By Groups
+          <Users className="w-4 h-4" /> 按分组排座
         </Button>
 
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
-          Reset Markers
+          重置标记
         </Button>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> Screen
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 屏幕
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> T-Stage
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> T台
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> Window
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗户
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> Front Door
+            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> Back Door
+            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> 后门
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> Lock Markers
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定标记
           </label>
         </div>
 
         <span className="text-xs text-muted-foreground">
-          Capacity {seatsPerTable * tableCount} | Students {students.length}
+          容量 {seatsPerTable * tableCount} | 学生 {students.length}
         </span>
 
         {assignment.length > 0 && (
           <ExportButtons
             targetRef={printRef}
-            filename={recordName.trim() || 'Banquet-Seating'}
+            filename={recordName.trim() || '宴会厅座位安排'}
             resolveQrCode={resolveQrCode}
             titleValue={recordName}
             onTitleChange={setRecordName}
@@ -760,15 +766,15 @@ export default function BanquetHall({ students }: Props) {
         )}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" /> Check-in
+            <QrCode className="w-4 h-4" /> 签到
           </Button>
         )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> Random
+            <Shuffle className="w-4 h-4" /> 随机排座
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> Auto Seat
+            <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
         </div>
       </div>
@@ -776,7 +782,7 @@ export default function BanquetHall({ students }: Props) {
       <div ref={printRef}>
         <div className="text-center mb-4">
           <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-medium border border-primary/20">
-            Banquet Hall
+            宴会厅
           </div>
         </div>
 
@@ -786,7 +792,7 @@ export default function BanquetHall({ students }: Props) {
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>S</span>
-                  <span className={refTextClass}>Screen</span>
+                  <span className={refTextClass}>屏幕</span>
                 </div>
               )}
               {hasTStage && (
@@ -813,26 +819,26 @@ export default function BanquetHall({ students }: Props) {
                     className="absolute text-[11px] font-medium text-primary/80 select-none pointer-events-none"
                     style={{ left: '50%', top: tStageTopY + 6, transform: 'translateX(-50%)' }}
                   >
-                    T-Stage
+                    T台
                   </div>
                 </>
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>W</span>
-                  <span className={refTextClass}>Window</span>
+                  <span className={refTextClass}>窗户</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
                   <span className={refIconClass}>F</span>
-                  <span className={refTextClass}>Front Door</span>
+                  <span className={refTextClass}>前门</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
                   <span className={refIconClass}>B</span>
-                  <span className={refTextClass}>Back Door</span>
+                  <span className={refTextClass}>后门</span>
                 </div>
               )}
 
@@ -863,15 +869,15 @@ export default function BanquetHall({ students }: Props) {
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">Click Auto Seat to start.</p>
-            <p className="text-sm">Banquet round tables with auto assignment.</p>
+            <p className="text-lg mb-2">点击“自动排座”开始。</p>
+            <p className="text-sm">宴会厅圆桌将按规则自动安排。</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Click table center to reserve/reopen. Reserved tables are skipped by auto seat. Drag names to swap seats. Empty seats can be disabled or reopened.
+          点击桌心可切换“保留/开放”，自动排座会跳过保留桌。可拖拽姓名互换座位；空位可关闭或重新开放。开启 T 台后桌位将锁定在两侧，避免压住 T 台。
         </p>
       )}
       <SeatCheckinDialog
