@@ -137,22 +137,14 @@ function getPreferredRecorderMimeType() {
 
 function detectCaptureBrowser(): CaptureBrowserInfo {
   if (typeof navigator === 'undefined') {
-    return {
-      isSafari: false,
-      isEdge: false,
-      supportsSystemAudio: true,
-    };
+    return { isSafari: false, isEdge: false };
   }
 
   const ua = navigator.userAgent;
   const isEdge = /Edg\//.test(ua);
   const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
 
-  // Safari currently does not reliably expose system audio in getDisplayMedia.
-  return {
-    isSafari,
-    isEdge,
-  };
+  return { isSafari, isEdge };
 }
 
 function clamp(value: number, min: number, max: number) {
