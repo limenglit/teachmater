@@ -13,6 +13,9 @@ import {
   loadSmartClassroomSnapshot,
   saveSmartClassroomSnapshot,
   groupsFromSeatAssignment,
+  loadSmartClassroomHistory,
+  saveSmartClassroomHistory,
+  SmartClassroomHistoryItem,
 } from '@/lib/teamwork-local';
 
 interface Props {
@@ -65,6 +68,9 @@ export default function SmartClassroom({ students }: Props) {
   const [refLocked, setRefLocked] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [linkedGroupNames, setLinkedGroupNames] = useState<string[]>([]);
+  const [recordName, setRecordName] = useState('');
+  const [historyItems, setHistoryItems] = useState<SmartClassroomHistoryItem[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
 
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -244,6 +250,62 @@ export default function SmartClassroom({ students }: Props) {
     toast.success('已保存当前座位布局');
   };
 
+  const buildSnapshot = () => ({
+    seatsPerTable,
+    tableCount,
+    tableCols,
+    tableRows,
+    groupCount,
+    mode,
+    tableGap,
+    assignment,
+    closedSeats: Array.from(closedSeats),
+    reservedTables: Array.from(reservedTables),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const saveToHistory = () => {
+    if (assignment.length === 0) {
+      toast.error('请先完成排座再保存');
+      return;
+    }
+    const name = recordName.trim() || `智能教室-${new Date().toLocaleString()}`;
+    const item = saveSmartClassroomHistory(name, buildSnapshot());
+    const nextItems = [item, ...historyItems].slice(0, 50);
+    setHistoryItems(nextItems);
+    setSelectedHistoryId(item.id);
+    setRecordName(name);
+    saveSmartClassroomSnapshot(item.snapshot);
+    toast.success('已保存到历史记录');
+  };
+
+  const restoreFromHistory = () => {
+    const item = historyItems.find(history => history.id === selectedHistoryId);
+    if (!item) {
+      toast.error('请选择要恢复的历史记录');
+      return;
+    }
+    const snapshot = item.snapshot;
+    const validStudentNames = new Set(students.map(s => s.name));
+    const sanitizedAssignment = snapshot.assignment.map(table =>
+      table.map(name => (validStudentNames.has(name) ? name : ''))
+    );
+
+    setSeatsPerTable(Math.max(3, snapshot.seatsPerTable));
+    setTableCount(Math.max(1, snapshot.tableCount));
+    setTableCols(Math.max(1, snapshot.tableCols));
+    setTableRows(Math.max(1, snapshot.tableRows));
+    setGroupCount(Math.max(1, snapshot.groupCount));
+    setMode(snapshot.mode);
+    setTableGap(Math.max(0, snapshot.tableGap));
+    setAssignment(sanitizedAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    setReservedTables(new Set(snapshot.reservedTables || []));
+    setRecordName(item.name);
+    saveSmartClassroomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
+    toast.success('已从历史记录恢复，可继续调整');
+  };
+
   const restoreLastSnapshot = () => {
     const snapshot = loadSmartClassroomSnapshot();
     if (!snapshot || snapshot.assignment.length === 0) {
@@ -358,6 +420,10 @@ export default function SmartClassroom({ students }: Props) {
       return next;
     });
   }, [tableCount]);
+
+  useEffect(() => {
+    setHistoryItems(loadSmartClassroomHistory());
+  }, []);
 
   useEffect(() => {
     if (restoredOnceRef.current) return;
@@ -582,6 +648,16 @@ export default function SmartClassroom({ students }: Props) {
     >
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          名称
+          <Input
+            type="text"
+            value={recordName}
+            onChange={e => setRecordName(e.target.value)}
+            placeholder="输入名称（用于保存历史和导出文件名）"
+            className="w-72 h-8"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每桌人数
           <Input type="number" min={3} max={12} value={seatsPerTable}
             onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))} className="w-16 h-8 text-center" />
@@ -644,6 +720,24 @@ export default function SmartClassroom({ students }: Props) {
         <Button variant="outline" onClick={saveCurrentSnapshot} className="gap-2">
           <Save className="w-4 h-4" /> 保存布局
         </Button>
+        <Button variant="outline" onClick={saveToHistory} className="gap-2">
+          <Save className="w-4 h-4" /> 保存到历史
+        </Button>
+        <select
+          value={selectedHistoryId}
+          onChange={e => setSelectedHistoryId(e.target.value)}
+          className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+        >
+          <option value="">选择历史记录</option>
+          {historyItems.map(item => (
+            <option key={item.id} value={item.id}>
+              {item.name}（{new Date(item.createdAt).toLocaleString()}）
+            </option>
+          ))}
+        </select>
+        <Button variant="outline" onClick={restoreFromHistory} className="gap-2">
+          <RotateCcw className="w-4 h-4" /> 调出历史
+        </Button>
         <Button variant="outline" onClick={restoreLastSnapshot} className="gap-2">
           <RotateCcw className="w-4 h-4" /> 恢复上次座位
         </Button>
@@ -673,7 +767,16 @@ export default function SmartClassroom({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="智能教室座位" resolveQrCode={resolveQrCode} />}
+        {assignment.length > 0 && (
+          <ExportButtons
+            targetRef={printRef}
+            filename={recordName.trim() || '智能教室座位'}
+            resolveQrCode={resolveQrCode}
+            titleValue={recordName}
+            onTitleChange={setRecordName}
+            hideTitleInput
+          />
+        )}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到

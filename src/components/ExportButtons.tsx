@@ -9,13 +9,18 @@ interface Props {
   targetRef: React.RefObject<HTMLElement>;
   filename: string;
   resolveQrCode?: () => Promise<{ value: string; className?: string } | null>;
+  titleValue?: string;
+  onTitleChange?: (value: string) => void;
+  hideTitleInput?: boolean;
 }
 
-export default function ExportButtons({ targetRef, filename, resolveQrCode }: Props) {
+export default function ExportButtons({ targetRef, filename, resolveQrCode, titleValue, onTitleChange, hideTitleInput = false }: Props) {
   const [customTitle, setCustomTitle] = useState('');
+  const isControlled = typeof titleValue === 'string' && typeof onTitleChange === 'function';
+  const currentTitle = isControlled ? titleValue : customTitle;
 
   const getExportTitle = () => {
-    const trimmed = customTitle.trim();
+    const trimmed = currentTitle.trim();
     return trimmed.length > 0 ? trimmed : filename;
   };
 
@@ -42,20 +47,26 @@ export default function ExportButtons({ targetRef, filename, resolveQrCode }: Pr
 
   return (
     <div className="flex items-center gap-1.5">
-      <Input
-        value={customTitle}
-        onChange={e => setCustomTitle(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            if (!customTitle.trim()) {
-              setCustomTitle(filename);
+      {!hideTitleInput && (
+        <Input
+          value={currentTitle}
+          onChange={e => {
+            if (isControlled) onTitleChange(e.target.value);
+            else setCustomTitle(e.target.value);
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (!currentTitle.trim()) {
+                if (isControlled) onTitleChange(filename);
+                else setCustomTitle(filename);
+              }
             }
-          }
-        }}
-        placeholder={`导出名称（回车缺省：${filename}）`}
-        className="h-8 w-64 text-xs"
-      />
+          }}
+          placeholder={`导出名称（回车缺省：${filename}）`}
+          className="h-8 w-64 text-xs"
+        />
+      )}
       <Button variant="outline" size="sm" onClick={() => handleExport('png')} className="gap-1.5 h-8 text-xs">
         <FileImage className="w-3.5 h-3.5" /> PNG
       </Button>

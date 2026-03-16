@@ -24,8 +24,16 @@ export interface SmartClassroomSnapshot {
   updatedAt: string;
 }
 
+export interface SmartClassroomHistoryItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: SmartClassroomSnapshot;
+}
+
 const GROUPS_KEY = 'teachmate_groups_last';
 const SMART_CLASSROOM_KEY = 'teachmate_smart_classroom_last';
+const SMART_CLASSROOM_HISTORY_KEY = 'teachmate_smart_classroom_history';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -64,6 +72,28 @@ export function loadSmartClassroomSnapshot(): SmartClassroomSnapshot | null {
 
 export function saveSmartClassroomSnapshot(snapshot: SmartClassroomSnapshot) {
   localStorage.setItem(SMART_CLASSROOM_KEY, JSON.stringify(snapshot));
+}
+
+export function loadSmartClassroomHistory(): SmartClassroomHistoryItem[] {
+  const parsed = safeParse<SmartClassroomHistoryItem[]>(localStorage.getItem(SMART_CLASSROOM_HISTORY_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && item.snapshot)
+    .slice(0, 50);
+}
+
+export function saveSmartClassroomHistory(name: string, snapshot: SmartClassroomSnapshot) {
+  const current = loadSmartClassroomHistory();
+  const now = new Date().toISOString();
+  const item: SmartClassroomHistoryItem = {
+    id: `smart_${Date.now()}`,
+    name,
+    createdAt: now,
+    snapshot: { ...snapshot, updatedAt: now },
+  };
+  const next = [item, ...current].slice(0, 50);
+  localStorage.setItem(SMART_CLASSROOM_HISTORY_KEY, JSON.stringify(next));
+  return item;
 }
 
 export function groupsFromSeatAssignment(
