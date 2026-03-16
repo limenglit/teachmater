@@ -198,7 +198,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
   // Export to Excel
   const exportExcel = async () => {
     try {
-      const { buildExcelAndSave } = await import('@/lib/excel-utils');
+      const { writeExcelFile } = await import('@/lib/excel-utils');
       const headers = [
         t('analytics.rank'), t('analytics.studentName'),
         ...DIMENSION_KEYS.filter(k => rules[k].enabled).map(k => t(`analytics.dim_${k}`)),
@@ -211,7 +211,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
         ...DIMENSION_KEYS.filter(k => rules[k].enabled).map(k => getRawCount(s.name, k)),
         Math.round(s.totalScore * 10) / 10,
       ]);
-      await buildExcelAndSave([headers, ...rows], `${t('analytics.exportFileName')}_${dateFrom}_${dateTo}.xlsx`);
+      await writeExcelFile([headers, ...rows], t('analytics.exportFileName'), `${t('analytics.exportFileName')}_${dateFrom}_${dateTo}.xlsx`);
       toast({ title: t('analytics.exported') });
     } catch {
       // Fallback to CSV
