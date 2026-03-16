@@ -31,8 +31,14 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
 }
 
 export default function SmartClassroom({ students }: Props) {
+  const initialTableCount = Math.max(1, Math.ceil(students.length / 6));
+  const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
+  const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
+
   const [seatsPerTable, setSeatsPerTable] = useState(6);
-  const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 6) || 4);
+  const [tableCols, setTableCols] = useState(initialTableCols);
+  const [tableRows, setTableRows] = useState(initialTableRows);
+  const [tableCount, setTableCount] = useState(initialTableCount);
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<SmartSeatMode>('tableRoundRobin');
   const [assignment, setAssignment] = useState<string[][]>([]);
@@ -92,9 +98,37 @@ export default function SmartClassroom({ students }: Props) {
     return groups;
   };
 
+  const toPositiveInt = (value: number, fallback = 1) => {
+    if (!Number.isFinite(value)) return fallback;
+    const normalized = Math.floor(value);
+    return normalized > 0 ? normalized : fallback;
+  };
+
+  const applyGridSize = (nextRows: number, nextCols: number) => {
+    setTableRows(nextRows);
+    setTableCols(nextCols);
+    setTableCount(nextRows * nextCols);
+  };
+
+  const handleRowsChange = (raw: string) => {
+    const nextRows = toPositiveInt(Number(raw), tableRows);
+    applyGridSize(nextRows, tableCols);
+  };
+
+  const handleColsChange = (raw: string) => {
+    const nextCols = toPositiveInt(Number(raw), tableCols);
+    applyGridSize(tableRows, nextCols);
+  };
+
+  const handleTableCountChange = (raw: string) => {
+    const nextCount = toPositiveInt(Number(raw), tableCount);
+    setTableCount(nextCount);
+    setTableRows(Math.max(1, Math.ceil(nextCount / tableCols)));
+  };
+
   const getTableOrder = (seatMode: SmartSeatMode) => {
-    const cols = Math.ceil(Math.sqrt(tableCount));
-    const rows = Math.ceil(tableCount / cols);
+    const cols = tableCols;
+    const rows = tableRows;
     const order: number[] = [];
 
     if (seatMode === 'verticalS') {
@@ -142,11 +176,9 @@ export default function SmartClassroom({ students }: Props) {
     setAssignment(tables);
   };
 
-  const tableCols = Math.ceil(Math.sqrt(tableCount));
-  const tableRows = Math.ceil(tableCount / tableCols);
   const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
   const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
-  const exportSceneConfig = { seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) };
+  const exportSceneConfig = { seatsPerTable, tableCount, tableCols, tableRows };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
@@ -159,9 +191,11 @@ export default function SmartClassroom({ students }: Props) {
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
   useEffect(() => {
-    const matchedTableCount = Math.max(1, Math.ceil(students.length / Math.max(1, seatsPerTable)));
-    setTableCount(matchedTableCount);
-  }, [students.length, seatsPerTable]);
+    const requiredTableCount = Math.max(1, Math.ceil(students.length / Math.max(1, seatsPerTable)));
+    if (requiredTableCount <= tableCount) return;
+    setTableCount(requiredTableCount);
+    setTableRows(Math.max(1, Math.ceil(requiredTableCount / tableCols)));
+  }, [students.length, seatsPerTable, tableCols, tableCount]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -342,9 +376,34 @@ export default function SmartClassroom({ students }: Props) {
             onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          行数
+          <Input
+            type="number"
+            min={1}
+            value={tableRows}
+            onChange={e => handleRowsChange(e.target.value)}
+            className="w-16 h-8 text-center"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          列数
+          <Input
+            type="number"
+            min={1}
+            value={tableCols}
+            onChange={e => handleColsChange(e.target.value)}
+            className="w-16 h-8 text-center"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           桌数
-          <Input type="number" min={1} max={20} value={tableCount}
-            onChange={e => setTableCount(Math.max(1, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          <Input
+            type="number"
+            min={1}
+            value={tableCount}
+            onChange={e => handleTableCountChange(e.target.value)}
+            className="w-20 h-8 text-center"
+          />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           模式
@@ -482,7 +541,7 @@ export default function SmartClassroom({ students }: Props) {
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>
-            <p className="text-sm">圆形桌智能教室，每桌 {seatsPerTable} 人，共 {tableCount} 桌</p>
+            <p className="text-sm">圆形桌智能教室，每桌 {seatsPerTable} 人，共 {tableCount} 桌（{tableRows} 行 × {tableCols} 列）</p>
           </div>
         )}
       </div>
