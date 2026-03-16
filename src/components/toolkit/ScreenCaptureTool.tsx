@@ -299,13 +299,17 @@ export default function ScreenCaptureTool() {
   const liveVideoWrapRef = useRef<HTMLDivElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
   const cameraPreviewRef = useRef<HTMLVideoElement>(null);
+  const recordSourceVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraBackgroundImageRef = useRef<HTMLImageElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
   const recordMicStreamRef = useRef<MediaStream | null>(null);
   const recordAudioContextRef = useRef<AudioContext | null>(null);
   const recordRafRef = useRef<number | null>(null);
+  const recordFrameTimerRef = useRef<number | null>(null);
+  const recordVideoFrameCallbackRef = useRef<number | null>(null);
   const recordingActiveRef = useRef(false);
+  const cameraFrameCacheRef = useRef<HTMLCanvasElement | null>(null);
   const regionDragRef = useRef<{ handle: RegionHandle; startX: number; startY: number; startRegion: LiveRegion } | null>(null);
   const cameraDragRef = useRef<{ handle: CameraHandle; startX: number; startY: number; startOverlay: CameraOverlay } | null>(null);
 
@@ -391,8 +395,17 @@ export default function ScreenCaptureTool() {
       const constraints: MediaStreamConstraints = {
         audio: false,
         video: preferredDeviceId
-          ? { deviceId: { exact: preferredDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-          : { width: { ideal: 1280 }, height: { ideal: 720 } },
+          ? {
+              deviceId: { exact: preferredDeviceId },
+              width: { ideal: 960, max: 1280 },
+              height: { ideal: 540, max: 720 },
+              frameRate: { ideal: 20, max: 24 },
+            }
+          : {
+              width: { ideal: 960, max: 1280 },
+              height: { ideal: 540, max: 720 },
+              frameRate: { ideal: 20, max: 24 },
+            },
       };
 
       const nextStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -781,6 +794,19 @@ export default function ScreenCaptureTool() {
       cancelAnimationFrame(recordRafRef.current);
       recordRafRef.current = null;
     }
+    if (recordFrameTimerRef.current !== null) {
+      window.clearTimeout(recordFrameTimerRef.current);
+      recordFrameTimerRef.current = null;
+    }
+    if (recordVideoFrameCallbackRef.current !== null && recordSourceVideoRef.current && 'cancelVideoFrameCallback' in HTMLVideoElement.prototype) {
+      (recordSourceVideoRef.current as HTMLVideoElement & { cancelVideoFrameCallback: (id: number) => void }).cancelVideoFrameCallback(recordVideoFrameCallbackRef.current);
+      recordVideoFrameCallbackRef.current = null;
+    }
+    if (recordSourceVideoRef.current) {
+      recordSourceVideoRef.current.srcObject = null;
+      recordSourceVideoRef.current = null;
+    }
+    cameraFrameCacheRef.current = null;
 
     if (recorderRef.current) {
       recorderRef.current.ondataavailable = null;
@@ -997,20 +1023,26 @@ export default function ScreenCaptureTool() {
         }
       }
 
-      const preview = videoRef.current;
-      if (!preview) throw new Error('preview-missing');
-      if (preview.videoWidth === 0 || preview.videoHeight === 0) {
+      const sourceVideo = document.createElement('video');
+      sourceVideo.muted = true;
+      sourceVideo.playsInline = true;
+      sourceVideo.autoplay = true;
+      sourceVideo.srcObject = displayStream;
+      recordSourceVideoRef.current = sourceVideo;
+
+      if (sourceVideo.videoWidth === 0 || sourceVideo.videoHeight === 0) {
         await new Promise<void>((resolve) => {
           const onLoaded = () => {
-            preview.removeEventListener('loadedmetadata', onLoaded);
+            sourceVideo.removeEventListener('loadedmetadata', onLoaded);
             resolve();
           };
-          preview.addEventListener('loadedmetadata', onLoaded);
+          sourceVideo.addEventListener('loadedmetadata', onLoaded);
         });
       }
+      await sourceVideo.play().catch(() => undefined);
 
-      const sourceWidth = preview.videoWidth;
-      const sourceHeight = preview.videoHeight;
+      const sourceWidth = sourceVideo.videoWidth;
+      const sourceHeight = sourceVideo.videoHeight;
       if (!sourceWidth || !sourceHeight) {
         throw new Error('preview-size-empty');
       }
@@ -1065,6 +1097,8 @@ export default function ScreenCaptureTool() {
           toast({ title: t('capture.recordSaved') });
         }
         displayStream.getTracks().forEach((track) => track.stop());
+        sourceVideo.srcObject = null;
+        recordSourceVideoRef.current = null;
         setStream(null);
         cleanupRecordingResources();
         setWorkspaceOpen(false);
@@ -1083,12 +1117,23 @@ export default function ScreenCaptureTool() {
       };
 
       recordingActiveRef.current = true;
+      const scheduleNextFrame = () => {
+        if (!recordingActiveRef.current) return;
+        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+          recordVideoFrameCallbackRef.current = (sourceVideo as HTMLVideoElement & {
+            requestVideoFrameCallback: (callback: () => void) => number;
+          }).requestVideoFrameCallback(() => renderFrame());
+        } else {
+          recordFrameTimerRef.current = window.setTimeout(renderFrame, 33);
+        }
+      };
+
       const renderFrame = () => {
         if (!recordingActiveRef.current) return;
-        outputCtx.drawImage(preview, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+        outputCtx.drawImage(sourceVideo, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
         const camVideo = cameraVideoRef.current;
-        if (cameraEnabled && camVideo && camVideo.readyState >= 2 && camVideo.videoWidth > 0 && camVideo.videoHeight > 0) {
+        if (cameraEnabled && camVideo) {
           const cameraXInSource = Math.round(cameraOverlay.x * sourceWidth);
           const cameraYInSource = Math.round(cameraOverlay.y * sourceHeight);
           const cameraSizeInSource = Math.max(2, Math.round(cameraOverlay.size * sourceWidth));
@@ -1135,11 +1180,27 @@ export default function ScreenCaptureTool() {
           outputCtx.arc(innerCenterX, innerCenterY, innerRadius, 0, Math.PI * 2);
           outputCtx.closePath();
           outputCtx.clip();
-          outputCtx.drawImage(camVideo, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
+
+          if (camVideo.readyState >= 2 && camVideo.videoWidth > 0 && camVideo.videoHeight > 0) {
+            if (!cameraFrameCacheRef.current) {
+              cameraFrameCacheRef.current = document.createElement('canvas');
+            }
+            const cacheCanvas = cameraFrameCacheRef.current;
+            cacheCanvas.width = camVideo.videoWidth;
+            cacheCanvas.height = camVideo.videoHeight;
+            const cacheCtx = cacheCanvas.getContext('2d');
+            if (cacheCtx) {
+              cacheCtx.drawImage(camVideo, 0, 0, cacheCanvas.width, cacheCanvas.height);
+              outputCtx.drawImage(cacheCanvas, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
+            }
+          } else if (cameraFrameCacheRef.current) {
+            outputCtx.drawImage(cameraFrameCacheRef.current, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
+          }
+
           outputCtx.restore();
         }
 
-        recordRafRef.current = requestAnimationFrame(renderFrame);
+        scheduleNextFrame();
       };
       renderFrame();
 
@@ -1158,6 +1219,14 @@ export default function ScreenCaptureTool() {
     if (recordRafRef.current !== null) {
       cancelAnimationFrame(recordRafRef.current);
       recordRafRef.current = null;
+    }
+    if (recordFrameTimerRef.current !== null) {
+      window.clearTimeout(recordFrameTimerRef.current);
+      recordFrameTimerRef.current = null;
+    }
+    if (recordVideoFrameCallbackRef.current !== null && recordSourceVideoRef.current && 'cancelVideoFrameCallback' in HTMLVideoElement.prototype) {
+      (recordSourceVideoRef.current as HTMLVideoElement & { cancelVideoFrameCallback: (id: number) => void }).cancelVideoFrameCallback(recordVideoFrameCallbackRef.current);
+      recordVideoFrameCallbackRef.current = null;
     }
     if (!recorderRef.current) return;
     if (recorderRef.current.state !== 'inactive') {
