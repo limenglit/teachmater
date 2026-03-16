@@ -308,7 +308,7 @@ export default function ScreenCaptureTool() {
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('capture');
   const [selectedDpi, setSelectedDpi] = useState<number>(360);
-  const [recordAudioSource, setRecordAudioSource] = useState<RecordAudioSource>('system');
+  const [recordAudioSource, setRecordAudioSource] = useState<RecordAudioSource>('none');
   const [isRecording, setIsRecording] = useState(false);
   const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
   const [liveRegion, setLiveRegion] = useState<LiveRegion>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
