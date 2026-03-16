@@ -356,8 +356,27 @@ export default function BoardSubmitPage() {
         )}
       </div>
 
-      {/* ── Card feed ── */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 pb-24 space-y-3">
+      {/* ── Card feed with pull-to-refresh ── */}
+      <div
+        ref={feedRef}
+        className="flex-1 overflow-y-auto px-3 py-3 pb-24 space-y-3"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Pull indicator */}
+        <div
+          className="flex flex-col items-center justify-center overflow-hidden transition-all duration-200"
+          style={{ height: pullDistance > 0 || refreshing ? Math.max(pullDistance, refreshing ? 48 : 0) : 0 }}
+        >
+          <RefreshCw
+            className={`w-5 h-5 text-primary transition-transform ${refreshing ? 'animate-spin' : ''}`}
+            style={{ transform: !refreshing ? `rotate(${pullDistance * 3}deg)` : undefined }}
+          />
+          <span className="text-xs text-muted-foreground mt-1">
+            {refreshing ? t('common.loading') : pullDistance >= PULL_THRESHOLD ? (t('board.releaseToRefresh') || '松开刷新') : (t('board.pullToRefresh') || '下拉刷新')}
+          </span>
+        </div>
         {cardsLoading && cards.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-12">{t('common.loading')}</div>
         )}
