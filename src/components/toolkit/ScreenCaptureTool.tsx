@@ -671,25 +671,37 @@ export default function ScreenCaptureTool() {
         stream.getTracks().forEach((track) => track.stop());
       }
 
-      let wantsSystemAudio = recordAudioSource === 'system' || recordAudioSource === 'both';
+      // Determine if we should request system audio via getDisplayMedia
+      let requestDisplayAudio = false;
+      let effectiveSource = recordAudioSource;
 
-      // Edge may freeze shared video rendering when system audio is requested.
-      if (browserInfo.isEdge && wantsSystemAudio) {
-        wantsSystemAudio = false;
-        setRecordAudioSource('mic');
-        toast({ title: t('capture.systemAudioEdgeFallback') });
+      if (effectiveSource === 'system' || effectiveSource === 'both') {
+        if (browserInfo.isSafari) {
+          // Safari does not support system audio capture at all
+          effectiveSource = effectiveSource === 'both' ? 'mic' : 'none';
+          setRecordAudioSource(effectiveSource);
+          toast({ title: t('capture.safariNoSystemAudio') });
+        } else if (browserInfo.isEdge) {
+          // Edge freezes shared video when system audio is requested via getDisplayMedia
+          // Workaround: don't pass audio:true to getDisplayMedia, use mic instead
+          effectiveSource = effectiveSource === 'both' ? 'mic' : 'none';
+          setRecordAudioSource(effectiveSource);
+          toast({ title: t('capture.systemAudioEdgeFallback') });
+        } else {
+          requestDisplayAudio = true;
+        }
       }
 
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           cursor: 'always',
         } as MediaTrackConstraints,
-        audio: wantsSystemAudio,
+        audio: requestDisplayAudio,
       });
 
       const hasSystemAudioTrack = displayStream.getAudioTracks().length > 0;
       setSystemAudioTrackAvailable(hasSystemAudioTrack);
-      if (wantsSystemAudio && !hasSystemAudioTrack) {
+      if (requestDisplayAudio && !hasSystemAudioTrack) {
         toast({ title: t('capture.systemAudioNotCaptured') });
       }
 
@@ -700,13 +712,14 @@ export default function ScreenCaptureTool() {
         setStream(null);
       };
 
-      // Do not block screen sharing if microphone permission fails.
-      if ((recordAudioSource === 'mic' || recordAudioSource === 'both' || wantsSystemAudio === false || !hasSystemAudioTrack) && !recordMicStreamRef.current) {
+      // Acquire microphone if needed
+      const needsMic = effectiveSource === 'mic' || effectiveSource === 'both';
+      if (needsMic && !recordMicStreamRef.current) {
         try {
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
           recordMicStreamRef.current = micStream;
         } catch {
-          toast({ title: t('capture.permissionDenied'), variant: 'destructive' });
+          toast({ title: t('capture.micPermissionDenied'), variant: 'destructive' });
         }
       }
     } catch {
