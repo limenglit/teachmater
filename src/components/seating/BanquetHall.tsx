@@ -297,40 +297,6 @@ export default function BanquetHall({ students }: Props) {
     setAssignment(tables);
   };
 
-  const saveCurrentSnapshot = () => {
-    if (assignment.length === 0) {
-      toast.error('当前还没有可保存的座位布局。');
-      return;
-    }
-    saveBanquetHallSnapshot(buildSnapshot());
-    toast.success('已保存当前宴会厅布局。');
-  };
-
-  const restoreLastSnapshot = () => {
-    const snapshot = loadBanquetHallSnapshot();
-    if (!snapshot || snapshot.assignment.length === 0) {
-      toast.error('未找到上次宴会厅布局。');
-      return;
-    }
-
-    const validStudentNames = new Set(students.map(s => s.name));
-    const sanitizedAssignment = snapshot.assignment.map(table =>
-      table.map(name => (validStudentNames.has(name) ? name : ''))
-    );
-
-    setSeatsPerTable(Math.max(6, snapshot.seatsPerTable));
-    setTableCount(Math.max(1, snapshot.tableCount));
-    setTableCols(Math.max(1, snapshot.tableCols));
-    setTableRows(Math.max(1, snapshot.tableRows));
-    setGroupCount(Math.max(1, snapshot.groupCount));
-    setMode(snapshot.mode);
-    setTableGap(Math.max(0, snapshot.tableGap));
-    setAssignment(sanitizedAssignment);
-    setClosedSeats(new Set(snapshot.closedSeats || []));
-    setReservedTables(new Set(snapshot.reservedTables || []));
-    toast.success('已恢复上次宴会厅布局。');
-  };
-
   const saveToHistory = () => {
     if (assignment.length === 0) {
       toast.error('请先生成座位，再保存到历史。');
@@ -729,9 +695,6 @@ export default function BanquetHall({ students }: Props) {
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
 
-        <Button variant="outline" onClick={saveCurrentSnapshot} className="gap-2">
-          <Save className="w-4 h-4" /> 保存布局
-        </Button>
         <Button variant="outline" onClick={saveToHistory} className="gap-2">
           <Save className="w-4 h-4" /> 保存历史
         </Button>
@@ -749,9 +712,6 @@ export default function BanquetHall({ students }: Props) {
         </select>
         <Button variant="outline" onClick={restoreFromHistory} className="gap-2">
           <RotateCcw className="w-4 h-4" /> 恢复历史
-        </Button>
-        <Button variant="outline" onClick={restoreLastSnapshot} className="gap-2">
-          <RotateCcw className="w-4 h-4" /> 恢复上次
         </Button>
         <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
           <Users className="w-4 h-4" /> 按分组排座
