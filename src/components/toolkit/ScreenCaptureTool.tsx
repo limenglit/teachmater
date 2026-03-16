@@ -323,16 +323,6 @@ export default function ScreenCaptureTool() {
   const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
   const [liveRegion, setLiveRegion] = useState<LiveRegion>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
 
-  const availableRecordAudioSources = useMemo<RecordAudioSource[]>(() => {
-    return browserInfo.supportsSystemAudio ? ['system', 'mic', 'both'] : ['mic'];
-  }, [browserInfo.supportsSystemAudio]);
-
-  useEffect(() => {
-    if (!availableRecordAudioSources.includes(recordAudioSource)) {
-      setRecordAudioSource('mic');
-    }
-  }, [availableRecordAudioSources, recordAudioSource]);
-
   const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
     const w = clamp(region.w, MIN_REGION_SIZE, 1);
     const h = clamp(region.h, MIN_REGION_SIZE, 1);
@@ -692,7 +682,7 @@ export default function ScreenCaptureTool() {
 
       if (!browserInfo.supportsSystemAudio && wantsSystemAudio) {
         wantsSystemAudio = false;
-        setRecordAudioSource('mic');
+        toast({ title: t('capture.systemAudioUnavailable') });
       }
 
       // Edge may freeze shared video rendering when system audio is requested.
@@ -1433,13 +1423,9 @@ export default function ScreenCaptureTool() {
                     className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                     disabled={isRecording}
                   >
-                    {availableRecordAudioSources.includes('system') && (
-                      <option value="system">{t('capture.audioSystem')}</option>
-                    )}
+                    <option value="system">{t('capture.audioSystem')}</option>
                     <option value="mic">{t('capture.audioMic')}</option>
-                    {availableRecordAudioSources.includes('both') && (
-                      <option value="both">{t('capture.audioBoth')}</option>
-                    )}
+                    <option value="both">{t('capture.audioBoth')}</option>
                   </select>
                   {!browserInfo.supportsSystemAudio && (
                     <span className="text-[11px] text-muted-foreground">{t('capture.systemAudioUnavailable')}</span>
