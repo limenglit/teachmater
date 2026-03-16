@@ -35,6 +35,8 @@ export const DEFAULT_PARAMS: StoryboardParams = {
   audience: 'college',
   tone: 'educational',
   panelCount: 4,
+  layoutMode: 'panels',
+  textMode: 'overlay',
   aspectRatio: '4:3',
   language: 'zh',
   colorScheme: 'soft',
