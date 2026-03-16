@@ -229,27 +229,6 @@ export default function SmartClassroom({ students }: Props) {
     return true;
   };
 
-  const saveCurrentSnapshot = () => {
-    if (assignment.length === 0) {
-      toast.error('当前没有可保存的座位布局');
-      return;
-    }
-    saveSmartClassroomSnapshot({
-      seatsPerTable,
-      tableCount,
-      tableCols,
-      tableRows,
-      groupCount,
-      mode,
-      tableGap,
-      assignment,
-      closedSeats: Array.from(closedSeats),
-      reservedTables: Array.from(reservedTables),
-      updatedAt: new Date().toISOString(),
-    });
-    toast.success('已保存当前座位布局');
-  };
-
   const buildSnapshot = () => ({
     seatsPerTable,
     tableCount,
@@ -304,31 +283,6 @@ export default function SmartClassroom({ students }: Props) {
     setRecordName(item.name);
     saveSmartClassroomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
     toast.success('已从历史记录恢复，可继续调整');
-  };
-
-  const restoreLastSnapshot = () => {
-    const snapshot = loadSmartClassroomSnapshot();
-    if (!snapshot || snapshot.assignment.length === 0) {
-      toast.error('暂无可恢复的座位布局');
-      return;
-    }
-
-    const validStudentNames = new Set(students.map(s => s.name));
-    const sanitizedAssignment = snapshot.assignment.map(table =>
-      table.map(name => (validStudentNames.has(name) ? name : ''))
-    );
-
-    setSeatsPerTable(Math.max(3, snapshot.seatsPerTable));
-    setTableCount(Math.max(1, snapshot.tableCount));
-    setTableCols(Math.max(1, snapshot.tableCols));
-    setTableRows(Math.max(1, snapshot.tableRows));
-    setGroupCount(Math.max(1, snapshot.groupCount));
-    setMode(snapshot.mode);
-    setTableGap(Math.max(0, snapshot.tableGap));
-    setAssignment(sanitizedAssignment);
-    setClosedSeats(new Set(snapshot.closedSeats || []));
-    setReservedTables(new Set(snapshot.reservedTables || []));
-    toast.success('已恢复上次座位布局');
   };
 
   const seatByLastGroups = () => {
@@ -646,7 +600,7 @@ export default function SmartClassroom({ students }: Props) {
         refDraggingRef.current = null;
       }}
     >
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           名称
           <Input
@@ -717,30 +671,31 @@ export default function SmartClassroom({ students }: Props) {
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
-        <Button variant="outline" onClick={saveCurrentSnapshot} className="gap-2">
-          <Save className="w-4 h-4" /> 保存布局
-        </Button>
-        <Button variant="outline" onClick={saveToHistory} className="gap-2">
-          <Save className="w-4 h-4" /> 保存到历史
-        </Button>
-        <select
-          value={selectedHistoryId}
-          onChange={e => setSelectedHistoryId(e.target.value)}
-          className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-        >
-          <option value="">选择历史记录</option>
-          {historyItems.map(item => (
-            <option key={item.id} value={item.id}>
-              {item.name}（{new Date(item.createdAt).toLocaleString()}）
-            </option>
-          ))}
-        </select>
-        <Button variant="outline" onClick={restoreFromHistory} className="gap-2">
-          <RotateCcw className="w-4 h-4" /> 调出历史
-        </Button>
-        <Button variant="outline" onClick={restoreLastSnapshot} className="gap-2">
-          <RotateCcw className="w-4 h-4" /> 恢复上次座位
-        </Button>
+        <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8">
+            <Save className="w-4 h-4" /> 保存历史
+          </Button>
+          <select
+            value={selectedHistoryId}
+            onChange={e => setSelectedHistoryId(e.target.value)}
+            className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="">选择历史记录</option>
+            {historyItems.map(item => (
+              <option key={item.id} value={item.id}>
+                {item.name}（{new Date(item.createdAt).toLocaleString()}）
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="outline"
+            onClick={restoreFromHistory}
+            disabled={!selectedHistoryId}
+            className="gap-2 h-8"
+          >
+            <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
+        </div>
         <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
           <Users className="w-4 h-4" /> 按分组一桌
         </Button>
@@ -767,6 +722,9 @@ export default function SmartClassroom({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
+        <span className="text-xs text-muted-foreground">
+          容量 {seatsPerTable * tableCount} | 学生 {students.length}
+        </span>
         {assignment.length > 0 && (
           <ExportButtons
             targetRef={printRef}
