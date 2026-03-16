@@ -5,11 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, Settings2, Download, Calendar, Users, TrendingUp, Eye } from 'lucide-react';
+import { BarChart3, Settings2, Download, Calendar, Users, TrendingUp, Eye, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import RadarChart from './RadarChart';
 import ScoringRulesConfig from './ScoringRulesConfig';
+import ClassOverview from './ClassOverview';
 import { type ScoringRules, type DimensionKey, type StudentDimensionData, DEFAULT_RULES, DIMENSION_KEYS } from './analyticsTypes';
 
 interface Props {
