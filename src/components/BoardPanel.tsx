@@ -520,7 +520,7 @@ export default function BoardPanel() {
             </span>
           )}
 
-          <div className="ml-auto flex items-center gap-1 max-w-full overflow-x-auto pb-1">
+          <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
             {/* View mode switcher */}
             {(['wall', 'timeline', 'canvas', 'storyboard'] as const).map(mode => (
               <Button
