@@ -4991,6 +4991,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.selectedColumn': '선택된 열',
     'board.fabHint': '아이디어와 작품을 제출하세요',
     'board.mobileEmptyHint': '아직 카드가 없습니다. +를 눌러 첫 번째 카드를 게시하세요!',
+    'board.pullToRefresh': '당겨서 새로고침',
+    'board.releaseToRefresh': '놓아서 새로고침',
     'board.chooseColumnHint': '콘텐츠를 게시할 패널을 선택하세요',
       'task.title': '수업 작업 체크리스트',
       'task.loadFailed': '작업 데이터를 불러오지 못했습니다',
