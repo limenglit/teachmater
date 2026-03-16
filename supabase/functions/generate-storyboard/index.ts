@@ -20,6 +20,8 @@ interface StoryboardParams {
   audience: string;
   tone: string;
   panelCount: number;
+  layoutMode: string;
+  textMode: string;
   aspectRatio: string;
   language: string;
   colorScheme: string;
@@ -47,13 +49,38 @@ function buildPrompt(params: StoryboardParams): string {
     'high-contrast': 'high contrast classroom colors (bright blue, orange, green, red)',
   };
 
-  return `Create a hand-drawn style educational infographic illustration WITHOUT ANY TEXT.
+  const isUnified = params.layoutMode === 'unified';
+  const isEmbedded = params.textMode === 'embedded';
 
-CRITICAL REQUIREMENTS - NO TEXT POLICY:
+  const layoutInstructions = isUnified
+    ? `UNIFIED CANVAS LAYOUT:
+- Create ONE single cohesive scene/canvas, NOT divided into separate panels
+- Use visual connectors to link concepts: curved arrows, dotted paths, flowing ribbons, gesture lines, road/river metaphors
+- Arrange story elements organically across the canvas like a mind-map or journey map
+- Use size variation, positioning, and visual flow to guide the viewer's eye through the narrative
+- Elements should feel interconnected and part of one unified visual story
+- Use directional cues (arrows, paths, numbered waypoints, winding roads) to show sequence and relationships`
+    : `- Divided into ${params.panelCount} clear sections/panels with visual separators`;
+
+  const textInstructions = isEmbedded
+    ? `EMBEDDED TEXT MODE:
+- DO include text labels directly embedded INTO visual elements within the image
+- Write text ON banners, ribbons, signposts, road signs, speech bubbles, flags, badges, stamps, chalkboards, sticky notes, book covers, screens, and other visual containers
+- Text should feel like a natural part of the illustration - painted on walls, written on scrolls, displayed on screens, carved into signs
+- Use ${params.language === 'zh' ? 'Chinese' : 'English'} text on these visual elements
+- Each key concept should have its label integrated into a fitting visual object
+- Make text legible but artistically integrated - it should enhance the hand-drawn aesthetic
+- DO NOT leave blank spaces for overlay - all text is part of the artwork`
+    : `NO TEXT POLICY:
 - DO NOT include ANY text, labels, titles, numbers, letters, or written words in the image
 - Leave BLANK banner/title areas at the top (empty rectangular space for overlay)
 - Each panel should have EMPTY label placeholders (blank rounded rectangles or speech bubbles)
-- All content must be purely visual - icons, characters, objects, symbols only
+- All content must be purely visual - icons, characters, objects, symbols only`;
+
+  return `Create a hand-drawn style educational infographic illustration.
+
+CRITICAL REQUIREMENTS - ${isEmbedded ? 'EMBEDDED TEXT' : 'NO TEXT'}:
+${textInstructions}
 
 Topic: ${params.theme}
 Target Audience: ${audienceMap[params.audience] || 'general audience'}
@@ -62,21 +89,21 @@ Tone: ${toneMap[params.tone] || 'educational'}
 Visual Style Requirements:
 - Hand-drawn sketch style with clean linework
 - Flat colorful design with ${colorMap[params.colorScheme] || 'soft pastel colors'}
-- Divided into ${params.panelCount} clear sections/panels with visual separators
-- Include a prominent BLANK banner area at the top for title overlay
+${layoutInstructions}
 - Use simple icon-style characters and objects to convey meaning
-- Each panel should have a distinct visual element representing the concept
+- Each concept should have a distinct visual element representing it
 - Educational poster/infographic layout with clear visual hierarchy
 - Aspect ratio: ${params.aspectRatio}
+${isUnified ? '- Include connecting elements: arrows (→ ↗ ↘), curved paths, dotted lines, numbered stepping stones, flowing ribbons linking concepts' : ''}
 
 DO NOT include:
-- ANY text, labels, titles, numbers, or letters (CRITICAL!)
+${isEmbedded ? '- Text outside of visual containers (no floating text)' : '- ANY text, labels, titles, numbers, or letters (CRITICAL!)'}
 - Photorealistic elements
 - Complex 3D graphics
 - Watermarks or logos
 - Any copyrighted characters
 
-The final image should be a clean visual template ready for text overlay, with clear blank spaces where titles and labels would go.`;
+The final image should be a ${isEmbedded ? 'complete illustrated infographic with text naturally embedded in visual elements' : 'clean visual template ready for text overlay, with clear blank spaces where titles and labels would go'}.`;
 }
 
 serve(async (req) => {

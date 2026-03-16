@@ -70,7 +70,28 @@ export default function StoryboardForm({ params, onChange, onGenerate, isLoading
         </Select>
       </div>
 
-      {/* Panel Count */}
+      {/* Layout Mode */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">{t('storyboard.layoutMode')}</Label>
+        <Select value={params.layoutMode} onValueChange={(v) => {
+          const mode = v as StoryboardParams['layoutMode'];
+          onChange({ ...params, layoutMode: mode, panelCount: mode === 'unified' ? 1 : (params.panelCount === 1 ? 4 : params.panelCount) });
+        }}>
+          <SelectTrigger className="bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="panels">{t('storyboard.layoutMode.panels')}</SelectItem>
+            <SelectItem value="unified">{t('storyboard.layoutMode.unified')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          {params.layoutMode === 'unified' ? t('storyboard.layoutMode.unifiedHint') : t('storyboard.layoutMode.panelsHint')}
+        </p>
+      </div>
+
+      {/* Panel Count - only for panels mode */}
+      {params.layoutMode === 'panels' && (
       <div className="space-y-2">
         <Label className="text-sm font-medium">{t('storyboard.panelCount')}</Label>
         <Select value={String(params.panelCount)} onValueChange={(v) => update('panelCount', Number(v) as StoryboardParams['panelCount'])}>
@@ -84,6 +105,24 @@ export default function StoryboardForm({ params, onChange, onGenerate, isLoading
             <SelectItem value="6">6 {t('storyboard.panels')}</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+      )}
+
+      {/* Text Mode */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium">{t('storyboard.textMode')}</Label>
+        <Select value={params.textMode} onValueChange={(v) => update('textMode', v as StoryboardParams['textMode'])}>
+          <SelectTrigger className="bg-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="overlay">{t('storyboard.textMode.overlay')}</SelectItem>
+            <SelectItem value="embedded">{t('storyboard.textMode.embedded')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground leading-snug">
+          {params.textMode === 'embedded' ? t('storyboard.textMode.embeddedHint') : t('storyboard.textMode.overlayHint')}
+        </p>
       </div>
 
       {/* Aspect Ratio */}

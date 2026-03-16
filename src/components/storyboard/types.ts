@@ -12,7 +12,9 @@ export interface StoryboardParams {
   theme: string;
   audience: 'middle-school' | 'high-school' | 'college' | 'teacher' | 'general';
   tone: 'educational' | 'serious' | 'encouraging' | 'critical';
-  panelCount: 3 | 4 | 5 | 6;
+  panelCount: 1 | 3 | 4 | 5 | 6;
+  layoutMode: 'panels' | 'unified';
+  textMode: 'overlay' | 'embedded';
   aspectRatio: '1:1' | '4:3' | '3:4' | '16:9';
   language: 'zh' | 'en';
   colorScheme: 'soft' | 'high-contrast';
@@ -33,6 +35,8 @@ export const DEFAULT_PARAMS: StoryboardParams = {
   audience: 'college',
   tone: 'educational',
   panelCount: 4,
+  layoutMode: 'panels',
+  textMode: 'overlay',
   aspectRatio: '4:3',
   language: 'zh',
   colorScheme: 'soft',
