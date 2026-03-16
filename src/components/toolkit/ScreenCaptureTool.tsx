@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import {
@@ -26,6 +26,12 @@ type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 't
 type WorkspaceMode = 'capture' | 'record';
 type RecordAudioSource = 'system' | 'mic' | 'both';
 type RegionHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
+
+interface CaptureBrowserInfo {
+  isSafari: boolean;
+  isEdge: boolean;
+  supportsSystemAudio: boolean;
+}
 
 interface ImagePoint {
   x: number;
@@ -128,6 +134,27 @@ function getPreferredRecorderMimeType() {
   }
 
   return undefined;
+}
+
+function detectCaptureBrowser(): CaptureBrowserInfo {
+  if (typeof navigator === 'undefined') {
+    return {
+      isSafari: false,
+      isEdge: false,
+      supportsSystemAudio: true,
+    };
+  }
+
+  const ua = navigator.userAgent;
+  const isEdge = /Edg\//.test(ua);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
+
+  // Safari currently does not reliably expose system audio in getDisplayMedia.
+  return {
+    isSafari,
+    isEdge,
+    supportsSystemAudio: !isSafari,
+  };
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -262,6 +289,7 @@ async function loadImage(src: string) {
 
 export default function ScreenCaptureTool() {
   const { t } = useLanguage();
+  const browserInfo = useMemo(() => detectCaptureBrowser(), []);
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -294,6 +322,16 @@ export default function ScreenCaptureTool() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
   const [liveRegion, setLiveRegion] = useState<LiveRegion>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
+
+  const availableRecordAudioSources = useMemo<RecordAudioSource[]>(() => {
+    return browserInfo.supportsSystemAudio ? ['system', 'mic', 'both'] : ['mic'];
+  }, [browserInfo.supportsSystemAudio]);
+
+  useEffect(() => {
+    if (!availableRecordAudioSources.includes(recordAudioSource)) {
+      setRecordAudioSource('mic');
+    }
+  }, [availableRecordAudioSources, recordAudioSource]);
 
   const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
     const w = clamp(region.w, MIN_REGION_SIZE, 1);
@@ -650,11 +688,25 @@ export default function ScreenCaptureTool() {
         stream.getTracks().forEach((track) => track.stop());
       }
 
+      let wantsSystemAudio = recordAudioSource === 'system' || recordAudioSource === 'both';
+
+      if (!browserInfo.supportsSystemAudio && wantsSystemAudio) {
+        wantsSystemAudio = false;
+        setRecordAudioSource('mic');
+      }
+
+      // Edge may freeze shared video rendering when system audio is requested.
+      if (browserInfo.isEdge && wantsSystemAudio) {
+        wantsSystemAudio = false;
+        setRecordAudioSource('mic');
+        toast({ title: t('capture.systemAudioEdgeFallback') });
+      }
+
       const displayStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           cursor: 'always',
         } as MediaTrackConstraints,
-        audio: recordAudioSource !== 'mic',
+        audio: wantsSystemAudio,
       });
 
       setStream(displayStream);
@@ -665,7 +717,7 @@ export default function ScreenCaptureTool() {
       };
 
       // Do not block screen sharing if microphone permission fails.
-      if ((recordAudioSource === 'mic' || recordAudioSource === 'both') && !recordMicStreamRef.current) {
+      if ((recordAudioSource === 'mic' || recordAudioSource === 'both' || wantsSystemAudio === false) && !recordMicStreamRef.current) {
         try {
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
           recordMicStreamRef.current = micStream;
@@ -1381,10 +1433,20 @@ export default function ScreenCaptureTool() {
                     className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                     disabled={isRecording}
                   >
-                    <option value="system">{t('capture.audioSystem')}</option>
+                    {availableRecordAudioSources.includes('system') && (
+                      <option value="system">{t('capture.audioSystem')}</option>
+                    )}
                     <option value="mic">{t('capture.audioMic')}</option>
-                    <option value="both">{t('capture.audioBoth')}</option>
+                    {availableRecordAudioSources.includes('both') && (
+                      <option value="both">{t('capture.audioBoth')}</option>
+                    )}
                   </select>
+                  {!browserInfo.supportsSystemAudio && (
+                    <span className="text-[11px] text-muted-foreground">{t('capture.systemAudioUnavailable')}</span>
+                  )}
+                  {browserInfo.isEdge && (
+                    <span className="text-[11px] text-muted-foreground">{t('capture.edgeAudioHint')}</span>
+                  )}
 
                   {!stream ? (
                     <Button size="sm" onClick={() => void startRecordPreview()} className="gap-1" disabled={isRecording}>
