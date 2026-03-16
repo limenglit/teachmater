@@ -24,7 +24,7 @@ import { toast } from '@/hooks/use-toast';
 
 type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 'text' | 'mosaic';
 type WorkspaceMode = 'capture' | 'record';
-type RecordAudioSource = 'system' | 'mic' | 'both';
+type RecordAudioSource = 'none' | 'system' | 'mic' | 'both';
 type RegionHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
 
 interface CaptureBrowserInfo {
