@@ -63,6 +63,8 @@ export default function BanquetHall({ students }: Props) {
   const [historyItems, setHistoryItems] = useState<BanquetHallHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [linkedGroupNames, setLinkedGroupNames] = useState<string[]>([]);
+  const [selectedTableIndex, setSelectedTableIndex] = useState<number | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<{ table: number; seat: number } | null>(null);
 
   const [refVisible, setRefVisible] = useState<RefVisible>({
     screen: true,
@@ -472,9 +474,11 @@ export default function BanquetHall({ students }: Props) {
       if (draggingRef.current) {
         const dx = e.clientX - draggingRef.current.startX;
         const dy = e.clientY - draggingRef.current.startY;
+        const nextX = hasTStage ? 0 : draggingRef.current.origX + dx;
+        const nextY = draggingRef.current.origY + dy;
         setTablePositions(pos => pos.map((p, i) =>
           i === draggingRef.current!.index
-            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
+            ? { x: nextX, y: nextY }
             : p
         ));
       }
@@ -504,11 +508,14 @@ export default function BanquetHall({ students }: Props) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [hasTStage]);
 
   const startTableDrag = (e: React.MouseEvent, index: number) => {
     e.stopPropagation();
-    if (hasTStage) return;
+    if (selectedTableIndex !== index) {
+      setSelectedTableIndex(index);
+      return;
+    }
     if (seatDraggingRef.current) return;
     draggingRef.current = {
       index,
@@ -545,25 +552,37 @@ export default function BanquetHall({ students }: Props) {
     const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
     const isReservedTable = reservedTables.has(tableIndex);
     const assignedCount = people.filter(name => !!name).length;
+    const isTableSelected = selectedTableIndex === tableIndex;
 
     return (
       <div
         key={tableIndex}
-        className="flex flex-col items-center cursor-move"
+        className={`flex flex-col items-center ${isTableSelected ? 'cursor-grab' : 'cursor-pointer'}`}
         style={{ transform: `translate(${pos.x}px,${pos.y}px)` }}
         onMouseDown={e => startTableDrag(e, tableIndex)}
+        onClick={() => setSelectedTableIndex(tableIndex)}
       >
         <svg width={170} height={170} viewBox="0 0 170 170" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={42} className="fill-primary/5 stroke-primary/20" strokeWidth={1} strokeDasharray="4 2" />
           <g
-            onMouseDown={e => {
+            onDoubleClick={e => {
               e.preventDefault();
               e.stopPropagation();
               toggleTableReserved(tableIndex);
             }}
+            onClick={e => {
+              e.stopPropagation();
+              setSelectedTableIndex(tableIndex);
+            }}
             style={{ cursor: 'pointer' }}
           >
-            <circle cx={cx} cy={cy} r={36} className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'} strokeWidth={2} />
+            <circle
+              cx={cx}
+              cy={cy}
+              r={36}
+              className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
+              strokeWidth={isTableSelected ? 3 : 2}
+            />
             <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-sm font-semibold' : 'fill-primary text-sm font-medium'}>
               T{tableIndex + 1}
             </text>
@@ -579,12 +598,17 @@ export default function BanquetHall({ students }: Props) {
             const isClosed = closedSeats.has(seatKey(tableIndex, i));
             const isDragging = dragFrom?.table === tableIndex && dragFrom?.seat === i;
             const isOver = dropTarget?.table === tableIndex && dropTarget?.seat === i;
+            const isSeatSelected = selectedSeat?.table === tableIndex && selectedSeat?.seat === i;
             return (
               <g
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
                 onMouseDown={name && !isClosed ? (e) => {
                   if (isReservedTable) return;
+                  if (!isSeatSelected) {
+                    setSelectedSeat({ table: tableIndex, seat: i });
+                    return;
+                  }
                   e.preventDefault();
                   e.stopPropagation();
                   seatDraggingRef.current = true;
@@ -595,7 +619,14 @@ export default function BanquetHall({ students }: Props) {
                   if (dragFrom && !isClosed && !isReservedTable) handleDrop(tableIndex, i);
                   seatDraggingRef.current = false;
                 }}
-                onClick={() => { if (!name && !isReservedTable) toggleSeatOpen(tableIndex, i); }}
+                onClick={e => {
+                  e.stopPropagation();
+                  setSelectedSeat({ table: tableIndex, seat: i });
+                }}
+                onDoubleClick={e => {
+                  e.stopPropagation();
+                  if (!name && !isReservedTable) toggleSeatOpen(tableIndex, i);
+                }}
               >
                 <circle
                   cx={sx}
@@ -606,9 +637,10 @@ export default function BanquetHall({ students }: Props) {
                     isClosed ? 'fill-muted stroke-destructive/60' :
                     isDragging ? 'fill-primary/20 stroke-primary' :
                     isOver ? 'fill-accent stroke-primary' :
+                    isSeatSelected ? 'fill-accent/70 stroke-primary' :
                     name ? 'fill-card stroke-border hover:stroke-primary/50' : 'fill-muted/30 stroke-border/30'
                   }
-                  strokeWidth={isOver ? 2.5 : 1.5}
+                  strokeWidth={isOver || isSeatSelected ? 2.5 : 1.5}
                   style={{ transition: 'all 0.15s' }}
                 />
                 {isClosed && (
@@ -877,7 +909,7 @@ export default function BanquetHall({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          点击桌心可切换“保留/开放”，自动排座会跳过保留桌。可拖拽姓名互换座位；空位可关闭或重新开放。开启 T 台后桌位将锁定在两侧，避免压住 T 台。
+          单击可选中桌子或座位；选中后按住拖拽可移动。双击桌心切换“保留/开放”，双击空座切换“禁坐/开放”。自动排座会跳过保留桌；开启 T 台后仅允许纵向拖动，避免压住 T 台。
         </p>
       )}
       <SeatCheckinDialog
