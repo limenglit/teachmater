@@ -133,15 +133,20 @@ const MAX_CAMERA_SIZE = 1;
 const MIN_CAMERA_CM = 2;
 const CSS_PX_PER_CM = 37.8;
 
-function getPreferredRecorderMimeType() {
-  const candidates = [
+function getPreferredRecorderMimeType(preferMp4: boolean) {
+  const mp4Candidates = [
     'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
     'video/mp4;codecs=h264,aac',
     'video/mp4',
+  ];
+  const webmCandidates = [
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
     'video/webm',
   ];
+  const candidates = preferMp4
+    ? [...mp4Candidates, ...webmCandidates]
+    : [...webmCandidates, ...mp4Candidates];
 
   for (const mimeType of candidates) {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mimeType)) {
@@ -326,7 +331,7 @@ export default function ScreenCaptureTool() {
   const imageRef = useRef<HTMLImageElement>(null);
   const liveVideoWrapRef = useRef<HTMLDivElement>(null);
   const cameraSourceVideoRef = useRef<HTMLVideoElement>(null);
-  const cameraPreviewVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraPreviewCanvasRef = useRef<HTMLCanvasElement>(null);
   const cameraFrameCacheRef = useRef<HTMLCanvasElement | null>(null);
   const cameraCacheTimerRef = useRef<number | null>(null);
   const recordSourceVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -644,32 +649,24 @@ export default function ScreenCaptureTool() {
 
   useEffect(() => {
     const sourceVideo = cameraSourceVideoRef.current;
-    const previewVideo = cameraPreviewVideoRef.current;
 
     if (sourceVideo) {
       sourceVideo.srcObject = cameraStream;
-    }
-    if (previewVideo) {
-      previewVideo.srcObject = cameraStream;
-    }
-
-    if (cameraStream) {
-      if (sourceVideo) {
+      const ensurePlaying = () => {
         void sourceVideo.play().catch(() => undefined);
+      };
+      sourceVideo.addEventListener('loadedmetadata', ensurePlaying);
+      if (cameraStream) {
+        ensurePlaying();
       }
-      if (previewVideo) {
-        void previewVideo.play().catch(() => undefined);
-      }
+
+      return () => {
+        sourceVideo.removeEventListener('loadedmetadata', ensurePlaying);
+        sourceVideo.srcObject = null;
+      };
     }
 
-    return () => {
-      if (sourceVideo) {
-        sourceVideo.srcObject = null;
-      }
-      if (previewVideo) {
-        previewVideo.srcObject = null;
-      }
-    };
+    return undefined;
   }, [cameraStream]);
 
   useEffect(() => {
@@ -684,7 +681,20 @@ export default function ScreenCaptureTool() {
 
     cameraCacheTimerRef.current = window.setInterval(() => {
       const sourceVideo = cameraSourceVideoRef.current;
+      const previewCanvas = cameraPreviewCanvasRef.current;
+      const cache = cameraFrameCacheRef.current;
+
       if (!sourceVideo || sourceVideo.readyState < 2 || sourceVideo.videoWidth <= 0 || sourceVideo.videoHeight <= 0) {
+        if (previewCanvas && cache && cache.width > 0 && cache.height > 0) {
+          if (previewCanvas.width !== cache.width || previewCanvas.height !== cache.height) {
+            previewCanvas.width = cache.width;
+            previewCanvas.height = cache.height;
+          }
+          const previewCtx = previewCanvas.getContext('2d');
+          if (previewCtx) {
+            previewCtx.drawImage(cache, 0, 0, previewCanvas.width, previewCanvas.height);
+          }
+        }
         return;
       }
 
@@ -692,13 +702,24 @@ export default function ScreenCaptureTool() {
         cameraFrameCacheRef.current = document.createElement('canvas');
       }
 
-      const cache = cameraFrameCacheRef.current;
-      cache.width = sourceVideo.videoWidth;
-      cache.height = sourceVideo.videoHeight;
-      const ctx = cache.getContext('2d');
-      if (!ctx) return;
+      const nextCache = cameraFrameCacheRef.current;
+      nextCache.width = sourceVideo.videoWidth;
+      nextCache.height = sourceVideo.videoHeight;
+      const cacheCtx = nextCache.getContext('2d');
+      if (!cacheCtx) return;
 
-      ctx.drawImage(sourceVideo, 0, 0, cache.width, cache.height);
+      cacheCtx.drawImage(sourceVideo, 0, 0, nextCache.width, nextCache.height);
+
+      if (previewCanvas) {
+        if (previewCanvas.width !== sourceVideo.videoWidth || previewCanvas.height !== sourceVideo.videoHeight) {
+          previewCanvas.width = sourceVideo.videoWidth;
+          previewCanvas.height = sourceVideo.videoHeight;
+        }
+        const previewCtx = previewCanvas.getContext('2d');
+        if (previewCtx) {
+          previewCtx.drawImage(nextCache, 0, 0, previewCanvas.width, previewCanvas.height);
+        }
+      }
     }, 40);
 
     return () => {
@@ -1167,7 +1188,7 @@ export default function ScreenCaptureTool() {
         finalStream.addTrack(mixedAudioTrack);
       }
 
-      const preferredMimeType = getPreferredRecorderMimeType();
+      const preferredMimeType = getPreferredRecorderMimeType(!browserInfo.isSafari);
       const recorder = preferredMimeType
         ? new MediaRecorder(finalStream, { mimeType: preferredMimeType })
         : new MediaRecorder(finalStream);
@@ -1947,7 +1968,7 @@ export default function ScreenCaptureTool() {
                             }}
                           >
                             <div className="absolute inset-0 cursor-move" onMouseDown={(event) => beginCameraAdjust(event, 'move')} />
-                            <video ref={cameraPreviewVideoRef} autoPlay muted playsInline className="absolute inset-0 h-full w-full rounded-full object-cover pointer-events-none bg-slate-900" />
+                            <canvas ref={cameraPreviewCanvasRef} className="absolute inset-0 h-full w-full rounded-full object-cover pointer-events-none bg-slate-900" />
                             <div
                               className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize"
                               onMouseDown={(event) => beginCameraAdjust(event, 'resize')}
