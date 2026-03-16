@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
   CheckCircle2, Lock, Send, User, Paperclip, X, Search, Plus,
-  Heart, MessageCircle, ChevronDown,
+  Heart, MessageCircle, ChevronDown, RefreshCw,
 } from 'lucide-react';
 import type { Board, BoardCard } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getDocIcon, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
