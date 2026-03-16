@@ -27,7 +27,6 @@ type WorkspaceMode = 'capture' | 'record';
 type RecordAudioSource = 'none' | 'system' | 'mic' | 'both';
 type RegionHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
 type CameraSourceMode = 'auto' | 'usb';
-type CameraBackgroundPreset = 'whitewall' | 'bookshelf' | 'studio' | 'custom';
 type CameraHandle = 'move' | 'resize';
 
 interface CaptureBrowserInfo {
@@ -298,9 +297,7 @@ export default function ScreenCaptureTool() {
   const imageRef = useRef<HTMLImageElement>(null);
   const liveVideoWrapRef = useRef<HTMLDivElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
-  const cameraPreviewCanvasRef = useRef<HTMLCanvasElement>(null);
   const recordSourceVideoRef = useRef<HTMLVideoElement | null>(null);
-  const cameraBackgroundImageRef = useRef<HTMLImageElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
   const recordMicStreamRef = useRef<MediaStream | null>(null);
@@ -308,10 +305,7 @@ export default function ScreenCaptureTool() {
   const recordRafRef = useRef<number | null>(null);
   const recordFrameTimerRef = useRef<number | null>(null);
   const recordVideoFrameCallbackRef = useRef<number | null>(null);
-  const cameraPreviewTimerRef = useRef<number | null>(null);
-  const cameraPreviewFrameCallbackRef = useRef<number | null>(null);
   const recordingActiveRef = useRef(false);
-  const cameraFrameCacheRef = useRef<HTMLCanvasElement | null>(null);
   const regionDragRef = useRef<{ handle: RegionHandle; startX: number; startY: number; startRegion: LiveRegion } | null>(null);
   const cameraDragRef = useRef<{ handle: CameraHandle; startX: number; startY: number; startOverlay: CameraOverlay } | null>(null);
 
@@ -342,8 +336,6 @@ export default function ScreenCaptureTool() {
   const [cameraSourceMode, setCameraSourceMode] = useState<CameraSourceMode>('auto');
   const [selectedCameraDeviceId, setSelectedCameraDeviceId] = useState('');
   const [cameraOverlay, setCameraOverlay] = useState<CameraOverlay>({ x: 0.76, y: 0.72, size: 0.2 });
-  const [cameraBackgroundPreset, setCameraBackgroundPreset] = useState<CameraBackgroundPreset>('whitewall');
-  const [cameraBackgroundCustomUrl, setCameraBackgroundCustomUrl] = useState('');
 
   const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
     const w = clamp(region.w, MIN_REGION_SIZE, 1);
@@ -594,75 +586,6 @@ export default function ScreenCaptureTool() {
   }, [cameraStream]);
 
   useEffect(() => {
-    const sourceVideo = cameraVideoRef.current;
-    const previewCanvas = cameraPreviewCanvasRef.current;
-    if (!sourceVideo || !previewCanvas || !cameraEnabled || !cameraStream || workspaceMode !== 'record' || !workspaceOpen) {
-      return;
-    }
-
-    const ctx = previewCanvas.getContext('2d');
-    if (!ctx) return;
-
-    let active = true;
-
-    const scheduleNext = () => {
-      if (!active) return;
-      // Safari may expose requestVideoFrameCallback but not reliably fire it on offscreen preview sources.
-      if (!browserInfo.isSafari && 'requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-        cameraPreviewFrameCallbackRef.current = (sourceVideo as HTMLVideoElement & {
-          requestVideoFrameCallback: (callback: () => void) => number;
-        }).requestVideoFrameCallback(() => drawFrame());
-      } else {
-        cameraPreviewTimerRef.current = window.setTimeout(drawFrame, 66);
-      }
-    };
-
-    const drawFrame = () => {
-      if (!active) return;
-
-      if (sourceVideo.readyState >= 2 && sourceVideo.videoWidth > 0 && sourceVideo.videoHeight > 0) {
-        if (previewCanvas.width !== sourceVideo.videoWidth || previewCanvas.height !== sourceVideo.videoHeight) {
-          previewCanvas.width = sourceVideo.videoWidth;
-          previewCanvas.height = sourceVideo.videoHeight;
-        }
-        ctx.drawImage(sourceVideo, 0, 0, previewCanvas.width, previewCanvas.height);
-        if (!cameraFrameCacheRef.current) {
-          cameraFrameCacheRef.current = document.createElement('canvas');
-        }
-        const cache = cameraFrameCacheRef.current;
-        cache.width = sourceVideo.videoWidth;
-        cache.height = sourceVideo.videoHeight;
-        const cacheCtx = cache.getContext('2d');
-        if (cacheCtx) {
-          cacheCtx.drawImage(sourceVideo, 0, 0, cache.width, cache.height);
-        }
-      } else if (cameraFrameCacheRef.current) {
-        if (previewCanvas.width !== cameraFrameCacheRef.current.width || previewCanvas.height !== cameraFrameCacheRef.current.height) {
-          previewCanvas.width = cameraFrameCacheRef.current.width;
-          previewCanvas.height = cameraFrameCacheRef.current.height;
-        }
-        ctx.drawImage(cameraFrameCacheRef.current, 0, 0, previewCanvas.width, previewCanvas.height);
-      }
-
-      scheduleNext();
-    };
-
-    drawFrame();
-
-    return () => {
-      active = false;
-      if (cameraPreviewTimerRef.current !== null) {
-        window.clearTimeout(cameraPreviewTimerRef.current);
-        cameraPreviewTimerRef.current = null;
-      }
-      if (cameraPreviewFrameCallbackRef.current !== null && 'cancelVideoFrameCallback' in HTMLVideoElement.prototype) {
-        (sourceVideo as HTMLVideoElement & { cancelVideoFrameCallback: (id: number) => void }).cancelVideoFrameCallback(cameraPreviewFrameCallbackRef.current);
-        cameraPreviewFrameCallbackRef.current = null;
-      }
-    };
-  }, [browserInfo.isSafari, cameraEnabled, cameraStream, workspaceMode, workspaceOpen]);
-
-  useEffect(() => {
     if (!workspaceOpen || workspaceMode !== 'record') return;
     void refreshCameraDevices();
   }, [refreshCameraDevices, workspaceMode, workspaceOpen]);
@@ -680,30 +603,6 @@ export default function ScreenCaptureTool() {
 
     void startCameraStream();
   }, [cameraEnabled, cameraSourceMode, selectedCameraDeviceId, startCameraStream, stopCameraStream, workspaceMode, workspaceOpen]);
-
-  useEffect(() => {
-    if (cameraBackgroundPreset !== 'custom' || !cameraBackgroundCustomUrl) {
-      cameraBackgroundImageRef.current = null;
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => {
-      cameraBackgroundImageRef.current = img;
-    };
-    img.onerror = () => {
-      cameraBackgroundImageRef.current = null;
-    };
-    img.src = cameraBackgroundCustomUrl;
-  }, [cameraBackgroundCustomUrl, cameraBackgroundPreset]);
-
-  useEffect(() => {
-    return () => {
-      if (cameraBackgroundCustomUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(cameraBackgroundCustomUrl);
-      }
-    };
-  }, [cameraBackgroundCustomUrl]);
 
   useEffect(() => {
     if (!captured) return;
@@ -867,8 +766,6 @@ export default function ScreenCaptureTool() {
       recordSourceVideoRef.current.srcObject = null;
       recordSourceVideoRef.current = null;
     }
-    cameraFrameCacheRef.current = null;
-
     if (recorderRef.current) {
       recorderRef.current.ondataavailable = null;
       recorderRef.current.onstop = null;
@@ -1211,51 +1108,8 @@ export default function ScreenCaptureTool() {
           outputCtx.closePath();
           outputCtx.clip();
 
-          if (cameraBackgroundPreset === 'custom' && cameraBackgroundImageRef.current) {
-            outputCtx.drawImage(cameraBackgroundImageRef.current, destX, destY, cameraSizeInSource, cameraSizeInSource);
-          } else {
-            if (cameraBackgroundPreset === 'bookshelf') {
-              const g = outputCtx.createLinearGradient(destX, destY, destX + cameraSizeInSource, destY + cameraSizeInSource);
-              g.addColorStop(0, '#8b5e3c');
-              g.addColorStop(0.5, '#c39b77');
-              g.addColorStop(1, '#5b3f2a');
-              outputCtx.fillStyle = g;
-            } else if (cameraBackgroundPreset === 'studio') {
-              const g = outputCtx.createRadialGradient(centerX, centerY, cameraSizeInSource * 0.2, centerX, centerY, cameraSizeInSource * 0.7);
-              g.addColorStop(0, '#1f2937');
-              g.addColorStop(1, '#111827');
-              outputCtx.fillStyle = g;
-            } else {
-              outputCtx.fillStyle = '#f5f5f4';
-            }
-            outputCtx.fillRect(destX, destY, cameraSizeInSource, cameraSizeInSource);
-          }
-
-          const innerPadding = cameraSizeInSource * 0.08;
-          const innerSize = cameraSizeInSource - innerPadding * 2;
-          const innerRadius = innerSize / 2;
-          const innerCenterX = destX + innerPadding + innerRadius;
-          const innerCenterY = destY + innerPadding + innerRadius;
-
-          outputCtx.beginPath();
-          outputCtx.arc(innerCenterX, innerCenterY, innerRadius, 0, Math.PI * 2);
-          outputCtx.closePath();
-          outputCtx.clip();
-
           if (camVideo.readyState >= 2 && camVideo.videoWidth > 0 && camVideo.videoHeight > 0) {
-            if (!cameraFrameCacheRef.current) {
-              cameraFrameCacheRef.current = document.createElement('canvas');
-            }
-            const cacheCanvas = cameraFrameCacheRef.current;
-            cacheCanvas.width = camVideo.videoWidth;
-            cacheCanvas.height = camVideo.videoHeight;
-            const cacheCtx = cacheCanvas.getContext('2d');
-            if (cacheCtx) {
-              cacheCtx.drawImage(camVideo, 0, 0, cacheCanvas.width, cacheCanvas.height);
-              outputCtx.drawImage(cacheCanvas, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
-            }
-          } else if (cameraFrameCacheRef.current) {
-            outputCtx.drawImage(cameraFrameCacheRef.current, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
+            outputCtx.drawImage(camVideo, destX, destY, cameraSizeInSource, cameraSizeInSource);
           }
 
           outputCtx.restore();
@@ -1314,19 +1168,6 @@ export default function ScreenCaptureTool() {
       }
       setRecordCountdown(count);
     }, 1000);
-  };
-
-  const handleCameraBackgroundUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const objectUrl = URL.createObjectURL(file);
-    setCameraBackgroundCustomUrl((prev) => {
-      if (prev.startsWith('blob:')) {
-        URL.revokeObjectURL(prev);
-      }
-      return objectUrl;
-    });
-    setCameraBackgroundPreset('custom');
   };
 
   const closeWorkspace = () => {
@@ -1869,29 +1710,6 @@ export default function ScreenCaptureTool() {
                         ))}
                       </select>
 
-                      <label className="text-xs text-muted-foreground">{t('capture.cameraBackground')}</label>
-                      <select
-                        value={cameraBackgroundPreset}
-                        onChange={(event) => setCameraBackgroundPreset(event.target.value as CameraBackgroundPreset)}
-                        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                        disabled={isRecording}
-                      >
-                        <option value="whitewall">{t('capture.cameraBgWhitewall')}</option>
-                        <option value="bookshelf">{t('capture.cameraBgBookshelf')}</option>
-                        <option value="studio">{t('capture.cameraBgStudio')}</option>
-                        <option value="custom">{t('capture.cameraBgCustom')}</option>
-                      </select>
-
-                      <label className="inline-flex h-8 items-center rounded-md border border-input bg-background px-2 text-xs cursor-pointer">
-                        {t('capture.cameraBgUpload')}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleCameraBackgroundUpload}
-                          disabled={isRecording}
-                        />
-                      </label>
                     </>
                   )}
                   {recordAudioSource !== 'mic' && recordAudioSource !== 'none' && stream && !systemAudioTrackAvailable && (
@@ -1933,7 +1751,6 @@ export default function ScreenCaptureTool() {
                     onMouseLeave={endRegionAdjust}
                   >
                     <video ref={videoRef} autoPlay muted playsInline className="max-h-[72vh] max-w-full object-contain rounded-lg" />
-                    <video ref={cameraVideoRef} autoPlay muted playsInline className="absolute -left-[9999px] top-0 h-px w-px opacity-0 pointer-events-none" />
                     {stream && (
                       <>
                         <div className="absolute inset-0 pointer-events-none bg-black/20 rounded-lg" />
@@ -1960,21 +1777,10 @@ export default function ScreenCaptureTool() {
                               top: `${cameraOverlay.y * 100}%`,
                               width: `${cameraOverlay.size * 100}%`,
                               height: `${cameraOverlay.size * 100}%`,
-                              background: cameraBackgroundPreset === 'bookshelf'
-                                ? 'linear-gradient(145deg, #8b5e3c, #c39b77 52%, #5b3f2a)'
-                                : cameraBackgroundPreset === 'studio'
-                                  ? 'radial-gradient(circle at 35% 30%, #374151, #111827)'
-                                  : '#f5f5f4',
-                              backgroundImage: cameraBackgroundPreset === 'custom' && cameraBackgroundCustomUrl ? `url(${cameraBackgroundCustomUrl})` : undefined,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
                             }}
                           >
                             <div className="absolute inset-0 cursor-move" onMouseDown={(event) => beginCameraAdjust(event, 'move')} />
-                            <canvas
-                              ref={cameraPreviewCanvasRef}
-                              className="absolute inset-[8%] h-[84%] w-[84%] rounded-full object-cover pointer-events-none"
-                            />
+                            <video ref={cameraVideoRef} autoPlay muted playsInline className="absolute inset-0 h-full w-full rounded-full object-cover pointer-events-none" />
                             <div
                               className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize"
                               onMouseDown={(event) => beginCameraAdjust(event, 'resize')}
