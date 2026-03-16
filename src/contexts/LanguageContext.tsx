@@ -5989,6 +5989,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.selectedColumn': 'Columna seleccionada',
     'board.fabHint': 'Envía tus ideas y trabajos',
     'board.mobileEmptyHint': 'Sin tarjetas aún. ¡Toca + para publicar la primera!',
+    'board.pullToRefresh': 'Desliza para actualizar',
+    'board.releaseToRefresh': 'Suelta para actualizar',
     'board.chooseColumnHint': 'Elige el panel donde publicar tu contenido',
       'task.title': 'Lista de tareas de clase',
       'task.loadFailed': 'No se pudieron cargar los datos de tareas',
