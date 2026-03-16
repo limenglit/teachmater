@@ -2502,6 +2502,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.selectedColumn': 'Selected column',
     'board.fabHint': 'Submit your ideas & works',
     'board.mobileEmptyHint': 'No cards yet. Tap + to post the first one!',
+    'board.pullToRefresh': 'Pull to refresh',
+    'board.releaseToRefresh': 'Release to refresh',
     'board.chooseColumnHint': 'Pick the panel to post your content',
       'task.title': 'Classroom Task Checklist',
       'task.loadFailed': 'Failed to load task data',
