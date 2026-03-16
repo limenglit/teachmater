@@ -272,6 +272,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
           {/* Sub-view tabs */}
           <div className="flex gap-1 border-b border-border">
             {([
+              { id: 'classOverview' as SubView, label: t('analytics.classOverview'), icon: '📋' },
               { id: 'overall' as SubView, label: t('analytics.overallRank'), icon: '🏆' },
               { id: 'dimension' as SubView, label: t('analytics.byDimension'), icon: '📊' },
             ]).map(v => (
