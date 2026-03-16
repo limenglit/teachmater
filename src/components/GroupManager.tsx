@@ -1,15 +1,16 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Shuffle, Star, GripVertical, Save } from 'lucide-react';
+import { Shuffle, Star, GripVertical, Save, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExportButtons from '@/components/ExportButtons';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
+import { loadLastGroups, saveLastGroups } from '@/lib/teamwork-local';
 
 interface GroupMember { id: string; name: string; isLeader: boolean }
 interface Group { id: string; name: string; members: GroupMember[] }
@@ -25,6 +26,18 @@ export default function GroupManager() {
   const [dragItem, setDragItem] = useState<{ groupId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ groupId: string; memberIdx: number } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const cached = loadLastGroups();
+    if (cached.length > 0) {
+      setGroups(cached as Group[]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (groups.length === 0) return;
+    saveLastGroups(groups);
+  }, [groups]);
 
   const autoGroup = useCallback(() => {
     if (students.length === 0) return;
@@ -95,6 +108,17 @@ export default function GroupManager() {
 
   const handleRestore = (data: any[]) => {
     setGroups(data as Group[]);
+    saveLastGroups(data as Group[]);
+  };
+
+  const handleRestoreLastLocal = () => {
+    const cached = loadLastGroups();
+    if (cached.length === 0) {
+      toast.error('暂无本地分组记录');
+      return;
+    }
+    setGroups(cached as Group[]);
+    toast.success('已恢复上次分组');
   };
 
   return (
@@ -107,6 +131,10 @@ export default function GroupManager() {
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {user && <TeamworkHistory type="groups" onRestore={handleRestore} />}
+            <Button variant="outline" size="sm" onClick={handleRestoreLastLocal} className="gap-1.5">
+              <RotateCcw className="w-4 h-4" />
+              <span className="hidden sm:inline">恢复上次</span>
+            </Button>
             {groups.length > 0 && (
               <>
                 {user && (

@@ -1,11 +1,19 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
+import { toast } from 'sonner';
+import {
+  loadLastGroups,
+  saveLastGroups,
+  loadSmartClassroomSnapshot,
+  saveSmartClassroomSnapshot,
+  groupsFromSeatAssignment,
+} from '@/lib/teamwork-local';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -55,11 +63,13 @@ export default function SmartClassroom({ students }: Props) {
   });
   const [refLocked, setRefLocked] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
+  const [linkedGroupNames, setLinkedGroupNames] = useState<string[]>([]);
 
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const seatDraggingRef = useRef(false);
+  const restoredOnceRef = useRef(false);
 
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
@@ -156,6 +166,98 @@ export default function SmartClassroom({ students }: Props) {
     return Array.from({ length: tableCount }, (_, i) => i);
   };
 
+  const applyGroupsToSeat = (fromGroups: ReturnType<typeof loadLastGroups>) => {
+    const availableNames = new Set(students.map(s => s.name));
+    const filteredGroups = fromGroups
+      .map(group => ({
+        ...group,
+        members: group.members.filter(member => availableNames.has(member.name)),
+      }))
+      .filter(group => group.members.length > 0);
+
+    if (filteredGroups.length === 0) {
+      toast.error('没有可用分组数据');
+      return false;
+    }
+
+    const nextTableCount = filteredGroups.length;
+    const maxGroupSize = Math.max(...filteredGroups.map(group => group.members.length));
+    const nextSeatsPerTable = Math.max(3, maxGroupSize);
+    const nextTableCols = Math.max(1, Math.min(tableCols, nextTableCount));
+    const nextTableRows = Math.max(1, Math.ceil(nextTableCount / nextTableCols));
+    const nextAssignment = Array.from({ length: nextTableCount }, (_, index) => {
+      const row = filteredGroups[index]?.members.map(member => member.name) ?? [];
+      if (row.length >= nextSeatsPerTable) return row.slice(0, nextSeatsPerTable);
+      return [...row, ...Array.from({ length: nextSeatsPerTable - row.length }, () => '')];
+    });
+
+    setSeatsPerTable(nextSeatsPerTable);
+    setTableCount(nextTableCount);
+    setTableCols(nextTableCols);
+    setTableRows(nextTableRows);
+    setGroupCount(nextTableCount);
+    setMode('tableGrouped');
+    setLinkedGroupNames(filteredGroups.map(group => group.name));
+    setAssignment(nextAssignment);
+    return true;
+  };
+
+  const saveCurrentSnapshot = () => {
+    if (assignment.length === 0) {
+      toast.error('当前没有可保存的座位布局');
+      return;
+    }
+    saveSmartClassroomSnapshot({
+      seatsPerTable,
+      tableCount,
+      tableCols,
+      tableRows,
+      groupCount,
+      mode,
+      tableGap,
+      assignment,
+      closedSeats: Array.from(closedSeats),
+      updatedAt: new Date().toISOString(),
+    });
+    toast.success('已保存当前座位布局');
+  };
+
+  const restoreLastSnapshot = () => {
+    const snapshot = loadSmartClassroomSnapshot();
+    if (!snapshot || snapshot.assignment.length === 0) {
+      toast.error('暂无可恢复的座位布局');
+      return;
+    }
+
+    const validStudentNames = new Set(students.map(s => s.name));
+    const sanitizedAssignment = snapshot.assignment.map(table =>
+      table.map(name => (validStudentNames.has(name) ? name : ''))
+    );
+
+    setSeatsPerTable(Math.max(3, snapshot.seatsPerTable));
+    setTableCount(Math.max(1, snapshot.tableCount));
+    setTableCols(Math.max(1, snapshot.tableCols));
+    setTableRows(Math.max(1, snapshot.tableRows));
+    setGroupCount(Math.max(1, snapshot.groupCount));
+    setMode(snapshot.mode);
+    setTableGap(Math.max(0, snapshot.tableGap));
+    setAssignment(sanitizedAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    toast.success('已恢复上次座位布局');
+  };
+
+  const seatByLastGroups = () => {
+    const cachedGroups = loadLastGroups();
+    if (cachedGroups.length === 0) {
+      toast.error('暂无已保存分组');
+      return;
+    }
+    const ok = applyGroupsToSeat(cachedGroups);
+    if (ok) {
+      toast.success('已按分组一桌生成座位');
+    }
+  };
+
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
@@ -163,6 +265,12 @@ export default function SmartClassroom({ students }: Props) {
     const tables: string[][] = Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => ''));
 
     if (mode === 'tableGrouped') {
+      const cachedGroups = loadLastGroups();
+      if (cachedGroups.length > 0 && !shuffle) {
+        const ok = applyGroupsToSeat(cachedGroups);
+        if (ok) return;
+      }
+
       const groups = splitIntoGroups(names, Math.max(1, groupCount));
       groups.forEach((group, gi) => {
         group.forEach(n => placeName(tables, gi % tableCount, n));
@@ -217,6 +325,53 @@ export default function SmartClassroom({ students }: Props) {
       return next;
     });
   }, [tableCount, seatsPerTable]);
+
+  useEffect(() => {
+    if (restoredOnceRef.current) return;
+    const snapshot = loadSmartClassroomSnapshot();
+    if (snapshot && snapshot.assignment.length > 0) {
+      const validStudentNames = new Set(students.map(s => s.name));
+      const sanitizedAssignment = snapshot.assignment.map(table =>
+        table.map(name => (validStudentNames.has(name) ? name : ''))
+      );
+      setSeatsPerTable(Math.max(3, snapshot.seatsPerTable));
+      setTableCount(Math.max(1, snapshot.tableCount));
+      setTableCols(Math.max(1, snapshot.tableCols));
+      setTableRows(Math.max(1, snapshot.tableRows));
+      setGroupCount(Math.max(1, snapshot.groupCount));
+      setMode(snapshot.mode);
+      setTableGap(Math.max(0, snapshot.tableGap));
+      setAssignment(sanitizedAssignment);
+      setClosedSeats(new Set(snapshot.closedSeats || []));
+    }
+    restoredOnceRef.current = true;
+  }, [students]);
+
+  useEffect(() => {
+    if (assignment.length === 0) return;
+
+    const nextGroups = groupsFromSeatAssignment(assignment, linkedGroupNames);
+    if (nextGroups.length > 0) {
+      saveLastGroups(nextGroups);
+      const nextNames = nextGroups.map(group => group.name);
+      if (nextNames.join('|') !== linkedGroupNames.join('|')) {
+        setLinkedGroupNames(nextNames);
+      }
+    }
+
+    saveSmartClassroomSnapshot({
+      seatsPerTable,
+      tableCount,
+      tableCols,
+      tableRows,
+      groupCount,
+      mode,
+      tableGap,
+      assignment,
+      closedSeats: Array.from(closedSeats),
+      updatedAt: new Date().toISOString(),
+    });
+  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, linkedGroupNames]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -430,6 +585,15 @@ export default function SmartClassroom({ students }: Props) {
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
+        <Button variant="outline" onClick={saveCurrentSnapshot} className="gap-2">
+          <Save className="w-4 h-4" /> 保存布局
+        </Button>
+        <Button variant="outline" onClick={restoreLastSnapshot} className="gap-2">
+          <RotateCcw className="w-4 h-4" /> 恢复上次座位
+        </Button>
+        <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
+          <Users className="w-4 h-4" /> 按分组一桌
+        </Button>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
           重置参照物
         </Button>
