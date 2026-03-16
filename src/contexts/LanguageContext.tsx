@@ -1165,6 +1165,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.selectedColumn': '当前栏目',
     'board.fabHint': '提交您的意见与作品',
     'board.mobileEmptyHint': '暂无内容，点击右下角 + 号提交第一条',
+    'board.pullToRefresh': '下拉刷新',
+    'board.releaseToRefresh': '松开刷新',
     'board.chooseColumnHint': '选择您想投放内容的面板',
       'task.title': '课堂任务清单',
       'task.loadFailed': '任务数据加载失败',
