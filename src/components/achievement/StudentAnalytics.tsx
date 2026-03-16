@@ -17,7 +17,7 @@ interface Props {
   studentNames: string[];
 }
 
-type SubView = 'overall' | 'dimension' | 'detail';
+type SubView = 'classOverview' | 'overall' | 'dimension' | 'detail';
 
 export default function StudentAnalytics({ studentNames }: Props) {
   const { t } = useLanguage();
