@@ -51,6 +51,7 @@ export default function SmartClassroom({ students }: Props) {
   const [mode, setMode] = useState<SmartSeatMode>('tableRoundRobin');
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
+  const [reservedTables, setReservedTables] = useState<Set<number>>(new Set());
   const [tableGap, setTableGap] = useState(20);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => getDefaultRefPositions(920, 640));
@@ -85,12 +86,31 @@ export default function SmartClassroom({ students }: Props) {
     });
   };
 
+  const toggleTableReserved = (tableIndex: number) => {
+    setReservedTables(prev => {
+      const next = new Set(prev);
+      if (next.has(tableIndex)) {
+        next.delete(tableIndex);
+      } else {
+        next.add(tableIndex);
+        setAssignment(current => {
+          const copied = current.map(row => [...row]);
+          if (!copied[tableIndex]) return copied;
+          copied[tableIndex] = copied[tableIndex].map(() => '');
+          return copied;
+        });
+      }
+      return next;
+    });
+  };
+
   const toggleRefVisible = (key: RefKey) => {
     setRefVisible(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const placeName = (tables: string[][], preferred: number, name: string) => {
-    const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)];
+    const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)]
+      .filter(tableIdx => !reservedTables.has(tableIdx));
     for (const tableIdx of order) {
       for (let seatIdx = 0; seatIdx < seatsPerTable; seatIdx++) {
         if (closedSeats.has(seatKey(tableIdx, seatIdx))) continue;
@@ -199,6 +219,7 @@ export default function SmartClassroom({ students }: Props) {
     setMode('tableGrouped');
     setLinkedGroupNames(filteredGroups.map(group => group.name));
     setAssignment(nextAssignment);
+    setReservedTables(new Set());
     return true;
   };
 
@@ -217,6 +238,7 @@ export default function SmartClassroom({ students }: Props) {
       tableGap,
       assignment,
       closedSeats: Array.from(closedSeats),
+      reservedTables: Array.from(reservedTables),
       updatedAt: new Date().toISOString(),
     });
     toast.success('已保存当前座位布局');
@@ -243,6 +265,7 @@ export default function SmartClassroom({ students }: Props) {
     setTableGap(Math.max(0, snapshot.tableGap));
     setAssignment(sanitizedAssignment);
     setClosedSeats(new Set(snapshot.closedSeats || []));
+    setReservedTables(new Set(snapshot.reservedTables || []));
     toast.success('已恢复上次座位布局');
   };
 
@@ -327,6 +350,16 @@ export default function SmartClassroom({ students }: Props) {
   }, [tableCount, seatsPerTable]);
 
   useEffect(() => {
+    setReservedTables(prev => {
+      const next = new Set<number>();
+      prev.forEach(index => {
+        if (index < tableCount) next.add(index);
+      });
+      return next;
+    });
+  }, [tableCount]);
+
+  useEffect(() => {
     if (restoredOnceRef.current) return;
     const snapshot = loadSmartClassroomSnapshot();
     if (snapshot && snapshot.assignment.length > 0) {
@@ -343,6 +376,7 @@ export default function SmartClassroom({ students }: Props) {
       setTableGap(Math.max(0, snapshot.tableGap));
       setAssignment(sanitizedAssignment);
       setClosedSeats(new Set(snapshot.closedSeats || []));
+      setReservedTables(new Set(snapshot.reservedTables || []));
     }
     restoredOnceRef.current = true;
   }, [students]);
@@ -369,9 +403,10 @@ export default function SmartClassroom({ students }: Props) {
       tableGap,
       assignment,
       closedSeats: Array.from(closedSeats),
+      reservedTables: Array.from(reservedTables),
       updatedAt: new Date().toISOString(),
     });
-  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, linkedGroupNames]);
+  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -444,6 +479,7 @@ export default function SmartClassroom({ students }: Props) {
     const cy = 80;
     const totalSlots = seatsPerTable;
     const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
+    const isReservedTable = reservedTables.has(tableIndex);
 
     return (
       <div
@@ -453,10 +489,28 @@ export default function SmartClassroom({ students }: Props) {
         onMouseDown={e => startTableDrag(e, tableIndex)}
       >
         <svg width={160} height={160} viewBox="0 0 160 160" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
-          <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
-          <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-medium">
-            {tableIndex + 1}桌
-          </text>
+          <g
+            onMouseDown={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleTableReserved(tableIndex);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle
+              cx={cx}
+              cy={cy}
+              r={36}
+              className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
+              strokeWidth={2}
+            />
+            <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-primary text-[10px] font-medium'}>
+              {tableIndex + 1}桌
+            </text>
+            <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-muted-foreground text-[10px]'}>
+              {isReservedTable ? '保留' : '开放'}
+            </text>
+          </g>
           {Array.from({ length: totalSlots }).map((_, i) => {
             const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
             const sx = cx + radius * Math.cos(angle);
@@ -470,21 +524,23 @@ export default function SmartClassroom({ students }: Props) {
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
                 onMouseDown={name && !isClosed ? (e) => {
+                  if (isReservedTable) return;
                   e.preventDefault();
                   e.stopPropagation();
                   seatDraggingRef.current = true;
                   handleDragStart(tableIndex, i);
                 } : undefined}
-                onMouseEnter={() => { if (dragFrom && !isClosed) handleDragOver(tableIndex, i); }}
+                onMouseEnter={() => { if (dragFrom && !isClosed && !isReservedTable) handleDragOver(tableIndex, i); }}
                 onMouseUp={() => {
-                  if (dragFrom && !isClosed) handleDrop(tableIndex, i);
+                  if (dragFrom && !isClosed && !isReservedTable) handleDrop(tableIndex, i);
                   seatDraggingRef.current = false;
                 }}
-                onClick={() => { if (!name) toggleSeatOpen(tableIndex, i); }}
+                onClick={() => { if (!name && !isReservedTable) toggleSeatOpen(tableIndex, i); }}
               >
                 <circle
                   cx={sx} cy={sy} r={seatRadius}
                   className={
+                    isReservedTable ? 'fill-amber-50 stroke-amber-200' :
                     isClosed ? 'fill-muted stroke-destructive/60' :
                     isDragging ? 'fill-primary/20 stroke-primary' :
                     isOver ? 'fill-accent stroke-primary' :
@@ -712,7 +768,7 @@ export default function SmartClassroom({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/前后门/窗支持显隐与拖拽
+          点击桌心可切换保留/开放；保留桌自动排座时不安排学生；拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/前后门/窗支持显隐与拖拽
         </p>
       )}
       <SeatCheckinDialog

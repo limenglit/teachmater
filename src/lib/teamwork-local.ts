@@ -20,6 +20,7 @@ export interface SmartClassroomSnapshot {
   tableGap: number;
   assignment: string[][];
   closedSeats: string[];
+  reservedTables?: number[];
   updatedAt: string;
 }
 
