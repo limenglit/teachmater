@@ -456,6 +456,11 @@ export default function AchievementPanel() {
           </div>
         )}
 
+        {/* Analytics Tab */}
+        {tab === 'analytics' && (
+          <StudentAnalytics studentNames={students.map(s => s.name)} />
+        )}
+
         {/* Add Points Dialog */}
         <Dialog open={showAddPoints} onOpenChange={setShowAddPoints}>
           <DialogContent className="sm:max-w-md">
