@@ -4217,6 +4217,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.selectedColumn': '選択中の列',
     'board.fabHint': 'アイデアと作品を投稿',
     'board.mobileEmptyHint': 'まだカードがありません。+をタップして投稿！',
+    'board.pullToRefresh': '下にスワイプして更新',
+    'board.releaseToRefresh': '離して更新',
     'board.chooseColumnHint': '投稿するパネルを選択してください',
       'task.title': '授業タスクリスト',
       'task.loadFailed': 'タスクデータの読み込みに失敗しました',
