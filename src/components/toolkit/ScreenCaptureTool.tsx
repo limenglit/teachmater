@@ -298,7 +298,7 @@ export default function ScreenCaptureTool() {
   const imageRef = useRef<HTMLImageElement>(null);
   const liveVideoWrapRef = useRef<HTMLDivElement>(null);
   const cameraVideoRef = useRef<HTMLVideoElement>(null);
-  const cameraPreviewRef = useRef<HTMLVideoElement>(null);
+  const cameraPreviewCanvasRef = useRef<HTMLCanvasElement>(null);
   const recordSourceVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraBackgroundImageRef = useRef<HTMLImageElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -308,6 +308,8 @@ export default function ScreenCaptureTool() {
   const recordRafRef = useRef<number | null>(null);
   const recordFrameTimerRef = useRef<number | null>(null);
   const recordVideoFrameCallbackRef = useRef<number | null>(null);
+  const cameraPreviewTimerRef = useRef<number | null>(null);
+  const cameraPreviewFrameCallbackRef = useRef<number | null>(null);
   const recordingActiveRef = useRef(false);
   const cameraFrameCacheRef = useRef<HTMLCanvasElement | null>(null);
   const regionDragRef = useRef<{ handle: RegionHandle; startX: number; startY: number; startRegion: LiveRegion } | null>(null);
@@ -575,31 +577,73 @@ export default function ScreenCaptureTool() {
 
   useEffect(() => {
     const cameraVideo = cameraVideoRef.current;
-    const cameraPreview = cameraPreviewRef.current;
-    if (!cameraVideo && !cameraPreview) return;
+    if (!cameraVideo) return;
     if (cameraVideo) {
       cameraVideo.srcObject = cameraStream;
-    }
-    if (cameraPreview) {
-      cameraPreview.srcObject = cameraStream;
     }
     if (cameraStream) {
       if (cameraVideo) {
         void cameraVideo.play().catch(() => undefined);
-      }
-      if (cameraPreview) {
-        void cameraPreview.play().catch(() => undefined);
       }
     }
     return () => {
       if (cameraVideo) {
         cameraVideo.srcObject = null;
       }
-      if (cameraPreview) {
-        cameraPreview.srcObject = null;
-      }
     };
   }, [cameraStream]);
+
+  useEffect(() => {
+    const sourceVideo = cameraVideoRef.current;
+    const previewCanvas = cameraPreviewCanvasRef.current;
+    if (!sourceVideo || !previewCanvas || !cameraEnabled || !cameraStream || workspaceMode !== 'record' || !workspaceOpen) {
+      return;
+    }
+
+    const ctx = previewCanvas.getContext('2d');
+    if (!ctx) return;
+
+    let active = true;
+
+    const scheduleNext = () => {
+      if (!active) return;
+      if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+        cameraPreviewFrameCallbackRef.current = (sourceVideo as HTMLVideoElement & {
+          requestVideoFrameCallback: (callback: () => void) => number;
+        }).requestVideoFrameCallback(() => drawFrame());
+      } else {
+        cameraPreviewTimerRef.current = window.setTimeout(drawFrame, 66);
+      }
+    };
+
+    const drawFrame = () => {
+      if (!active) return;
+
+      if (sourceVideo.readyState >= 2 && sourceVideo.videoWidth > 0 && sourceVideo.videoHeight > 0) {
+        if (previewCanvas.width !== sourceVideo.videoWidth || previewCanvas.height !== sourceVideo.videoHeight) {
+          previewCanvas.width = sourceVideo.videoWidth;
+          previewCanvas.height = sourceVideo.videoHeight;
+        }
+        ctx.drawImage(sourceVideo, 0, 0, previewCanvas.width, previewCanvas.height);
+      }
+
+      scheduleNext();
+    };
+
+    drawFrame();
+
+    return () => {
+      active = false;
+      if (cameraPreviewTimerRef.current !== null) {
+        window.clearTimeout(cameraPreviewTimerRef.current);
+        cameraPreviewTimerRef.current = null;
+      }
+      if (cameraPreviewFrameCallbackRef.current !== null && 'cancelVideoFrameCallback' in HTMLVideoElement.prototype) {
+        (sourceVideo as HTMLVideoElement & { cancelVideoFrameCallback: (id: number) => void }).cancelVideoFrameCallback(cameraPreviewFrameCallbackRef.current);
+        cameraPreviewFrameCallbackRef.current = null;
+      }
+    };
+  }, [cameraEnabled, cameraStream, workspaceMode, workspaceOpen]);
 
   useEffect(() => {
     if (!workspaceOpen || workspaceMode !== 'record') return;
@@ -1910,12 +1954,9 @@ export default function ScreenCaptureTool() {
                             }}
                           >
                             <div className="absolute inset-0 cursor-move" onMouseDown={(event) => beginCameraAdjust(event, 'move')} />
-                            <video
-                              autoPlay
-                              muted
-                              playsInline
+                            <canvas
+                              ref={cameraPreviewCanvasRef}
                               className="absolute inset-[8%] h-[84%] w-[84%] rounded-full object-cover pointer-events-none"
-                              ref={cameraPreviewRef}
                             />
                             <div
                               className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize"
