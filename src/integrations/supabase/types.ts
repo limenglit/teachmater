@@ -720,6 +720,33 @@ export type Database = {
         }
         Relationships: []
       }
+      scoring_rules: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          rules: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          rules?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          rules?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       seat_checkin_records: {
         Row: {
           checked_in_at: string

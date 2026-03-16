@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Trophy, Plus, Minus, Medal, Star, Award, Gift, Crown, Target, Zap, Heart, Flame, Download, RotateCcw, X, Users } from 'lucide-react';
+import { Trophy, Plus, Minus, Medal, Star, Award, Gift, Crown, Target, Zap, Heart, Flame, Download, RotateCcw, X, Users, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
+import StudentAnalytics from '@/components/achievement/StudentAnalytics';
 
 interface PointRecord {
   id: string;
@@ -78,7 +79,7 @@ export default function AchievementPanel() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [studentBadges, setStudentBadges] = useState<StudentBadge[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'leaderboard' | 'points' | 'badges'>('leaderboard');
+  const [tab, setTab] = useState<'leaderboard' | 'points' | 'badges' | 'analytics'>('leaderboard');
 
   // Add points form
   const [showAddPoints, setShowAddPoints] = useState(false);
@@ -291,18 +292,19 @@ export default function AchievementPanel() {
         </div>
 
         {/* Sub-tabs */}
-        <div className="flex gap-1 mb-6 border-b border-border">
-          {(['leaderboard', 'points', 'badges'] as const).map(t2 => (
+        <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
+          {(['leaderboard', 'points', 'badges', 'analytics'] as const).map(t2 => (
             <button
               key={t2}
               onClick={() => setTab(t2)}
-              className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+              className={`px-4 py-2 text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
                 tab === t2 ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               {t2 === 'leaderboard' && `🏆 ${t('achieve.leaderboard')}`}
               {t2 === 'points' && `⭐ ${t('achieve.pointsHistory')}`}
               {t2 === 'badges' && `🎖️ ${t('achieve.badgeManage')}`}
+              {t2 === 'analytics' && `📊 ${t('analytics.tabTitle')}`}
             </button>
           ))}
         </div>
@@ -452,6 +454,11 @@ export default function AchievementPanel() {
               })}
             </div>
           </div>
+        )}
+
+        {/* Analytics Tab */}
+        {tab === 'analytics' && (
+          <StudentAnalytics studentNames={students.map(s => s.name)} />
         )}
 
         {/* Add Points Dialog */}
