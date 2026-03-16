@@ -301,6 +301,12 @@ export default function ScreenCaptureTool() {
   const cameraPreviewCanvasRef = useRef<HTMLCanvasElement>(null);
   const recordSourceVideoRef = useRef<HTMLVideoElement | null>(null);
   const cameraBackgroundImageRef = useRef<HTMLImageElement | null>(null);
+  const imageSegmenterRef = useRef<any>(null);
+  const segmentationWorkCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const segmentedPersonCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const segmentedFrameReadyRef = useRef(false);
+  const segmentationLastRunAtRef = useRef<number>(0);
+  const virtualBgToastShownRef = useRef(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
   const recordMicStreamRef = useRef<MediaStream | null>(null);
@@ -344,6 +350,7 @@ export default function ScreenCaptureTool() {
   const [cameraOverlay, setCameraOverlay] = useState<CameraOverlay>({ x: 0.76, y: 0.72, size: 0.2 });
   const [cameraBackgroundPreset, setCameraBackgroundPreset] = useState<CameraBackgroundPreset>('whitewall');
   const [cameraBackgroundCustomUrl, setCameraBackgroundCustomUrl] = useState('');
+  const [virtualBgReady, setVirtualBgReady] = useState(false);
 
   const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
     const w = clamp(region.w, MIN_REGION_SIZE, 1);
@@ -370,6 +377,8 @@ export default function ScreenCaptureTool() {
       }
       return null;
     });
+    segmentedFrameReadyRef.current = false;
+    segmentationLastRunAtRef.current = 0;
   }, []);
 
   const refreshCameraDevices = useCallback(async () => {
@@ -433,6 +442,191 @@ export default function ScreenCaptureTool() {
       startOverlay: cameraOverlay,
     };
   }, [cameraOverlay]);
+
+  const fillCameraBackground = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    if (cameraBackgroundPreset === 'custom' && cameraBackgroundImageRef.current) {
+      ctx.drawImage(cameraBackgroundImageRef.current, x, y, w, h);
+      return;
+    }
+
+    if (cameraBackgroundPreset === 'bookshelf') {
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, '#8b5e3c');
+      g.addColorStop(0.5, '#c39b77');
+      g.addColorStop(1, '#5b3f2a');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+      return;
+    }
+
+    if (cameraBackgroundPreset === 'studio') {
+      const g = ctx.createRadialGradient(x + w * 0.35, y + h * 0.3, w * 0.15, x + w * 0.5, y + h * 0.5, w * 0.8);
+      g.addColorStop(0, '#374151');
+      g.addColorStop(1, '#111827');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+      return;
+    }
+
+    ctx.fillStyle = '#f5f5f4';
+    ctx.fillRect(x, y, w, h);
+  }, [cameraBackgroundPreset]);
+
+  const drawSegmentedCamera = useCallback((ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    const camVideo = cameraVideoRef.current;
+    if (!camVideo || camVideo.readyState < 2 || camVideo.videoWidth <= 0 || camVideo.videoHeight <= 0) {
+      return false;
+    }
+
+    fillCameraBackground(ctx, x, y, w, h);
+
+    if (!cameraFrameCacheRef.current) {
+      cameraFrameCacheRef.current = document.createElement('canvas');
+    }
+    const cameraCache = cameraFrameCacheRef.current;
+    cameraCache.width = camVideo.videoWidth;
+    cameraCache.height = camVideo.videoHeight;
+    const cameraCacheCtx = cameraCache.getContext('2d');
+    if (cameraCacheCtx) {
+      cameraCacheCtx.drawImage(camVideo, 0, 0, cameraCache.width, cameraCache.height);
+    }
+
+    if (!segmentedPersonCanvasRef.current) {
+      segmentedPersonCanvasRef.current = document.createElement('canvas');
+    }
+    const personCanvas = segmentedPersonCanvasRef.current;
+
+    if (!segmentationWorkCanvasRef.current) {
+      segmentationWorkCanvasRef.current = document.createElement('canvas');
+    }
+    const workCanvas = segmentationWorkCanvasRef.current;
+
+    const vw = camVideo.videoWidth;
+    const vh = camVideo.videoHeight;
+    if (personCanvas.width !== vw || personCanvas.height !== vh) {
+      personCanvas.width = vw;
+      personCanvas.height = vh;
+    }
+    if (workCanvas.width !== vw || workCanvas.height !== vh) {
+      workCanvas.width = vw;
+      workCanvas.height = vh;
+    }
+
+    const now = performance.now();
+    const shouldRunSegmentation = !!imageSegmenterRef.current && (now - segmentationLastRunAtRef.current > 80);
+
+    if (shouldRunSegmentation) {
+      try {
+        const result = imageSegmenterRef.current.segmentForVideo(camVideo, now);
+        const mask = result?.categoryMask;
+        const personCtx = personCanvas.getContext('2d');
+        const workCtx = workCanvas.getContext('2d');
+
+        if (mask && personCtx && workCtx) {
+          workCtx.drawImage(camVideo, 0, 0, vw, vh);
+          const frame = workCtx.getImageData(0, 0, vw, vh);
+
+          const maskWidth = mask.width || vw;
+          const maskHeight = mask.height || vh;
+
+          let maskData: Float32Array | Uint8Array | null = null;
+          let floatMask = false;
+
+          if (typeof mask.getAsFloat32Array === 'function') {
+            maskData = mask.getAsFloat32Array();
+            floatMask = true;
+          } else if (typeof mask.getAsUint8Array === 'function') {
+            maskData = mask.getAsUint8Array();
+          }
+
+          if (maskData && maskData.length > 0) {
+            const pixels = frame.data;
+            for (let py = 0; py < vh; py += 1) {
+              const my = Math.min(maskHeight - 1, Math.floor((py / vh) * maskHeight));
+              for (let px = 0; px < vw; px += 1) {
+                const mx = Math.min(maskWidth - 1, Math.floor((px / vw) * maskWidth));
+                const maskIndex = my * maskWidth + mx;
+                const personProb = floatMask
+                  ? (maskData as Float32Array)[maskIndex]
+                  : (maskData as Uint8Array)[maskIndex] / 255;
+                const alphaIndex = (py * vw + px) * 4 + 3;
+                pixels[alphaIndex] = personProb > 0.35 ? 255 : 0;
+              }
+            }
+
+            personCtx.clearRect(0, 0, vw, vh);
+            personCtx.putImageData(frame, 0, 0);
+            segmentedFrameReadyRef.current = true;
+            setVirtualBgReady(true);
+          }
+        }
+      } catch {
+        // Keep previous segmented frame as fallback to avoid preview flicker.
+      }
+      segmentationLastRunAtRef.current = now;
+    }
+
+    if (segmentedFrameReadyRef.current && personCanvas.width > 0 && personCanvas.height > 0) {
+      ctx.drawImage(personCanvas, x, y, w, h);
+      return true;
+    }
+
+    if (cameraFrameCacheRef.current) {
+      ctx.drawImage(cameraFrameCacheRef.current, x, y, w, h);
+    } else {
+      ctx.drawImage(camVideo, x, y, w, h);
+    }
+    return true;
+  }, [fillCameraBackground]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const initVirtualBackground = async () => {
+      if (!cameraEnabled || workspaceMode !== 'record' || !workspaceOpen) return;
+      if (imageSegmenterRef.current) return;
+
+      try {
+        const visionTasks = await import('@mediapipe/tasks-vision');
+        const vision = await visionTasks.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+        const segmenter = await visionTasks.ImageSegmenter.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath:
+              'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
+          },
+          runningMode: 'VIDEO',
+          outputCategoryMask: true,
+        });
+
+        if (cancelled) {
+          segmenter.close?.();
+          return;
+        }
+
+        imageSegmenterRef.current = segmenter;
+      } catch {
+        if (!cancelled && !virtualBgToastShownRef.current) {
+          virtualBgToastShownRef.current = true;
+          toast({ title: t('capture.virtualBgUnavailable') });
+        }
+      }
+    };
+
+    void initVirtualBackground();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cameraEnabled, t, workspaceMode, workspaceOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (imageSegmenterRef.current) {
+        imageSegmenterRef.current.close?.();
+        imageSegmenterRef.current = null;
+      }
+    };
+  }, []);
 
   const beginRegionAdjust = useCallback(
     (event: React.MouseEvent<HTMLDivElement>, handle: RegionHandle) => {
@@ -625,16 +819,9 @@ export default function ScreenCaptureTool() {
           previewCanvas.width = sourceVideo.videoWidth;
           previewCanvas.height = sourceVideo.videoHeight;
         }
-        ctx.drawImage(sourceVideo, 0, 0, previewCanvas.width, previewCanvas.height);
-        if (!cameraFrameCacheRef.current) {
-          cameraFrameCacheRef.current = document.createElement('canvas');
-        }
-        const cache = cameraFrameCacheRef.current;
-        cache.width = sourceVideo.videoWidth;
-        cache.height = sourceVideo.videoHeight;
-        const cacheCtx = cache.getContext('2d');
-        if (cacheCtx) {
-          cacheCtx.drawImage(sourceVideo, 0, 0, cache.width, cache.height);
+        const drawn = drawSegmentedCamera(ctx, 0, 0, previewCanvas.width, previewCanvas.height);
+        if (!drawn) {
+          ctx.drawImage(sourceVideo, 0, 0, previewCanvas.width, previewCanvas.height);
         }
       } else if (cameraFrameCacheRef.current) {
         if (previewCanvas.width !== cameraFrameCacheRef.current.width || previewCanvas.height !== cameraFrameCacheRef.current.height) {
@@ -660,7 +847,7 @@ export default function ScreenCaptureTool() {
         cameraPreviewFrameCallbackRef.current = null;
       }
     };
-  }, [browserInfo.isSafari, cameraEnabled, cameraStream, workspaceMode, workspaceOpen]);
+  }, [browserInfo.isSafari, cameraEnabled, cameraStream, drawSegmentedCamera, workspaceMode, workspaceOpen]);
 
   useEffect(() => {
     if (!workspaceOpen || workspaceMode !== 'record') return;
@@ -868,6 +1055,8 @@ export default function ScreenCaptureTool() {
       recordSourceVideoRef.current = null;
     }
     cameraFrameCacheRef.current = null;
+    segmentedFrameReadyRef.current = false;
+    segmentationLastRunAtRef.current = 0;
 
     if (recorderRef.current) {
       recorderRef.current.ondataavailable = null;
@@ -1211,52 +1400,9 @@ export default function ScreenCaptureTool() {
           outputCtx.closePath();
           outputCtx.clip();
 
-          if (cameraBackgroundPreset === 'custom' && cameraBackgroundImageRef.current) {
-            outputCtx.drawImage(cameraBackgroundImageRef.current, destX, destY, cameraSizeInSource, cameraSizeInSource);
-          } else {
-            if (cameraBackgroundPreset === 'bookshelf') {
-              const g = outputCtx.createLinearGradient(destX, destY, destX + cameraSizeInSource, destY + cameraSizeInSource);
-              g.addColorStop(0, '#8b5e3c');
-              g.addColorStop(0.5, '#c39b77');
-              g.addColorStop(1, '#5b3f2a');
-              outputCtx.fillStyle = g;
-            } else if (cameraBackgroundPreset === 'studio') {
-              const g = outputCtx.createRadialGradient(centerX, centerY, cameraSizeInSource * 0.2, centerX, centerY, cameraSizeInSource * 0.7);
-              g.addColorStop(0, '#1f2937');
-              g.addColorStop(1, '#111827');
-              outputCtx.fillStyle = g;
-            } else {
-              outputCtx.fillStyle = '#f5f5f4';
-            }
-            outputCtx.fillRect(destX, destY, cameraSizeInSource, cameraSizeInSource);
-          }
-
           const innerPadding = cameraSizeInSource * 0.08;
           const innerSize = cameraSizeInSource - innerPadding * 2;
-          const innerRadius = innerSize / 2;
-          const innerCenterX = destX + innerPadding + innerRadius;
-          const innerCenterY = destY + innerPadding + innerRadius;
-
-          outputCtx.beginPath();
-          outputCtx.arc(innerCenterX, innerCenterY, innerRadius, 0, Math.PI * 2);
-          outputCtx.closePath();
-          outputCtx.clip();
-
-          if (camVideo.readyState >= 2 && camVideo.videoWidth > 0 && camVideo.videoHeight > 0) {
-            if (!cameraFrameCacheRef.current) {
-              cameraFrameCacheRef.current = document.createElement('canvas');
-            }
-            const cacheCanvas = cameraFrameCacheRef.current;
-            cacheCanvas.width = camVideo.videoWidth;
-            cacheCanvas.height = camVideo.videoHeight;
-            const cacheCtx = cacheCanvas.getContext('2d');
-            if (cacheCtx) {
-              cacheCtx.drawImage(camVideo, 0, 0, cacheCanvas.width, cacheCanvas.height);
-              outputCtx.drawImage(cacheCanvas, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
-            }
-          } else if (cameraFrameCacheRef.current) {
-            outputCtx.drawImage(cameraFrameCacheRef.current, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
-          }
+          drawSegmentedCamera(outputCtx, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
 
           outputCtx.restore();
         }
@@ -1892,6 +2038,9 @@ export default function ScreenCaptureTool() {
                           disabled={isRecording}
                         />
                       </label>
+                      <span className="text-[11px] text-muted-foreground">
+                        {virtualBgReady ? t('capture.virtualBgReady') : t('capture.virtualBgLoading')}
+                      </span>
                     </>
                   )}
                   {recordAudioSource !== 'mic' && recordAudioSource !== 'none' && stream && !systemAudioTrackAvailable && (
