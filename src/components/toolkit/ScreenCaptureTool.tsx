@@ -398,6 +398,9 @@ export default function ScreenCaptureTool() {
     if (!cameraEnabled) return;
 
     try {
+      setVirtualBgReady(false);
+      segmentedFrameReadyRef.current = false;
+      segmentationLastRunAtRef.current = 0;
       const usbCamera = cameraDevices.find((device) => /usb/i.test(device.label));
       const preferredDeviceId = cameraSourceMode === 'usb'
         ? (selectedCameraDeviceId || usbCamera?.deviceId || cameraDevices[0]?.deviceId)
@@ -531,12 +534,32 @@ export default function ScreenCaptureTool() {
 
           let maskData: Float32Array | Uint8Array | null = null;
           let floatMask = false;
+          let isCategoryMask = true;
 
           if (typeof mask.getAsFloat32Array === 'function') {
             maskData = mask.getAsFloat32Array();
             floatMask = true;
           } else if (typeof mask.getAsUint8Array === 'function') {
             maskData = mask.getAsUint8Array();
+          }
+
+          const confidenceMasks = result?.confidenceMasks as
+            | Array<{
+                getAsFloat32Array?: () => Float32Array;
+                getAsUint8Array?: () => Uint8Array;
+                width?: number;
+                height?: number;
+              }>
+            | undefined;
+          const personConfidenceMask = confidenceMasks && confidenceMasks.length > 1 ? confidenceMasks[1] : undefined;
+          if (personConfidenceMask?.getAsFloat32Array) {
+            maskData = personConfidenceMask.getAsFloat32Array();
+            floatMask = true;
+            isCategoryMask = false;
+          } else if (personConfidenceMask?.getAsUint8Array) {
+            maskData = personConfidenceMask.getAsUint8Array();
+            floatMask = false;
+            isCategoryMask = false;
           }
 
           if (maskData && maskData.length > 0) {
@@ -546,9 +569,12 @@ export default function ScreenCaptureTool() {
               for (let px = 0; px < vw; px += 1) {
                 const mx = Math.min(maskWidth - 1, Math.floor((px / vw) * maskWidth));
                 const maskIndex = my * maskWidth + mx;
-                const personProb = floatMask
+                const maskValue = floatMask
                   ? (maskData as Float32Array)[maskIndex]
-                  : (maskData as Uint8Array)[maskIndex] / 255;
+                  : (maskData as Uint8Array)[maskIndex];
+                const personProb = isCategoryMask
+                  ? (maskValue > 0 ? 1 : 0)
+                  : (floatMask ? maskValue : maskValue / 255);
                 const alphaIndex = (py * vw + px) * 4 + 3;
                 pixels[alphaIndex] = personProb > 0.35 ? 255 : 0;
               }
@@ -595,6 +621,7 @@ export default function ScreenCaptureTool() {
               'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
           },
           runningMode: 'VIDEO',
+          outputConfidenceMasks: true,
           outputCategoryMask: true,
         });
 
@@ -857,11 +884,13 @@ export default function ScreenCaptureTool() {
   useEffect(() => {
     if (!workspaceOpen || workspaceMode !== 'record') {
       stopCameraStream();
+      setVirtualBgReady(false);
       return;
     }
 
     if (!cameraEnabled) {
       stopCameraStream();
+      setVirtualBgReady(false);
       return;
     }
 
@@ -1297,6 +1326,11 @@ export default function ScreenCaptureTool() {
         throw new Error('preview-size-empty');
       }
 
+      if (cameraEnabled && !virtualBgReady) {
+        toast({ title: t('capture.virtualBgLoading') });
+        return;
+      }
+
       const cropX = Math.round(liveRegion.x * sourceWidth);
       const cropY = Math.round(liveRegion.y * sourceHeight);
       const cropW = Math.max(2, Math.round(liveRegion.w * sourceWidth));
@@ -1400,9 +1434,7 @@ export default function ScreenCaptureTool() {
           outputCtx.closePath();
           outputCtx.clip();
 
-          const innerPadding = cameraSizeInSource * 0.08;
-          const innerSize = cameraSizeInSource - innerPadding * 2;
-          drawSegmentedCamera(outputCtx, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
+          drawSegmentedCamera(outputCtx, destX, destY, cameraSizeInSource, cameraSizeInSource);
 
           outputCtx.restore();
         }
@@ -2148,7 +2180,12 @@ export default function ScreenCaptureTool() {
                 <div className="fixed right-4 top-20 z-[121] rounded-2xl border border-border bg-card/95 backdrop-blur px-3 py-3 shadow-lg max-w-[calc(100vw-32px)]">
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     {!isRecording ? (
-                      <Button size="sm" onClick={startRecordingWithCountdown} className="gap-1" disabled={recordCountdown !== null}>
+                      <Button
+                        size="sm"
+                        onClick={startRecordingWithCountdown}
+                        className="gap-1"
+                        disabled={recordCountdown !== null || (cameraEnabled && !virtualBgReady)}
+                      >
                         <Video className="w-4 h-4" /> {t('capture.startRecord')}
                       </Button>
                     ) : (
