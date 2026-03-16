@@ -283,6 +283,15 @@ export default function StudentAnalytics({ studentNames }: Props) {
             ))}
           </div>
 
+          {/* Class Overview */}
+          {subView === 'classOverview' && (
+            <ClassOverview
+              analyticsData={analyticsData}
+              rules={rules}
+              getRawCount={getRawCount}
+            />
+          )}
+
           {/* Overall Ranking */}
           {subView === 'overall' && (
             <div className="space-y-2">
