@@ -31,9 +31,32 @@ export interface SmartClassroomHistoryItem {
   snapshot: SmartClassroomSnapshot;
 }
 
+export interface BanquetHallSnapshot {
+  seatsPerTable: number;
+  tableCount: number;
+  tableCols: number;
+  tableRows: number;
+  groupCount: number;
+  mode: 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+  tableGap: number;
+  assignment: string[][];
+  closedSeats: string[];
+  reservedTables?: number[];
+  updatedAt: string;
+}
+
+export interface BanquetHallHistoryItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: BanquetHallSnapshot;
+}
+
 const GROUPS_KEY = 'teachmate_groups_last';
 const SMART_CLASSROOM_KEY = 'teachmate_smart_classroom_last';
 const SMART_CLASSROOM_HISTORY_KEY = 'teachmate_smart_classroom_history';
+const BANQUET_HALL_KEY = 'teachmate_banquet_hall_last';
+const BANQUET_HALL_HISTORY_KEY = 'teachmate_banquet_hall_history';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -93,6 +116,39 @@ export function saveSmartClassroomHistory(name: string, snapshot: SmartClassroom
   };
   const next = [item, ...current].slice(0, 50);
   localStorage.setItem(SMART_CLASSROOM_HISTORY_KEY, JSON.stringify(next));
+  return item;
+}
+
+export function loadBanquetHallSnapshot(): BanquetHallSnapshot | null {
+  const parsed = safeParse<BanquetHallSnapshot>(localStorage.getItem(BANQUET_HALL_KEY));
+  if (!parsed) return null;
+  if (!Array.isArray(parsed.assignment)) return null;
+  return parsed;
+}
+
+export function saveBanquetHallSnapshot(snapshot: BanquetHallSnapshot) {
+  localStorage.setItem(BANQUET_HALL_KEY, JSON.stringify(snapshot));
+}
+
+export function loadBanquetHallHistory(): BanquetHallHistoryItem[] {
+  const parsed = safeParse<BanquetHallHistoryItem[]>(localStorage.getItem(BANQUET_HALL_HISTORY_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && item.snapshot)
+    .slice(0, 50);
+}
+
+export function saveBanquetHallHistory(name: string, snapshot: BanquetHallSnapshot) {
+  const current = loadBanquetHallHistory();
+  const now = new Date().toISOString();
+  const item: BanquetHallHistoryItem = {
+    id: `banquet_${Date.now()}`,
+    name,
+    createdAt: now,
+    snapshot: { ...snapshot, updatedAt: now },
+  };
+  const next = [item, ...current].slice(0, 50);
+  localStorage.setItem(BANQUET_HALL_HISTORY_KEY, JSON.stringify(next));
   return item;
 }
 

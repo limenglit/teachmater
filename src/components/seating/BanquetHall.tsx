@@ -1,11 +1,23 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
+import { toast } from 'sonner';
+import {
+  loadLastGroups,
+  saveLastGroups,
+  groupsFromSeatAssignment,
+  loadBanquetHallSnapshot,
+  saveBanquetHallSnapshot,
+  loadBanquetHallHistory,
+  saveBanquetHallHistory,
+  type BanquetHallHistoryItem,
+  type BanquetHallSnapshot,
+} from '@/lib/teamwork-local';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -31,15 +43,27 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function BanquetHall({ students }: Props) {
+  const initialTableCount = Math.max(1, Math.ceil(students.length / 10));
+  const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
+  const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
+
   const [seatsPerTable, setSeatsPerTable] = useState(10);
-  const [tableCount, setTableCount] = useState(() => Math.ceil(students.length / 10) || 3);
+  const [tableCols, setTableCols] = useState(initialTableCols);
+  const [tableRows, setTableRows] = useState(initialTableRows);
+  const [tableCount, setTableCount] = useState(initialTableCount);
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<BanquetSeatMode>('tableRoundRobin');
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
+  const [reservedTables, setReservedTables] = useState<Set<number>>(new Set());
   const [tableGap, setTableGap] = useState(24);
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
+  const [recordName, setRecordName] = useState('');
+  const [historyItems, setHistoryItems] = useState<BanquetHallHistoryItem[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
+  const [linkedGroupNames, setLinkedGroupNames] = useState<string[]>([]);
+
   const [refVisible, setRefVisible] = useState<RefVisible>({
     screen: true,
     podium: true,
@@ -48,10 +72,13 @@ export default function BanquetHall({ students }: Props) {
     backDoor: true,
   });
   const [refLocked, setRefLocked] = useState(false);
+
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
   const seatDraggingRef = useRef(false);
+  const restoredOnceRef = useRef(false);
+
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const seatKey = (tableIndex: number, seatIndex: number) => `${tableIndex}-${seatIndex}`;
@@ -66,35 +93,98 @@ export default function BanquetHall({ students }: Props) {
     });
   };
 
-  const tableCols = Math.ceil(Math.sqrt(tableCount));
-  const tableRows = Math.ceil(tableCount / tableCols);
-  const roomWidth = Math.max(980, tableCols * 180 + Math.max(0, tableCols - 1) * tableGap + 260);
-  const roomHeight = Math.max(720, tableRows * 180 + Math.max(0, tableRows - 1) * tableGap + 280);
-  const exportSceneConfig = { seatsPerTable, tableCount, tableCols: Math.ceil(Math.sqrt(tableCount)) };
-  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
-    seatData: assignment,
-    studentNames: students.map(s => s.name),
-    sceneConfig: exportSceneConfig,
-    sceneType: 'banquet',
-  });
+  const toggleTableReserved = (tableIndex: number) => {
+    setReservedTables(prev => {
+      const next = new Set(prev);
+      if (next.has(tableIndex)) {
+        next.delete(tableIndex);
+      } else {
+        next.add(tableIndex);
+        setAssignment(current => {
+          const copied = current.map(row => [...row]);
+          if (!copied[tableIndex]) return copied;
+          copied[tableIndex] = copied[tableIndex].map(() => '');
+          return copied;
+        });
+      }
+      return next;
+    });
+  };
+
+  const toPositiveInt = (value: number, fallback = 1) => {
+    if (!Number.isFinite(value)) return fallback;
+    const normalized = Math.floor(value);
+    return normalized > 0 ? normalized : fallback;
+  };
+
+  const applyGridSize = (nextRows: number, nextCols: number) => {
+    setTableRows(nextRows);
+    setTableCols(nextCols);
+    setTableCount(nextRows * nextCols);
+  };
+
+  const handleRowsChange = (raw: string) => {
+    const nextRows = toPositiveInt(Number(raw), tableRows);
+    applyGridSize(nextRows, tableCols);
+  };
+
+  const handleColsChange = (raw: string) => {
+    const nextCols = toPositiveInt(Number(raw), tableCols);
+    applyGridSize(tableRows, nextCols);
+  };
+
+  const handleTableCountChange = (raw: string) => {
+    const nextCount = toPositiveInt(Number(raw), tableCount);
+    setTableCount(nextCount);
+    setTableRows(Math.max(1, Math.ceil(nextCount / tableCols)));
+  };
+
   const tableCellSize = 170;
   const tStageRunwayWidth = 56;
   const hasTStage = refVisible.podium;
   const splitIndex = Math.ceil(tableCols / 2);
+
+  const roomWidth = Math.max(980, tableCols * 180 + Math.max(0, tableCols - 1) * tableGap + 260);
+  const roomHeight = Math.max(720, tableRows * 180 + Math.max(0, tableRows - 1) * tableGap + 280);
+
   const tStageTopWidth = Math.max(320, Math.min(roomWidth * 0.56, tableCols * 180));
   const tStageTopY = 116;
   const tStageTopHeight = 28;
   const tStageRunwayTop = tStageTopY + tStageTopHeight - 2;
   const tStageRunwayBottom = roomHeight - 64;
   const tStageRunwayHeight = Math.max(120, tStageRunwayBottom - tStageRunwayTop);
+
+  const exportSceneConfig = { seatsPerTable, tableCount, tableCols, tableRows };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: assignment,
+    studentNames: students.map(s => s.name),
+    sceneConfig: exportSceneConfig,
+    sceneType: 'banquet',
+  });
+
   const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 720));
   const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
+  const buildSnapshot = (): BanquetHallSnapshot => ({
+    seatsPerTable,
+    tableCount,
+    tableCols,
+    tableRows,
+    groupCount,
+    mode,
+    tableGap,
+    assignment,
+    closedSeats: Array.from(closedSeats),
+    reservedTables: Array.from(reservedTables),
+    updatedAt: new Date().toISOString(),
+  });
+
   const placeName = (tables: string[][], preferred: number, name: string) => {
-    const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)];
+    const order = [preferred, ...Array.from({ length: tableCount }, (_, i) => i).filter(i => i !== preferred)]
+      .filter(tableIdx => !reservedTables.has(tableIdx));
     for (const tableIdx of order) {
       for (let seatIdx = 0; seatIdx < seatsPerTable; seatIdx++) {
         if (closedSeats.has(seatKey(tableIdx, seatIdx))) continue;
@@ -112,9 +202,46 @@ export default function BanquetHall({ students }: Props) {
     return groups;
   };
 
+  const applyGroupsToSeat = (fromGroups: ReturnType<typeof loadLastGroups>) => {
+    const availableNames = new Set(students.map(s => s.name));
+    const filteredGroups = fromGroups
+      .map(group => ({
+        ...group,
+        members: group.members.filter(member => availableNames.has(member.name)),
+      }))
+      .filter(group => group.members.length > 0);
+
+    if (filteredGroups.length === 0) {
+      toast.error('No usable group data found.');
+      return false;
+    }
+
+    const nextTableCount = filteredGroups.length;
+    const maxGroupSize = Math.max(...filteredGroups.map(group => group.members.length));
+    const nextSeatsPerTable = Math.max(6, maxGroupSize);
+    const nextTableCols = Math.max(1, Math.min(tableCols, nextTableCount));
+    const nextTableRows = Math.max(1, Math.ceil(nextTableCount / nextTableCols));
+    const nextAssignment = Array.from({ length: nextTableCount }, (_, index) => {
+      const row = filteredGroups[index]?.members.map(member => member.name) ?? [];
+      if (row.length >= nextSeatsPerTable) return row.slice(0, nextSeatsPerTable);
+      return [...row, ...Array.from({ length: nextSeatsPerTable - row.length }, () => '')];
+    });
+
+    setSeatsPerTable(nextSeatsPerTable);
+    setTableCount(nextTableCount);
+    setTableCols(nextTableCols);
+    setTableRows(nextTableRows);
+    setGroupCount(nextTableCount);
+    setMode('tableGrouped');
+    setLinkedGroupNames(filteredGroups.map(group => group.name));
+    setAssignment(nextAssignment);
+    setReservedTables(new Set());
+    return true;
+  };
+
   const getTableOrder = (seatMode: BanquetSeatMode) => {
-    const cols = Math.ceil(Math.sqrt(tableCount));
-    const rows = Math.ceil(tableCount / cols);
+    const cols = tableCols;
+    const rows = tableRows;
     const order: number[] = [];
 
     if (seatMode === 'verticalS') {
@@ -149,6 +276,12 @@ export default function BanquetHall({ students }: Props) {
     const tables: string[][] = Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => ''));
 
     if (mode === 'tableGrouped') {
+      const cachedGroups = loadLastGroups();
+      if (cachedGroups.length > 0 && !shuffle) {
+        const ok = applyGroupsToSeat(cachedGroups);
+        if (ok) return;
+      }
+
       const groups = splitIntoGroups(names, Math.max(1, groupCount));
       groups.forEach((group, gi) => {
         group.forEach(n => placeName(tables, gi % tableCount, n));
@@ -162,14 +295,104 @@ export default function BanquetHall({ students }: Props) {
     setAssignment(tables);
   };
 
+  const saveCurrentSnapshot = () => {
+    if (assignment.length === 0) {
+      toast.error('No seat layout to save yet.');
+      return;
+    }
+    saveBanquetHallSnapshot(buildSnapshot());
+    toast.success('Current banquet layout saved.');
+  };
+
+  const restoreLastSnapshot = () => {
+    const snapshot = loadBanquetHallSnapshot();
+    if (!snapshot || snapshot.assignment.length === 0) {
+      toast.error('No previous banquet layout found.');
+      return;
+    }
+
+    const validStudentNames = new Set(students.map(s => s.name));
+    const sanitizedAssignment = snapshot.assignment.map(table =>
+      table.map(name => (validStudentNames.has(name) ? name : ''))
+    );
+
+    setSeatsPerTable(Math.max(6, snapshot.seatsPerTable));
+    setTableCount(Math.max(1, snapshot.tableCount));
+    setTableCols(Math.max(1, snapshot.tableCols));
+    setTableRows(Math.max(1, snapshot.tableRows));
+    setGroupCount(Math.max(1, snapshot.groupCount));
+    setMode(snapshot.mode);
+    setTableGap(Math.max(0, snapshot.tableGap));
+    setAssignment(sanitizedAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    setReservedTables(new Set(snapshot.reservedTables || []));
+    toast.success('Previous banquet layout restored.');
+  };
+
+  const saveToHistory = () => {
+    if (assignment.length === 0) {
+      toast.error('Generate seats before saving to history.');
+      return;
+    }
+    const name = recordName.trim() || `Banquet-${new Date().toLocaleString()}`;
+    const item = saveBanquetHallHistory(name, buildSnapshot());
+    const nextItems = [item, ...historyItems].slice(0, 50);
+    setHistoryItems(nextItems);
+    setSelectedHistoryId(item.id);
+    setRecordName(name);
+    saveBanquetHallSnapshot(item.snapshot);
+    toast.success('Saved to banquet history.');
+  };
+
+  const restoreFromHistory = () => {
+    const item = historyItems.find(history => history.id === selectedHistoryId);
+    if (!item) {
+      toast.error('Please select a history record.');
+      return;
+    }
+    const snapshot = item.snapshot;
+    const validStudentNames = new Set(students.map(s => s.name));
+    const sanitizedAssignment = snapshot.assignment.map(table =>
+      table.map(name => (validStudentNames.has(name) ? name : ''))
+    );
+
+    setSeatsPerTable(Math.max(6, snapshot.seatsPerTable));
+    setTableCount(Math.max(1, snapshot.tableCount));
+    setTableCols(Math.max(1, snapshot.tableCols));
+    setTableRows(Math.max(1, snapshot.tableRows));
+    setGroupCount(Math.max(1, snapshot.groupCount));
+    setMode(snapshot.mode);
+    setTableGap(Math.max(0, snapshot.tableGap));
+    setAssignment(sanitizedAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    setReservedTables(new Set(snapshot.reservedTables || []));
+    setRecordName(item.name);
+    saveBanquetHallSnapshot({ ...snapshot, assignment: sanitizedAssignment });
+    toast.success('History restored. Continue adjusting as needed.');
+  };
+
+  const seatByLastGroups = () => {
+    const cachedGroups = loadLastGroups();
+    if (cachedGroups.length === 0) {
+      toast.error('No saved group data available.');
+      return;
+    }
+    const ok = applyGroupsToSeat(cachedGroups);
+    if (ok) {
+      toast.success('Seating generated from groups.');
+    }
+  };
+
+  useEffect(() => {
+    const requiredTableCount = Math.max(1, Math.ceil(students.length / Math.max(1, seatsPerTable)));
+    if (requiredTableCount <= tableCount) return;
+    setTableCount(requiredTableCount);
+    setTableRows(Math.max(1, Math.ceil(requiredTableCount / tableCols)));
+  }, [students.length, seatsPerTable, tableCols, tableCount]);
+
   useEffect(() => {
     setTablePositions(Array(tableCount).fill({ x: 0, y: 0 }));
   }, [tableCount]);
-
-  useEffect(() => {
-    const matchedTableCount = Math.max(1, Math.ceil(students.length / Math.max(1, seatsPerTable)));
-    setTableCount(matchedTableCount);
-  }, [students.length, seatsPerTable]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -187,6 +410,57 @@ export default function BanquetHall({ students }: Props) {
       return next;
     });
   }, [tableCount, seatsPerTable]);
+
+  useEffect(() => {
+    setReservedTables(prev => {
+      const next = new Set<number>();
+      prev.forEach(index => {
+        if (index < tableCount) next.add(index);
+      });
+      return next;
+    });
+  }, [tableCount]);
+
+  useEffect(() => {
+    setHistoryItems(loadBanquetHallHistory());
+  }, []);
+
+  useEffect(() => {
+    if (restoredOnceRef.current) return;
+    const snapshot = loadBanquetHallSnapshot();
+    if (snapshot && snapshot.assignment.length > 0) {
+      const validStudentNames = new Set(students.map(s => s.name));
+      const sanitizedAssignment = snapshot.assignment.map(table =>
+        table.map(name => (validStudentNames.has(name) ? name : ''))
+      );
+      setSeatsPerTable(Math.max(6, snapshot.seatsPerTable));
+      setTableCount(Math.max(1, snapshot.tableCount));
+      setTableCols(Math.max(1, snapshot.tableCols));
+      setTableRows(Math.max(1, snapshot.tableRows));
+      setGroupCount(Math.max(1, snapshot.groupCount));
+      setMode(snapshot.mode);
+      setTableGap(Math.max(0, snapshot.tableGap));
+      setAssignment(sanitizedAssignment);
+      setClosedSeats(new Set(snapshot.closedSeats || []));
+      setReservedTables(new Set(snapshot.reservedTables || []));
+    }
+    restoredOnceRef.current = true;
+  }, [students]);
+
+  useEffect(() => {
+    if (assignment.length === 0) return;
+
+    const nextGroups = groupsFromSeatAssignment(assignment, linkedGroupNames);
+    if (nextGroups.length > 0) {
+      saveLastGroups(nextGroups);
+      const nextNames = nextGroups.map(group => group.name);
+      if (nextNames.join('|') !== linkedGroupNames.join('|')) {
+        setLinkedGroupNames(nextNames);
+      }
+    }
+
+    saveBanquetHallSnapshot(buildSnapshot());
+  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -213,10 +487,12 @@ export default function BanquetHall({ students }: Props) {
         }));
       }
     };
+
     const handleMouseUp = () => {
       draggingRef.current = null;
       refDraggingRef.current = null;
     };
+
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     return () => {
@@ -261,6 +537,8 @@ export default function BanquetHall({ students }: Props) {
     const cy = 85;
     const totalSlots = seatsPerTable;
     const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
+    const isReservedTable = reservedTables.has(tableIndex);
+    const assignedCount = people.filter(name => !!name).length;
 
     return (
       <div
@@ -271,13 +549,22 @@ export default function BanquetHall({ students }: Props) {
       >
         <svg width={170} height={170} viewBox="0 0 170 170" className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
           <circle cx={cx} cy={cy} r={42} className="fill-primary/5 stroke-primary/20" strokeWidth={1} strokeDasharray="4 2" />
-          <circle cx={cx} cy={cy} r={36} className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
-          <text x={cx} y={cy - 4} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-sm font-medium">
-            {tableIndex + 1}桌
-          </text>
-          <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className="fill-primary/60 text-xs">
-            {people.length}人
-          </text>
+          <g
+            onMouseDown={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleTableReserved(tableIndex);
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            <circle cx={cx} cy={cy} r={36} className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'} strokeWidth={2} />
+            <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-sm font-semibold' : 'fill-primary text-sm font-medium'}>
+              T{tableIndex + 1}
+            </text>
+            <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-primary/60 text-xs'}>
+              {isReservedTable ? 'RES' : `${assignedCount}`}
+            </text>
+          </g>
           {Array.from({ length: totalSlots }).map((_, i) => {
             const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
             const sx = cx + radius * Math.cos(angle);
@@ -291,23 +578,25 @@ export default function BanquetHall({ students }: Props) {
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
                 onMouseDown={name && !isClosed ? (e) => {
+                  if (isReservedTable) return;
                   e.preventDefault();
                   e.stopPropagation();
                   seatDraggingRef.current = true;
                   handleDragStart(tableIndex, i);
                 } : undefined}
-                onMouseEnter={() => { if (dragFrom && !isClosed) handleDragOver(tableIndex, i); }}
+                onMouseEnter={() => { if (dragFrom && !isClosed && !isReservedTable) handleDragOver(tableIndex, i); }}
                 onMouseUp={() => {
-                  if (dragFrom && !isClosed) handleDrop(tableIndex, i);
+                  if (dragFrom && !isClosed && !isReservedTable) handleDrop(tableIndex, i);
                   seatDraggingRef.current = false;
                 }}
-                onClick={() => { if (!name) toggleSeatOpen(tableIndex, i); }}
+                onClick={() => { if (!name && !isReservedTable) toggleSeatOpen(tableIndex, i); }}
               >
                 <circle
                   cx={sx}
                   cy={sy}
                   r={seatRadius}
                   className={
+                    isReservedTable ? 'fill-amber-50 stroke-amber-200' :
                     isClosed ? 'fill-muted stroke-destructive/60' :
                     isDragging ? 'fill-primary/20 stroke-primary' :
                     isOver ? 'fill-accent stroke-primary' :
@@ -318,7 +607,7 @@ export default function BanquetHall({ students }: Props) {
                 />
                 {isClosed && (
                   <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
-                    关
+                    X
                   </text>
                 )}
                 {name && !isDragging && (
@@ -347,79 +636,139 @@ export default function BanquetHall({ students }: Props) {
     >
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每桌人数
-          <Input type="number" min={6} max={16} value={seatsPerTable}
-            onChange={e => setSeatsPerTable(Math.max(6, Math.min(16, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          Name
+          <Input
+            type="text"
+            value={recordName}
+            onChange={e => setRecordName(e.target.value)}
+            placeholder="One field for history name and export filename"
+            className="w-72 h-8"
+          />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          自动桌数
-          <span className="inline-flex items-center justify-center min-w-10 h-8 px-2 rounded-md border border-border bg-muted/40 text-foreground font-medium">
-            {tableCount}
-          </span>
+          Seats/Table
+          <Input type="number" min={6} max={20} value={seatsPerTable}
+            onChange={e => setSeatsPerTable(Math.max(6, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          Rows
+          <Input type="number" min={1} value={tableRows}
+            onChange={e => handleRowsChange(e.target.value)} className="w-16 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          Cols
+          <Input type="number" min={1} value={tableCols}
+            onChange={e => handleColsChange(e.target.value)} className="w-16 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          Tables
+          <Input type="number" min={1} value={tableCount}
+            onChange={e => handleTableCountChange(e.target.value)} className="w-20 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          Mode
           <select
             value={mode}
             onChange={e => setMode(e.target.value as BanquetSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="tableRoundRobin">每桌轮转</option>
-            <option value="tableGrouped">每组一桌</option>
-            <option value="verticalS">竖S桌序</option>
-            <option value="horizontalS">横S桌序</option>
+            <option value="tableRoundRobin">Round Robin</option>
+            <option value="tableGrouped">One Group One Table</option>
+            <option value="verticalS">Vertical S</option>
+            <option value="horizontalS">Horizontal S</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            组数
+            Groups
             <Input type="number" min={2} max={30} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌子间距
+          Gap
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
-        <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
-          重置参照物
+
+        <Button variant="outline" onClick={saveCurrentSnapshot} className="gap-2">
+          <Save className="w-4 h-4" /> Save Layout
         </Button>
+        <Button variant="outline" onClick={saveToHistory} className="gap-2">
+          <Save className="w-4 h-4" /> Save History
+        </Button>
+        <select
+          value={selectedHistoryId}
+          onChange={e => setSelectedHistoryId(e.target.value)}
+          className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+        >
+          <option value="">Select history</option>
+          {historyItems.map(item => (
+            <option key={item.id} value={item.id}>
+              {item.name} ({new Date(item.createdAt).toLocaleString()})
+            </option>
+          ))}
+        </select>
+        <Button variant="outline" onClick={restoreFromHistory} className="gap-2">
+          <RotateCcw className="w-4 h-4" /> Restore History
+        </Button>
+        <Button variant="outline" onClick={restoreLastSnapshot} className="gap-2">
+          <RotateCcw className="w-4 h-4" /> Restore Last
+        </Button>
+        <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
+          <Users className="w-4 h-4" /> Seat By Groups
+        </Button>
+
+        <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
+          Reset Markers
+        </Button>
+
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> Screen
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> T型舞台
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> T-Stage
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> Window
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
+            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> Front Door
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> 后门
+            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> Back Door
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> Lock Markers
           </label>
         </div>
+
         <span className="text-xs text-muted-foreground">
-          共可容纳 {seatsPerTable * tableCount} 人 | 当前 {students.length} 人
+          Capacity {seatsPerTable * tableCount} | Students {students.length}
         </span>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="宴会厅座位" resolveQrCode={resolveQrCode} />}
+
+        {assignment.length > 0 && (
+          <ExportButtons
+            targetRef={printRef}
+            filename={recordName.trim() || 'Banquet-Seating'}
+            resolveQrCode={resolveQrCode}
+            titleValue={recordName}
+            onTitleChange={setRecordName}
+            hideTitleInput
+          />
+        )}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" /> 签到
+            <QrCode className="w-4 h-4" /> Check-in
           </Button>
         )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> Random
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> Auto Seat
           </Button>
         </div>
       </div>
@@ -427,7 +776,7 @@ export default function BanquetHall({ students }: Props) {
       <div ref={printRef}>
         <div className="text-center mb-4">
           <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-medium border border-primary/20">
-            宴会厅
+            Banquet Hall
           </div>
         </div>
 
@@ -436,8 +785,8 @@ export default function BanquetHall({ students }: Props) {
             <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
-                  <span className={refIconClass}>🖥️</span>
-                  <span className={refTextClass}>幕布</span>
+                  <span className={refIconClass}>S</span>
+                  <span className={refTextClass}>Screen</span>
                 </div>
               )}
               {hasTStage && (
@@ -464,26 +813,26 @@ export default function BanquetHall({ students }: Props) {
                     className="absolute text-[11px] font-medium text-primary/80 select-none pointer-events-none"
                     style={{ left: '50%', top: tStageTopY + 6, transform: 'translateX(-50%)' }}
                   >
-                    T型舞台
+                    T-Stage
                   </div>
                 </>
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
-                  <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗</span>
+                  <span className={refIconClass}>W</span>
+                  <span className={refTextClass}>Window</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
-                  <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>前门</span>
+                  <span className={refIconClass}>F</span>
+                  <span className={refTextClass}>Front Door</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
-                  <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>后门</span>
+                  <span className={refIconClass}>B</span>
+                  <span className={refTextClass}>Back Door</span>
                 </div>
               )}
 
@@ -514,15 +863,15 @@ export default function BanquetHall({ students }: Props) {
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
-            <p className="text-sm">宴会厅圆桌，{seatsPerTable} 人一桌，根据人数自动分配</p>
+            <p className="text-lg mb-2">Click Auto Seat to start.</p>
+            <p className="text-sm">Banquet round tables with auto assignment.</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/T型舞台/窗/前后门支持显隐与拖拽
+          Click table center to reserve/reopen. Reserved tables are skipped by auto seat. Drag names to swap seats. Empty seats can be disabled or reopened.
         </p>
       )}
       <SeatCheckinDialog
