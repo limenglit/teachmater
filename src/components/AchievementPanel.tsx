@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Trophy, Plus, Minus, Medal, Star, Award, Gift, Crown, Target, Zap, Heart, Flame, Download, RotateCcw, X, Users } from 'lucide-react';
+import { Trophy, Plus, Minus, Medal, Star, Award, Gift, Crown, Target, Zap, Heart, Flame, Download, RotateCcw, X, Users, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
+import StudentAnalytics from '@/components/achievement/StudentAnalytics';
 
 interface PointRecord {
   id: string;
