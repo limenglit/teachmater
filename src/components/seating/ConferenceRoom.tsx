@@ -1,10 +1,19 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import { toast } from 'sonner';
+import {
+  loadConferenceRoomHistory,
+  saveConferenceRoomHistory,
+  loadConferenceRoomSnapshot,
+  saveConferenceRoomSnapshot,
+  type ConferenceRoomHistoryItem,
+  type ConferenceRoomSnapshot,
+} from '@/lib/teamwork-local';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -64,6 +73,9 @@ export default function ConferenceRoom({ students }: Props) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [seated, setSeated] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
+  const [recordName, setRecordName] = useState('');
+  const [historyItems, setHistoryItems] = useState<ConferenceRoomHistoryItem[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
 
   const [refVisible, setRefVisible] = useState<RefVisible>({
     screen: true,
@@ -170,6 +182,25 @@ export default function ConferenceRoom({ students }: Props) {
   useEffect(() => {
     setRefPositions(defaultRefPositions);
   }, [defaultRefPositions]);
+
+  useEffect(() => {
+    setHistoryItems(loadConferenceRoomHistory());
+    const snapshot = loadConferenceRoomSnapshot();
+    if (!snapshot) return;
+    setSeatsPerSide(Math.max(4, snapshot.seatsPerSide));
+    setGroupCount(Math.max(1, snapshot.groupCount));
+    setMode(snapshot.mode);
+    setSeatGap(Math.max(2, snapshot.seatGap));
+    setShowCompanionSeats(snapshot.showCompanionSeats);
+    setCompanionRows(Math.max(1, snapshot.companionRows));
+    setAssignment(snapshot.assignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    setSeated(!!snapshot.seated);
+  }, []);
+
+  useEffect(() => {
+    saveConferenceRoomSnapshot(buildSnapshot());
+  }, [seatsPerSide, groupCount, mode, seatGap, showCompanionSeats, companionRows, assignment, closedSeats, seated]);
 
   useEffect(() => {
     setAssignment(prev => ({
@@ -292,6 +323,66 @@ export default function ConferenceRoom({ students }: Props) {
       else next.add(slot);
       return next;
     });
+  };
+
+  const buildSnapshot = (): ConferenceRoomSnapshot => ({
+    seatsPerSide,
+    groupCount,
+    mode,
+    seatGap,
+    showCompanionSeats,
+    companionRows,
+    assignment,
+    closedSeats: Array.from(closedSeats),
+    seated,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const saveToHistory = () => {
+    if (!seated) {
+      toast.error('请先完成排座再保存');
+      return;
+    }
+    const name = recordName.trim() || `会议室-${new Date().toLocaleString()}`;
+    const item = saveConferenceRoomHistory(name, buildSnapshot());
+    const nextItems = [item, ...historyItems].slice(0, 50);
+    setHistoryItems(nextItems);
+    setSelectedHistoryId(item.id);
+    setRecordName(name);
+    saveConferenceRoomSnapshot(item.snapshot);
+    toast.success('已保存到历史记录');
+  };
+
+  const restoreFromHistory = () => {
+    const item = historyItems.find(history => history.id === selectedHistoryId);
+    if (!item) {
+      toast.error('请选择要恢复的历史记录');
+      return;
+    }
+    const snapshot = item.snapshot;
+    const validStudentNames = new Set(students.map(s => s.name));
+    const sanitize = (name: string) => (validStudentNames.has(name) ? name : '');
+    const sanitizedAssignment: ConferenceAssignment = {
+      headLeft: sanitize(snapshot.assignment.headLeft),
+      headRight: sanitize(snapshot.assignment.headRight),
+      mainTop: snapshot.assignment.mainTop.map(sanitize),
+      mainBottom: snapshot.assignment.mainBottom.map(sanitize),
+      companionTop: snapshot.assignment.companionTop.map(row => row.map(sanitize)),
+      companionBottom: snapshot.assignment.companionBottom.map(row => row.map(sanitize)),
+    };
+
+    setSeatsPerSide(Math.max(4, snapshot.seatsPerSide));
+    setGroupCount(Math.max(1, snapshot.groupCount));
+    setMode(snapshot.mode);
+    setSeatGap(Math.max(2, snapshot.seatGap));
+    setShowCompanionSeats(snapshot.showCompanionSeats);
+    setCompanionRows(Math.max(1, snapshot.companionRows));
+    setAssignment(sanitizedAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    setSeated(snapshot.seated || true);
+    setRecordName(item.name);
+    saveConferenceRoomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
+    toast.success('已从历史记录恢复，可继续调整');
   };
 
   const autoSeat = (shuffle = false) => {
@@ -443,6 +534,16 @@ export default function ConferenceRoom({ students }: Props) {
     >
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          名称
+          <Input
+            type="text"
+            value={recordName}
+            onChange={e => setRecordName(e.target.value)}
+            placeholder="用于保存历史和导出文件名"
+            className="w-64 h-8"
+          />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每边主座位数
           <Input
             type="number"
@@ -512,6 +613,31 @@ export default function ConferenceRoom({ students }: Props) {
             />
           </label>
         )}
+        <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8">
+            <Save className="w-4 h-4" /> 保存历史
+          </Button>
+          <select
+            value={selectedHistoryId}
+            onChange={e => setSelectedHistoryId(e.target.value)}
+            className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="">选择历史记录</option>
+            {historyItems.map(item => (
+              <option key={item.id} value={item.id}>
+                {item.name}（{new Date(item.createdAt).toLocaleString()}）
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="outline"
+            onClick={restoreFromHistory}
+            disabled={!selectedHistoryId}
+            className="gap-2 h-8"
+          >
+            <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
+        </div>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
           重置参照物
         </Button>
@@ -547,7 +673,16 @@ export default function ConferenceRoom({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        {seated && <ExportButtons targetRef={printRef} filename="会议室座位" resolveQrCode={resolveQrCode} />}
+        {seated && (
+          <ExportButtons
+            targetRef={printRef}
+            filename={recordName.trim() || '会议室座位'}
+            resolveQrCode={resolveQrCode}
+            titleValue={recordName}
+            onTitleChange={setRecordName}
+            hideTitleInput
+          />
+        )}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到
