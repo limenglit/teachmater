@@ -574,6 +574,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'capture.copySuccess': '截图已复制到剪贴板',
     'capture.copyFailed': '当前浏览器不支持复制图片到剪贴板',
     'capture.recordAudioSource': '录音来源',
+    'capture.audioNone': '静音（无声录制）',
     'capture.audioSystem': '系统声音',
     'capture.audioMic': '外部麦克风',
     'capture.audioBoth': '系统 + 麦克风',
