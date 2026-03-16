@@ -13,15 +13,6 @@ import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
-import { toast } from 'sonner';
-import {
-  loadClassroomHistory,
-  saveClassroomHistory,
-  loadClassroomSnapshot,
-  saveClassroomSnapshot,
-  type ClassroomHistoryItem,
-  type ClassroomSnapshot,
-} from '@/lib/teamwork-local';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -64,9 +55,6 @@ export default function SeatChart() {
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
   const [windowOnLeft, setWindowOnLeft] = useState(true);
   const [startFrom, setStartFrom] = useState<StartFrom>('door');
-  const [recordName, setRecordName] = useState('');
-  const [historyItems, setHistoryItems] = useState<ClassroomHistoryItem[]>([]);
-  const [selectedHistoryId, setSelectedHistoryId] = useState('');
 
   const [colAisles, setColAisles] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
@@ -144,64 +132,6 @@ export default function SeatChart() {
     setSeats(grid);
   }, [students, rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, getColOrder]);
 
-  const buildClassroomSnapshot = useCallback((): ClassroomSnapshot => ({
-    rows,
-    cols,
-    seats,
-    mode,
-    groupCount,
-    disabledSeats: Array.from(disabledSeats),
-    examSkipRow,
-    examSkipCol,
-    windowOnLeft,
-    startFrom,
-    colAisles,
-    rowAisles,
-    updatedAt: new Date().toISOString(),
-  }), [rows, cols, seats, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, windowOnLeft, startFrom, colAisles, rowAisles]);
-
-  const saveClassroomToHistory = useCallback(() => {
-    if (seats.length === 0) {
-      toast.error('请先完成排座再保存');
-      return;
-    }
-    const name = recordName.trim() || `教室-${new Date().toLocaleString()}`;
-    const item = saveClassroomHistory(name, buildClassroomSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
-    setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
-    setRecordName(name);
-    saveClassroomSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
-  }, [seats.length, recordName, historyItems, buildClassroomSnapshot]);
-
-  const restoreClassroomFromHistory = useCallback(() => {
-    const item = historyItems.find(history => history.id === selectedHistoryId);
-    if (!item) {
-      toast.error('请选择要恢复的历史记录');
-      return;
-    }
-    const snapshot = item.snapshot;
-    const validStudentNames = new Set(students.map(s => s.name));
-    const sanitizedSeats = snapshot.seats.map(row => row.map(name => (name && validStudentNames.has(name) ? name : null)));
-
-    setRows(Math.max(2, Math.min(12, snapshot.rows)));
-    setCols(Math.max(2, Math.min(12, snapshot.cols)));
-    setSeats(sanitizedSeats);
-    setMode(snapshot.mode);
-    setGroupCount(Math.max(2, Math.min(10, snapshot.groupCount)));
-    setDisabledSeats(new Set(snapshot.disabledSeats || []));
-    setExamSkipRow(!!snapshot.examSkipRow);
-    setExamSkipCol(!!snapshot.examSkipCol);
-    setWindowOnLeft(!!snapshot.windowOnLeft);
-    setStartFrom(snapshot.startFrom);
-    setColAisles(snapshot.colAisles || []);
-    setRowAisles(snapshot.rowAisles || []);
-    setRecordName(item.name);
-    saveClassroomSnapshot({ ...snapshot, seats: sanitizedSeats });
-    toast.success('已从历史记录恢复，可继续调整');
-  }, [historyItems, selectedHistoryId, students]);
-
   const handleDragStart = (r: number, c: number) => { if (!seats[r][c]) return; setDragFrom({ r, c }); };
   const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
   const handleDrop = (e: React.DragEvent, r: number, c: number) => {
@@ -249,29 +179,6 @@ export default function SeatChart() {
     window.addEventListener('mousemove', handleMouseMove); window.addEventListener('mouseup', handleMouseUp); window.addEventListener('keydown', handleKeyDown);
     return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); window.removeEventListener('keydown', handleKeyDown); };
   }, [activateColAislePointerDrag, clearPointerColAisleDrag, finishColAislePointerDrag, pointerDraggingColAisle]);
-
-  useEffect(() => {
-    setHistoryItems(loadClassroomHistory());
-    const snapshot = loadClassroomSnapshot();
-    if (!snapshot) return;
-    setRows(Math.max(2, Math.min(12, snapshot.rows)));
-    setCols(Math.max(2, Math.min(12, snapshot.cols)));
-    setSeats(snapshot.seats || []);
-    setMode(snapshot.mode);
-    setGroupCount(Math.max(2, Math.min(10, snapshot.groupCount)));
-    setDisabledSeats(new Set(snapshot.disabledSeats || []));
-    setExamSkipRow(!!snapshot.examSkipRow);
-    setExamSkipCol(!!snapshot.examSkipCol);
-    setWindowOnLeft(!!snapshot.windowOnLeft);
-    setStartFrom(snapshot.startFrom);
-    setColAisles(snapshot.colAisles || []);
-    setRowAisles(snapshot.rowAisles || []);
-  }, []);
-
-  useEffect(() => {
-    if (scene !== 'classroom') return;
-    saveClassroomSnapshot(buildClassroomSnapshot());
-  }, [scene, buildClassroomSnapshot]);
 
   const handleAisleDragStart = (e: React.DragEvent, type: 'row' | 'col', index: number) => { e.stopPropagation(); const payload = { type, index }; draggingAisleRef.current = payload; setDraggingAisle(payload); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', `${type}:${index}`); };
   const handleAisleDragOver = (e: React.DragEvent) => { if (draggingAisle || draggingAisleRef.current) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } };
@@ -492,16 +399,6 @@ export default function SeatChart() {
                 <option value="window">{t('seat.fromWindow')}</option>
               </select>
             </label>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              名称
-              <Input
-                type="text"
-                value={recordName}
-                onChange={e => setRecordName(e.target.value)}
-                placeholder="用于保存历史和导出文件名"
-                className="w-60 h-8"
-              />
-            </label>
           </div>
         </div>
 
@@ -519,42 +416,7 @@ export default function SeatChart() {
               <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
             </Button>
           </div>
-          <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
-            <Button variant="outline" size="sm" onClick={saveClassroomToHistory} className="gap-1 text-xs h-8">
-              <Save className="w-3 h-3" /> 保存历史
-            </Button>
-            <select
-              value={selectedHistoryId}
-              onChange={e => setSelectedHistoryId(e.target.value)}
-              className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-            >
-              <option value="">选择历史记录</option>
-              {historyItems.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.name}（{new Date(item.createdAt).toLocaleString()}）
-                </option>
-              ))}
-            </select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={restoreClassroomFromHistory}
-              disabled={!selectedHistoryId}
-              className="gap-1 text-xs h-8"
-            >
-              <RotateCcw className="w-3 h-3" /> 恢复历史
-            </Button>
-          </div>
-          {seats.length > 0 && (
-            <ExportButtons
-              targetRef={printRef}
-              filename={recordName.trim() || t('seat.exportName')}
-              resolveQrCode={resolveQrCode}
-              titleValue={recordName}
-              onTitleChange={setRecordName}
-              hideTitleInput
-            />
-          )}
+          {seats.length > 0 && <ExportButtons targetRef={printRef} filename={t('seat.exportName')} resolveQrCode={resolveQrCode} />}
           {seats.length > 0 && (
             <Button
               onClick={() => setCheckinOpen(true)}

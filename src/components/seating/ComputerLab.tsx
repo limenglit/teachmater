@@ -1,19 +1,10 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
-import { toast } from 'sonner';
-import {
-  loadComputerLabHistory,
-  saveComputerLabHistory,
-  loadComputerLabSnapshot,
-  saveComputerLabSnapshot,
-  type ComputerLabHistoryItem,
-  type ComputerLabSnapshot,
-} from '@/lib/teamwork-local';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -53,9 +44,6 @@ export default function ComputerLab({ students }: Props) {
   const [rowTransforms, setRowTransforms] = useState<{ x: number; y: number; rotation: number }[]>([]);
   const [seated, setSeated] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
-  const [recordName, setRecordName] = useState('');
-  const [historyItems, setHistoryItems] = useState<ComputerLabHistoryItem[]>([]);
-  const [selectedHistoryId, setSelectedHistoryId] = useState('');
 
   const [refVisible, setRefVisible] = useState<RefVisible>({
     window: true,
@@ -201,63 +189,6 @@ export default function ComputerLab({ students }: Props) {
     setSeated(true);
   };
 
-  const buildSnapshot = (): ComputerLabSnapshot => ({
-    rowCount,
-    seatsPerSide,
-    groupCount,
-    mode,
-    dualSide,
-    tableGap,
-    assignment,
-    closedSeats: Array.from(closedSeats),
-    rowTransforms,
-    seated,
-    updatedAt: new Date().toISOString(),
-  });
-
-  const saveToHistory = () => {
-    if (!seated) {
-      toast.error('请先完成排座再保存');
-      return;
-    }
-    const name = recordName.trim() || `机房-${new Date().toLocaleString()}`;
-    const item = saveComputerLabHistory(name, buildSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
-    setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
-    setRecordName(name);
-    saveComputerLabSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
-  };
-
-  const restoreFromHistory = () => {
-    const item = historyItems.find(history => history.id === selectedHistoryId);
-    if (!item) {
-      toast.error('请选择要恢复的历史记录');
-      return;
-    }
-    const snapshot = item.snapshot;
-    const validStudentNames = new Set(students.map(s => s.name));
-    const sanitizedAssignment = snapshot.assignment.map(group => ({
-      ...group,
-      students: group.students.map(name => (validStudentNames.has(name) ? name : '')),
-    }));
-
-    setRowCount(Math.max(1, snapshot.rowCount));
-    setSeatsPerSide(Math.max(3, snapshot.seatsPerSide));
-    setGroupCount(Math.max(1, snapshot.groupCount));
-    setMode(snapshot.mode);
-    setDualSide(snapshot.dualSide);
-    setTableGap(Math.max(80, snapshot.tableGap));
-    setAssignment(sanitizedAssignment);
-    setClosedSeats(new Set(snapshot.closedSeats || []));
-    setRowTransforms(snapshot.rowTransforms || []);
-    setSeated(!!snapshot.seated);
-    setRecordName(item.name);
-    saveComputerLabSnapshot({ ...snapshot, assignment: sanitizedAssignment });
-    toast.success('已从历史记录恢复，可继续调整');
-  };
-
   useEffect(() => {
     const nextRows = getAutoRowCount(students.length, seatsPerSide);
     setRowCount(prev => (prev === nextRows ? prev : nextRows));
@@ -266,26 +197,6 @@ export default function ComputerLab({ students }: Props) {
   useEffect(() => {
     setRefPositions(defaultRefPositions);
   }, [defaultRefPositions]);
-
-  useEffect(() => {
-    setHistoryItems(loadComputerLabHistory());
-    const snapshot = loadComputerLabSnapshot();
-    if (!snapshot) return;
-    setRowCount(Math.max(1, snapshot.rowCount));
-    setSeatsPerSide(Math.max(3, snapshot.seatsPerSide));
-    setGroupCount(Math.max(1, snapshot.groupCount));
-    setMode(snapshot.mode);
-    setDualSide(snapshot.dualSide);
-    setTableGap(Math.max(80, snapshot.tableGap));
-    setAssignment(snapshot.assignment);
-    setClosedSeats(new Set(snapshot.closedSeats || []));
-    setRowTransforms(snapshot.rowTransforms || []);
-    setSeated(!!snapshot.seated);
-  }, []);
-
-  useEffect(() => {
-    saveComputerLabSnapshot(buildSnapshot());
-  }, [rowCount, seatsPerSide, groupCount, mode, dualSide, tableGap, assignment, closedSeats, rowTransforms, seated]);
 
   useEffect(() => {
     setClosedSeats(prev => {
@@ -462,16 +373,6 @@ export default function ComputerLab({ students }: Props) {
     <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          名称
-          <Input
-            type="text"
-            value={recordName}
-            onChange={e => setRecordName(e.target.value)}
-            placeholder="用于保存历史和导出文件名"
-            className="w-64 h-8"
-          />
-        </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           自动排数
           <span className="inline-flex items-center justify-center min-w-10 h-8 px-2 rounded-md border border-border bg-muted/40 text-foreground font-medium">
             {rowCount}
@@ -517,31 +418,6 @@ export default function ComputerLab({ students }: Props) {
         <Button variant="outline" onClick={resetRowTransforms}>
           重置桌位位置
         </Button>
-        <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
-          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8">
-            <Save className="w-4 h-4" /> 保存历史
-          </Button>
-          <select
-            value={selectedHistoryId}
-            onChange={e => setSelectedHistoryId(e.target.value)}
-            className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-          >
-            <option value="">选择历史记录</option>
-            {historyItems.map(item => (
-              <option key={item.id} value={item.id}>
-                {item.name}（{new Date(item.createdAt).toLocaleString()}）
-              </option>
-            ))}
-          </select>
-          <Button
-            variant="outline"
-            onClick={restoreFromHistory}
-            disabled={!selectedHistoryId}
-            className="gap-2 h-8"
-          >
-            <RotateCcw className="w-4 h-4" /> 恢复历史
-          </Button>
-        </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
@@ -554,16 +430,7 @@ export default function ComputerLab({ students }: Props) {
           </label>
         </div>
         <span className="text-xs text-muted-foreground">可容纳 {rowCount * seatsPerSide * 2} 人 | 当前 {students.length} 人</span>
-        {seated && (
-          <ExportButtons
-            targetRef={printRef}
-            filename={recordName.trim() || '机房座位'}
-            resolveQrCode={resolveQrCode}
-            titleValue={recordName}
-            onTitleChange={setRecordName}
-            hideTitleInput
-          />
-        )}
+        {seated && <ExportButtons targetRef={printRef} filename="机房座位" resolveQrCode={resolveQrCode} />}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到
