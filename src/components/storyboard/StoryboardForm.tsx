@@ -1,6 +1,7 @@
+import { useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sparkles, Loader2 } from 'lucide-react';
@@ -16,6 +17,22 @@ interface Props {
 
 export default function StoryboardForm({ params, onChange, onGenerate, isLoading, disabled }: Props) {
   const { t } = useLanguage();
+  const themeRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const resizeThemeInput = () => {
+    const el = themeRef.current;
+    if (!el) return;
+
+    el.style.height = 'auto';
+    const maxHeight = 180;
+    const nextHeight = Math.min(Math.max(el.scrollHeight, 80), maxHeight);
+    el.style.height = `${nextHeight}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden';
+  };
+
+  useEffect(() => {
+    resizeThemeInput();
+  }, [params.theme]);
 
   const update = <K extends keyof StoryboardParams>(key: K, value: StoryboardParams[K]) => {
     onChange({ ...params, [key]: value });
@@ -28,12 +45,15 @@ export default function StoryboardForm({ params, onChange, onGenerate, isLoading
         <Label htmlFor="theme" className="text-sm font-medium">
           {t('storyboard.theme')} <span className="text-destructive">*</span>
         </Label>
-        <Input
+        <Textarea
+          ref={themeRef}
           id="theme"
           value={params.theme}
           onChange={(e) => update('theme', e.target.value)}
+          onInput={resizeThemeInput}
+          rows={3}
           placeholder={t('storyboard.themePlaceholder')}
-          className="bg-background"
+          className="min-h-[80px] max-h-[180px] resize-y leading-6 [overflow-wrap:anywhere] break-words bg-background"
         />
       </div>
 
