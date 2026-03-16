@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -14,6 +14,8 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
   const seatsPerTable = (sceneConfig.seatsPerTable as number) || tables[0]?.length || 6;
   const tableCols = (sceneConfig.tableCols as number) || Math.ceil(Math.sqrt(tables.length));
   const isMobile = useIsMobile();
+  const [zoomMyTable, setZoomMyTable] = useState(false);
+  const lastTapTsRef = useRef(0);
 
   const myPos = useMemo(() => {
     for (let t = 0; t < tables.length; t++) {
@@ -37,6 +39,22 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
   const seatOrbitRadius = isMobile ? 47 : 50;
   const seatRadius = isMobile ? 14 : 15;
 
+  const toggleZoomMyTable = () => {
+    if (!isMobile) return;
+    setZoomMyTable(prev => !prev);
+  };
+
+  const handleMyTableTouchEnd = () => {
+    if (!isMobile) return;
+    const now = Date.now();
+    if (now - lastTapTsRef.current <= 280) {
+      toggleZoomMyTable();
+      lastTapTsRef.current = 0;
+      return;
+    }
+    lastTapTsRef.current = now;
+  };
+
   return (
     <>
       <p className="text-sm text-muted-foreground text-center leading-relaxed px-2">
@@ -51,14 +69,29 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
         <div className="inline-block bg-primary/10 text-primary px-4 py-1 rounded-lg text-xs font-medium border border-primary/20 mb-3">
           {label}
         </div>
+        {isMobile && (
+          <p className="text-[11px] text-muted-foreground/90">双击你的桌子可放大，再次双击恢复</p>
+        )}
       </div>
 
       <div ref={seatContainerRef} className="seat-checkin-surface -mx-2 px-2 flex justify-start sm:justify-center overflow-x-auto overflow-y-visible pb-4">
         <div className="inline-grid w-max gap-2 sm:gap-4" style={{ gridTemplateColumns: `repeat(${tableCols}, max-content)` }}>
           {tables.map((people, ti) => {
             const isMyTable = ti === myPos.table;
+            const isZoomedMyTable = isMyTable && zoomMyTable;
             return (
-              <div key={ti} className={`flex flex-col items-center ${isMyTable ? 'ring-2 ring-primary/40 rounded-xl p-1' : ''}`}>
+              <div
+                key={ti}
+                onDoubleClick={isMyTable ? toggleZoomMyTable : undefined}
+                onTouchEnd={isMyTable ? handleMyTableTouchEnd : undefined}
+                className={`flex flex-col items-center transition-all duration-200 ease-out ${
+                  isMyTable ? 'ring-2 ring-primary/40 rounded-xl p-1' : ''
+                } ${
+                  zoomMyTable && !isMyTable ? 'opacity-40 scale-95' : ''
+                } ${
+                  isZoomedMyTable ? 'z-20 scale-125 sm:scale-110 shadow-xl bg-background/70 rounded-xl' : ''
+                }`}
+              >
                 <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`} className="overflow-visible">
                   <circle cx={cx} cy={cy} r={tableRadius}
                     className={isMyTable ? 'fill-primary/15 stroke-primary/50' : 'fill-primary/5 stroke-primary/20'}
