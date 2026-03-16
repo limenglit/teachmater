@@ -5,18 +5,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { BarChart3, Settings2, Download, Calendar, Users, TrendingUp, Eye } from 'lucide-react';
+import { BarChart3, Settings2, Download, Calendar, Users, TrendingUp, Eye, LayoutDashboard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import RadarChart from './RadarChart';
 import ScoringRulesConfig from './ScoringRulesConfig';
+import ClassOverview from './ClassOverview';
 import { type ScoringRules, type DimensionKey, type StudentDimensionData, DEFAULT_RULES, DIMENSION_KEYS } from './analyticsTypes';
 
 interface Props {
   studentNames: string[];
 }
 
-type SubView = 'overall' | 'dimension' | 'detail';
+type SubView = 'classOverview' | 'overall' | 'dimension' | 'detail';
 
 export default function StudentAnalytics({ studentNames }: Props) {
   const { t } = useLanguage();
@@ -24,7 +25,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
 
   const [rules, setRules] = useState<ScoringRules>(DEFAULT_RULES);
   const [showRulesConfig, setShowRulesConfig] = useState(false);
-  const [subView, setSubView] = useState<SubView>('overall');
+  const [subView, setSubView] = useState<SubView>('classOverview');
   const [activeDimension, setActiveDimension] = useState<DimensionKey>('board_participate');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -271,6 +272,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
           {/* Sub-view tabs */}
           <div className="flex gap-1 border-b border-border">
             {([
+              { id: 'classOverview' as SubView, label: t('analytics.classOverview'), icon: '📋' },
               { id: 'overall' as SubView, label: t('analytics.overallRank'), icon: '🏆' },
               { id: 'dimension' as SubView, label: t('analytics.byDimension'), icon: '📊' },
             ]).map(v => (
@@ -280,6 +282,15 @@ export default function StudentAnalytics({ studentNames }: Props) {
               </button>
             ))}
           </div>
+
+          {/* Class Overview */}
+          {subView === 'classOverview' && (
+            <ClassOverview
+              analyticsData={analyticsData}
+              rules={rules}
+              getRawCount={getRawCount}
+            />
+          )}
 
           {/* Overall Ranking */}
           {subView === 'overall' && (
