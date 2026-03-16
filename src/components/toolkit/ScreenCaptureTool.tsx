@@ -1434,12 +1434,20 @@ export default function ScreenCaptureTool() {
                     className="h-8 rounded-md border border-input bg-background px-2 text-xs"
                     disabled={isRecording}
                   >
-                    <option value="system">{t('capture.audioSystem')}</option>
+                    <option value="none">{t('capture.audioNone')}</option>
                     <option value="mic">{t('capture.audioMic')}</option>
-                    <option value="both">{t('capture.audioBoth')}</option>
+                    {!browserInfo.isSafari && !browserInfo.isEdge && (
+                      <>
+                        <option value="system">{t('capture.audioSystem')}</option>
+                        <option value="both">{t('capture.audioBoth')}</option>
+                      </>
+                    )}
                   </select>
-                  {recordAudioSource !== 'mic' && stream && !systemAudioTrackAvailable && (
+                  {recordAudioSource !== 'mic' && recordAudioSource !== 'none' && stream && !systemAudioTrackAvailable && (
                     <span className="text-[11px] text-muted-foreground">{t('capture.systemAudioNotCaptured')}</span>
+                  )}
+                  {browserInfo.isSafari && (
+                    <span className="text-[11px] text-muted-foreground">{t('capture.safariAudioHint')}</span>
                   )}
                   {browserInfo.isEdge && (
                     <span className="text-[11px] text-muted-foreground">{t('capture.edgeAudioHint')}</span>
