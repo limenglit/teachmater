@@ -13,6 +13,8 @@ import {
   RefreshCcw,
   Square,
   StopCircle,
+  Pause,
+  Play,
   Type,
   Undo2,
   Video,
@@ -133,6 +135,9 @@ const CSS_PX_PER_CM = 37.8;
 
 function getPreferredRecorderMimeType() {
   const candidates = [
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=h264,aac',
+    'video/mp4',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
     'video/webm',
@@ -145,6 +150,30 @@ function getPreferredRecorderMimeType() {
   }
 
   return undefined;
+}
+
+function getFileExtensionForMimeType(mimeType: string) {
+  if (mimeType.includes('mp4')) return 'mp4';
+  if (mimeType.includes('webm')) return 'webm';
+  return 'webm';
+}
+
+function formatDuration(totalSeconds: number) {
+  const safe = Math.max(0, totalSeconds);
+  const hh = Math.floor(safe / 3600);
+  const mm = Math.floor((safe % 3600) / 60);
+  const ss = safe % 60;
+  if (hh > 0) {
+    return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+  }
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
 function detectCaptureBrowser(): CaptureBrowserInfo {
@@ -305,6 +334,7 @@ export default function ScreenCaptureTool() {
   const recordRafRef = useRef<number | null>(null);
   const recordFrameTimerRef = useRef<number | null>(null);
   const recordVideoFrameCallbackRef = useRef<number | null>(null);
+  const recordStatsTimerRef = useRef<number | null>(null);
   const recordingActiveRef = useRef(false);
   const regionDragRef = useRef<{ handle: RegionHandle; startX: number; startY: number; startRegion: LiveRegion } | null>(null);
   const cameraDragRef = useRef<{ handle: CameraHandle; startX: number; startY: number; startOverlay: CameraOverlay } | null>(null);
@@ -327,7 +357,11 @@ export default function ScreenCaptureTool() {
   const [selectedDpi, setSelectedDpi] = useState<number>(360);
   const [recordAudioSource, setRecordAudioSource] = useState<RecordAudioSource>('none');
   const [isRecording, setIsRecording] = useState(false);
+  const [isRecordingPaused, setIsRecordingPaused] = useState(false);
   const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [recordingBytes, setRecordingBytes] = useState(0);
+  const [recordOutputMimeType, setRecordOutputMimeType] = useState('video/webm');
   const [liveRegion, setLiveRegion] = useState<LiveRegion>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
   const [systemAudioTrackAvailable, setSystemAudioTrackAvailable] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
@@ -336,6 +370,17 @@ export default function ScreenCaptureTool() {
   const [cameraSourceMode, setCameraSourceMode] = useState<CameraSourceMode>('auto');
   const [selectedCameraDeviceId, setSelectedCameraDeviceId] = useState('');
   const [cameraOverlay, setCameraOverlay] = useState<CameraOverlay>({ x: 0.76, y: 0.72, size: 0.2 });
+
+  const estimatedRecordingBytes = useMemo(() => {
+    if (recordingBytes > 0 && recordingSeconds > 0) {
+      const avgBytesPerSecond = recordingBytes / recordingSeconds;
+      return Math.round(avgBytesPerSecond * Math.max(1, recordingSeconds));
+    }
+    const conservativeFallback = 450 * 1024;
+    return conservativeFallback * Math.max(1, recordingSeconds);
+  }, [recordingBytes, recordingSeconds]);
+
+  const recordOutputLabel = useMemo(() => (recordOutputMimeType.includes('mp4') ? 'MP4' : 'WebM'), [recordOutputMimeType]);
 
   const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
     const w = clamp(region.w, MIN_REGION_SIZE, 1);
@@ -568,6 +613,28 @@ export default function ScreenCaptureTool() {
   }, [stream]);
 
   useEffect(() => {
+    if (!isRecording) return;
+
+    if (recordStatsTimerRef.current !== null) {
+      window.clearInterval(recordStatsTimerRef.current);
+      recordStatsTimerRef.current = null;
+    }
+
+    recordStatsTimerRef.current = window.setInterval(() => {
+      if (!isRecordingPaused) {
+        setRecordingSeconds((prev) => prev + 1);
+      }
+    }, 1000);
+
+    return () => {
+      if (recordStatsTimerRef.current !== null) {
+        window.clearInterval(recordStatsTimerRef.current);
+        recordStatsTimerRef.current = null;
+      }
+    };
+  }, [isRecording, isRecordingPaused]);
+
+  useEffect(() => {
     const cameraVideo = cameraVideoRef.current;
     if (!cameraVideo) return;
     if (cameraVideo) {
@@ -750,6 +817,10 @@ export default function ScreenCaptureTool() {
   const cleanupRecordingResources = useCallback(() => {
     setRecordCountdown(null);
     recordingActiveRef.current = false;
+    if (recordStatsTimerRef.current !== null) {
+      window.clearInterval(recordStatsTimerRef.current);
+      recordStatsTimerRef.current = null;
+    }
     if (recordRafRef.current !== null) {
       cancelAnimationFrame(recordRafRef.current);
       recordRafRef.current = null;
@@ -783,6 +854,10 @@ export default function ScreenCaptureTool() {
     }
 
     recordingChunksRef.current = [];
+    setRecordingBytes(0);
+    setRecordingSeconds(0);
+    setIsRecordingPaused(false);
+    setRecordOutputMimeType('video/webm');
     setSystemAudioTrackAvailable(false);
     setIsRecording(false);
   }, []);
@@ -1036,20 +1111,27 @@ export default function ScreenCaptureTool() {
         : new MediaRecorder(finalStream);
       recorderRef.current = recorder;
       recordingChunksRef.current = [];
+      setRecordingBytes(0);
+      setRecordingSeconds(0);
+      setIsRecordingPaused(false);
+      setRecordOutputMimeType(recorder.mimeType || preferredMimeType || 'video/webm');
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           recordingChunksRef.current.push(event.data);
+          setRecordingBytes((prev) => prev + event.data.size);
         }
       };
 
       recorder.onstop = () => {
-        const blob = new Blob(recordingChunksRef.current, { type: 'video/webm' });
+        const outputMimeType = recorder.mimeType || preferredMimeType || 'video/webm';
+        const extension = getFileExtensionForMimeType(outputMimeType);
+        const blob = new Blob(recordingChunksRef.current, { type: outputMimeType });
         if (blob.size > 0) {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `record-${Date.now()}.webm`;
+          a.download = `record-${Date.now()}.${extension}`;
           a.click();
           URL.revokeObjectURL(url);
           toast({ title: t('capture.recordSaved') });
@@ -1088,6 +1170,10 @@ export default function ScreenCaptureTool() {
 
       const renderFrame = () => {
         if (!recordingActiveRef.current) return;
+        if (recorderRef.current?.state === 'paused') {
+          scheduleNextFrame();
+          return;
+        }
         outputCtx.drawImage(sourceVideo, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
         const camVideo = cameraVideoRef.current;
@@ -1146,6 +1232,22 @@ export default function ScreenCaptureTool() {
     if (!recorderRef.current) return;
     if (recorderRef.current.state !== 'inactive') {
       recorderRef.current.stop();
+    }
+  };
+
+  const toggleRecordingPause = () => {
+    const recorder = recorderRef.current;
+    if (!recorder) return;
+
+    if (recorder.state === 'recording') {
+      recorder.pause();
+      setIsRecordingPaused(true);
+      return;
+    }
+
+    if (recorder.state === 'paused') {
+      recorder.resume();
+      setIsRecordingPaused(false);
     }
   };
 
@@ -1797,7 +1899,14 @@ export default function ScreenCaptureTool() {
                   </div>
                 </div>
                 {isRecording && (
-                  <p className="text-xs text-muted-foreground mt-3 leading-5">{t('capture.recordingHint')}</p>
+                  <div className="mt-3 space-y-1">
+                    <p className="text-xs text-muted-foreground leading-5">{t('capture.recordingHint')}</p>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <span>{t('capture.recordDuration')}: {formatDuration(recordingSeconds)}</span>
+                      <span>{t('capture.recordEstimatedSize')}: {formatBytes(Math.max(recordingBytes, estimatedRecordingBytes))}</span>
+                      <span>{t('capture.recordFormat')}: {recordOutputLabel}</span>
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -1809,9 +1918,14 @@ export default function ScreenCaptureTool() {
                         <Video className="w-4 h-4" /> {t('capture.startRecord')}
                       </Button>
                     ) : (
-                      <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1">
-                        <StopCircle className="w-4 h-4" /> {t('capture.stopRecord')}
-                      </Button>
+                      <>
+                        <Button size="sm" variant="secondary" onClick={toggleRecordingPause} className="gap-1">
+                          {isRecordingPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />} {isRecordingPaused ? t('capture.resumeRecord') : t('capture.pauseRecord')}
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={stopRecording} className="gap-1">
+                          <StopCircle className="w-4 h-4" /> {t('capture.stopRecord')}
+                        </Button>
+                      </>
                     )}
                     <Button
                       size="sm"
