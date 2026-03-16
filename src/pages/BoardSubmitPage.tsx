@@ -52,6 +52,40 @@ export default function BoardSubmitPage() {
 
   const isStoryboard = board?.view_mode === 'storyboard' && Array.isArray(board?.columns) && (board?.columns?.length || 0) > 0;
 
+  /* ── Pull-to-refresh state ── */
+  const feedRef = useRef<HTMLDivElement>(null);
+  const pullStartY = useRef<number | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const PULL_THRESHOLD = 64;
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (feedRef.current && feedRef.current.scrollTop <= 0) {
+      pullStartY.current = e.touches[0].clientY;
+    } else {
+      pullStartY.current = null;
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (pullStartY.current === null || refreshing) return;
+    const dy = e.touches[0].clientY - pullStartY.current;
+    if (dy > 0) {
+      setPullDistance(Math.min(dy * 0.5, 120));
+    }
+  }, [refreshing]);
+
+  const handleTouchEnd = useCallback(async () => {
+    if (pullStartY.current === null) return;
+    if (pullDistance >= PULL_THRESHOLD && !refreshing) {
+      setRefreshing(true);
+      await loadCards();
+      setRefreshing(false);
+    }
+    pullStartY.current = null;
+    setPullDistance(0);
+  }, [pullDistance, refreshing, loadCards]);
+
   /* ── Load board ── */
   useEffect(() => {
     if (!boardId) return;
