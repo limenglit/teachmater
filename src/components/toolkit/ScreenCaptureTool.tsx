@@ -325,7 +325,10 @@ export default function ScreenCaptureTool() {
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const liveVideoWrapRef = useRef<HTMLDivElement>(null);
-  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraSourceVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraPreviewVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraFrameCacheRef = useRef<HTMLCanvasElement | null>(null);
+  const cameraCacheTimerRef = useRef<number | null>(null);
   const recordSourceVideoRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
@@ -401,6 +404,11 @@ export default function ScreenCaptureTool() {
   }, []);
 
   const stopCameraStream = useCallback(() => {
+    if (cameraCacheTimerRef.current !== null) {
+      window.clearInterval(cameraCacheTimerRef.current);
+      cameraCacheTimerRef.current = null;
+    }
+    cameraFrameCacheRef.current = null;
     setCameraStream((prev) => {
       if (prev) {
         prev.getTracks().forEach((track) => track.stop());
@@ -635,22 +643,71 @@ export default function ScreenCaptureTool() {
   }, [isRecording, isRecordingPaused]);
 
   useEffect(() => {
-    const cameraVideo = cameraVideoRef.current;
-    if (!cameraVideo) return;
-    if (cameraVideo) {
-      cameraVideo.srcObject = cameraStream;
+    const sourceVideo = cameraSourceVideoRef.current;
+    const previewVideo = cameraPreviewVideoRef.current;
+
+    if (sourceVideo) {
+      sourceVideo.srcObject = cameraStream;
     }
+    if (previewVideo) {
+      previewVideo.srcObject = cameraStream;
+    }
+
     if (cameraStream) {
-      if (cameraVideo) {
-        void cameraVideo.play().catch(() => undefined);
+      if (sourceVideo) {
+        void sourceVideo.play().catch(() => undefined);
+      }
+      if (previewVideo) {
+        void previewVideo.play().catch(() => undefined);
       }
     }
+
     return () => {
-      if (cameraVideo) {
-        cameraVideo.srcObject = null;
+      if (sourceVideo) {
+        sourceVideo.srcObject = null;
+      }
+      if (previewVideo) {
+        previewVideo.srcObject = null;
       }
     };
   }, [cameraStream]);
+
+  useEffect(() => {
+    if (cameraCacheTimerRef.current !== null) {
+      window.clearInterval(cameraCacheTimerRef.current);
+      cameraCacheTimerRef.current = null;
+    }
+
+    if (!cameraEnabled || !cameraStream || workspaceMode !== 'record' || !workspaceOpen) {
+      return;
+    }
+
+    cameraCacheTimerRef.current = window.setInterval(() => {
+      const sourceVideo = cameraSourceVideoRef.current;
+      if (!sourceVideo || sourceVideo.readyState < 2 || sourceVideo.videoWidth <= 0 || sourceVideo.videoHeight <= 0) {
+        return;
+      }
+
+      if (!cameraFrameCacheRef.current) {
+        cameraFrameCacheRef.current = document.createElement('canvas');
+      }
+
+      const cache = cameraFrameCacheRef.current;
+      cache.width = sourceVideo.videoWidth;
+      cache.height = sourceVideo.videoHeight;
+      const ctx = cache.getContext('2d');
+      if (!ctx) return;
+
+      ctx.drawImage(sourceVideo, 0, 0, cache.width, cache.height);
+    }, 40);
+
+    return () => {
+      if (cameraCacheTimerRef.current !== null) {
+        window.clearInterval(cameraCacheTimerRef.current);
+        cameraCacheTimerRef.current = null;
+      }
+    };
+  }, [cameraEnabled, cameraStream, workspaceMode, workspaceOpen]);
 
   useEffect(() => {
     if (!workspaceOpen || workspaceMode !== 'record') return;
@@ -837,6 +894,11 @@ export default function ScreenCaptureTool() {
       recordSourceVideoRef.current.srcObject = null;
       recordSourceVideoRef.current = null;
     }
+    if (cameraCacheTimerRef.current !== null) {
+      window.clearInterval(cameraCacheTimerRef.current);
+      cameraCacheTimerRef.current = null;
+    }
+    cameraFrameCacheRef.current = null;
     if (recorderRef.current) {
       recorderRef.current.ondataavailable = null;
       recorderRef.current.onstop = null;
@@ -1176,7 +1238,7 @@ export default function ScreenCaptureTool() {
         }
         outputCtx.drawImage(sourceVideo, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
-        const camVideo = cameraVideoRef.current;
+        const camVideo = cameraSourceVideoRef.current;
         if (cameraEnabled && camVideo) {
           const cameraXInSource = Math.round(cameraOverlay.x * sourceWidth);
           const cameraYInSource = Math.round(cameraOverlay.y * sourceHeight);
@@ -1196,6 +1258,8 @@ export default function ScreenCaptureTool() {
 
           if (camVideo.readyState >= 2 && camVideo.videoWidth > 0 && camVideo.videoHeight > 0) {
             outputCtx.drawImage(camVideo, destX, destY, cameraSizeInSource, cameraSizeInSource);
+          } else if (cameraFrameCacheRef.current) {
+            outputCtx.drawImage(cameraFrameCacheRef.current, destX, destY, cameraSizeInSource, cameraSizeInSource);
           }
 
           outputCtx.restore();
@@ -1853,6 +1917,7 @@ export default function ScreenCaptureTool() {
                     onMouseLeave={endRegionAdjust}
                   >
                     <video ref={videoRef} autoPlay muted playsInline className="max-h-[72vh] max-w-full object-contain rounded-lg" />
+                    <video ref={cameraSourceVideoRef} autoPlay muted playsInline className="absolute -left-[9999px] top-0 h-px w-px opacity-0 pointer-events-none" />
                     {stream && (
                       <>
                         <div className="absolute inset-0 pointer-events-none bg-black/20 rounded-lg" />
@@ -1882,7 +1947,7 @@ export default function ScreenCaptureTool() {
                             }}
                           >
                             <div className="absolute inset-0 cursor-move" onMouseDown={(event) => beginCameraAdjust(event, 'move')} />
-                            <video ref={cameraVideoRef} autoPlay muted playsInline className="absolute inset-0 h-full w-full rounded-full object-cover pointer-events-none" />
+                            <video ref={cameraPreviewVideoRef} autoPlay muted playsInline className="absolute inset-0 h-full w-full rounded-full object-cover pointer-events-none bg-slate-900" />
                             <div
                               className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize"
                               onMouseDown={(event) => beginCameraAdjust(event, 'resize')}
