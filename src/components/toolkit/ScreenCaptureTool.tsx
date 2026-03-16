@@ -607,7 +607,8 @@ export default function ScreenCaptureTool() {
 
     const scheduleNext = () => {
       if (!active) return;
-      if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      // Safari may expose requestVideoFrameCallback but not reliably fire it on offscreen preview sources.
+      if (!browserInfo.isSafari && 'requestVideoFrameCallback' in HTMLVideoElement.prototype) {
         cameraPreviewFrameCallbackRef.current = (sourceVideo as HTMLVideoElement & {
           requestVideoFrameCallback: (callback: () => void) => number;
         }).requestVideoFrameCallback(() => drawFrame());
@@ -625,6 +626,22 @@ export default function ScreenCaptureTool() {
           previewCanvas.height = sourceVideo.videoHeight;
         }
         ctx.drawImage(sourceVideo, 0, 0, previewCanvas.width, previewCanvas.height);
+        if (!cameraFrameCacheRef.current) {
+          cameraFrameCacheRef.current = document.createElement('canvas');
+        }
+        const cache = cameraFrameCacheRef.current;
+        cache.width = sourceVideo.videoWidth;
+        cache.height = sourceVideo.videoHeight;
+        const cacheCtx = cache.getContext('2d');
+        if (cacheCtx) {
+          cacheCtx.drawImage(sourceVideo, 0, 0, cache.width, cache.height);
+        }
+      } else if (cameraFrameCacheRef.current) {
+        if (previewCanvas.width !== cameraFrameCacheRef.current.width || previewCanvas.height !== cameraFrameCacheRef.current.height) {
+          previewCanvas.width = cameraFrameCacheRef.current.width;
+          previewCanvas.height = cameraFrameCacheRef.current.height;
+        }
+        ctx.drawImage(cameraFrameCacheRef.current, 0, 0, previewCanvas.width, previewCanvas.height);
       }
 
       scheduleNext();
@@ -643,7 +660,7 @@ export default function ScreenCaptureTool() {
         cameraPreviewFrameCallbackRef.current = null;
       }
     };
-  }, [cameraEnabled, cameraStream, workspaceMode, workspaceOpen]);
+  }, [browserInfo.isSafari, cameraEnabled, cameraStream, workspaceMode, workspaceOpen]);
 
   useEffect(() => {
     if (!workspaceOpen || workspaceMode !== 'record') return;
@@ -1916,7 +1933,7 @@ export default function ScreenCaptureTool() {
                     onMouseLeave={endRegionAdjust}
                   >
                     <video ref={videoRef} autoPlay muted playsInline className="max-h-[72vh] max-w-full object-contain rounded-lg" />
-                    <video ref={cameraVideoRef} autoPlay muted playsInline className="hidden" />
+                    <video ref={cameraVideoRef} autoPlay muted playsInline className="absolute -left-[9999px] top-0 h-px w-px opacity-0 pointer-events-none" />
                     {stream && (
                       <>
                         <div className="absolute inset-0 pointer-events-none bg-black/20 rounded-lg" />
