@@ -60,9 +60,10 @@ const accent = (text: string, x: number, y: number, color = '#e74c3c'): TextOver
   text, x, y, fontSize: 18, fontFamily: 'Ma Shan Zheng', fontWeight: '500', color,
 });
 
-export type TemplateCategory = 'teaching' | 'thinking' | 'learning' | 'analysis' | 'creative' | 'goals' | 'compare' | 'special';
+export type TemplateCategory = 'teaching' | 'thinking' | 'learning' | 'analysis' | 'creative' | 'goals' | 'compare' | 'special' | 'unified';
 
 export const TEMPLATE_CATEGORIES: { key: TemplateCategory; nameKey: string }[] = [
+  { key: 'unified', nameKey: 'storyboard.category.unified' },
   { key: 'teaching', nameKey: 'storyboard.category.teaching' },
   { key: 'thinking', nameKey: 'storyboard.category.thinking' },
   { key: 'learning', nameKey: 'storyboard.category.learning' },
