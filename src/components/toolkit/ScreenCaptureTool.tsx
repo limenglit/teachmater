@@ -26,6 +26,9 @@ type EditorTool = 'none' | 'crop' | 'draw' | 'highlight' | 'rect' | 'arrow' | 't
 type WorkspaceMode = 'capture' | 'record';
 type RecordAudioSource = 'none' | 'system' | 'mic' | 'both';
 type RegionHandle = 'move' | 'nw' | 'ne' | 'sw' | 'se';
+type CameraSourceMode = 'auto' | 'usb';
+type CameraBackgroundPreset = 'whitewall' | 'bookshelf' | 'studio' | 'custom';
+type CameraHandle = 'move' | 'resize';
 
 interface CaptureBrowserInfo {
   isSafari: boolean;
@@ -56,6 +59,12 @@ interface LiveRegion {
   y: number;
   w: number;
   h: number;
+}
+
+interface CameraOverlay {
+  x: number;
+  y: number;
+  size: number;
 }
 
 interface StrokeAnnotation {
@@ -118,6 +127,10 @@ type Annotation = StrokeAnnotation | RectAnnotation | ArrowAnnotation | TextAnno
 
 const DPI_OPTIONS = [360, 600, 900, 1200, 1500, 1800] as const;
 const MIN_REGION_SIZE = 0.08;
+const MIN_CAMERA_SIZE = 0.04;
+const MAX_CAMERA_SIZE = 1;
+const MIN_CAMERA_CM = 2;
+const CSS_PX_PER_CM = 37.8;
 
 function getPreferredRecorderMimeType() {
   const candidates = [
@@ -284,6 +297,9 @@ export default function ScreenCaptureTool() {
   const previewRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const liveVideoWrapRef = useRef<HTMLDivElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
+  const cameraPreviewRef = useRef<HTMLVideoElement>(null);
+  const cameraBackgroundImageRef = useRef<HTMLImageElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<BlobPart[]>([]);
   const recordMicStreamRef = useRef<MediaStream | null>(null);
@@ -291,6 +307,7 @@ export default function ScreenCaptureTool() {
   const recordRafRef = useRef<number | null>(null);
   const recordingActiveRef = useRef(false);
   const regionDragRef = useRef<{ handle: RegionHandle; startX: number; startY: number; startRegion: LiveRegion } | null>(null);
+  const cameraDragRef = useRef<{ handle: CameraHandle; startX: number; startY: number; startOverlay: CameraOverlay } | null>(null);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [captured, setCaptured] = useState('');
@@ -313,6 +330,14 @@ export default function ScreenCaptureTool() {
   const [recordCountdown, setRecordCountdown] = useState<number | null>(null);
   const [liveRegion, setLiveRegion] = useState<LiveRegion>({ x: 0.1, y: 0.1, w: 0.8, h: 0.8 });
   const [systemAudioTrackAvailable, setSystemAudioTrackAvailable] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+  const [cameraSourceMode, setCameraSourceMode] = useState<CameraSourceMode>('auto');
+  const [selectedCameraDeviceId, setSelectedCameraDeviceId] = useState('');
+  const [cameraOverlay, setCameraOverlay] = useState<CameraOverlay>({ x: 0.76, y: 0.72, size: 0.2 });
+  const [cameraBackgroundPreset, setCameraBackgroundPreset] = useState<CameraBackgroundPreset>('whitewall');
+  const [cameraBackgroundCustomUrl, setCameraBackgroundCustomUrl] = useState('');
 
   const clampRegion = useCallback((region: LiveRegion): LiveRegion => {
     const w = clamp(region.w, MIN_REGION_SIZE, 1);
@@ -321,6 +346,78 @@ export default function ScreenCaptureTool() {
     const y = clamp(region.y, 0, 1 - h);
     return { x, y, w, h };
   }, []);
+
+  const clampCameraOverlay = useCallback((overlay: CameraOverlay): CameraOverlay => {
+    const wrapWidth = liveVideoWrapRef.current?.getBoundingClientRect().width ?? 0;
+    const minSizeByCm = wrapWidth > 0 ? (MIN_CAMERA_CM * CSS_PX_PER_CM) / wrapWidth : MIN_CAMERA_SIZE;
+    const minSize = clamp(Math.max(MIN_CAMERA_SIZE, minSizeByCm), MIN_CAMERA_SIZE, 0.9);
+    const size = clamp(overlay.size, minSize, MAX_CAMERA_SIZE);
+    const x = clamp(overlay.x, 0, 1 - size);
+    const y = clamp(overlay.y, 0, 1 - size);
+    return { x, y, size };
+  }, []);
+
+  const stopCameraStream = useCallback(() => {
+    setCameraStream((prev) => {
+      if (prev) {
+        prev.getTracks().forEach((track) => track.stop());
+      }
+      return null;
+    });
+  }, []);
+
+  const refreshCameraDevices = useCallback(async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices.filter((device) => device.kind === 'videoinput');
+      setCameraDevices(videoInputs);
+      if (!selectedCameraDeviceId && videoInputs.length > 0) {
+        setSelectedCameraDeviceId(videoInputs[0].deviceId);
+      }
+    } catch {
+      setCameraDevices([]);
+    }
+  }, [selectedCameraDeviceId]);
+
+  const startCameraStream = useCallback(async () => {
+    if (!cameraEnabled) return;
+
+    try {
+      const usbCamera = cameraDevices.find((device) => /usb/i.test(device.label));
+      const preferredDeviceId = cameraSourceMode === 'usb'
+        ? (selectedCameraDeviceId || usbCamera?.deviceId || cameraDevices[0]?.deviceId)
+        : (selectedCameraDeviceId || cameraDevices[0]?.deviceId);
+
+      const constraints: MediaStreamConstraints = {
+        audio: false,
+        video: preferredDeviceId
+          ? { deviceId: { exact: preferredDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          : { width: { ideal: 1280 }, height: { ideal: 720 } },
+      };
+
+      const nextStream = await navigator.mediaDevices.getUserMedia(constraints);
+      setCameraStream((prev) => {
+        if (prev) prev.getTracks().forEach((track) => track.stop());
+        return nextStream;
+      });
+      await refreshCameraDevices();
+    } catch {
+      toast({ title: t('capture.cameraPermissionDenied'), variant: 'destructive' });
+      setCameraEnabled(false);
+      stopCameraStream();
+    }
+  }, [cameraDevices, cameraEnabled, cameraSourceMode, refreshCameraDevices, selectedCameraDeviceId, stopCameraStream, t]);
+
+  const beginCameraAdjust = useCallback((event: React.MouseEvent<HTMLDivElement>, handle: CameraHandle) => {
+    event.preventDefault();
+    event.stopPropagation();
+    cameraDragRef.current = {
+      handle,
+      startX: event.clientX,
+      startY: event.clientY,
+      startOverlay: cameraOverlay,
+    };
+  }, [cameraOverlay]);
 
   const beginRegionAdjust = useCallback(
     (event: React.MouseEvent<HTMLDivElement>, handle: RegionHandle) => {
@@ -339,8 +436,29 @@ export default function ScreenCaptureTool() {
 
   const moveRegionAdjust = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      const drag = regionDragRef.current;
+      const cameraDrag = cameraDragRef.current;
       const wrap = liveVideoWrapRef.current;
+      if (cameraDrag && wrap) {
+        const rect = wrap.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          const dx = (event.clientX - cameraDrag.startX) / rect.width;
+          const dy = (event.clientY - cameraDrag.startY) / rect.height;
+
+          let next = { ...cameraDrag.startOverlay };
+          if (cameraDrag.handle === 'move') {
+            next.x = cameraDrag.startOverlay.x + dx;
+            next.y = cameraDrag.startOverlay.y + dy;
+          } else {
+            const delta = Math.max(dx, dy);
+            next.size = cameraDrag.startOverlay.size + delta;
+          }
+
+          setCameraOverlay(clampCameraOverlay(next));
+        }
+        return;
+      }
+
+      const drag = regionDragRef.current;
       if (!drag || !wrap) return;
 
       const rect = wrap.getBoundingClientRect();
@@ -381,11 +499,12 @@ export default function ScreenCaptureTool() {
 
       setLiveRegion(clampRegion(next));
     },
-    [clampRegion],
+    [clampCameraOverlay, clampRegion],
   );
 
   const endRegionAdjust = useCallback(() => {
     regionDragRef.current = null;
+    cameraDragRef.current = null;
   }, []);
 
   const updateImageBox = useCallback(() => {
@@ -440,6 +559,77 @@ export default function ScreenCaptureTool() {
       }
     };
   }, [stream]);
+
+  useEffect(() => {
+    const cameraVideo = cameraVideoRef.current;
+    const cameraPreview = cameraPreviewRef.current;
+    if (!cameraVideo && !cameraPreview) return;
+    if (cameraVideo) {
+      cameraVideo.srcObject = cameraStream;
+    }
+    if (cameraPreview) {
+      cameraPreview.srcObject = cameraStream;
+    }
+    if (cameraStream) {
+      if (cameraVideo) {
+        void cameraVideo.play().catch(() => undefined);
+      }
+      if (cameraPreview) {
+        void cameraPreview.play().catch(() => undefined);
+      }
+    }
+    return () => {
+      if (cameraVideo) {
+        cameraVideo.srcObject = null;
+      }
+      if (cameraPreview) {
+        cameraPreview.srcObject = null;
+      }
+    };
+  }, [cameraStream]);
+
+  useEffect(() => {
+    if (!workspaceOpen || workspaceMode !== 'record') return;
+    void refreshCameraDevices();
+  }, [refreshCameraDevices, workspaceMode, workspaceOpen]);
+
+  useEffect(() => {
+    if (!workspaceOpen || workspaceMode !== 'record') {
+      stopCameraStream();
+      return;
+    }
+
+    if (!cameraEnabled) {
+      stopCameraStream();
+      return;
+    }
+
+    void startCameraStream();
+  }, [cameraEnabled, cameraSourceMode, selectedCameraDeviceId, startCameraStream, stopCameraStream, workspaceMode, workspaceOpen]);
+
+  useEffect(() => {
+    if (cameraBackgroundPreset !== 'custom' || !cameraBackgroundCustomUrl) {
+      cameraBackgroundImageRef.current = null;
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      cameraBackgroundImageRef.current = img;
+    };
+    img.onerror = () => {
+      cameraBackgroundImageRef.current = null;
+    };
+    img.src = cameraBackgroundCustomUrl;
+  }, [cameraBackgroundCustomUrl, cameraBackgroundPreset]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraBackgroundCustomUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(cameraBackgroundCustomUrl);
+      }
+    };
+  }, [cameraBackgroundCustomUrl]);
 
   useEffect(() => {
     if (!captured) return;
@@ -896,6 +1086,59 @@ export default function ScreenCaptureTool() {
       const renderFrame = () => {
         if (!recordingActiveRef.current) return;
         outputCtx.drawImage(preview, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+
+        const camVideo = cameraVideoRef.current;
+        if (cameraEnabled && camVideo && camVideo.readyState >= 2 && camVideo.videoWidth > 0 && camVideo.videoHeight > 0) {
+          const cameraXInSource = Math.round(cameraOverlay.x * sourceWidth);
+          const cameraYInSource = Math.round(cameraOverlay.y * sourceHeight);
+          const cameraSizeInSource = Math.max(2, Math.round(cameraOverlay.size * sourceWidth));
+
+          const destX = cameraXInSource - cropX;
+          const destY = cameraYInSource - cropY;
+          const outerRadius = cameraSizeInSource / 2;
+          const centerX = destX + outerRadius;
+          const centerY = destY + outerRadius;
+
+          outputCtx.save();
+          outputCtx.beginPath();
+          outputCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+          outputCtx.closePath();
+          outputCtx.clip();
+
+          if (cameraBackgroundPreset === 'custom' && cameraBackgroundImageRef.current) {
+            outputCtx.drawImage(cameraBackgroundImageRef.current, destX, destY, cameraSizeInSource, cameraSizeInSource);
+          } else {
+            if (cameraBackgroundPreset === 'bookshelf') {
+              const g = outputCtx.createLinearGradient(destX, destY, destX + cameraSizeInSource, destY + cameraSizeInSource);
+              g.addColorStop(0, '#8b5e3c');
+              g.addColorStop(0.5, '#c39b77');
+              g.addColorStop(1, '#5b3f2a');
+              outputCtx.fillStyle = g;
+            } else if (cameraBackgroundPreset === 'studio') {
+              const g = outputCtx.createRadialGradient(centerX, centerY, cameraSizeInSource * 0.2, centerX, centerY, cameraSizeInSource * 0.7);
+              g.addColorStop(0, '#1f2937');
+              g.addColorStop(1, '#111827');
+              outputCtx.fillStyle = g;
+            } else {
+              outputCtx.fillStyle = '#f5f5f4';
+            }
+            outputCtx.fillRect(destX, destY, cameraSizeInSource, cameraSizeInSource);
+          }
+
+          const innerPadding = cameraSizeInSource * 0.08;
+          const innerSize = cameraSizeInSource - innerPadding * 2;
+          const innerRadius = innerSize / 2;
+          const innerCenterX = destX + innerPadding + innerRadius;
+          const innerCenterY = destY + innerPadding + innerRadius;
+
+          outputCtx.beginPath();
+          outputCtx.arc(innerCenterX, innerCenterY, innerRadius, 0, Math.PI * 2);
+          outputCtx.closePath();
+          outputCtx.clip();
+          outputCtx.drawImage(camVideo, destX + innerPadding, destY + innerPadding, innerSize, innerSize);
+          outputCtx.restore();
+        }
+
         recordRafRef.current = requestAnimationFrame(renderFrame);
       };
       renderFrame();
@@ -943,12 +1186,26 @@ export default function ScreenCaptureTool() {
     }, 1000);
   };
 
+  const handleCameraBackgroundUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const objectUrl = URL.createObjectURL(file);
+    setCameraBackgroundCustomUrl((prev) => {
+      if (prev.startsWith('blob:')) {
+        URL.revokeObjectURL(prev);
+      }
+      return objectUrl;
+    });
+    setCameraBackgroundPreset('custom');
+  };
+
   const closeWorkspace = () => {
     if (isRecording) {
       stopRecording();
     } else {
       stopShare();
     }
+    stopCameraStream();
     setWorkspaceOpen(false);
   };
 
@@ -956,6 +1213,8 @@ export default function ScreenCaptureTool() {
     if (stream) {
       stopShare();
     }
+    stopCameraStream();
+    setCameraOverlay({ x: 0.76, y: 0.72, size: 0.2 });
     setCaptured('');
     setOriginalCapture('');
     setWorkspaceMode(mode);
@@ -1443,6 +1702,68 @@ export default function ScreenCaptureTool() {
                       </>
                     )}
                   </select>
+
+                  <label className="text-xs text-muted-foreground">{t('capture.cameraOverlay')}</label>
+                  <label className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 h-8 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={cameraEnabled}
+                      onChange={(event) => setCameraEnabled(event.target.checked)}
+                      disabled={isRecording}
+                    />
+                    <span>{cameraEnabled ? t('capture.cameraOn') : t('capture.cameraOff')}</span>
+                  </label>
+
+                  {cameraEnabled && (
+                    <>
+                      <label className="text-xs text-muted-foreground">{t('capture.cameraSourceMode')}</label>
+                      <select
+                        value={cameraSourceMode}
+                        onChange={(event) => setCameraSourceMode(event.target.value as CameraSourceMode)}
+                        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        disabled={isRecording}
+                      >
+                        <option value="auto">{t('capture.cameraSourceAuto')}</option>
+                        <option value="usb">{t('capture.cameraSourceUsb')}</option>
+                      </select>
+
+                      <select
+                        value={selectedCameraDeviceId}
+                        onChange={(event) => setSelectedCameraDeviceId(event.target.value)}
+                        className="h-8 min-w-[160px] rounded-md border border-input bg-background px-2 text-xs"
+                        disabled={isRecording || cameraDevices.length === 0}
+                      >
+                        {cameraDevices.length === 0 && <option value="">{t('capture.cameraNoDevice')}</option>}
+                        {cameraDevices.map((device, index) => (
+                          <option key={device.deviceId} value={device.deviceId}>{device.label || `${t('capture.cameraDevice')} ${index + 1}`}</option>
+                        ))}
+                      </select>
+
+                      <label className="text-xs text-muted-foreground">{t('capture.cameraBackground')}</label>
+                      <select
+                        value={cameraBackgroundPreset}
+                        onChange={(event) => setCameraBackgroundPreset(event.target.value as CameraBackgroundPreset)}
+                        className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        disabled={isRecording}
+                      >
+                        <option value="whitewall">{t('capture.cameraBgWhitewall')}</option>
+                        <option value="bookshelf">{t('capture.cameraBgBookshelf')}</option>
+                        <option value="studio">{t('capture.cameraBgStudio')}</option>
+                        <option value="custom">{t('capture.cameraBgCustom')}</option>
+                      </select>
+
+                      <label className="inline-flex h-8 items-center rounded-md border border-input bg-background px-2 text-xs cursor-pointer">
+                        {t('capture.cameraBgUpload')}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleCameraBackgroundUpload}
+                          disabled={isRecording}
+                        />
+                      </label>
+                    </>
+                  )}
                   {recordAudioSource !== 'mic' && recordAudioSource !== 'none' && stream && !systemAudioTrackAvailable && (
                     <span className="text-[11px] text-muted-foreground">{t('capture.systemAudioNotCaptured')}</span>
                   )}
@@ -1482,6 +1803,7 @@ export default function ScreenCaptureTool() {
                     onMouseLeave={endRegionAdjust}
                   >
                     <video ref={videoRef} autoPlay muted playsInline className="max-h-[72vh] max-w-full object-contain rounded-lg" />
+                    <video ref={cameraVideoRef} autoPlay muted playsInline className="hidden" />
                     {stream && (
                       <>
                         <div className="absolute inset-0 pointer-events-none bg-black/20 rounded-lg" />
@@ -1500,6 +1822,38 @@ export default function ScreenCaptureTool() {
                           <div className="absolute -left-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nesw-resize" onMouseDown={(event) => beginRegionAdjust(event, 'sw')} />
                           <div className="absolute -right-2 -bottom-2 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize" onMouseDown={(event) => beginRegionAdjust(event, 'se')} />
                         </div>
+                        {cameraEnabled && cameraStream && (
+                          <div
+                            className="absolute rounded-full border-2 border-white/80 shadow-xl overflow-hidden"
+                            style={{
+                              left: `${cameraOverlay.x * 100}%`,
+                              top: `${cameraOverlay.y * 100}%`,
+                              width: `${cameraOverlay.size * 100}%`,
+                              height: `${cameraOverlay.size * 100}%`,
+                              background: cameraBackgroundPreset === 'bookshelf'
+                                ? 'linear-gradient(145deg, #8b5e3c, #c39b77 52%, #5b3f2a)'
+                                : cameraBackgroundPreset === 'studio'
+                                  ? 'radial-gradient(circle at 35% 30%, #374151, #111827)'
+                                  : '#f5f5f4',
+                              backgroundImage: cameraBackgroundPreset === 'custom' && cameraBackgroundCustomUrl ? `url(${cameraBackgroundCustomUrl})` : undefined,
+                              backgroundSize: 'cover',
+                              backgroundPosition: 'center',
+                            }}
+                          >
+                            <div className="absolute inset-0 cursor-move" onMouseDown={(event) => beginCameraAdjust(event, 'move')} />
+                            <video
+                              autoPlay
+                              muted
+                              playsInline
+                              className="absolute inset-[8%] h-[84%] w-[84%] rounded-full object-cover pointer-events-none"
+                              ref={cameraPreviewRef}
+                            />
+                            <div
+                              className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full border border-white bg-primary cursor-nwse-resize"
+                              onMouseDown={(event) => beginCameraAdjust(event, 'resize')}
+                            />
+                          </div>
+                        )}
                         {recordCountdown !== null && (
                           <div className="absolute inset-0 z-30 flex items-center justify-center rounded-lg bg-black/45">
                             <div className="text-white text-6xl font-bold tabular-nums">{recordCountdown}</div>
