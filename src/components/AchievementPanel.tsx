@@ -79,7 +79,7 @@ export default function AchievementPanel() {
   const [badges, setBadges] = useState<Badge[]>([]);
   const [studentBadges, setStudentBadges] = useState<StudentBadge[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'leaderboard' | 'points' | 'badges'>('leaderboard');
+  const [tab, setTab] = useState<'leaderboard' | 'points' | 'badges' | 'analytics'>('leaderboard');
 
   // Add points form
   const [showAddPoints, setShowAddPoints] = useState(false);
