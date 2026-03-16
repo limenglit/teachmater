@@ -292,18 +292,19 @@ export default function AchievementPanel() {
         </div>
 
         {/* Sub-tabs */}
-        <div className="flex gap-1 mb-6 border-b border-border">
-          {(['leaderboard', 'points', 'badges'] as const).map(t2 => (
+        <div className="flex gap-1 mb-6 border-b border-border overflow-x-auto">
+          {(['leaderboard', 'points', 'badges', 'analytics'] as const).map(t2 => (
             <button
               key={t2}
               onClick={() => setTab(t2)}
-              className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+              className={`px-4 py-2 text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
                 tab === t2 ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               {t2 === 'leaderboard' && `🏆 ${t('achieve.leaderboard')}`}
               {t2 === 'points' && `⭐ ${t('achieve.pointsHistory')}`}
               {t2 === 'badges' && `🎖️ ${t('achieve.badgeManage')}`}
+              {t2 === 'analytics' && `📊 ${t('analytics.tabTitle')}`}
             </button>
           ))}
         </div>
