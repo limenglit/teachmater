@@ -3443,6 +3443,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'board.selectedColumn': 'Выбранная колонка',
     'board.fabHint': 'Отправить идеи и работы',
     'board.mobileEmptyHint': 'Пока нет карточек. Нажмите + чтобы добавить!',
+    'board.pullToRefresh': 'Потяните для обновления',
+    'board.releaseToRefresh': 'Отпустите для обновления',
     'board.chooseColumnHint': 'Выберите панель для публикации',
       'task.title': 'Список задач',
       'task.loadFailed': 'Не удалось загрузить данные задач',
