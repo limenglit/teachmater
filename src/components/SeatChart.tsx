@@ -478,7 +478,7 @@ export default function SeatChart() {
               <div className="flex items-center">
                 <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
                   <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
-                  <span className="[writing-mode:vertical-rl] tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
+                  <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
                 </div>
               </div>
             </div>

@@ -208,6 +208,28 @@
   -webkit-backdrop-filter: var(--tw-backdrop-blur);
 }
 
+/* Cross-browser dvh/svh fallback for arbitrary Tailwind values */
+/* Browsers that don't support dvh will use vh as fallback */
+@supports not (height: 100dvh) {
+  .min-h-\[100dvh\] { min-height: 100vh; }
+  .h-\[100dvh\] { height: 100vh; }
+  .min-h-\[calc\(100dvh.*\)\] { min-height: 100vh; }
+  .max-h-\[.*dvh.*\] { max-height: inherit; }
+}
+
+/* Cross-browser writing-mode for arbitrary Tailwind values */
+.\[writing-mode\:vertical-rl\] {
+  -webkit-writing-mode: vertical-rl;
+  writing-mode: vertical-rl;
+}
+
+/* Cross-browser env() safe-area fallback */
+@supports not (padding: env(safe-area-inset-top)) {
+  .pt-\[max\(.*env\(safe-area-inset-top\).*\)\] { padding-top: 0.5rem; }
+  .pb-\[max\(.*env\(safe-area-inset-bottom\).*\)\] { padding-bottom: 0.5rem; }
+  .pb-\[calc\(.*env\(safe-area-inset-bottom\).*\)\] { padding-bottom: 0.5rem; }
+}
+
 /* Roller animation */
 @keyframes roller-spin {
   0% { transform: translateY(0); }
