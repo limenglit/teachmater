@@ -88,7 +88,7 @@ export default function StoryboardPanel() {
 
         // Add to history
         const newResult: StoryboardResult = {
-          id: crypto.randomUUID(),
+          id: safeUUID(),
           params: { ...params },
           imageUrl: data.imageUrl,
           prompt: data.prompt || '',
