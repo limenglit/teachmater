@@ -53,7 +53,8 @@ export default function StoryboardForm({ params, onChange, onGenerate, isLoading
           onInput={resizeThemeInput}
           rows={3}
           placeholder={t('storyboard.themePlaceholder')}
-          className="min-h-[80px] max-h-[180px] resize-y leading-6 [overflow-wrap:anywhere] break-words bg-background"
+          className="min-h-[80px] max-h-[180px] resize-y leading-6 break-words bg-background"
+          style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
         />
       </div>
 

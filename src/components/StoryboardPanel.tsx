@@ -10,6 +10,7 @@ import StoryboardTemplates from './storyboard/StoryboardTemplates';
 import StoryboardHistory from './storyboard/StoryboardHistory';
 import { StoryboardParams, StoryboardResult, DEFAULT_PARAMS, TextOverlay, TEMPLATES } from './storyboard/types';
 import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
+import { safeUUID } from './storyboard/TextOverlayEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { Pencil } from 'lucide-react';
 
@@ -87,7 +88,7 @@ export default function StoryboardPanel() {
 
         // Add to history
         const newResult: StoryboardResult = {
-          id: crypto.randomUUID(),
+          id: safeUUID(),
           params: { ...params },
           imageUrl: data.imageUrl,
           prompt: data.prompt || '',
