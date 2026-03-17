@@ -195,6 +195,10 @@ export default function BoardPanel() {
   };
 
   const openBoard = async (board: Board) => {
+    // Ensure creator token is saved locally for boards owned by current user
+    if (user && (board as any).user_id === user.id && !getCreatorToken(board.id)) {
+      saveCreatorToken(board.id, board.creator_token);
+    }
     setActiveBoard(board);
     if (isCloud) {
       const { data } = await supabase.from('board_cards').select('*').eq('board_id', board.id).order('sort_order', { ascending: true });
@@ -499,7 +503,7 @@ export default function BoardPanel() {
   // Board detail view
   if (activeBoard) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/submit`;
-    const isCreator = !!getCreatorToken(activeBoard.id);
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
 
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
