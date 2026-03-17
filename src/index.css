@@ -102,9 +102,42 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+    font-family: 'Noto Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Normalize form elements across browsers */
+  input, button, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  /* Fix iOS tap highlight */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent iOS text size inflation */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Smooth scroll with reduced-motion respect */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Fix Firefox button inner focus */
+  button::-moz-focus-inner {
+    border: 0;
+    padding: 0;
   }
 }
 
@@ -113,7 +146,9 @@
     text-wrap: balance;
   }
   .writing-vertical {
+    -webkit-writing-mode: vertical-rl;
     writing-mode: vertical-rl;
+    -webkit-text-orientation: mixed;
     text-orientation: mixed;
   }
   .scrollbar-hide {
@@ -122,6 +157,30 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* dvh/svh fallback utilities */
+  .min-h-dvh {
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+  .h-dvh {
+    height: 100vh;
+    height: 100dvh;
+  }
+  .min-h-svh {
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+  .h-svh {
+    height: 100vh;
+    height: 100svh;
+  }
+
+  /* Backdrop filter with webkit prefix */
+  .compat-backdrop-blur {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
   }
 }
 
@@ -138,6 +197,37 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
+}
+
+/* Global webkit backdrop-filter prefix for Tailwind's backdrop-blur */
+.backdrop-blur,
+.backdrop-blur-sm,
+.backdrop-blur-md,
+.backdrop-blur-lg,
+.backdrop-blur-xl {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur);
+}
+
+/* Cross-browser dvh/svh fallback for arbitrary Tailwind values */
+/* Browsers that don't support dvh will use vh as fallback */
+@supports not (height: 100dvh) {
+  .min-h-\[100dvh\] { min-height: 100vh; }
+  .h-\[100dvh\] { height: 100vh; }
+  .min-h-\[calc\(100dvh.*\)\] { min-height: 100vh; }
+  .max-h-\[.*dvh.*\] { max-height: inherit; }
+}
+
+/* Cross-browser writing-mode for arbitrary Tailwind values */
+.\[writing-mode\:vertical-rl\] {
+  -webkit-writing-mode: vertical-rl;
+  writing-mode: vertical-rl;
+}
+
+/* Cross-browser env() safe-area fallback */
+@supports not (padding: env(safe-area-inset-top)) {
+  .pt-\[max\(.*env\(safe-area-inset-top\).*\)\] { padding-top: 0.5rem; }
+  .pb-\[max\(.*env\(safe-area-inset-bottom\).*\)\] { padding-bottom: 0.5rem; }
+  .pb-\[calc\(.*env\(safe-area-inset-bottom\).*\)\] { padding-bottom: 0.5rem; }
 }
 
 /* Roller animation */

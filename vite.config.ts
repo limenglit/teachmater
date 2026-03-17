@@ -12,6 +12,10 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
+  build: {
+    target: ['es2020', 'chrome80', 'firefox78', 'safari14', 'edge88'],
+    cssTarget: ['chrome80', 'firefox78', 'safari14', 'edge88'],
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     dedupe: ['react', 'react-dom'],
