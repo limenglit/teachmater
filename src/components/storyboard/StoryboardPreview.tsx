@@ -7,6 +7,26 @@ import { TextOverlay } from './types';
 
 const TextOverlayEditor = lazy(() => import('./TextOverlayEditor'));
 
+/** Copy text to clipboard with fallback for older browsers */
+async function safeClipboardWrite(text: string): Promise<void> {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    return navigator.clipboard.writeText(text);
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  ta.style.top = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+  } finally {
+    document.body.removeChild(ta);
+  }
+}
+
 interface Props {
   imageUrl: string | null;
   prompt: string | null;
@@ -29,10 +49,14 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
     toast.success(t('storyboard.downloaded'));
   };
 
-  const handleCopyPrompt = () => {
+  const handleCopyPrompt = async () => {
     if (!prompt) return;
-    navigator.clipboard.writeText(prompt);
-    toast.success(t('storyboard.promptCopied'));
+    try {
+      await safeClipboardWrite(prompt);
+      toast.success(t('storyboard.promptCopied'));
+    } catch {
+      toast.error('Copy failed');
+    }
   };
 
   if (isLoading) {
@@ -71,7 +95,7 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
           />
         </div>
 
-        {/* Actions */}
+        {/* Actions - Desktop */}
         <div className="hidden sm:flex items-center justify-center gap-2 p-4 border-t border-border bg-card flex-wrap">
           <Button variant="default" size="sm" onClick={() => setShowEditor(true)}>
             <Type className="w-4 h-4 mr-1" />
@@ -96,7 +120,8 @@ export default function StoryboardPreview({ imageUrl, prompt, isLoading, onRegen
         </div>
       </div>
 
-      <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/85 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      {/* Mobile bottom bar */}
+      <div className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 compat-backdrop-blur p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
         <div className="grid grid-cols-3 gap-2">
           <Button variant="outline" size="sm" className="h-9" onClick={handleDownload}>
             <Download className="w-4 h-4 mr-1" />

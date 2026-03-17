@@ -44,6 +44,44 @@ const FONT_WEIGHTS = [
   { value: '900', label: '特粗' },
 ];
 
+/** Generate a UUID with fallback for insecure contexts / older browsers */
+function safeUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback: RFC-4122 v4 via getRandomValues or Math.random
+  const rng = typeof crypto !== 'undefined' && crypto.getRandomValues
+    ? () => crypto.getRandomValues(new Uint8Array(1))[0]
+    : () => Math.floor(Math.random() * 256);
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = rng() & 0xf;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+/** Copy text to clipboard with fallback for older browsers */
+async function safeClipboardWrite(text: string): Promise<void> {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+    return navigator.clipboard.writeText(text);
+  }
+  // Fallback: textarea + execCommand
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  ta.style.top = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+  } finally {
+    document.body.removeChild(ta);
+  }
+}
+
+export { safeUUID, safeClipboardWrite };
+
 export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }: Props) {
   const { t } = useLanguage();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -53,13 +91,13 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
   const [layers, setLayers] = useState<TextLayer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
 
   // Initialize layers from initialKeywords
   useEffect(() => {
     if (initialKeywords && initialKeywords.length > 0 && layers.length === 0) {
       const initialLayers: TextLayer[] = initialKeywords.map(kw => ({
-        id: crypto.randomUUID(),
+        id: safeUUID(),
         text: kw.text,
         x: kw.x,
         y: kw.y,
@@ -76,18 +114,15 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
 
   useEffect(() => {
     if (mobilePane !== 'props' || !selectedId) return;
-
     const panel = propsPanelRef.current;
     const selectedRow = layerItemRefs.current[selectedId];
-
-    // Bring property controls back to the top on mobile and keep selected layer row visible.
     panel?.scrollTo({ top: 0, behavior: 'smooth' });
     selectedRow?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [mobilePane, selectedId]);
 
   const addLayer = () => {
     const newLayer: TextLayer = {
-      id: crypto.randomUUID(),
+      id: safeUUID(),
       text: t('storyboard.newText'),
       x: 50,
       y: 50,
@@ -109,32 +144,41 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
     if (selectedId === id) setSelectedId(null);
   };
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, layerId: string) => {
+  // ---- Unified pointer helpers (mouse + touch) ----
+  const getClientPos = (e: React.MouseEvent | React.TouchEvent) => {
+    if ('touches' in e) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      return { clientX: touch.clientX, clientY: touch.clientY };
+    }
+    return { clientX: (e as React.MouseEvent).clientX, clientY: (e as React.MouseEvent).clientY };
+  };
+
+  const handlePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent, layerId: string) => {
     e.preventDefault();
     e.stopPropagation();
     const layer = layers.find(l => l.id === layerId);
     if (!layer || !canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left - layer.x,
-      y: e.clientY - rect.top - layer.y,
-    });
+    const pos = getClientPos(e);
+    const cardPos = { x: layer.x, y: layer.y };
+    dragOffsetRef.current = { x: pos.clientX - rect.left - cardPos.x, y: pos.clientY - rect.top - cardPos.y };
     setSelectedId(layerId);
     setIsDragging(true);
   }, [layers]);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging || !selectedId || !canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(rect.width - 50, e.clientX - rect.left - dragOffset.x));
-    const y = Math.max(0, Math.min(rect.height - 20, e.clientY - rect.top - dragOffset.y));
+    const pos = getClientPos(e);
+    const x = Math.max(0, Math.min(rect.width - 50, pos.clientX - rect.left - dragOffsetRef.current.x));
+    const y = Math.max(0, Math.min(rect.height - 20, pos.clientY - rect.top - dragOffsetRef.current.y));
 
     updateLayer(selectedId, { x, y });
-  }, [isDragging, selectedId, dragOffset]);
+  }, [isDragging, selectedId]);
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
@@ -142,11 +186,9 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
     if (!canvasRef.current) return;
 
     try {
-      // Deselect to hide selection border
       const prevSelected = selectedId;
       setSelectedId(null);
 
-      // Wait for re-render
       await new Promise(r => setTimeout(r, 100));
 
       const canvas = await html2canvas(canvasRef.current, {
@@ -213,19 +255,23 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
         <div className={`flex-1 min-h-[40vh] lg:min-h-0 p-2 sm:p-4 overflow-auto bg-muted/30 ${mobilePane === 'canvas' ? 'block' : 'hidden'} lg:block`}>
           <div
             ref={canvasRef}
-            className="relative mx-auto bg-white shadow-lg"
-            style={{ maxWidth: '100%', width: 'fit-content' }}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            className="relative mx-auto bg-white shadow-lg touch-none"
+            style={{ maxWidth: '100%', width: 'fit-content', WebkitUserSelect: 'none', userSelect: 'none' }}
+            onMouseMove={handlePointerMove}
+            onMouseUp={handlePointerUp}
+            onMouseLeave={handlePointerUp}
+            onTouchMove={handlePointerMove}
+            onTouchEnd={handlePointerUp}
+            onTouchCancel={handlePointerUp}
             onClick={() => setSelectedId(null)}
           >
             <img
               src={imageUrl}
               alt="Storyboard base"
-              className="block max-w-full"
+              className="block max-w-full pointer-events-none"
               crossOrigin="anonymous"
               draggable={false}
+              style={{ WebkitUserDrag: 'none' } as React.CSSProperties}
             />
             {layers.map(layer => (
               <div
@@ -241,8 +287,12 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
                   fontWeight: layer.fontWeight,
                   color: layer.color,
                   textShadow: '1px 1px 2px rgba(255,255,255,0.8)',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  touchAction: 'none',
                 }}
-                onMouseDown={(e) => handleMouseDown(e, layer.id)}
+                onMouseDown={(e) => handlePointerDown(e, layer.id)}
+                onTouchStart={(e) => handlePointerDown(e, layer.id)}
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedId(layer.id);
