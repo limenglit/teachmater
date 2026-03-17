@@ -195,6 +195,10 @@ export default function BoardPanel() {
   };
 
   const openBoard = async (board: Board) => {
+    // Ensure creator token is saved locally for boards owned by current user
+    if (user && (board as any).user_id === user.id && !getCreatorToken(board.id)) {
+      saveCreatorToken(board.id, board.creator_token);
+    }
     setActiveBoard(board);
     if (isCloud) {
       const { data } = await supabase.from('board_cards').select('*').eq('board_id', board.id).order('sort_order', { ascending: true });
