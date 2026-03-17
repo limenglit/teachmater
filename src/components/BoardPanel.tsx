@@ -499,7 +499,7 @@ export default function BoardPanel() {
   // Board detail view
   if (activeBoard) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/submit`;
-    const isCreator = !!getCreatorToken(activeBoard.id);
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
 
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
