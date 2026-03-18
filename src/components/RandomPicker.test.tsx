@@ -256,7 +256,7 @@ describe('RandomPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: '基于建队' }));
     fireEvent.click(screen.getByRole('button', { name: '🎲 投掷' }));
     act(() => { vi.advanceTimersByTime(1200); });
-    expect(screen.getByText(/第1组 第1人: 学生7/)).toBeInTheDocument();
+    expect(screen.getByText(/第1队 第1人: 学生7/)).toBeInTheDocument();
 
     randomSpy.mockRestore();
   });

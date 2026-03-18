@@ -483,7 +483,8 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         const memberIndex = ((finalValues[groupDiceCount] - 1) % chosenGroup.members.length);
         const chosen = chosenGroup.members[memberIndex];
 
-        setResult(t('dice.groupResult').replace('{0}', String(groupIndex + 1)).replace('{1}', String(memberIndex + 1)) + `: ${chosen.name}`);
+        const resultKey = mode === 'team' ? 'dice.teamResult' : 'dice.groupResult';
+        setResult(t(resultKey).replace('{0}', String(groupIndex + 1)).replace('{1}', String(memberIndex + 1)) + `: ${chosen.name}`);
         setIsRolling(false);
         onPick(chosen.name);
 
