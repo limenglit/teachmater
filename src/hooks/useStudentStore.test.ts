@@ -3,6 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useStudentStore } from './useStudentStore';
 
 const STORAGE_KEY = 'teachmate_students';
+const USER_KEY = (userId: string) => `teachmate_students:${userId}`;
 
 beforeEach(() => {
   localStorage.clear();
@@ -71,5 +72,48 @@ describe('useStudentStore', () => {
     act(() => result.current.importFromText('甲\n\n乙\n  \n丙'));
     expect(result.current.students.length).toBe(3);
     expect(result.current.students.map(s => s.name)).toEqual(['甲', '乙', '丙']);
+  });
+
+  // Case 7: 注册用户优先使用其专属最近名单
+  it('loads user-specific recent students after login', () => {
+    localStorage.setItem(USER_KEY('u_1'), JSON.stringify([{ id: 's_u1', name: '用户A名单' }]));
+
+    const { result } = renderHook(() => useStudentStore('u_1'));
+    expect(result.current.students).toEqual([{ id: 's_u1', name: '用户A名单' }]);
+  });
+
+  // Case 8: 登录切换用户后自动切到该用户最近名单
+  it('switches list automatically when user id changes', () => {
+    localStorage.setItem(USER_KEY('u_1'), JSON.stringify([{ id: 'u1_1', name: '名单1' }]));
+    localStorage.setItem(USER_KEY('u_2'), JSON.stringify([{ id: 'u2_1', name: '名单2' }]));
+
+    const { result, rerender } = renderHook(({ userId }) => useStudentStore(userId), {
+      initialProps: { userId: 'u_1' as string | null },
+    });
+
+    expect(result.current.students[0].name).toBe('名单1');
+
+    rerender({ userId: 'u_2' });
+    expect(result.current.students[0].name).toBe('名单2');
+  });
+
+  // Case 9: 首次登录无专属名单时，迁移旧通用名单到用户空间
+  it('migrates legacy shared list to authenticated user key on first login', () => {
+    const legacy = [{ id: 'legacy_1', name: '旧名单' }];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+
+    const { result } = renderHook(() => useStudentStore('u_3'));
+    expect(result.current.students).toEqual(legacy);
+
+    const userStored = JSON.parse(localStorage.getItem(USER_KEY('u_3')) || '[]');
+    expect(userStored).toEqual(legacy);
+  });
+
+  // Case 10: 登录用户无历史时，不回退测试24人名单
+  it('uses empty list for authenticated users without history', () => {
+    const { result } = renderHook(() => useStudentStore('u_4'));
+    expect(result.current.students).toEqual([]);
+    const stored = JSON.parse(localStorage.getItem(USER_KEY('u_4')) || '[]');
+    expect(stored).toEqual([]);
   });
 });

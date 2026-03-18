@@ -5,19 +5,27 @@ export interface Student {
   name: string;
 }
 
-const STORAGE_KEY = 'teachmate_students';
+const STORAGE_KEY_PREFIX = 'teachmate_students';
 
-const loadStudents = (): Student[] => {
+const getStorageKey = (userId?: string | null) => {
+  return userId ? `${STORAGE_KEY_PREFIX}:${userId}` : STORAGE_KEY_PREFIX;
+};
+
+const loadStudents = (storageKey: string): Student[] => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(storageKey);
+    const parsed = data ? JSON.parse(data) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is Student => {
+      return !!item && typeof item.id === 'string' && typeof item.name === 'string';
+    });
   } catch {
     return [];
   }
 };
 
-const saveStudents = (students: Student[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+const saveStudents = (storageKey: string, students: Student[]) => {
+  localStorage.setItem(storageKey, JSON.stringify(students));
 };
 
 // Default demo students
@@ -28,19 +36,50 @@ const DEFAULT_STUDENTS: Student[] = [
   '韩冬阳', '唐一宸', '沈清秋', '许诺言', '冯晚晴', '曹书语'
 ].map((name, i) => ({ id: `s_${i}`, name }));
 
-export function useStudentStore() {
+const EMPTY_STUDENTS: Student[] = [];
+
+export function useStudentStore(userId?: string | null) {
+  const storageKey = getStorageKey(userId);
+  const fallbackStudents = userId ? EMPTY_STUDENTS : DEFAULT_STUDENTS;
+
   const [students, setStudents] = useState<Student[]>(() => {
-    const loaded = loadStudents();
+    const loaded = loadStudents(storageKey);
+
+    // Migrate legacy key to the first authenticated key when possible.
+    if (loaded.length === 0 && userId) {
+      const legacyLoaded = loadStudents(STORAGE_KEY_PREFIX);
+      if (legacyLoaded.length > 0) {
+        saveStudents(storageKey, legacyLoaded);
+        return legacyLoaded;
+      }
+    }
+
     if (loaded.length === 0) {
-      saveStudents(DEFAULT_STUDENTS);
-      return DEFAULT_STUDENTS;
+      saveStudents(storageKey, fallbackStudents);
+      return fallbackStudents;
     }
     return loaded;
   });
 
   useEffect(() => {
-    saveStudents(students);
-  }, [students]);
+    const loaded = loadStudents(storageKey);
+    if (loaded.length === 0) {
+      if (userId) {
+        const legacyLoaded = loadStudents(STORAGE_KEY_PREFIX);
+        if (legacyLoaded.length > 0) {
+          setStudents(legacyLoaded);
+          return;
+        }
+      }
+      setStudents(fallbackStudents);
+      return;
+    }
+    setStudents(loaded);
+  }, [storageKey, userId, fallbackStudents]);
+
+  useEffect(() => {
+    saveStudents(storageKey, students);
+  }, [storageKey, students]);
 
   const addStudent = useCallback((name: string) => {
     if (!name.trim()) return;

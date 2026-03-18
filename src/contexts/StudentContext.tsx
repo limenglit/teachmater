@@ -1,5 +1,6 @@
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useStudentStore, Student } from '@/hooks/useStudentStore';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StudentContextType {
   students: Student[];
@@ -13,7 +14,8 @@ interface StudentContextType {
 const StudentContext = createContext<StudentContextType | null>(null);
 
 export function StudentProvider({ children }: { children: ReactNode }) {
-  const store = useStudentStore();
+  const { user } = useAuth();
+  const store = useStudentStore(user?.id ?? null);
   return <StudentContext.Provider value={store}>{children}</StudentContext.Provider>;
 }
 
