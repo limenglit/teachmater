@@ -638,7 +638,7 @@ export default function BanquetHall({ students }: Props) {
         seatDraggingRef.current = false;
       }}
     >
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           名称
           <Input
@@ -695,24 +695,26 @@ export default function BanquetHall({ students }: Props) {
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
 
-        <Button variant="outline" onClick={saveToHistory} className="gap-2">
-          <Save className="w-4 h-4" /> 保存历史
-        </Button>
-        <select
-          value={selectedHistoryId}
-          onChange={e => setSelectedHistoryId(e.target.value)}
-          className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-        >
-          <option value="">选择历史记录</option>
-          {historyItems.map(item => (
-            <option key={item.id} value={item.id}>
-              {item.name} ({new Date(item.createdAt).toLocaleString()})
-            </option>
-          ))}
-        </select>
-        <Button variant="outline" onClick={restoreFromHistory} className="gap-2">
-          <RotateCcw className="w-4 h-4" /> 恢复历史
-        </Button>
+        <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8">
+            <Save className="w-4 h-4" /> 保存历史
+          </Button>
+          <select
+            value={selectedHistoryId}
+            onChange={e => setSelectedHistoryId(e.target.value)}
+            className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="">选择历史记录</option>
+            {historyItems.map(item => (
+              <option key={item.id} value={item.id}>
+                {item.name}（{new Date(item.createdAt).toLocaleString()}）
+              </option>
+            ))}
+          </select>
+          <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
+            <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
+        </div>
         <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
           <Users className="w-4 h-4" /> 按分组排座
         </Button>

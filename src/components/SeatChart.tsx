@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SmartClassroom from '@/components/seating/SmartClassroom';
@@ -13,6 +13,14 @@ import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
+import { toast } from 'sonner';
+import {
+  loadClassroomSnapshot,
+  saveClassroomSnapshot,
+  loadClassroomHistory,
+  saveClassroomHistory,
+  type ClassroomHistoryItem,
+} from '@/lib/teamwork-local';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -46,6 +54,9 @@ export default function SeatChart() {
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(8);
   const [seats, setSeats] = useState<(string | null)[][]>([]);
+  const [recordName, setRecordName] = useState('');
+  const [historyItems, setHistoryItems] = useState<ClassroomHistoryItem[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
   const [disabledSeats, setDisabledSeats] = useState<Set<string>>(new Set());
@@ -62,6 +73,7 @@ export default function SeatChart() {
   const draggingAisleRef = useRef<{ type: 'row' | 'col'; index: number } | null>(null);
   const [pointerDraggingColAisle, setPointerDraggingColAisle] = useState<number | null>(null);
   const [pointerColDropTarget, setPointerColDropTarget] = useState<number | null>(null);
+  const restoredClassroomRef = useRef(false);
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
@@ -205,6 +217,124 @@ export default function SeatChart() {
   });
   const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-sm';
   const sideMarkerIconClass = 'inline-flex items-center justify-center w-6 h-6 rounded-md border border-primary/30 bg-primary/10 text-sm leading-none';
+
+  const sanitizeClassroomSeats = (rawSeats: (string | null)[][], nextRows: number, nextCols: number) => {
+    const validStudentNames = new Set(students.map(s => s.name));
+    return Array.from({ length: nextRows }, (_, r) =>
+      Array.from({ length: nextCols }, (_, c) => {
+        const name = rawSeats?.[r]?.[c];
+        if (!name) return null;
+        return validStudentNames.has(name) ? name : null;
+      })
+    );
+  };
+
+  const buildClassroomSnapshot = () => ({
+    rows,
+    cols,
+    mode,
+    groupCount,
+    disabledSeats: Array.from(disabledSeats),
+    examSkipRow,
+    examSkipCol,
+    startFrom,
+    windowOnLeft,
+    colAisles,
+    rowAisles,
+    seats,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const saveClassroomToHistory = () => {
+    if (seats.length === 0) {
+      toast.error('请先完成排座再保存');
+      return;
+    }
+    const name = recordName.trim() || `教室-${new Date().toLocaleString()}`;
+    const item = saveClassroomHistory(name, buildClassroomSnapshot());
+    const nextItems = [item, ...historyItems].slice(0, 50);
+    setHistoryItems(nextItems);
+    setSelectedHistoryId(item.id);
+    setRecordName(name);
+    saveClassroomSnapshot(item.snapshot);
+    toast.success('已保存到历史记录');
+  };
+
+  const restoreClassroomFromHistory = () => {
+    const item = historyItems.find(history => history.id === selectedHistoryId);
+    if (!item) {
+      toast.error('请选择要恢复的历史记录');
+      return;
+    }
+    const snapshot = item.snapshot;
+    const nextRows = Math.max(2, Math.min(12, snapshot.rows));
+    const nextCols = Math.max(2, Math.min(12, snapshot.cols));
+    const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols);
+
+    setRows(nextRows);
+    setCols(nextCols);
+    setMode(snapshot.mode);
+    setGroupCount(Math.max(2, Math.min(10, snapshot.groupCount)));
+    setExamSkipRow(!!snapshot.examSkipRow);
+    setExamSkipCol(!!snapshot.examSkipCol);
+    setStartFrom(snapshot.startFrom);
+    setWindowOnLeft(!!snapshot.windowOnLeft);
+    setColAisles((snapshot.colAisles || []).filter(a => a >= 0 && a < nextCols - 1));
+    setRowAisles((snapshot.rowAisles || []).filter(a => a >= 0 && a < nextRows - 1));
+    setDisabledSeats(new Set((snapshot.disabledSeats || []).filter(key => {
+      const [r, c] = key.split('-').map(Number);
+      return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
+    })));
+    setSeats(nextSeats);
+    setRecordName(item.name);
+
+    saveClassroomSnapshot({
+      ...snapshot,
+      rows: nextRows,
+      cols: nextCols,
+      seats: nextSeats,
+    });
+    toast.success('已从历史记录恢复，可继续调整');
+  };
+
+  useEffect(() => {
+    setHistoryItems(loadClassroomHistory());
+  }, []);
+
+  useEffect(() => {
+    if (restoredClassroomRef.current) return;
+    const snapshot = loadClassroomSnapshot();
+    if (!snapshot) {
+      restoredClassroomRef.current = true;
+      return;
+    }
+
+    const nextRows = Math.max(2, Math.min(12, snapshot.rows));
+    const nextCols = Math.max(2, Math.min(12, snapshot.cols));
+    const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols);
+
+    setRows(nextRows);
+    setCols(nextCols);
+    setMode(snapshot.mode);
+    setGroupCount(Math.max(2, Math.min(10, snapshot.groupCount)));
+    setExamSkipRow(!!snapshot.examSkipRow);
+    setExamSkipCol(!!snapshot.examSkipCol);
+    setStartFrom(snapshot.startFrom);
+    setWindowOnLeft(!!snapshot.windowOnLeft);
+    setColAisles((snapshot.colAisles || []).filter(a => a >= 0 && a < nextCols - 1));
+    setRowAisles((snapshot.rowAisles || []).filter(a => a >= 0 && a < nextRows - 1));
+    setDisabledSeats(new Set((snapshot.disabledSeats || []).filter(key => {
+      const [r, c] = key.split('-').map(Number);
+      return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
+    })));
+    setSeats(nextSeats);
+    restoredClassroomRef.current = true;
+  }, [students]);
+
+  useEffect(() => {
+    if (!restoredClassroomRef.current) return;
+    saveClassroomSnapshot(buildClassroomSnapshot());
+  }, [rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
 
   const buildVisualGrid = () => {
     if (seats.length === 0) return null;
@@ -402,7 +532,17 @@ export default function SeatChart() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-5">
+        <div className="flex flex-wrap items-center gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            名称
+            <Input
+              type="text"
+              value={recordName}
+              onChange={e => setRecordName(e.target.value)}
+              placeholder="输入名称（用于保存历史和导出文件名）"
+              className="w-72 h-8"
+            />
+          </label>
           {MODES.map(m => (
             <button key={m.id} onClick={() => setMode(m.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${mode === m.id ? 'bg-primary text-primary-foreground border-primary shadow-soft' : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted'}`}
@@ -416,7 +556,36 @@ export default function SeatChart() {
               <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
             </Button>
           </div>
-          {seats.length > 0 && <ExportButtons targetRef={printRef} filename={t('seat.exportName')} resolveQrCode={resolveQrCode} />}
+          <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+            <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2 h-8" disabled={seats.length === 0}>
+              <Save className="w-4 h-4" /> 保存历史
+            </Button>
+            <select
+              value={selectedHistoryId}
+              onChange={e => setSelectedHistoryId(e.target.value)}
+              className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="">选择历史记录</option>
+              {historyItems.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.name}（{new Date(item.createdAt).toLocaleString()}）
+                </option>
+              ))}
+            </select>
+            <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
+              <RotateCcw className="w-4 h-4" /> 恢复历史
+            </Button>
+          </div>
+          {seats.length > 0 && (
+            <ExportButtons
+              targetRef={printRef}
+              filename={recordName.trim() || t('seat.exportName')}
+              resolveQrCode={resolveQrCode}
+              titleValue={recordName}
+              onTitleChange={setRecordName}
+              hideTitleInput
+            />
+          )}
           {seats.length > 0 && (
             <Button
               onClick={() => setCheckinOpen(true)}
