@@ -10,7 +10,7 @@ import StyleControls from './visual/StyleControls';
 import InfographicRenderer from './visual/InfographicRenderer';
 import DataChartRenderer from './visual/DataChartRenderer';
 import ExportButtons from './ExportButtons';
-import { type AnalysisResult, type TemplateStyle, type ChartType, type StructureType, type VisualHistoryItem, type VisualSettings } from './visual/visualTypes';
+import { type AnalysisResult, type TemplateStyle, type ChartType, type StructureType, type VisualHistoryItem, type VisualSettings, DEFAULT_VISUAL_SETTINGS } from './visual/visualTypes';
 import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
 
 const HISTORY_KEY = 'visual_history';
