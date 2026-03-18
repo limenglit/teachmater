@@ -51,10 +51,20 @@ export default function VisualizationPanel() {
     setLoading(true);
     setInputText(text);
     try {
-      const { data, error } = await supabase.functions.invoke('analyze-text', {
-        body: { text, lang },
-      });
-      if (error) throw error;
+      let data: any = null;
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await supabase.functions.invoke('analyze-text', {
+          body: { text, lang },
+        });
+        if (!res.error && res.data && !res.data.error) {
+          data = res.data;
+          break;
+        }
+        lastError = res.error || res.data?.error;
+        if (attempt === 0) await new Promise(r => setTimeout(r, 1500));
+      }
+      if (!data) throw lastError || new Error('Analysis failed');
       if (data?.error) {
         if (data.error === 'Rate limited') {
           toast({ title: t('visual.rateLimited'), variant: 'destructive' });
