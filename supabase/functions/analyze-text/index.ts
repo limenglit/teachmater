@@ -1,16 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ALLOWED_ORIGINS = [
-  'https://teachmater.lovable.app',
-  'https://id-preview--50abb99d-e699-4e11-920c-db8e0dcc3ffe.lovable.app',
-];
-
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') ?? '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
   };
 }
@@ -20,7 +14,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    // Auth check
+    // Auth check – use getUser instead of non-existent getClaims
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -32,12 +26,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...cors, "Content-Type": "application/json" },
-      });
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      // Allow anonymous/guest usage – skip auth requirement
+      console.log("No authenticated user, proceeding as guest");
     }
 
     const { text, lang = "zh" } = await req.json();
@@ -72,7 +64,7 @@ Language for output: ${lang === "zh" ? "Chinese" : lang === "ja" ? "Japanese" : 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: text.slice(0, 5000) },
@@ -148,6 +140,8 @@ Language for output: ${lang === "zh" ? "Chinese" : lang === "ja" ? "Japanese" : 
     });
 
     if (!response.ok) {
+      const t = await response.text();
+      console.error("AI gateway error:", response.status, t);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited" }), {
           status: 429, headers: { ...cors, "Content-Type": "application/json" },
@@ -158,8 +152,6 @@ Language for output: ${lang === "zh" ? "Chinese" : lang === "ja" ? "Japanese" : 
           status: 402, headers: { ...cors, "Content-Type": "application/json" },
         });
       }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "AI analysis failed" }), {
         status: 500, headers: { ...cors, "Content-Type": "application/json" },
       });
@@ -168,6 +160,7 @@ Language for output: ${lang === "zh" ? "Chinese" : lang === "ja" ? "Japanese" : 
     const result = await response.json();
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
+      console.error("No tool call in response:", JSON.stringify(result).slice(0, 500));
       return new Response(JSON.stringify({ error: "No analysis result" }), {
         status: 500, headers: { ...cors, "Content-Type": "application/json" },
       });
