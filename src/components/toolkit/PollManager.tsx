@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { BarChart3, PieChart, Plus, Trash2, QrCode, ArrowLeft, Lock, Unlock, X, Download, Copy } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
 import RosterQuickBind from '@/components/RosterQuickBind';
+import { downloadSvgAsPng } from '@/lib/qr-download';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 
 interface PollOption {
   label: string;
@@ -67,6 +68,7 @@ export default function PollManager() {
   const [loading, setLoading] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
   const [linkedNames, setLinkedNames] = useState<string[]>([]);
+  const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   // Create form state
   const [newTitle, setNewTitle] = useState('');
@@ -330,13 +332,35 @@ export default function PollManager() {
             <DialogHeader>
               <DialogTitle>{t('poll.scanToVote')}</DialogTitle>
             </DialogHeader>
-            <div className="flex flex-col items-center gap-4 py-4">
-              <QRCodeSVG value={submitUrl} size={200} level="M" />
-              <p className="text-xs text-muted-foreground text-center break-all">{submitUrl}</p>
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => { navigator.clipboard.writeText(submitUrl); toast({ title: t('common.copied') }); }}>
-                <Copy className="w-3 h-3" /> {t('common.copy')}
-              </Button>
-            </div>
+            <QRActionPanel
+              url={submitUrl}
+              qrSize={200}
+              qrContainerRef={qrPreviewRef}
+              actions={(
+                <>
+                  <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap" onClick={() => { navigator.clipboard.writeText(submitUrl); toast({ title: t('common.copied') }); }}>
+                    <Copy className="w-3.5 h-3.5" /> {t('common.copy')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                    onClick={async () => {
+                      try {
+                        const svg = qrPreviewRef.current?.querySelector('svg');
+                        if (!svg) throw new Error('QR not ready');
+                        await downloadSvgAsPng(svg as SVGSVGElement, `poll-${activePoll?.id || 'qrcode'}.png`);
+                        toast({ title: t('board.downloadPng') });
+                      } catch {
+                        toast({ title: '下载PNG失败', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <Download className="w-3.5 h-3.5" /> {t('board.downloadPng')}
+                  </Button>
+                </>
+              )}
+            />
           </DialogContent>
         </Dialog>
       </div>

@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
 import BoardTimelineView from './board/BoardTimelineView';
@@ -18,6 +17,8 @@ import BoardCardForm from './board/BoardCardForm';
 import BoardWordCloud from './board/BoardWordCloud';
 import BoardReport from './board/BoardReport';
 import { tFormat } from '@/contexts/LanguageContext';
+import { downloadSvgAsPng } from '@/lib/qr-download';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 
 export interface Board {
   id: string;
@@ -114,6 +115,7 @@ export default function BoardPanel() {
   const [showReport, setShowReport] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
+  const qrPreviewRef = useRef<HTMLDivElement>(null);
   const [newTitle, setNewTitle] = useState('');
   const [storyCount, setStoryCount] = useState(4);
   const [storyThemes, setStoryThemes] = useState('');
@@ -679,18 +681,38 @@ export default function BoardPanel() {
             <DialogHeader>
               <DialogTitle>{t('board.scanToJoin')}</DialogTitle>
             </DialogHeader>
-            <div className="flex flex-col items-center gap-4 py-4">
-              <div className="bg-background p-4 rounded-xl border border-border">
-                <QRCodeSVG value={submitUrl} size={200} level="M" />
-              </div>
-              <p className="text-xs text-muted-foreground text-center break-all">{submitUrl}</p>
-              <Button size="sm" variant="outline" onClick={() => {
-                navigator.clipboard.writeText(submitUrl);
-                toast({ title: t('board.shareLink') });
-              }}>
-                {t('board.shareLink')}
-              </Button>
-            </div>
+            <QRActionPanel
+              url={submitUrl}
+              qrSize={200}
+              qrContainerRef={qrPreviewRef}
+              actions={(
+                <>
+                  <Button size="sm" variant="outline" className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap" onClick={() => {
+                    navigator.clipboard.writeText(submitUrl);
+                    toast({ title: t('board.shareLink') });
+                  }}>
+                    {t('board.shareLink')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                    onClick={async () => {
+                      try {
+                        const svg = qrPreviewRef.current?.querySelector('svg');
+                        if (!svg) throw new Error('QR not ready');
+                        await downloadSvgAsPng(svg as SVGSVGElement, `board-${activeBoard?.id || 'qrcode'}.png`);
+                        toast({ title: t('board.downloadPng') });
+                      } catch {
+                        toast({ title: '下载PNG失败', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <Download className="w-3.5 h-3.5" /> {t('board.downloadPng')}
+                  </Button>
+                </>
+              )}
+            />
           </DialogContent>
         </Dialog>
 

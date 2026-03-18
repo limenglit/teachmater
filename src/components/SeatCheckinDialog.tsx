@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { QRCodeSVG } from 'qrcode.react';
-import { Copy, Check, QrCode } from 'lucide-react';
+import { Copy, Check, Download, QrCode } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { createSeatCheckinSession } from '@/lib/seat-checkin-session';
+import { downloadSvgAsPng } from '@/lib/qr-download';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 
 interface Props {
   open: boolean;
@@ -32,6 +33,7 @@ export default function SeatCheckinDialog({
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [checkedIn, setCheckedIn] = useState<string[]>([]);
+  const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const createSession = async () => {
     setLoading(true);
@@ -93,29 +95,44 @@ export default function SeatCheckinDialog({
             </Button>
           </div>
         ) : (
-          <div className="space-y-4 py-2">
-            <div className="flex justify-center">
-              <div className="p-4 bg-white rounded-xl">
-                <QRCodeSVG value={checkinUrl} size={200} />
-              </div>
-            </div>
+          <div className="flex flex-col items-center gap-3 py-2">
 
             {className && (
               <p className="text-center text-sm font-medium text-foreground">{className}</p>
             )}
 
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={checkinUrl}
-                className="flex-1 text-xs bg-muted px-3 py-2 rounded-md border border-border truncate"
-              />
-              <Button variant="outline" size="sm" onClick={copyUrl}>
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            </div>
+            <QRActionPanel
+              url={checkinUrl}
+              qrSize={200}
+              qrContainerRef={qrPreviewRef}
+              className="flex flex-col items-center gap-3"
+              actions={(
+                <>
+                  <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap" onClick={copyUrl}>
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? '已复制' : '分享链接'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                    onClick={async () => {
+                      try {
+                        const svg = qrPreviewRef.current?.querySelector('svg');
+                        if (!svg) throw new Error('QR not ready');
+                        await downloadSvgAsPng(svg as SVGSVGElement, `seat-checkin-${sessionId || 'qrcode'}.png`);
+                        toast({ title: '下载PNG成功' });
+                      } catch {
+                        toast({ title: '下载PNG失败', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <Download className="w-3.5 h-3.5" /> 下载PNG
+                  </Button>
+                </>
+              )}
+            />
 
-            <div className="border-t border-border pt-3">
+            <div className="w-full border-t border-border pt-3">
               <p className="text-sm font-medium mb-2">
                 已签到: {checkedIn.length} / {studentNames.length}
               </p>

@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Link as LinkIcon } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Link as LinkIcon, Download, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { QRCodeSVG } from 'qrcode.react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { toast } from '@/hooks/use-toast';
+import { downloadSvgAsPng } from '@/lib/qr-download';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 import {
   type CommandItem,
   buildCustomCommand,
@@ -243,6 +245,7 @@ function CommandCards() {
 function QRCodeGenerator() {
   const { t } = useLanguage();
   const [url, setUrl] = useState('');
+  const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
@@ -258,13 +261,45 @@ function QRCodeGenerator() {
       />
 
       {url.trim() && (
-        <div className="flex flex-col items-center gap-3">
-          <div className="bg-background p-3 rounded-xl border border-border">
-            <QRCodeSVG value={url.trim()} size={140} level="M" />
-          </div>
-          <p className="text-xs text-muted-foreground text-center break-all max-w-full">{url}</p>
-          <p className="text-xs text-muted-foreground text-center">{t('qr.scanTip')}</p>
-        </div>
+        <QRActionPanel
+          url={url.trim()}
+          qrSize={140}
+          scanTip={t('qr.scanTip')}
+          qrContainerRef={qrPreviewRef}
+          className="flex flex-col items-center gap-3 py-1"
+          actions={(
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                onClick={() => {
+                  navigator.clipboard.writeText(url.trim());
+                  toast({ title: t('board.shareLink') });
+                }}
+              >
+                <Copy className="w-3.5 h-3.5" /> {t('board.shareLink')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                onClick={async () => {
+                  try {
+                    const svg = qrPreviewRef.current?.querySelector('svg');
+                    if (!svg) throw new Error('QR not ready');
+                    await downloadSvgAsPng(svg as SVGSVGElement, 'qrcode.png');
+                    toast({ title: t('board.downloadPng') });
+                  } catch {
+                    toast({ title: '下载PNG失败', variant: 'destructive' });
+                  }
+                }}
+              >
+                <Download className="w-3.5 h-3.5" /> {t('board.downloadPng')}
+              </Button>
+            </>
+          )}
+        />
       )}
 
       {!url.trim() && (

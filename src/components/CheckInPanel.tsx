@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { QRCodeSVG } from 'qrcode.react';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -10,6 +10,7 @@ import { Clock, QrCode, StopCircle, Download, CheckCircle2, XCircle, UserX } fro
 import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
 import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
+import { downloadSvgAsPng } from '@/lib/qr-download';
 
 const HISTORY_KEY = 'teachmate_checkin_history';
 
@@ -37,6 +38,7 @@ export default function CheckInPanel() {
   const [showHistory, setShowHistory] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const resultExportRef = useRef<HTMLDivElement>(null);
+  const qrPreviewRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   const studentNames = students.map(s => s.name);
@@ -388,9 +390,46 @@ export default function CheckInPanel() {
 
       <div className="flex-1 flex overflow-hidden" ref={exportRef}>
         <div className="w-1/2 border-r border-border flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-border bg-card flex flex-col items-center gap-2">
-            <QRCodeSVG value={checkinUrl} size={160} />
-            <p className="text-xs text-muted-foreground">{t('checkin.scanToCheckin')}</p>
+          <div className="p-4 border-b border-border bg-card flex flex-col items-center gap-3">
+            <QRActionPanel
+              url={checkinUrl}
+              qrSize={160}
+              scanTip={t('checkin.scanToCheckin')}
+              qrContainerRef={qrPreviewRef}
+              className="flex flex-col items-center gap-3 py-1"
+              actions={(
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                    onClick={() => {
+                      navigator.clipboard.writeText(checkinUrl);
+                      toast({ title: t('board.shareLink') });
+                    }}
+                  >
+                    {t('board.shareLink')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                    onClick={async () => {
+                      try {
+                        const svg = qrPreviewRef.current?.querySelector('svg');
+                        if (!svg) throw new Error('QR not ready');
+                        await downloadSvgAsPng(svg as SVGSVGElement, `checkin-${session?.id || 'qrcode'}.png`);
+                        toast({ title: t('board.downloadPng') });
+                      } catch {
+                        toast({ title: '下载PNG失败', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <Download className="w-3.5 h-3.5" /> {t('board.downloadPng')}
+                  </Button>
+                </>
+              )}
+            />
           </div>
           <div className="flex-1 overflow-y-auto p-3">
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">

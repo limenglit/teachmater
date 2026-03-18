@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +9,6 @@ import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOp
 import ClassRosterPicker from '@/components/ClassRosterPicker';
 import { useStudents } from '@/contexts/StudentContext';
 import { tFormat } from '@/contexts/LanguageContext';
-import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import QuizStatsView from '@/components/quiz/QuizStatsView';
 import QuizQuestionBank from '@/components/quiz/QuizQuestionBank';
@@ -21,6 +20,8 @@ import {
   getLocalQuestions, saveLocalQuestions,
   getLocalCategories, getLocalPapers, saveLocalPapers,
 } from '@/components/quiz/quizTypes';
+import { downloadSvgAsPng } from '@/lib/qr-download';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 
 // Re-export for backward compat
 export type { QuizQuestion, QuizSession };
@@ -47,6 +48,7 @@ export default function QuizPanel() {
   const [showQR, setShowQR] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
   const [sessionStudentNames, setSessionStudentNames] = useState<string[]>([]);
+  const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -175,11 +177,33 @@ export default function QuizPanel() {
         <Dialog open={showQR} onOpenChange={setShowQR}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>{t('quiz.scanToAnswer')}</DialogTitle></DialogHeader>
-            <div className="flex flex-col items-center gap-4 py-4">
-              <div className="bg-background p-4 rounded-xl border border-border"><QRCodeSVG value={submitUrl} size={200} level="M" /></div>
-              <p className="text-xs text-muted-foreground text-center break-all">{submitUrl}</p>
-              <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(submitUrl); toast({ title: t('board.shareLink') }); }}>{t('board.shareLink')}</Button>
-            </div>
+            <QRActionPanel
+              url={submitUrl}
+              qrSize={200}
+              qrContainerRef={qrPreviewRef}
+              actions={(
+                <>
+                  <Button size="sm" variant="outline" className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap" onClick={() => { navigator.clipboard.writeText(submitUrl); toast({ title: t('board.shareLink') }); }}>{t('board.shareLink')}</Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                    onClick={async () => {
+                      try {
+                        const svg = qrPreviewRef.current?.querySelector('svg');
+                        if (!svg) throw new Error('QR not ready');
+                        await downloadSvgAsPng(svg as SVGSVGElement, `quiz-${activeSession?.id || 'qrcode'}.png`);
+                        toast({ title: t('board.downloadPng') });
+                      } catch {
+                        toast({ title: '下载PNG失败', variant: 'destructive' });
+                      }
+                    }}
+                  >
+                    <Download className="w-3.5 h-3.5" /> {t('board.downloadPng')}
+                  </Button>
+                </>
+              )}
+            />
           </DialogContent>
         </Dialog>
       </div>

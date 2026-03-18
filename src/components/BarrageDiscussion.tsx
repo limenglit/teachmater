@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, FileText, Cloud, Download, Trash2, Pencil } from 'lucide-react';
+import { Play, Pause, FileText, Cloud, Download, Trash2, Pencil, Copy } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -13,6 +12,8 @@ import { useStudents } from '@/contexts/StudentContext';
 import { recordGuestAIUsage } from '@/lib/guest-ai-limit';
 import RosterQuickBind from '@/components/RosterQuickBind';
 import ClassRosterPicker from './ClassRosterPicker';
+import { downloadSvgAsPng } from '@/lib/qr-download';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 
 interface BarrageMessage {
   id: string;
@@ -146,6 +147,7 @@ export default function BarrageDiscussion() {
   const [linkedNames, setLinkedNames] = useState<string[]>([]);
   const barrageIndexRef = useRef(0);
   const reportRef = useRef<HTMLDivElement>(null);
+  const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const discussUrl = topicId ? `${window.location.origin}/discuss/${topicId}` : '';
 
@@ -397,10 +399,46 @@ export default function BarrageDiscussion() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="flex flex-col items-center gap-2 p-4 bg-background rounded-xl border border-border">
-          <QRCodeSVG value={discussUrl} size={160} level="M" />
-          <p className="text-xs text-muted-foreground text-center">{t('barrage.scanToJoin')}</p>
-          <p className="text-[10px] text-muted-foreground break-all text-center max-w-[180px]">{discussUrl}</p>
+        <div className="flex flex-col items-center gap-3 p-4 bg-background rounded-xl border border-border">
+          <QRActionPanel
+            url={discussUrl}
+            qrSize={160}
+            scanTip={t('barrage.scanToJoin')}
+            qrContainerRef={qrPreviewRef}
+            className="flex flex-col items-center gap-3 py-1"
+            actions={(
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                  onClick={() => {
+                    navigator.clipboard.writeText(discussUrl);
+                    toast({ title: t('board.shareLink') });
+                  }}
+                >
+                  <Copy className="w-3.5 h-3.5" /> {t('board.shareLink')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                  onClick={async () => {
+                    try {
+                      const svg = qrPreviewRef.current?.querySelector('svg');
+                      if (!svg) throw new Error('QR not ready');
+                      await downloadSvgAsPng(svg as SVGSVGElement, `barrage-${topicId || 'qrcode'}.png`);
+                      toast({ title: t('board.downloadPng') });
+                    } catch {
+                      toast({ title: '下载PNG失败', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5" /> {t('board.downloadPng')}
+                </Button>
+              </>
+            )}
+          />
         </div>
 
         <div className="lg:col-span-3">

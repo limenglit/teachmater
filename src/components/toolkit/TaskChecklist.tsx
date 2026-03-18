@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowLeft,
   CheckCircle2,
   ClipboardList,
   Copy,
+  Download,
   Play,
   Plus,
   RotateCcw,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 
 import ClassRosterPicker from '@/components/ClassRosterPicker';
+import QRActionPanel from '@/components/qr/QRActionPanel';
 import RosterQuickBind from '@/components/RosterQuickBind';
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { downloadSvgAsPng } from '@/lib/qr-download';
 
 interface TaskDraftItem {
   id: string;
@@ -173,6 +175,7 @@ export default function TaskChecklist() {
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const detailRef = useRef<HTMLDivElement>(null);
+  const detailQrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     saveDraft({ title, className, linkedNames, tasks });
@@ -549,26 +552,44 @@ export default function TaskChecklist() {
           <div className="flex-1 min-h-0 overflow-auto p-4 sm:p-6 lg:p-8">
             <div className="max-w-7xl mx-auto grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)] lg:min-h-0">
               <div className="space-y-4 min-w-0">
-                <div className="bg-card border border-border rounded-2xl p-4 shadow-card">
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <h3 className="text-sm font-semibold text-foreground">{t('task.scanToReport')}</h3>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => {
-                      navigator.clipboard.writeText(detailSubmitUrl);
-                      toast({ title: t('common.copied') });
-                    }}
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
-                </div>
-                <div className="flex justify-center mb-3">
-                  <QRCodeSVG value={detailSubmitUrl} size={180} level="M" />
-                </div>
-                <p className="text-xs text-muted-foreground break-all">{detailSubmitUrl}</p>
-              </div>
+                <QRActionPanel
+                  url={detailSubmitUrl}
+                  qrSize={180}
+                  scanTip={t('task.scanToReport')}
+                  qrContainerRef={detailQrRef}
+                  actions={(
+                    <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                      onClick={() => {
+                        navigator.clipboard.writeText(detailSubmitUrl);
+                        toast({ title: t('common.copied') });
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5" /> {t('common.copy')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
+                      onClick={async () => {
+                        try {
+                          const svg = detailQrRef.current?.querySelector('svg');
+                          if (!svg) throw new Error('QR not ready');
+                          await downloadSvgAsPng(svg as SVGSVGElement, `task-${activeSession?.id || 'qrcode'}.png`);
+                          toast({ title: t('board.downloadPng') });
+                        } catch {
+                          toast({ title: '下载PNG失败', variant: 'destructive' });
+                        }
+                      }}
+                    >
+                      <Download className="w-3.5 h-3.5" /> {t('board.downloadPng')}
+                    </Button>
+                    </>
+                  )}
+                />
 
                 <div className="bg-card border border-border rounded-2xl p-4 shadow-card space-y-4">
                 <div>
