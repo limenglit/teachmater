@@ -10,6 +10,18 @@ export interface PersistedGroup {
   members: PersistedGroupMember[];
 }
 
+export interface PersistedTeamMember {
+  id: string;
+  name: string;
+  isCaptain?: boolean;
+}
+
+export interface PersistedTeam {
+  id: string;
+  name: string;
+  members: PersistedTeamMember[];
+}
+
 export interface SmartClassroomSnapshot {
   seatsPerTable: number;
   tableCount: number;
@@ -155,6 +167,7 @@ export interface ConcertHallHistoryItem {
 }
 
 const GROUPS_KEY = 'teachmate_groups_last';
+const TEAMS_KEY = 'teachmate_teams_last';
 const SMART_CLASSROOM_KEY = 'teachmate_smart_classroom_last';
 const SMART_CLASSROOM_HISTORY_KEY = 'teachmate_smart_classroom_history';
 const BANQUET_HALL_KEY = 'teachmate_banquet_hall_last';
@@ -194,6 +207,25 @@ export function loadLastGroups(): PersistedGroup[] {
 
 export function saveLastGroups(groups: PersistedGroup[]) {
   localStorage.setItem(GROUPS_KEY, JSON.stringify(groups));
+}
+
+export function loadLastTeams(): PersistedTeam[] {
+  const parsed = safeParse<PersistedTeam[]>(localStorage.getItem(TEAMS_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(team => team && typeof team.name === 'string' && Array.isArray(team.members))
+    .map((team, ti) => ({
+      id: typeof team.id === 'string' ? team.id : `t_${ti}`,
+      name: team.name,
+      members: team.members
+        .filter(member => member && typeof member.name === 'string' && typeof member.id === 'string')
+        .map(member => ({ id: member.id, name: member.name, isCaptain: !!member.isCaptain })),
+    }))
+    .filter(team => team.members.length > 0);
+}
+
+export function saveLastTeams(teams: PersistedTeam[]) {
+  localStorage.setItem(TEAMS_KEY, JSON.stringify(teams));
 }
 
 export function loadSmartClassroomSnapshot(): SmartClassroomSnapshot | null {

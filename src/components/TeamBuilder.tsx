@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ExportButtons from '@/components/ExportButtons';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
+import { loadLastTeams, saveLastTeams } from '@/lib/teamwork-local';
 
 interface TeamMember { id: string; name: string; isCaptain: boolean }
 interface Team { id: string; name: string; members: TeamMember[] }
@@ -25,6 +26,18 @@ export default function TeamBuilder() {
   const [dragItem, setDragItem] = useState<{ teamId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ teamId: string; memberIdx: number } | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const cached = loadLastTeams();
+    if (cached.length > 0) {
+      setTeams(cached as Team[]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (teams.length === 0) return;
+    saveLastTeams(teams);
+  }, [teams]);
 
   const autoTeam = useCallback(() => {
     if (students.length === 0) return;
@@ -97,6 +110,7 @@ export default function TeamBuilder() {
 
   const handleRestore = (data: any[]) => {
     setTeams(data as Team[]);
+    saveLastTeams(data as Team[]);
   };
 
   return (

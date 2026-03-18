@@ -202,4 +202,62 @@ describe('RandomPicker', () => {
     // The popup overlay text "点击任意处关闭" should NOT exist
     expect(screen.queryByText('点击任意处关闭')).not.toBeInTheDocument();
   });
+
+  it('uses current groups and teams for smart dice selection', () => {
+    const students = Array.from({ length: 8 }, (_, i) => ({
+      id: `s_${i}`,
+      name: `学生${i + 1}`,
+    }));
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+    localStorage.setItem('teachmate_groups_last', JSON.stringify([
+      {
+        id: 'g_0',
+        name: '第一组',
+        members: [{ id: 's_4', name: '学生5', isLeader: false }],
+      },
+      {
+        id: 'g_1',
+        name: '第二组',
+        members: [{ id: 's_0', name: '学生1', isLeader: false }],
+      },
+    ]));
+    localStorage.setItem('teachmate_teams_last', JSON.stringify([
+      {
+        id: 't_0',
+        name: '第一队',
+        members: [{ id: 's_6', name: '学生7', isCaptain: false }],
+      },
+      {
+        id: 't_1',
+        name: '第二队',
+        members: [{ id: 's_1', name: '学生2', isCaptain: false }],
+      },
+    ]));
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+
+    render(
+      <StudentProvider>
+        <RandomPicker />
+      </StudentProvider>
+    );
+
+    // 关闭不重复，避免第一次掷骰结果影响第二次可用池。
+    const noRepeatSwitch = screen.getByText('不重复').closest('label')!.querySelector('button')!;
+    fireEvent.click(noRepeatSwitch);
+
+    // 默认基于分组，首掷应选中分组中的学生5。
+    fireEvent.click(screen.getByRole('button', { name: '🎲 投掷' }));
+    act(() => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByText(/第1组 第1人: 学生5/)).toBeInTheDocument();
+
+    // 切换到基于建队，首掷应选中建队中的学生7。
+    fireEvent.click(screen.getByRole('button', { name: '基于建队' }));
+    fireEvent.click(screen.getByRole('button', { name: '🎲 投掷' }));
+    act(() => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByText(/第1组 第1人: 学生7/)).toBeInTheDocument();
+
+    randomSpy.mockRestore();
+  });
 });

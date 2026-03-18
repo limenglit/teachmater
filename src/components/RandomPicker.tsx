@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
 import SpinWheel from '@/components/SpinWheel';
 import { playTick, playCelebration } from '@/lib/sounds';
+import { loadLastGroups, loadLastTeams } from '@/lib/teamwork-local';
 
 export default function RandomPicker() {
   const { students } = useStudents();
@@ -396,8 +397,47 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
     ? students.filter(s => !usedIds.has(s.id))
     : students;
 
-  const groupCount = Math.min(6, Math.ceil(availableStudents.length / 4));
-  const membersPerGroup = Math.ceil(availableStudents.length / groupCount);
+  const diceBuckets = useCallback(() => {
+    const availableIdSet = new Set(availableStudents.map(s => s.id));
+
+    if (mode === 'group') {
+      const groups = loadLastGroups()
+        .map(group => ({
+          name: group.name,
+          members: group.members.filter(member => availableIdSet.has(member.id)),
+        }))
+        .filter(group => group.members.length > 0);
+
+      if (groups.length > 0) return groups;
+    }
+
+    if (mode === 'team') {
+      const teams = loadLastTeams()
+        .map(team => ({
+          name: team.name,
+          members: team.members.filter(member => availableIdSet.has(member.id)),
+        }))
+        .filter(team => team.members.length > 0);
+
+      if (teams.length > 0) return teams;
+    }
+
+    const fallbackCount = Math.min(6, Math.max(1, Math.ceil(availableStudents.length / 4)));
+    const fallbackBuckets = Array.from({ length: fallbackCount }, (_, i) => ({
+      name: mode === 'group' ? `${i + 1}` : `${i + 1}`,
+      members: [] as { id: string; name: string }[],
+    }));
+
+    availableStudents.forEach((student, i) => {
+      fallbackBuckets[i % fallbackCount].members.push({ id: student.id, name: student.name });
+    });
+
+    return fallbackBuckets.filter(bucket => bucket.members.length > 0);
+  }, [availableStudents, mode]);
+
+  const buckets = diceBuckets();
+  const groupCount = Math.max(1, buckets.length);
+  const maxMembersInBucket = Math.max(1, ...buckets.map(bucket => bucket.members.length));
 
   // Dot positions for each dice face (relative to a 100x100 viewBox)
   const dotPositions: Record<number, [number, number][]> = {
@@ -423,7 +463,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
     setResult(null);
 
     const groupDiceCount = groupCount > 6 ? 2 : 1;
-    const memberDiceCount = membersPerGroup > 6 ? 2 : 1;
+    const memberDiceCount = maxMembersInBucket > 6 ? 2 : 1;
     const totalDice = groupDiceCount + memberDiceCount;
 
     let count = 0;
@@ -439,9 +479,9 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         setDiceValues(finalValues);
 
         const groupIndex = ((finalValues[0] - 1) % groupCount);
-        const memberIndex = ((finalValues[groupDiceCount] - 1) % membersPerGroup);
-        const studentIndex = groupIndex * membersPerGroup + memberIndex;
-        const chosen = availableStudents[Math.min(studentIndex, availableStudents.length - 1)];
+        const chosenGroup = buckets[groupIndex];
+        const memberIndex = ((finalValues[groupDiceCount] - 1) % chosenGroup.members.length);
+        const chosen = chosenGroup.members[memberIndex];
 
         setResult(t('dice.groupResult').replace('{0}', String(groupIndex + 1)).replace('{1}', String(memberIndex + 1)) + `: ${chosen.name}`);
         setIsRolling(false);
@@ -461,7 +501,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         }
       }
     }, 80);
-  }, [availableStudents, isRolling, groupCount, membersPerGroup, soundEnabled, voiceEnabled, noRepeat, t]);
+  }, [availableStudents.length, isRolling, groupCount, maxMembersInBucket, soundEnabled, voiceEnabled, noRepeat, t, buckets, onPick, popupEnabled, showPopup]);
 
   const diceLabels = groupCount > 6
     ? [t('dice.groupTens'), t('dice.groupOnes'), t('dice.memberOnes')]
