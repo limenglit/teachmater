@@ -16,6 +16,7 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   sceneType: string;
   className?: string;
+  pngFileName?: string;
   onSessionCreated?: (payload: { sessionId: string; checkinUrl: string }) => void;
 }
 
@@ -27,6 +28,7 @@ export default function SeatCheckinDialog({
   sceneConfig,
   sceneType,
   className,
+  pngFileName,
   onSessionCreated,
 }: Props) {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -69,6 +71,7 @@ export default function SeatCheckinDialog({
   const checkinUrl = sessionId
     ? `${window.location.origin}/seat-checkin/${sessionId}`
     : '';
+  const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || '座位签到二维码')}.png`;
 
   const copyUrl = () => {
     navigator.clipboard.writeText(checkinUrl);
@@ -119,7 +122,7 @@ export default function SeatCheckinDialog({
                       try {
                         const svg = qrPreviewRef.current?.querySelector('svg');
                         if (!svg) throw new Error('QR not ready');
-                        await downloadSvgAsPng(svg as SVGSVGElement, `seat-checkin-${sessionId || 'qrcode'}.png`);
+                        await downloadSvgAsPng(svg as SVGSVGElement, resolvedPngFileName);
                         toast({ title: '下载PNG成功' });
                       } catch {
                         toast({ title: '下载PNG失败', variant: 'destructive' });

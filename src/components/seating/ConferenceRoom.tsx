@@ -828,6 +828,7 @@ export default function ConferenceRoom({ students }: Props) {
         sceneType="conference"
         sceneConfig={exportSceneConfig}
         className={exportClassName}
+        pngFileName={recordName.trim() || '会议室座位'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>

@@ -663,7 +663,7 @@ export default function SeatChart() {
           <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
         )}
         <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} sceneType="classroom"
-          sceneConfig={exportSceneConfig} className={exportClassName} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
+          sceneConfig={exportSceneConfig} className={exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
         </>)}
       </div>
     </div>

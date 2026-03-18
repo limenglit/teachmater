@@ -673,6 +673,7 @@ export default function ConcertHall({ students }: Props) {
         sceneType="concertHall"
         sceneConfig={exportSceneConfig}
         className={exportClassName}
+        pngFileName={recordName.trim() || '音乐厅座位'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>

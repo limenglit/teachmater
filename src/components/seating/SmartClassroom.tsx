@@ -840,6 +840,7 @@ export default function SmartClassroom({ students }: Props) {
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}
         className={exportClassName}
+        pngFileName={recordName.trim() || '智能教室座位'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
