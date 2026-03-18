@@ -37,7 +37,7 @@ export default function VisualizationPanel() {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<VisualHistoryItem[]>(loadHistory);
   const [inputText, setInputText] = useState('');
-  const [visualSettings, setVisualSettings] = useState<VisualSettings>({ fontFamily: 'sans', fontSize: 14, layoutDensity: 'normal' });
+  const [visualSettings, setVisualSettings] = useState<VisualSettings>(DEFAULT_VISUAL_SETTINGS);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const handleAnalyze = useCallback(async (text: string) => {
