@@ -1,0 +1,332 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { chromium } from '@playwright/test';
+
+const docsDir = path.resolve('docs');
+const htmlPath = path.join(docsDir, 'teacher-training-90min-advanced.html');
+const pdfPath = path.join(docsDir, '教师培训讲义版-90分钟-进阶教研.pdf');
+
+const timeline = [
+  ['导入与目标对齐', '8分钟'],
+  ['全功能快速复盘', '12分钟'],
+  ['进阶场景拆解', '15分钟'],
+  ['分组实操任务', '30分钟'],
+  ['小组汇报与评分', '18分钟'],
+  ['复盘与落地安排', '7分钟'],
+];
+
+const scenarioRows = [
+  ['公开课展示', '点名 -> 白板 -> 测验 -> 成就 -> 导出', '互动密度高，适合示范课'],
+  ['机房实训课', '排座签到 -> 计时工具 -> 分组协作 -> 测验验收', '秩序与执行效率高'],
+  ['教研展示课', 'AI故事板 -> 白板收敛 -> 文本可视化 -> 导出留档', '成果表达与复盘友好'],
+];
+
+const taskRows = [
+  [
+    '任务1 课堂组织闭环',
+    '导入20人名单；去重点名1次；分组并调2名成员；排座并导出',
+    '点名截图、分组截图、排座导出',
+    '10分钟',
+  ],
+  [
+    '任务2 课堂互动闭环',
+    '创建白板并收集5条内容；发起测验并查看统计；导出结果',
+    '白板截图、测验统计截图、导出文件',
+    '10分钟',
+  ],
+  [
+    '任务3 教学表达闭环',
+    '生成AI故事板1份、AI PPT 1份、文本可视化1份；导出1项成果',
+    '故事板截图、PPT截图、可视化截图',
+    '10分钟',
+  ],
+];
+
+const rubricRows = [
+  ['流程完整性', '20', '是否形成准备-互动-评价-留档闭环'],
+  ['教学适配度', '20', '是否贴合课程目标与学情'],
+  ['互动质量', '20', '活动设计是否有效、可执行'],
+  ['数据留痕', '20', '是否有导出成果与复盘证据'],
+  ['表达与协作', '20', '汇报清晰、分工合理、回应问题有效'],
+];
+
+function table(rows, headers) {
+  const thead = `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join('')}</tr></thead>`;
+  const tbody = `<tbody>${rows
+    .map((row) => `<tr>${row.map((c) => `<td>${c}</td>`).join('')}</tr>`)
+    .join('')}</tbody>`;
+  return `<table>${thead}${tbody}</table>`;
+}
+
+function buildSignRows(count) {
+  return Array.from({ length: count }, (_, i) => i + 1)
+    .map(
+      (n) => `<tr>
+        <td>${n}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>`,
+    )
+    .join('');
+}
+
+const html = `
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>教创搭子-90分钟进阶教研版</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      color: #0f172a;
+      background: #f8fafc;
+      line-height: 1.5;
+      font-size: 11pt;
+    }
+    .cover {
+      min-height: 272mm;
+      border: 2px solid #7dd3fc;
+      border-radius: 14px;
+      background: linear-gradient(150deg, #ecfeff, #eff6ff 45%, #fff7ed);
+      padding: 24mm 16mm;
+      page-break-after: always;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .cover h1 { margin: 0; font-size: 28pt; color: #0c4a6e; }
+    .cover h2 { margin: 6mm 0 0; font-size: 16pt; color: #1e3a8a; }
+    .cover p { margin-top: 8mm; color: #334155; }
+
+    .page {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      page-break-before: always;
+    }
+    h2 { margin: 0 0 8px; font-size: 15pt; color: #1d4ed8; }
+    h3 { margin: 10px 0 6px; font-size: 12pt; color: #0f172a; }
+    p { margin: 6px 0; }
+    ul { margin: 6px 0 8px 20px; padding: 0; }
+
+    .chips { margin: 6px 0 8px; }
+    .chip {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: #dbeafe;
+      color: #1e40af;
+      margin-right: 6px;
+      font-size: 10pt;
+      font-weight: 700;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 6px 0 10px;
+      font-size: 10pt;
+    }
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 7px;
+      vertical-align: top;
+    }
+    th {
+      background: #eff6ff;
+      color: #1e3a8a;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8fafc;
+    }
+
+    .hint {
+      padding: 8px;
+      border-left: 4px solid #22c55e;
+      background: #ecfdf5;
+      border-radius: 6px;
+      color: #14532d;
+      font-size: 10pt;
+    }
+
+    .footer {
+      text-align: center;
+      color: #64748b;
+      font-size: 9pt;
+      margin-top: 6px;
+    }
+
+    .sign-table td { height: 26px; }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <h1>教创搭子</h1>
+    <h2>90分钟进阶教研版（含讲师组织工具）</h2>
+    <p>用途：校内教研培训 / 骨干教师工作坊 / 跨学科共创活动</p>
+    <p>包含：分组实操任务单、评分表、培训签到页</p>
+  </section>
+
+  <section class="page">
+    <h2>1. 培训流程与目标</h2>
+    <p><strong>总时长：</strong>90分钟</p>
+    <div class="chips">
+      <span class="chip">目标1：会设计完整课堂闭环</span>
+      <span class="chip">目标2：会组织小组协同实操</span>
+      <span class="chip">目标3：会用评分表复盘改进</span>
+    </div>
+    ${table(timeline, ['环节', '时长'])}
+    <div class="hint">讲师提示：控制“讲授 : 实操 : 汇报”比例约为 3 : 4 : 3，确保参训教师有真实上手时间。</div>
+  </section>
+
+  <section class="page">
+    <h2>2. 全功能复盘清单</h2>
+    <ul>
+      <li>名单与班级库</li>
+      <li>随机点名</li>
+      <li>分组建队</li>
+      <li>多场景排座与座位签到</li>
+      <li>白板互动</li>
+      <li>随堂测验</li>
+      <li>成就积分</li>
+      <li>工具箱</li>
+      <li>AI故事板</li>
+      <li>AI PPT</li>
+      <li>AI文本可视化</li>
+      <li>导出与留档</li>
+    </ul>
+    <p><strong>讲师口播建议：</strong>每个模块只示范最短可用路径，把时间留给后续分组实操。</p>
+  </section>
+
+  <section class="page">
+    <h2>3. 进阶场景模板</h2>
+    ${table(scenarioRows, ['场景', '建议流程', '预期效果'])}
+    <div class="grid-2">
+      <div class="card">
+        <h3>建议分组方式</h3>
+        <p>每组3-5人，至少包含1名“设备操作员”和1名“课堂设计员”。</p>
+      </div>
+      <div class="card">
+        <h3>建议产出格式</h3>
+        <p>每组提交：1份流程图 + 3张关键截图 + 1份导出证据文件。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="page">
+    <h2>4. 分组实操任务单</h2>
+    <p>要求：每组至少完成两个任务，优先完成与本学科最相关的任务。</p>
+    ${table(taskRows, ['任务', '操作要求', '产出物', '建议时长'])}
+    <p><strong>讲师巡场检查点：</strong>是否完成导出、是否形成证据链、是否可复现。</p>
+  </section>
+
+  <section class="page">
+    <h2>5. 小组汇报模板</h2>
+    <div class="card">
+      <p>每组3分钟，按以下结构汇报：</p>
+      <ul>
+        <li>30秒：课程场景与目标</li>
+        <li>60秒：操作路径与关键决策</li>
+        <li>60秒：课堂效果与证据</li>
+        <li>30秒：下一步改进</li>
+      </ul>
+    </div>
+    <p><strong>现场提问建议：</strong>如果明天上课，哪一步最可能卡住？你如何降级处理？</p>
+  </section>
+
+  <section class="page">
+    <h2>6. 评分表（同伴互评）</h2>
+    ${table(rubricRows, ['评分维度', '满分', '判定标准'])}
+    <p>评分档位建议：A=20、B=15、C=10、D=5。每组至少评价其他两组并给1条可执行建议。</p>
+
+    ${table(
+      Array.from({ length: 8 }, () => ['', '', '', '', '']),
+      ['被评小组', '流程完整性(20)', '教学适配度(20)', '互动质量(20)', '评语建议'],
+    )}
+  </section>
+
+  <section class="page">
+    <h2>7. 培训签到页</h2>
+    <p>培训主题：教创搭子90分钟进阶教研版</p>
+    <p>日期：__________  地点：__________  组织人：__________</p>
+
+    <table class="sign-table">
+      <thead>
+        <tr>
+          <th style="width:8%;">序号</th>
+          <th style="width:18%;">姓名</th>
+          <th style="width:22%;">学科/部门</th>
+          <th style="width:20%;">联系方式</th>
+          <th style="width:16%;">签到时间</th>
+          <th style="width:16%;">签名</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${buildSignRows(22)}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="page">
+    <h2>8. 培训后落地任务</h2>
+    <ul>
+      <li>每个教研组两周内完成1次完整课堂演练并提交证据包。</li>
+      <li>每位教师至少在1次课堂中启用“测验或白板”之一。</li>
+      <li>教研组长汇总评分表，形成“共性问题与改进清单”。</li>
+      <li>次月教研会上复盘一次“优秀案例与失败案例”。</li>
+    </ul>
+    <div class="hint">建议建立校内共享模板库：班级模板、任务模板、评分模板、导出模板。</div>
+    <p class="footer">教创搭子 · 90分钟进阶教研版 · 自动生成</p>
+  </section>
+</body>
+</html>
+`;
+
+async function main() {
+  await fs.mkdir(docsDir, { recursive: true });
+  await fs.writeFile(htmlPath, html, 'utf8');
+
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto(`file:///${htmlPath.replace(/\\/g, '/')}`, { waitUntil: 'networkidle' });
+    await page.pdf({
+      path: pdfPath,
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+  } finally {
+    await browser.close();
+  }
+
+  console.log('Generated HTML:', htmlPath);
+  console.log('Generated PDF:', pdfPath);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
