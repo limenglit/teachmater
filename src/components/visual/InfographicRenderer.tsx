@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
-import { type AnalysisResult, type TemplateStyle, type StructureNode, type VisualSettings, COLOR_SCHEMES, FONT_FAMILIES } from './visualTypes';
+import {
+  type AnalysisResult, type TemplateStyle, type StructureNode, type VisualSettings,
+  COLOR_SCHEMES, FONT_FAMILIES, DEFAULT_VISUAL_SETTINGS,
+  getNodeIcon, getNodeShapeStyle, getShadowCSS, getGradientBg, getBorderCSS,
+  getConnectorSymbol, getPatternSVG, getAspectRatioStyle,
+} from './visualTypes';
 
 interface Props {
   analysis: AnalysisResult;
@@ -45,21 +50,50 @@ function EditableText({ value, onChange, style, className }: {
   );
 }
 
-export default function InfographicRenderer({ analysis, colorSchemeId, template, onUpdate, visualSettings }: Props) {
+export default function InfographicRenderer({ analysis, colorSchemeId, template, onUpdate, visualSettings: vs }: Props) {
   const scheme = COLOR_SCHEMES.find(s => s.id === colorSchemeId) || COLOR_SCHEMES[0];
+  const settings = vs || DEFAULT_VISUAL_SETTINGS;
   const nodes = analysis.structure_nodes;
   const isDark = template === 'dark' || template === 'tech';
-  const bgColor = isDark ? '#1e1e2e' : template === 'magazine' ? '#fafaf9' : template === 'elegant' ? '#f8f5f0' : template === 'bold' ? scheme.bg : scheme.bg;
+  const bgColor = isDark ? '#1e1e2e' : template === 'magazine' ? '#fafaf9' : template === 'elegant' ? '#f8f5f0' : scheme.bg;
   const textColor = isDark ? '#cdd6f4' : template === 'elegant' ? '#3c3836' : scheme.text;
   const isPlayful = template === 'playful';
 
-  const borderRadius = isPlayful ? '16px' : template === 'modern' ? '12px' : template === 'bold' ? '2px' : template === 'elegant' ? '8px' : '4px';
-  const fontDef = FONT_FAMILIES.find(f => f.id === (visualSettings?.fontFamily || 'sans'));
+  const fontDef = FONT_FAMILIES.find(f => f.id === settings.fontFamily);
   const fontFamily = fontDef?.css || 'inherit';
-  const baseFontSize = visualSettings?.fontSize || 14;
-  const density = visualSettings?.layoutDensity || 'normal';
+  const baseFontSize = settings.fontSize;
+  const density = settings.layoutDensity;
   const gap = density === 'compact' ? '0.25rem' : density === 'spacious' ? '1rem' : '0.5rem';
   const padding = density === 'compact' ? '0.5rem' : density === 'spacious' ? '1.5rem' : '0.75rem';
+
+  const shadow = getShadowCSS(settings.shadowStyle);
+  const patternBg = getPatternSVG(settings.backgroundPattern, scheme.colors[0]);
+
+  // Node style helper
+  const nodeStyle = (i: number, extraStyle?: React.CSSProperties): React.CSSProperties => {
+    const color = scheme.colors[i % scheme.colors.length];
+    const nextColor = scheme.colors[(i + 1) % scheme.colors.length];
+    const bg = settings.gradientMode !== 'none' ? getGradientBg(settings.gradientMode, color, nextColor) : color;
+    const shapeStyle = settings.nodeShape === 'diamond' ? {} : getNodeShapeStyle(settings.nodeShape);
+    const border = getBorderCSS(settings.borderStyle, isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)');
+
+    return {
+      background: bg,
+      color: '#fff',
+      boxShadow: shadow,
+      border,
+      fontWeight: 600,
+      fontSize: `${baseFontSize - 1}px`,
+      ...shapeStyle,
+      ...extraStyle,
+    };
+  };
+
+  // Icon prefix
+  const icon = (i: number) => {
+    const ic = getNodeIcon(settings.iconStyle, i);
+    return ic ? <span className="mr-1 opacity-80">{ic}</span> : null;
+  };
 
   const updateNode = useCallback((index: number, patch: Partial<StructureNode>) => {
     if (!onUpdate) return;
@@ -68,14 +102,8 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     onUpdate({ ...analysis, structure_nodes: newNodes });
   }, [analysis, onUpdate]);
 
-  const updateTitle = useCallback((title: string) => {
-    onUpdate?.({ ...analysis, title });
-  }, [analysis, onUpdate]);
-
-  const updateSummary = useCallback((summary: string) => {
-    onUpdate?.({ ...analysis, summary });
-  }, [analysis, onUpdate]);
-
+  const updateTitle = useCallback((title: string) => onUpdate?.({ ...analysis, title }), [analysis, onUpdate]);
+  const updateSummary = useCallback((summary: string) => onUpdate?.({ ...analysis, summary }), [analysis, onUpdate]);
   const updateKeyword = useCallback((index: number, value: string) => {
     if (!onUpdate) return;
     const newKw = [...analysis.keywords];
@@ -88,28 +116,20 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
   );
 
   const renderNodeDesc = (node: StructureNode, i: number, style?: React.CSSProperties, className?: string) => (
-    node.description ? <EditableText value={node.description} onChange={v => updateNode(i, { description: v })} style={style} className={className} /> : null
+    node.description && settings.showDescription ? <EditableText value={node.description} onChange={v => updateNode(i, { description: v })} style={style} className={className} /> : null
   );
+
+  const connector = getConnectorSymbol(settings.connectorStyle);
 
   const renderFlow = () => (
     <div className="flex flex-wrap items-center justify-center gap-2" style={{ fontFamily }}>
       {nodes.map((node, i) => (
         <div key={i} className="flex items-center gap-2">
-          <div
-            className="px-4 py-3 text-center shadow-sm"
-            style={{
-              backgroundColor: scheme.colors[i % scheme.colors.length],
-              color: '#fff',
-              borderRadius,
-              minWidth: '100px',
-              fontSize: isPlayful ? '15px' : '13px',
-              fontWeight: 600,
-            }}
-          >
-            <div>{renderNodeLabel(node, i)}</div>
-            {node.description && <div className="text-xs mt-1 opacity-80">{renderNodeDesc(node, i)}</div>}
+          <div className="px-4 py-3 text-center" style={nodeStyle(i, { minWidth: '100px' })}>
+            <div className="flex items-center justify-center">{icon(i)}{renderNodeLabel(node, i)}</div>
+            {renderNodeDesc(node, i, { fontSize: '11px', opacity: 0.8, marginTop: '4px', display: 'block' })}
           </div>
-          {i < nodes.length - 1 && <span className="text-xl" style={{ color: scheme.colors[0] }}>→</span>}
+          {i < nodes.length - 1 && connector && <span className="text-xl" style={{ color: scheme.colors[0] }}>{connector}</span>}
         </div>
       ))}
     </div>
@@ -120,19 +140,8 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
       {nodes.map((node, i) => {
         const width = 40 + (i / Math.max(nodes.length - 1, 1)) * 60;
         return (
-          <div
-            key={i}
-            className="py-2 px-4 text-center shadow-sm"
-            style={{
-              backgroundColor: scheme.colors[i % scheme.colors.length],
-              color: '#fff',
-              borderRadius,
-              width: `${width}%`,
-              fontSize: '13px',
-              fontWeight: 600,
-            }}
-          >
-            {renderNodeLabel(node, i)}
+          <div key={i} className="py-2 px-4 text-center flex items-center justify-center" style={nodeStyle(i, { width: `${width}%` })}>
+            {icon(i)}{renderNodeLabel(node, i)}
           </div>
         );
       })}
@@ -144,20 +153,9 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
       {nodes.map((node, i) => {
         const width = 100 - (i / Math.max(nodes.length - 1, 1)) * 60;
         return (
-          <div
-            key={i}
-            className="py-2 px-4 text-center shadow-sm"
-            style={{
-              backgroundColor: scheme.colors[i % scheme.colors.length],
-              color: '#fff',
-              borderRadius,
-              width: `${width}%`,
-              fontSize: '13px',
-              fontWeight: 600,
-            }}
-          >
-            {renderNodeLabel(node, i)}
-            {node.value != null && <span className="ml-2 text-xs opacity-80">({node.value})</span>}
+          <div key={i} className="py-2 px-4 text-center flex items-center justify-center" style={nodeStyle(i, { width: `${width}%` })}>
+            {icon(i)}{renderNodeLabel(node, i)}
+            {settings.showValues && node.value != null && <span className="ml-2 text-xs opacity-80">({node.value})</span>}
           </div>
         );
       })}
@@ -170,15 +168,14 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
       {nodes.map((node, i) => (
         <div key={i} className="relative mb-4 pl-4">
           <div
-            className="absolute left-[-14px] top-2 w-3 h-3 rounded-full border-2"
-            style={{ backgroundColor: scheme.colors[i % scheme.colors.length], borderColor: bgColor }}
+            className="absolute left-[-14px] top-2 w-3.5 h-3.5 rounded-full border-2"
+            style={{ backgroundColor: scheme.colors[i % scheme.colors.length], borderColor: bgColor, boxShadow: shadow }}
           />
-          <div
-            className="px-3 py-2 shadow-sm"
-            style={{ backgroundColor: isDark ? '#313244' : '#fff', borderRadius, border: `1px solid ${scheme.colors[i % scheme.colors.length]}30` }}
-          >
-            <div className="font-semibold text-sm" style={{ color: scheme.colors[i % scheme.colors.length] }}>{renderNodeLabel(node, i)}</div>
-            {node.description && <div className="text-xs mt-0.5" style={{ color: textColor, opacity: 0.7 }}>{renderNodeDesc(node, i)}</div>}
+          <div className="px-3 py-2" style={{ backgroundColor: isDark ? '#313244' : '#fff', ...getNodeShapeStyle(settings.nodeShape), border: `1px solid ${scheme.colors[i % scheme.colors.length]}30`, boxShadow: shadow }}>
+            <div className="font-semibold text-sm flex items-center" style={{ color: scheme.colors[i % scheme.colors.length] }}>
+              {icon(i)}{renderNodeLabel(node, i)}
+            </div>
+            {renderNodeDesc(node, i, { fontSize: '11px', color: textColor, opacity: 0.7, marginTop: '2px', display: 'block' })}
           </div>
         </div>
       ))}
@@ -196,18 +193,9 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
             {group.map((node, i) => {
               const realIndex = gi === 0 ? i : half + i;
               return (
-                <div
-                  key={i}
-                  className="px-3 py-2 shadow-sm"
-                  style={{
-                    backgroundColor: scheme.colors[gi * 2 + (i % 2)],
-                    color: '#fff',
-                    borderRadius,
-                    fontSize: '13px',
-                  }}
-                >
-                  <div className="font-semibold">{renderNodeLabel(node, realIndex)}</div>
-                  {node.description && <div className="text-xs mt-0.5 opacity-80">{renderNodeDesc(node, realIndex)}</div>}
+                <div key={i} className="px-3 py-2" style={nodeStyle(gi * 2 + (i % 2))}>
+                  <div className="font-semibold flex items-center">{icon(realIndex)}{renderNodeLabel(node, realIndex)}</div>
+                  {renderNodeDesc(node, realIndex, { fontSize: '11px', opacity: 0.8, marginTop: '2px', display: 'block' })}
                 </div>
               );
             })}
@@ -230,22 +218,26 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
             return (
               <div
                 key={i}
-                className="absolute px-2 py-1 text-center shadow-sm"
-                style={{
-                  left: x - 40, top: y - 16,
-                  backgroundColor: scheme.colors[i % scheme.colors.length],
-                  color: '#fff',
-                  borderRadius: '50%',
+                className="absolute px-2 py-1 text-center flex items-center justify-center"
+                style={nodeStyle(i, {
+                  left: x - 40, top: y - 40,
                   width: 80, height: 80,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '11px', fontWeight: 600,
-                }}
+                  borderRadius: '50%',
+                  fontSize: '11px',
+                  position: 'absolute',
+                })}
               >
-                {renderNodeLabel(node, i)}
+                <div>
+                  {icon(i)}
+                  <div>{renderNodeLabel(node, i)}</div>
+                </div>
               </div>
             );
           })}
-          <div className="absolute inset-0 flex items-center justify-center text-2xl" style={{ color: scheme.colors[0], opacity: 0.3 }}>🔄</div>
+          {/* Center connector indicators */}
+          {settings.connectorStyle !== 'none' && (
+            <div className="absolute inset-0 flex items-center justify-center text-2xl" style={{ color: scheme.colors[0], opacity: 0.3 }}>🔄</div>
+          )}
         </div>
       </div>
     );
@@ -254,12 +246,22 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
   const renderList = () => (
     <div className="space-y-2" style={{ fontFamily }}>
       {nodes.map((node, i) => (
-        <div key={i} className="flex items-start gap-3 px-3 py-2 shadow-sm" style={{ backgroundColor: isDark ? '#313244' : '#fff', borderRadius, borderLeft: `4px solid ${scheme.colors[i % scheme.colors.length]}` }}>
-          <span className="text-lg font-bold" style={{ color: scheme.colors[i % scheme.colors.length] }}>{i + 1}</span>
+        <div key={i} className="flex items-start gap-3 px-3 py-2" style={{
+          backgroundColor: isDark ? '#313244' : '#fff',
+          ...getNodeShapeStyle(settings.nodeShape),
+          borderLeft: `4px solid ${scheme.colors[i % scheme.colors.length]}`,
+          boxShadow: shadow,
+        }}>
+          <span className="text-lg font-bold flex-shrink-0" style={{ color: scheme.colors[i % scheme.colors.length] }}>
+            {getNodeIcon(settings.iconStyle, i) || String(i + 1)}
+          </span>
           <div>
             <div className="font-semibold text-sm" style={{ color: textColor }}>{renderNodeLabel(node, i)}</div>
-            {node.description && <div className="text-xs mt-0.5" style={{ color: textColor, opacity: 0.6 }}>{renderNodeDesc(node, i)}</div>}
+            {renderNodeDesc(node, i, { fontSize: '11px', color: textColor, opacity: 0.6, marginTop: '2px', display: 'block' })}
           </div>
+          {settings.showValues && node.value != null && (
+            <span className="ml-auto text-sm font-bold" style={{ color: scheme.colors[i % scheme.colors.length] }}>{node.value}</span>
+          )}
         </div>
       ))}
     </div>
@@ -269,9 +271,9 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     <div className="space-y-1" style={{ fontFamily }}>
       {nodes.map((node, i) => (
         <div key={i} className="flex items-center gap-2" style={{ paddingLeft: `${Math.min(i, 3) * 20}px` }}>
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: scheme.colors[i % scheme.colors.length] }} />
-          <span className="text-sm font-medium" style={{ color: textColor }}>{renderNodeLabel(node, i)}</span>
-          {node.description && <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>— {renderNodeDesc(node, i)}</span>}
+          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: scheme.colors[i % scheme.colors.length], boxShadow: shadow }} />
+          <span className="text-sm font-medium" style={{ color: textColor }}>{icon(i)}{renderNodeLabel(node, i)}</span>
+          {settings.showDescription && node.description && <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>— {renderNodeDesc(node, i)}</span>}
         </div>
       ))}
     </div>
@@ -279,18 +281,21 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
 
   const renderMindmap = () => (
     <div className="flex flex-col items-center" style={{ fontFamily, gap }}>
-      {/* Center node */}
-      <div className="px-6 py-3 rounded-full shadow-md text-center" style={{ backgroundColor: scheme.colors[0], color: '#fff', fontSize: `${baseFontSize + 2}px`, fontWeight: 700 }}>
+      <div className="px-6 py-3 shadow-md text-center" style={nodeStyle(0, {
+        fontSize: `${baseFontSize + 2}px`,
+        fontWeight: 700,
+        borderRadius: settings.nodeShape === 'square' ? '4px' : '9999px',
+      })}>
         {nodes[0] ? renderNodeLabel(nodes[0], 0) : analysis.title}
       </div>
-      {/* Branches */}
       <div className="flex flex-wrap justify-center" style={{ gap }}>
         {nodes.slice(1).map((node, i) => (
           <div key={i + 1} className="flex flex-col items-center" style={{ gap: '4px' }}>
             <div className="w-0.5 h-4" style={{ backgroundColor: scheme.colors[(i + 1) % scheme.colors.length] }} />
-            <div className="px-3 py-2 rounded-lg shadow-sm text-center" style={{ backgroundColor: scheme.colors[(i + 1) % scheme.colors.length], color: '#fff', borderRadius, fontSize: `${baseFontSize - 1}px`, fontWeight: 600, maxWidth: '140px' }}>
+            <div className="px-3 py-2 text-center" style={nodeStyle(i + 1, { maxWidth: '140px' })}>
+              {icon(i + 1)}
               {renderNodeLabel(node, i + 1)}
-              {node.description && <div className="text-xs mt-0.5 opacity-80">{renderNodeDesc(node, i + 1)}</div>}
+              {renderNodeDesc(node, i + 1, { fontSize: '10px', opacity: 0.8, marginTop: '2px', display: 'block' })}
             </div>
           </div>
         ))}
@@ -303,10 +308,11 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     return (
       <div className="grid gap-2" style={{ fontFamily, gridTemplateColumns: `repeat(${cols}, 1fr)`, gap }}>
         {nodes.map((node, i) => (
-          <div key={i} className="px-3 py-3 text-center shadow-sm" style={{ backgroundColor: scheme.colors[i % scheme.colors.length], color: '#fff', borderRadius, fontSize: `${baseFontSize - 1}px`, fontWeight: 600 }}>
+          <div key={i} className="px-3 py-3 text-center" style={nodeStyle(i)}>
+            {icon(i)}
             {renderNodeLabel(node, i)}
-            {node.description && <div className="text-xs mt-1 opacity-80">{renderNodeDesc(node, i)}</div>}
-            {node.value != null && <div className="text-lg font-bold mt-1">{node.value}</div>}
+            {renderNodeDesc(node, i, { fontSize: '10px', opacity: 0.8, marginTop: '4px', display: 'block' })}
+            {settings.showValues && node.value != null && <div className="text-lg font-bold mt-1">{node.value}</div>}
           </div>
         ))}
       </div>
@@ -319,18 +325,25 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     return (
       <div className="flex justify-center" style={{ fontFamily }}>
         <div className="relative" style={{ width: radius * 2 + 140, height: radius * 2 + 140 }}>
-          {/* Center */}
-          <div className="absolute rounded-full shadow-lg flex items-center justify-center text-center" style={{ left: radius + 70 - 45, top: radius + 70 - 45, width: 90, height: 90, backgroundColor: scheme.colors[0], color: '#fff', fontSize: `${baseFontSize - 2}px`, fontWeight: 700 }}>
+          <div className="absolute rounded-full flex items-center justify-center text-center" style={nodeStyle(0, {
+            left: radius + 70 - 45, top: radius + 70 - 45, width: 90, height: 90,
+            borderRadius: '50%',
+            fontSize: `${baseFontSize - 2}px`, fontWeight: 700, position: 'absolute',
+          })}>
             {analysis.title.slice(0, 8)}
           </div>
-          {/* Spokes */}
           {nodes.map((node, i) => {
             const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
             const x = radius * Math.cos(angle) + radius + 70;
             const y = radius * Math.sin(angle) + radius + 70;
             return (
-              <div key={i} className="absolute px-2 py-1.5 text-center shadow-sm" style={{ left: x - 45, top: y - 20, backgroundColor: scheme.colors[i % scheme.colors.length], color: '#fff', borderRadius, width: 90, fontSize: `${baseFontSize - 3}px`, fontWeight: 600 }}>
-                {renderNodeLabel(node, i)}
+              <div key={i} className="absolute px-2 py-1.5 text-center" style={nodeStyle(i, {
+                left: x - 45, top: y - 20,
+                width: 90,
+                fontSize: `${baseFontSize - 3}px`,
+                position: 'absolute',
+              })}>
+                {icon(i)}{renderNodeLabel(node, i)}
               </div>
             );
           })}
@@ -345,7 +358,7 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     return (
       <div className="grid grid-cols-2 gap-1" style={{ fontFamily }}>
         {quadrants.map((group, qi) => (
-          <div key={qi} className="p-3 rounded-lg" style={{ backgroundColor: scheme.colors[qi % scheme.colors.length], color: '#fff', borderRadius }}>
+          <div key={qi} className="p-3" style={nodeStyle(qi)}>
             <div className="text-lg font-bold mb-2 opacity-90">{labels[qi]}</div>
             {group.map((node, i) => (
               <div key={i} className="text-xs mb-1 opacity-90">• {renderNodeLabel(node, qi + i * 4)}</div>
@@ -357,33 +370,39 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
   };
 
   const structureMap: Record<string, () => JSX.Element> = {
-    flow: renderFlow,
-    pyramid: renderPyramid,
-    funnel: renderFunnel,
-    timeline: renderTimeline,
-    comparison: renderComparison,
-    cycle: renderCycle,
-    list: renderList,
-    hierarchy: renderHierarchy,
-    quadrant: renderComparison,
-    mindmap: renderMindmap,
-    matrix: renderMatrix,
-    radial: renderRadial,
-    swot: renderSwot,
+    flow: renderFlow, pyramid: renderPyramid, funnel: renderFunnel,
+    timeline: renderTimeline, comparison: renderComparison, cycle: renderCycle,
+    list: renderList, hierarchy: renderHierarchy, quadrant: renderComparison,
+    mindmap: renderMindmap, matrix: renderMatrix, radial: renderRadial, swot: renderSwot,
   };
 
   const renderer = structureMap[analysis.structure_type] || renderList;
 
+  const containerStyle: React.CSSProperties = {
+    backgroundColor: bgColor,
+    color: textColor,
+    fontFamily,
+    fontSize: `${baseFontSize}px`,
+    padding,
+    borderRadius: '8px',
+    backgroundImage: patternBg !== 'none' ? patternBg : undefined,
+    backgroundRepeat: 'repeat',
+    overflow: 'hidden',
+    ...getAspectRatioStyle(settings.aspectRatio),
+  };
+
   return (
-    <div style={{ backgroundColor: bgColor, color: textColor, fontFamily, fontSize: `${baseFontSize}px`, padding, borderRadius: '8px' }}>
+    <div style={containerStyle}>
       {/* Title & Summary */}
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold mb-1" style={{ color: scheme.colors[0] }}>
           <EditableText value={analysis.title} onChange={updateTitle} />
         </h2>
-        <p className="text-sm opacity-70">
-          <EditableText value={analysis.summary} onChange={updateSummary} />
-        </p>
+        {settings.showDescription && (
+          <p className="text-sm opacity-70">
+            <EditableText value={analysis.summary} onChange={updateSummary} />
+          </p>
+        )}
       </div>
 
       {/* Keywords */}
@@ -391,11 +410,12 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
         {analysis.keywords.map((kw, i) => (
           <span
             key={i}
-            className="px-2 py-0.5 text-xs rounded-full"
+            className="px-2 py-0.5 text-xs"
             style={{
               backgroundColor: `${scheme.colors[i % scheme.colors.length]}20`,
               color: scheme.colors[i % scheme.colors.length],
               border: `1px solid ${scheme.colors[i % scheme.colors.length]}40`,
+              ...getNodeShapeStyle(settings.nodeShape === 'diamond' ? 'pill' : settings.nodeShape),
             }}
           >
             <EditableText value={kw} onChange={v => updateKeyword(i, v)} />
