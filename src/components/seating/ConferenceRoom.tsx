@@ -1,10 +1,19 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import { toast } from 'sonner';
+import {
+  loadConferenceRoomSnapshot,
+  saveConferenceRoomSnapshot,
+  loadConferenceRoomHistory,
+  saveConferenceRoomHistory,
+  type ConferenceRoomAssignment,
+  type ConferenceRoomHistoryItem,
+} from '@/lib/teamwork-local';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -14,15 +23,6 @@ type ConferenceSeatMode = 'balanced' | 'groupCluster' | 'verticalS' | 'horizonta
 type RefKey = 'screen' | 'podium' | 'window' | 'frontDoor' | 'backDoor';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
-
-type ConferenceAssignment = {
-  headLeft: string;
-  headRight: string;
-  mainTop: string[];
-  mainBottom: string[];
-  companionTop: string[][];
-  companionBottom: string[][];
-};
 
 function splitIntoGroups(names: string[], count: number) {
   const groups: string[][] = Array.from({ length: count }, () => []);
@@ -51,7 +51,7 @@ export default function ConferenceRoom({ students }: Props) {
   const [seatGap, setSeatGap] = useState(6);
   const [showCompanionSeats, setShowCompanionSeats] = useState(true);
   const [companionRows, setCompanionRows] = useState(1);
-  const [assignment, setAssignment] = useState<ConferenceAssignment>({
+  const [assignment, setAssignment] = useState<ConferenceRoomAssignment>({
     headLeft: '',
     headRight: '',
     mainTop: Array.from({ length: 10 }, () => ''),
@@ -60,6 +60,9 @@ export default function ConferenceRoom({ students }: Props) {
     companionBottom: [Array.from({ length: 10 }, () => '')],
   });
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
+  const [recordName, setRecordName] = useState('');
+  const [historyItems, setHistoryItems] = useState<ConferenceRoomHistoryItem[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [dragFrom, setDragFrom] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [seated, setSeated] = useState(false);
@@ -76,6 +79,7 @@ export default function ConferenceRoom({ students }: Props) {
 
   const printRef = useRef<HTMLDivElement>(null);
   const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const restoredOnceRef = useRef(false);
 
   const seatW = 64;
   const seatH = 40;
@@ -240,7 +244,7 @@ export default function ConferenceRoom({ students }: Props) {
     };
   };
 
-  const getSeatValue = (data: ConferenceAssignment, slot: string) => {
+  const getSeatValue = (data: ConferenceRoomAssignment, slot: string) => {
     if (slot === 'head-left') return data.headLeft;
     if (slot === 'head-right') return data.headRight;
 
@@ -259,7 +263,7 @@ export default function ConferenceRoom({ students }: Props) {
       : data.companionBottom[row]?.[index] || '';
   };
 
-  const setSeatValue = (data: ConferenceAssignment, slot: string, value: string) => {
+  const setSeatValue = (data: ConferenceRoomAssignment, slot: string, value: string) => {
     if (slot === 'head-left') {
       data.headLeft = value;
       return;
@@ -299,7 +303,7 @@ export default function ConferenceRoom({ students }: Props) {
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
 
-    const next: ConferenceAssignment = {
+    const next: ConferenceRoomAssignment = {
       headLeft: '',
       headRight: '',
       mainTop: Array.from({ length: seatsPerSide }, () => ''),
@@ -328,6 +332,122 @@ export default function ConferenceRoom({ students }: Props) {
     setAssignment(next);
     setSeated(true);
   };
+
+  const sanitizeAssignment = (
+    raw: ConferenceRoomAssignment,
+    nextSeatsPerSide: number,
+    nextCompanionRows: number
+  ) => {
+    const validStudentNames = new Set(students.map(s => s.name));
+    const normalizeName = (name: string) => (validStudentNames.has(name) ? name : '');
+    return {
+      headLeft: normalizeName(raw.headLeft || ''),
+      headRight: normalizeName(raw.headRight || ''),
+      mainTop: Array.from({ length: nextSeatsPerSide }, (_, i) => normalizeName(raw.mainTop?.[i] || '')),
+      mainBottom: Array.from({ length: nextSeatsPerSide }, (_, i) => normalizeName(raw.mainBottom?.[i] || '')),
+      companionTop: Array.from({ length: nextCompanionRows }, (_, r) =>
+        Array.from({ length: nextSeatsPerSide }, (_, i) => normalizeName(raw.companionTop?.[r]?.[i] || ''))
+      ),
+      companionBottom: Array.from({ length: nextCompanionRows }, (_, r) =>
+        Array.from({ length: nextSeatsPerSide }, (_, i) => normalizeName(raw.companionBottom?.[r]?.[i] || ''))
+      ),
+    };
+  };
+
+  const buildSnapshot = () => ({
+    seatsPerSide,
+    groupCount,
+    mode,
+    seatGap,
+    showCompanionSeats,
+    companionRows,
+    assignment,
+    closedSeats: Array.from(closedSeats),
+    seated,
+    updatedAt: new Date().toISOString(),
+  });
+
+  const saveToHistory = () => {
+    if (!seated) {
+      toast.error('请先完成排座再保存');
+      return;
+    }
+    const name = recordName.trim() || `会议室-${new Date().toLocaleString()}`;
+    const item = saveConferenceRoomHistory(name, buildSnapshot());
+    const nextItems = [item, ...historyItems].slice(0, 50);
+    setHistoryItems(nextItems);
+    setSelectedHistoryId(item.id);
+    setRecordName(name);
+    saveConferenceRoomSnapshot(item.snapshot);
+    toast.success('已保存到历史记录');
+  };
+
+  const restoreFromHistory = () => {
+    const item = historyItems.find(history => history.id === selectedHistoryId);
+    if (!item) {
+      toast.error('请选择要恢复的历史记录');
+      return;
+    }
+    const snapshot = item.snapshot;
+    const nextSeatsPerSide = Math.max(4, Math.min(18, snapshot.seatsPerSide));
+    const nextGroupCount = Math.max(2, Math.min(20, snapshot.groupCount));
+    const nextCompanionRows = Math.max(1, Math.min(4, snapshot.companionRows));
+
+    setSeatsPerSide(nextSeatsPerSide);
+    setGroupCount(nextGroupCount);
+    setMode(snapshot.mode);
+    setSeatGap(Math.max(2, Math.min(20, snapshot.seatGap)));
+    setShowCompanionSeats(!!snapshot.showCompanionSeats);
+    setCompanionRows(nextCompanionRows);
+    setSeated(!!snapshot.seated);
+    setRecordName(item.name);
+
+    const nextAssignment = sanitizeAssignment(snapshot.assignment, nextSeatsPerSide, nextCompanionRows);
+    setAssignment(nextAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+
+    saveConferenceRoomSnapshot({
+      ...snapshot,
+      assignment: nextAssignment,
+      closedSeats: snapshot.closedSeats || [],
+    });
+    toast.success('已从历史记录恢复，可继续调整');
+  };
+
+  useEffect(() => {
+    setHistoryItems(loadConferenceRoomHistory());
+  }, []);
+
+  useEffect(() => {
+    if (restoredOnceRef.current) return;
+    const snapshot = loadConferenceRoomSnapshot();
+    if (!snapshot) {
+      restoredOnceRef.current = true;
+      return;
+    }
+
+    const nextSeatsPerSide = Math.max(4, Math.min(18, snapshot.seatsPerSide));
+    const nextGroupCount = Math.max(2, Math.min(20, snapshot.groupCount));
+    const nextCompanionRows = Math.max(1, Math.min(4, snapshot.companionRows));
+
+    setSeatsPerSide(nextSeatsPerSide);
+    setGroupCount(nextGroupCount);
+    setMode(snapshot.mode);
+    setSeatGap(Math.max(2, Math.min(20, snapshot.seatGap)));
+    setShowCompanionSeats(!!snapshot.showCompanionSeats);
+    setCompanionRows(nextCompanionRows);
+    setSeated(!!snapshot.seated);
+
+    const nextAssignment = sanitizeAssignment(snapshot.assignment, nextSeatsPerSide, nextCompanionRows);
+    setAssignment(nextAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    restoredOnceRef.current = true;
+  }, [students]);
+
+  useEffect(() => {
+    if (!restoredOnceRef.current) return;
+    saveConferenceRoomSnapshot(buildSnapshot());
+  }, [assignment, seatsPerSide, groupCount, mode, seatGap, showCompanionSeats, companionRows, closedSeats, seated]);
 
   const renderSeat = (x: number, y: number, name: string, slot: string) => {
     const isClosed = closedSeats.has(slot);
@@ -362,7 +482,7 @@ export default function ConferenceRoom({ students }: Props) {
           }
 
           setAssignment(prev => {
-            const next: ConferenceAssignment = {
+            const next: ConferenceRoomAssignment = {
               headLeft: prev.headLeft,
               headRight: prev.headRight,
               mainTop: [...prev.mainTop],
@@ -441,7 +561,17 @@ export default function ConferenceRoom({ students }: Props) {
         setDropTarget(null);
       }}
     >
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          名称
+          <Input
+            type="text"
+            value={recordName}
+            onChange={e => setRecordName(e.target.value)}
+            placeholder="输入名称（用于保存历史和导出文件名）"
+            className="w-72 h-8"
+          />
+        </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每边主座位数
           <Input
@@ -512,6 +642,26 @@ export default function ConferenceRoom({ students }: Props) {
             />
           </label>
         )}
+        <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={!seated}>
+            <Save className="w-4 h-4" /> 保存历史
+          </Button>
+          <select
+            value={selectedHistoryId}
+            onChange={e => setSelectedHistoryId(e.target.value)}
+            className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="">选择历史记录</option>
+            {historyItems.map(item => (
+              <option key={item.id} value={item.id}>
+                {item.name}（{new Date(item.createdAt).toLocaleString()}）
+              </option>
+            ))}
+          </select>
+          <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
+            <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
+        </div>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
           重置参照物
         </Button>
@@ -547,7 +697,16 @@ export default function ConferenceRoom({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        {seated && <ExportButtons targetRef={printRef} filename="会议室座位" resolveQrCode={resolveQrCode} />}
+        {seated && (
+          <ExportButtons
+            targetRef={printRef}
+            filename={recordName.trim() || '会议室座位'}
+            resolveQrCode={resolveQrCode}
+            titleValue={recordName}
+            onTitleChange={setRecordName}
+            hideTitleInput
+          />
+        )}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到

@@ -52,11 +52,42 @@ export interface BanquetHallHistoryItem {
   snapshot: BanquetHallSnapshot;
 }
 
+export interface ConferenceRoomAssignment {
+  headLeft: string;
+  headRight: string;
+  mainTop: string[];
+  mainBottom: string[];
+  companionTop: string[][];
+  companionBottom: string[][];
+}
+
+export interface ConferenceRoomSnapshot {
+  seatsPerSide: number;
+  groupCount: number;
+  mode: 'balanced' | 'groupCluster' | 'verticalS' | 'horizontalS';
+  seatGap: number;
+  showCompanionSeats: boolean;
+  companionRows: number;
+  assignment: ConferenceRoomAssignment;
+  closedSeats: string[];
+  seated: boolean;
+  updatedAt: string;
+}
+
+export interface ConferenceRoomHistoryItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: ConferenceRoomSnapshot;
+}
+
 const GROUPS_KEY = 'teachmate_groups_last';
 const SMART_CLASSROOM_KEY = 'teachmate_smart_classroom_last';
 const SMART_CLASSROOM_HISTORY_KEY = 'teachmate_smart_classroom_history';
 const BANQUET_HALL_KEY = 'teachmate_banquet_hall_last';
 const BANQUET_HALL_HISTORY_KEY = 'teachmate_banquet_hall_history';
+const CONFERENCE_ROOM_KEY = 'teachmate_conference_room_last';
+const CONFERENCE_ROOM_HISTORY_KEY = 'teachmate_conference_room_history';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -149,6 +180,41 @@ export function saveBanquetHallHistory(name: string, snapshot: BanquetHallSnapsh
   };
   const next = [item, ...current].slice(0, 50);
   localStorage.setItem(BANQUET_HALL_HISTORY_KEY, JSON.stringify(next));
+  return item;
+}
+
+export function loadConferenceRoomSnapshot(): ConferenceRoomSnapshot | null {
+  const parsed = safeParse<ConferenceRoomSnapshot>(localStorage.getItem(CONFERENCE_ROOM_KEY));
+  if (!parsed) return null;
+  if (!parsed.assignment) return null;
+  if (!Array.isArray(parsed.assignment.mainTop) || !Array.isArray(parsed.assignment.mainBottom)) return null;
+  if (!Array.isArray(parsed.assignment.companionTop) || !Array.isArray(parsed.assignment.companionBottom)) return null;
+  return parsed;
+}
+
+export function saveConferenceRoomSnapshot(snapshot: ConferenceRoomSnapshot) {
+  localStorage.setItem(CONFERENCE_ROOM_KEY, JSON.stringify(snapshot));
+}
+
+export function loadConferenceRoomHistory(): ConferenceRoomHistoryItem[] {
+  const parsed = safeParse<ConferenceRoomHistoryItem[]>(localStorage.getItem(CONFERENCE_ROOM_HISTORY_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && item.snapshot)
+    .slice(0, 50);
+}
+
+export function saveConferenceRoomHistory(name: string, snapshot: ConferenceRoomSnapshot) {
+  const current = loadConferenceRoomHistory();
+  const now = new Date().toISOString();
+  const item: ConferenceRoomHistoryItem = {
+    id: `conference_${Date.now()}`,
+    name,
+    createdAt: now,
+    snapshot: { ...snapshot, updatedAt: now },
+  };
+  const next = [item, ...current].slice(0, 50);
+  localStorage.setItem(CONFERENCE_ROOM_HISTORY_KEY, JSON.stringify(next));
   return item;
 }
 
