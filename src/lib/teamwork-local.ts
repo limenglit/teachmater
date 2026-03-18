@@ -137,6 +137,23 @@ export interface ComputerLabHistoryItem {
   snapshot: ComputerLabSnapshot;
 }
 
+export interface ConcertHallSnapshot {
+  seatsPerRow: number;
+  rowCount: number;
+  groupCount: number;
+  mode: 'arcBalanced' | 'groupZone' | 'verticalS' | 'horizontalS';
+  assignment: string[][];
+  closedSeats: string[];
+  updatedAt: string;
+}
+
+export interface ConcertHallHistoryItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: ConcertHallSnapshot;
+}
+
 const GROUPS_KEY = 'teachmate_groups_last';
 const SMART_CLASSROOM_KEY = 'teachmate_smart_classroom_last';
 const SMART_CLASSROOM_HISTORY_KEY = 'teachmate_smart_classroom_history';
@@ -148,6 +165,8 @@ const CLASSROOM_KEY = 'teachmate_classroom_last';
 const CLASSROOM_HISTORY_KEY = 'teachmate_classroom_history';
 const COMPUTER_LAB_KEY = 'teachmate_computer_lab_last';
 const COMPUTER_LAB_HISTORY_KEY = 'teachmate_computer_lab_history';
+const CONCERT_HALL_KEY = 'teachmate_concert_hall_last';
+const CONCERT_HALL_HISTORY_KEY = 'teachmate_concert_hall_history';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -342,6 +361,39 @@ export function saveComputerLabHistory(name: string, snapshot: ComputerLabSnapsh
   };
   const next = [item, ...current].slice(0, 50);
   localStorage.setItem(COMPUTER_LAB_HISTORY_KEY, JSON.stringify(next));
+  return item;
+}
+
+export function loadConcertHallSnapshot(): ConcertHallSnapshot | null {
+  const parsed = safeParse<ConcertHallSnapshot>(localStorage.getItem(CONCERT_HALL_KEY));
+  if (!parsed) return null;
+  if (!Array.isArray(parsed.assignment)) return null;
+  return parsed;
+}
+
+export function saveConcertHallSnapshot(snapshot: ConcertHallSnapshot) {
+  localStorage.setItem(CONCERT_HALL_KEY, JSON.stringify(snapshot));
+}
+
+export function loadConcertHallHistory(): ConcertHallHistoryItem[] {
+  const parsed = safeParse<ConcertHallHistoryItem[]>(localStorage.getItem(CONCERT_HALL_HISTORY_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && item.snapshot)
+    .slice(0, 50);
+}
+
+export function saveConcertHallHistory(name: string, snapshot: ConcertHallSnapshot) {
+  const current = loadConcertHallHistory();
+  const now = new Date().toISOString();
+  const item: ConcertHallHistoryItem = {
+    id: `concert_${Date.now()}`,
+    name,
+    createdAt: now,
+    snapshot: { ...snapshot, updatedAt: now },
+  };
+  const next = [item, ...current].slice(0, 50);
+  localStorage.setItem(CONCERT_HALL_HISTORY_KEY, JSON.stringify(next));
   return item;
 }
 

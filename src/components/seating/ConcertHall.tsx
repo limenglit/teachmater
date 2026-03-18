@@ -1,10 +1,18 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import { toast } from 'sonner';
+import {
+  loadConcertHallSnapshot,
+  saveConcertHallSnapshot,
+  loadConcertHallHistory,
+  saveConcertHallHistory,
+  type ConcertHallHistoryItem,
+} from '@/lib/teamwork-local';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -51,6 +59,9 @@ export default function ConcertHall({ students }: Props) {
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<ConcertSeatMode>('arcBalanced');
   const [assignment, setAssignment] = useState<string[][]>([]);
+  const [recordName, setRecordName] = useState('');
+  const [historyItems, setHistoryItems] = useState<ConcertHallHistoryItem[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [dragFrom, setDragFrom] = useState<string | null>(null);
@@ -67,6 +78,7 @@ export default function ConcertHall({ students }: Props) {
 
   const printRef = useRef<HTMLDivElement>(null);
   const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const restoredOnceRef = useRef(false);
 
   const seatCaps = useMemo(
     () => Array.from({ length: rowCount }, (_, r) => seatsPerRow + r * 2),
@@ -174,6 +186,36 @@ export default function ConcertHall({ students }: Props) {
     const nextRows = getAutoRowCount(students.length, seatsPerRow);
     setRowCount(prev => (prev === nextRows ? prev : nextRows));
   }, [students.length, seatsPerRow]);
+
+  useEffect(() => {
+    setHistoryItems(loadConcertHallHistory());
+  }, []);
+
+  useEffect(() => {
+    if (restoredOnceRef.current) return;
+    const snapshot = loadConcertHallSnapshot();
+    if (!snapshot) {
+      restoredOnceRef.current = true;
+      return;
+    }
+
+    const nextSeatsPerRow = Math.max(6, Math.min(24, snapshot.seatsPerRow));
+    const nextRowCount = Math.max(2, Math.min(10, snapshot.rowCount));
+    const nextCaps = Array.from({ length: nextRowCount }, (_, r) => nextSeatsPerRow + r * 2);
+
+    setSeatsPerRow(nextSeatsPerRow);
+    setRowCount(nextRowCount);
+    setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
+    setMode(snapshot.mode);
+    setAssignment(sanitizeAssignment(snapshot.assignment || [], nextCaps));
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    restoredOnceRef.current = true;
+  }, [students]);
+
+  useEffect(() => {
+    if (!restoredOnceRef.current) return;
+    saveConcertHallSnapshot(buildSnapshot());
+  }, [seatsPerRow, rowCount, groupCount, mode, assignment, closedSeats]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -306,12 +348,86 @@ export default function ConcertHall({ students }: Props) {
     setAssignment(rows);
   };
 
+  const buildSnapshot = () => ({
+    seatsPerRow,
+    rowCount,
+    groupCount,
+    mode,
+    assignment,
+    closedSeats: Array.from(closedSeats),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const sanitizeAssignment = (rawRows: string[][], nextCaps: number[]) => {
+    const validNames = new Set(students.map(s => s.name));
+    return nextCaps.map((cap, r) =>
+      Array.from({ length: cap }, (_, c) => {
+        const name = rawRows?.[r]?.[c] || '';
+        return validNames.has(name) ? name : '';
+      })
+    );
+  };
+
+  const saveToHistory = () => {
+    if (assignment.length === 0) {
+      toast.error('请先完成排座再保存');
+      return;
+    }
+    const name = recordName.trim() || `音乐厅-${new Date().toLocaleString()}`;
+    const item = saveConcertHallHistory(name, buildSnapshot());
+    const nextItems = [item, ...historyItems].slice(0, 50);
+    setHistoryItems(nextItems);
+    setSelectedHistoryId(item.id);
+    setRecordName(name);
+    saveConcertHallSnapshot(item.snapshot);
+    toast.success('已保存到历史记录');
+  };
+
+  const restoreFromHistory = () => {
+    const item = historyItems.find(history => history.id === selectedHistoryId);
+    if (!item) {
+      toast.error('请选择要恢复的历史记录');
+      return;
+    }
+    const snapshot = item.snapshot;
+    const nextSeatsPerRow = Math.max(6, Math.min(24, snapshot.seatsPerRow));
+    const nextRowCount = Math.max(2, Math.min(10, snapshot.rowCount));
+    const nextCaps = Array.from({ length: nextRowCount }, (_, r) => nextSeatsPerRow + r * 2);
+
+    setSeatsPerRow(nextSeatsPerRow);
+    setRowCount(nextRowCount);
+    setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
+    setMode(snapshot.mode);
+
+    const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextCaps);
+    setAssignment(nextAssignment);
+    setClosedSeats(new Set(snapshot.closedSeats || []));
+    setRecordName(item.name);
+    saveConcertHallSnapshot({
+      ...snapshot,
+      seatsPerRow: nextSeatsPerRow,
+      rowCount: nextRowCount,
+      assignment: nextAssignment,
+    });
+    toast.success('已从历史记录恢复，可继续调整');
+  };
+
   const nameTextLength = Math.max(28, seatR * 1.95);
   const totalCapacity = rowCount * (seatsPerRow + rowCount - 1);
 
   return (
     <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
-      <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
+        <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
+          名称
+          <Input
+            type="text"
+            value={recordName}
+            onChange={e => setRecordName(e.target.value)}
+            placeholder="输入名称（用于保存历史和导出文件名）"
+            className="h-8 w-full sm:w-72"
+          />
+        </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           每排基准座位
           <Input type="number" min={6} max={24} value={seatsPerRow}
@@ -344,6 +460,26 @@ export default function ConcertHall({ students }: Props) {
               onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
+        <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={assignment.length === 0}>
+            <Save className="w-4 h-4" /> 保存历史
+          </Button>
+          <select
+            value={selectedHistoryId}
+            onChange={e => setSelectedHistoryId(e.target.value)}
+            className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="">选择历史记录</option>
+            {historyItems.map(item => (
+              <option key={item.id} value={item.id}>
+                {item.name}（{new Date(item.createdAt).toLocaleString()}）
+              </option>
+            ))}
+          </select>
+          <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
+            <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
+        </div>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
           重置参照物
         </Button>
@@ -367,7 +503,16 @@ export default function ConcertHall({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        {assignment.length > 0 && <ExportButtons targetRef={printRef} filename="音乐厅座位" resolveQrCode={resolveQrCode} />}
+        {assignment.length > 0 && (
+          <ExportButtons
+            targetRef={printRef}
+            filename={recordName.trim() || '音乐厅座位'}
+            resolveQrCode={resolveQrCode}
+            titleValue={recordName}
+            onTitleChange={setRecordName}
+            hideTitleInput
+          />
+        )}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
             <QrCode className="w-4 h-4" /> 签到

@@ -600,15 +600,15 @@ export default function SmartClassroom({ students }: Props) {
         refDraggingRef.current = null;
       }}
     >
-      <div className="flex flex-wrap items-center gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
+        <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
           名称
           <Input
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
             placeholder="输入名称（用于保存历史和导出文件名）"
-            className="w-72 h-8"
+            className="h-8 w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -671,14 +671,14 @@ export default function SmartClassroom({ students }: Props) {
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
-        <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
-          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8">
+        <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+          <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={assignment.length === 0}>
             <Save className="w-4 h-4" /> 保存历史
           </Button>
           <select
             value={selectedHistoryId}
             onChange={e => setSelectedHistoryId(e.target.value)}
-            className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
             <option value="">选择历史记录</option>
             {historyItems.map(item => (

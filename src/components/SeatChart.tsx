@@ -532,15 +532,15 @@ export default function SeatChart() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
-          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
+          <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
             名称
             <Input
               type="text"
               value={recordName}
               onChange={e => setRecordName(e.target.value)}
               placeholder="输入名称（用于保存历史和导出文件名）"
-              className="w-72 h-8"
+              className="h-8 w-full sm:w-72"
             />
           </label>
           {MODES.map(m => (
@@ -556,14 +556,14 @@ export default function SeatChart() {
               <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
             </Button>
           </div>
-          <div className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
+          <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
             <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2 h-8" disabled={seats.length === 0}>
               <Save className="w-4 h-4" /> 保存历史
             </Button>
             <select
               value={selectedHistoryId}
               onChange={e => setSelectedHistoryId(e.target.value)}
-              className="h-8 max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
             >
               <option value="">选择历史记录</option>
               {historyItems.map(item => (
