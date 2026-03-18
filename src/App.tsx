@@ -10,18 +10,35 @@ import { FeatureConfigProvider } from "@/contexts/FeatureConfigContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-const DiscussPage = lazy(() => import("./pages/DiscussPage"));
-const CheckInPage = lazy(() => import("./pages/CheckInPage"));
-const AuthPage = lazy(() => import("./pages/AuthPage"));
-const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const AdminPage = lazy(() => import("./pages/AdminPage"));
-const GoRedirect = lazy(() => import("./pages/GoRedirect"));
-const SeatCheckinPage = lazy(() => import("./pages/SeatCheckinPage"));
-const BoardPage = lazy(() => import("./pages/BoardPage"));
-const BoardSubmitPage = lazy(() => import("./pages/BoardSubmitPage"));
-const QuizSubmitPage = lazy(() => import("./pages/QuizSubmitPage"));
-const PollVotePage = lazy(() => import("./pages/PollVotePage"));
-const TaskSubmitPage = lazy(() => import("./pages/TaskSubmitPage"));
+/** Retry dynamic import once then force-reload to pick up new chunks */
+function lazyRetry<T extends { default: React.ComponentType<any> }>(
+  factory: () => Promise<T>,
+) {
+  return lazy(() =>
+    factory().catch(() => {
+      // Chunk likely outdated after a new deploy – reload once
+      const key = 'chunk_reload';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+      return factory(); // second attempt
+    }),
+  );
+}
+
+const DiscussPage = lazyRetry(() => import("./pages/DiscussPage"));
+const CheckInPage = lazyRetry(() => import("./pages/CheckInPage"));
+const AuthPage = lazyRetry(() => import("./pages/AuthPage"));
+const ResetPassword = lazyRetry(() => import("./pages/ResetPassword"));
+const AdminPage = lazyRetry(() => import("./pages/AdminPage"));
+const GoRedirect = lazyRetry(() => import("./pages/GoRedirect"));
+const SeatCheckinPage = lazyRetry(() => import("./pages/SeatCheckinPage"));
+const BoardPage = lazyRetry(() => import("./pages/BoardPage"));
+const BoardSubmitPage = lazyRetry(() => import("./pages/BoardSubmitPage"));
+const QuizSubmitPage = lazyRetry(() => import("./pages/QuizSubmitPage"));
+const PollVotePage = lazyRetry(() => import("./pages/PollVotePage"));
+const TaskSubmitPage = lazyRetry(() => import("./pages/TaskSubmitPage"));
 
 const queryClient = new QueryClient();
 
