@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
 import { toast } from 'sonner';
+import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
 import {
   loadLastGroups,
   saveLastGroups,
@@ -71,6 +73,7 @@ export default function SmartClassroom({ students }: Props) {
   const [recordName, setRecordName] = useState('');
   const [historyItems, setHistoryItems] = useState<SmartClassroomHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
+  const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('smartClassroom'));
 
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -134,22 +137,7 @@ export default function SmartClassroom({ students }: Props) {
     return groups;
   };
 
-  const getTitleScore = (title?: string) => {
-    if (!title) return 0;
-    const normalized = title.toLowerCase();
-    const scoreRules: Array<{ rule: RegExp; score: number }> = [
-      { rule: /董事长|总裁|首席|ceo|president/, score: 120 },
-      { rule: /副总裁|总经理|总监|director general|vice president|vp/, score: 100 },
-      { rule: /司长|处长|院长|校长|主任|馆长/, score: 85 },
-      { rule: /副主任|副处长|副院长|副校长/, score: 75 },
-      { rule: /经理|主管|team lead|lead|manager/, score: 60 },
-      { rule: /老师|教师|讲师|教授|研究员|engineer|specialist/, score: 45 },
-    ];
-    for (const item of scoreRules) {
-      if (item.rule.test(normalized)) return item.score;
-    }
-    return 30;
-  };
+  const scoreTitle = useMemo(() => buildTitleScorer(titleRankRuleText), [titleRankRuleText]);
 
   const getPodiumPriorityTableOrder = () => {
     const center = (tableCols - 1) / 2;
@@ -357,7 +345,7 @@ export default function SmartClassroom({ students }: Props) {
       const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
       students.forEach(student => {
         const org = student.organization?.trim() || '未分配单位';
-        const item = { name: student.name, score: getTitleScore(student.title) };
+        const item = { name: student.name, score: scoreTitle(student.title) };
         const bucket = groupsMap.get(org);
         if (bucket) bucket.push(item);
         else groupsMap.set(org, [item]);
@@ -796,6 +784,14 @@ export default function SmartClassroom({ students }: Props) {
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
           重置参照物
         </Button>
+        <TitleRankConfigDialog
+          value={titleRankRuleText}
+          sceneLabel="智慧教室"
+          onSave={next => {
+            const saved = saveTitleRankRuleText(next, 'smartClassroom');
+            setTitleRankRuleText(saved);
+          }}
+        />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
