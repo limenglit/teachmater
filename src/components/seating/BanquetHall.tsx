@@ -259,6 +259,46 @@ export default function BanquetHall({ students }: Props) {
       });
   };
 
+  const getColumnPriorityNearStage = () => {
+    const center = (tableCols - 1) / 2;
+    return Array.from({ length: tableCols }, (_, col) => col)
+      .sort((a, b) => {
+        const da = Math.abs(a - center);
+        const db = Math.abs(b - center);
+        if (da !== db) return da - db;
+        return a - b;
+      });
+  };
+
+  const getTableSide = (tableIndex: number) => {
+    if (!hasTStage || tableCols <= 1) return 'all' as const;
+    const col = tableIndex % tableCols;
+    return col < splitIndex ? 'left' as const : 'right' as const;
+  };
+
+  const getSideColumnTablesNearStage = () => {
+    const map = new Map<string, number[]>();
+
+    for (let col = 0; col < tableCols; col++) {
+      const keyLeft = `left:${col}`;
+      const keyRight = `right:${col}`;
+      const keyAll = `all:${col}`;
+
+      const tables = Array.from({ length: tableRows }, (_, row) => row * tableCols + col)
+        .filter(index => index < tableCount && !reservedTables.has(index))
+        .sort((a, b) => Math.floor(a / tableCols) - Math.floor(b / tableCols));
+
+      if (!hasTStage || tableCols <= 1) {
+        map.set(keyAll, tables);
+      } else {
+        map.set(keyLeft, tables.filter(index => getTableSide(index) === 'left'));
+        map.set(keyRight, tables.filter(index => getTableSide(index) === 'right'));
+      }
+    }
+
+    return map;
+  };
+
   const applyGroupsToSeat = (fromGroups: ReturnType<typeof loadLastGroups>) => {
     const availableNames = new Set(students.map(s => s.name));
     const filteredGroups = fromGroups
@@ -333,8 +373,9 @@ export default function BanquetHall({ students }: Props) {
     const tables: string[][] = Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => ''));
 
     if (mode === 'orgTableStage' && !shuffle) {
-      const tableOrder = getStagePriorityTableOrder();
       const seatOrder = getSeatOrderNearStage();
+      const columnPriority = getColumnPriorityNearStage();
+      const sideColumnTables = getSideColumnTablesNearStage();
 
       const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
       students.forEach(student => {
@@ -353,24 +394,82 @@ export default function BanquetHall({ students }: Props) {
           return b.length - a.length;
         });
 
-      let tableCursor = 0;
-      groups.forEach(group => {
-        let nameCursor = 0;
-        while (nameCursor < group.length && tableCursor < tableOrder.length) {
-          const tableIndex = tableOrder[tableCursor];
-          const availableSeats = seatOrder.filter(seatIndex => !closedSeats.has(seatKey(tableIndex, seatIndex)) && !tables[tableIndex][seatIndex]);
-          if (availableSeats.length === 0) {
-            tableCursor++;
-            continue;
-          }
+      const sides = (!hasTStage || tableCols <= 1) ? (['all'] as const) : (['left', 'right'] as const);
 
-          const placeCount = Math.min(availableSeats.length, group.length - nameCursor);
-          for (let i = 0; i < placeCount; i++) {
-            const seatIndex = availableSeats[i];
-            tables[tableIndex][seatIndex] = group[nameCursor + i].name;
+      const getRemainForSideColumn = (side: 'left' | 'right' | 'all', col: number) => {
+        const tablesInBucket = sideColumnTables.get(`${side}:${col}`) || [];
+        let remain = 0;
+        for (const tableIndex of tablesInBucket) {
+          for (const seatIndex of seatOrder) {
+            if (closedSeats.has(seatKey(tableIndex, seatIndex))) continue;
+            if (!tables[tableIndex][seatIndex]) remain++;
           }
-          nameCursor += placeCount;
-          tableCursor++;
+        }
+        return remain;
+      };
+
+      const placeInSideColumn = (side: 'left' | 'right' | 'all', col: number, group: Array<{ name: string; score: number }>, startCursor: number) => {
+        const tablesInBucket = sideColumnTables.get(`${side}:${col}`) || [];
+        let cursor = startCursor;
+        for (const tableIndex of tablesInBucket) {
+          for (const seatIndex of seatOrder) {
+            if (cursor >= group.length) return cursor;
+            if (closedSeats.has(seatKey(tableIndex, seatIndex))) continue;
+            if (tables[tableIndex][seatIndex]) continue;
+            tables[tableIndex][seatIndex] = group[cursor].name;
+            cursor++;
+          }
+        }
+        return cursor;
+      };
+
+      groups.forEach(group => {
+        let cursor = 0;
+
+        // 1) Pick one primary side (when T-stage exists) with most remaining capacity.
+        let primarySide: 'left' | 'right' | 'all' = sides[0];
+        let bestSideRemain = -1;
+        sides.forEach(side => {
+          const sideRemain = columnPriority.reduce((sum, col) => sum + getRemainForSideColumn(side, col), 0);
+          if (sideRemain > bestSideRemain) {
+            bestSideRemain = sideRemain;
+            primarySide = side;
+          }
+        });
+
+        // 2) Inside the primary side, keep one organization in one column first.
+        let primaryCol = columnPriority[0];
+        let bestColRemain = -1;
+        columnPriority.forEach(col => {
+          const remain = getRemainForSideColumn(primarySide, col);
+          if (remain > bestColRemain) {
+            bestColRemain = remain;
+            primaryCol = col;
+          }
+        });
+
+        cursor = placeInSideColumn(primarySide, primaryCol, group, cursor);
+
+        // 3) Overflow within the same side, other columns.
+        if (cursor < group.length) {
+          columnPriority
+            .filter(col => col !== primaryCol)
+            .forEach(col => {
+              if (cursor >= group.length) return;
+              cursor = placeInSideColumn(primarySide, col, group, cursor);
+            });
+        }
+
+        // 4) Last resort: spill to the other side.
+        if (cursor < group.length) {
+          sides
+            .filter(side => side !== primarySide)
+            .forEach(side => {
+              columnPriority.forEach(col => {
+                if (cursor >= group.length) return;
+                cursor = placeInSideColumn(side, col, group, cursor);
+              });
+            });
         }
       });
 

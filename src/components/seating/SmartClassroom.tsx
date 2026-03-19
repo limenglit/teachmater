@@ -189,6 +189,32 @@ export default function SmartClassroom({ students }: Props) {
       });
   };
 
+  const getColumnPriority = () => {
+    const center = (tableCols - 1) / 2;
+    return Array.from({ length: tableCols }, (_, col) => col)
+      .sort((a, b) => {
+        const da = Math.abs(a - center);
+        const db = Math.abs(b - center);
+        if (da !== db) return da - db;
+        return a - b;
+      });
+  };
+
+  const getColumnTablesNearPodium = () => {
+    const map = new Map<number, number[]>();
+    for (let col = 0; col < tableCols; col++) {
+      const tables = Array.from({ length: tableRows }, (_, row) => row * tableCols + col)
+        .filter(index => index < tableCount && !reservedTables.has(index))
+        .sort((a, b) => {
+          const rowA = Math.floor(a / tableCols);
+          const rowB = Math.floor(b / tableCols);
+          return rowA - rowB;
+        });
+      map.set(col, tables);
+    }
+    return map;
+  };
+
   const toPositiveInt = (value: number, fallback = 1) => {
     if (!Number.isFinite(value)) return fallback;
     const normalized = Math.floor(value);
@@ -359,8 +385,9 @@ export default function SmartClassroom({ students }: Props) {
     const tables: string[][] = Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => ''));
 
     if (mode === 'orgTablePodium' && !shuffle) {
-      const tableOrder = getPodiumPriorityTableOrder();
       const seatOrder = getSeatOrderNearPodium();
+      const columnPriority = getColumnPriority();
+      const columnTables = getColumnTablesNearPodium();
 
       const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
       students.forEach(student => {
@@ -379,24 +406,57 @@ export default function SmartClassroom({ students }: Props) {
           return b.length - a.length;
         });
 
-      let tableCursor = 0;
-      groups.forEach(group => {
-        let nameCursor = 0;
-        while (nameCursor < group.length && tableCursor < tableOrder.length) {
-          const tableIndex = tableOrder[tableCursor];
-          const availableSeats = seatOrder.filter(seatIndex => !closedSeats.has(seatKey(tableIndex, seatIndex)) && !tables[tableIndex][seatIndex]);
-          if (availableSeats.length === 0) {
-            tableCursor++;
-            continue;
+      const getColumnRemain = (col: number) => {
+        const tablesInCol = columnTables.get(col) || [];
+        let remain = 0;
+        for (const tableIndex of tablesInCol) {
+          for (const seatIndex of seatOrder) {
+            if (closedSeats.has(seatKey(tableIndex, seatIndex))) continue;
+            if (!tables[tableIndex][seatIndex]) remain++;
           }
+        }
+        return remain;
+      };
 
-          const placeCount = Math.min(availableSeats.length, group.length - nameCursor);
-          for (let i = 0; i < placeCount; i++) {
-            const seatIndex = availableSeats[i];
-            tables[tableIndex][seatIndex] = group[nameCursor + i].name;
+      const placeIntoColumn = (col: number, group: Array<{ name: string; score: number }>, startCursor: number) => {
+        const tablesInCol = columnTables.get(col) || [];
+        let cursor = startCursor;
+        for (const tableIndex of tablesInCol) {
+          for (const seatIndex of seatOrder) {
+            if (cursor >= group.length) return cursor;
+            if (closedSeats.has(seatKey(tableIndex, seatIndex))) continue;
+            if (tables[tableIndex][seatIndex]) continue;
+            tables[tableIndex][seatIndex] = group[cursor].name;
+            cursor++;
           }
-          nameCursor += placeCount;
-          tableCursor++;
+        }
+        return cursor;
+      };
+
+      groups.forEach(group => {
+        let cursor = 0;
+
+        // First pass: keep the unit in one column as much as possible.
+        let primaryCol = columnPriority[0];
+        let bestRemain = -1;
+        columnPriority.forEach(col => {
+          const remain = getColumnRemain(col);
+          if (remain > bestRemain) {
+            bestRemain = remain;
+            primaryCol = col;
+          }
+        });
+
+        cursor = placeIntoColumn(primaryCol, group, cursor);
+
+        // Second pass: if overflow, spill to other columns in priority order.
+        if (cursor < group.length) {
+          columnPriority
+            .filter(col => col !== primaryCol)
+            .forEach(col => {
+              if (cursor >= group.length) return;
+              cursor = placeIntoColumn(col, group, cursor);
+            });
         }
       });
 
