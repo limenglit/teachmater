@@ -1,23 +1,10 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Download, Copy, RefreshCw, Maximize2, X, ImageIcon, Type } from 'lucide-react';
-import { useState, lazy, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { toast } from 'sonner';
 import { TextOverlay } from './types';
-
-/** Retry dynamic import once then force-reload to pick up new chunks */
-function lazyRetry<T extends { default: React.ComponentType<any> }>(factory: () => Promise<T>) {
-  return lazy(() =>
-    factory().catch(() => {
-      const key = 'chunk_reload';
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, '1');
-        window.location.reload();
-      }
-      return factory();
-    }),
-  );
-}
+import { lazyRetry } from '@/lib/lazy-retry';
 
 const TextOverlayEditor = lazyRetry(() => import('./TextOverlayEditor'));
 
