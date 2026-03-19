@@ -74,6 +74,32 @@ describe('useStudentStore', () => {
     expect(result.current.students.map(s => s.name)).toEqual(['甲', '乙', '丙']);
   });
 
+  // Case 6.1: 无表头三列数据按 姓名/单位/职务 解析
+  it('importFromText infers name, organization and title for 3-column rows without header', () => {
+    const { result } = renderHook(() => useStudentStore());
+
+    act(() => result.current.importFromText('张三,教务处,处长\n李四,信息中心,科长'));
+
+    expect(result.current.students.length).toBe(2);
+    expect(result.current.students[0].name).toBe('张三');
+    expect(result.current.students[0].organization).toBe('教务处');
+    expect(result.current.students[0].title).toBe('处长');
+    expect(result.current.students[0].gender).toBe('unknown');
+  });
+
+  // Case 6.2: 带表头时按列名解析 姓名/单位/职务
+  it('importFromText maps fields by header names for name, organization and title', () => {
+    const { result } = renderHook(() => useStudentStore());
+
+    act(() => result.current.importFromText('姓名,单位,职务\n王五,后勤处,主任'));
+
+    expect(result.current.students.length).toBe(1);
+    expect(result.current.students[0].name).toBe('王五');
+    expect(result.current.students[0].organization).toBe('后勤处');
+    expect(result.current.students[0].title).toBe('主任');
+    expect(result.current.students[0].gender).toBe('unknown');
+  });
+
   // Case 7: 注册用户优先使用其专属最近名单
   it('loads user-specific recent students after login', () => {
     localStorage.setItem(USER_KEY('u_1'), JSON.stringify([{ id: 's_u1', name: '用户A名单' }]));

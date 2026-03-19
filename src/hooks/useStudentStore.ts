@@ -115,9 +115,41 @@ const parseStudentsFromText = (text: string): Student[] => {
       const name = (hasHeader && nameIdx >= 0 ? parts[nameIdx] : parts[0]) ?? '';
       if (!name) return null;
 
-      const genderRaw = hasHeader && genderIdx >= 0 ? parts[genderIdx] : parts[1];
-      const organizationRaw = hasHeader && orgIdx >= 0 ? parts[orgIdx] : parts[2];
-      const titleRaw = hasHeader && titleIdx >= 0 ? parts[titleIdx] : parts[3];
+      let genderRaw: string | undefined;
+      let organizationRaw: string | undefined;
+      let titleRaw: string | undefined;
+
+      if (hasHeader) {
+        genderRaw = genderIdx >= 0 ? parts[genderIdx] : undefined;
+        organizationRaw = orgIdx >= 0 ? parts[orgIdx] : undefined;
+        titleRaw = titleIdx >= 0 ? parts[titleIdx] : undefined;
+      } else {
+        // No-header mode inference:
+        // - 4+ columns: 姓名, 性别, 单位, 职务
+        // - 3 columns: 姓名, 单位, 职务 (unless second column is clearly a gender)
+        // - 2 columns: 姓名 + 性别 or 姓名 + 单位
+        if (parts.length >= 4) {
+          genderRaw = parts[1];
+          organizationRaw = parts[2];
+          titleRaw = parts[3];
+        } else if (parts.length === 3) {
+          const secondAsGender = normalizeGender(parts[1]);
+          if (secondAsGender !== 'unknown') {
+            genderRaw = parts[1];
+            organizationRaw = parts[2];
+          } else {
+            organizationRaw = parts[1];
+            titleRaw = parts[2];
+          }
+        } else if (parts.length === 2) {
+          const secondAsGender = normalizeGender(parts[1]);
+          if (secondAsGender !== 'unknown') {
+            genderRaw = parts[1];
+          } else {
+            organizationRaw = parts[1];
+          }
+        }
+      }
 
       const gender = normalizeGender(genderRaw);
       const organization = organizationRaw?.trim() || undefined;

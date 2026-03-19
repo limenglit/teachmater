@@ -7,6 +7,7 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useSeatExportQr } from './useSeatExportQr';
 import { toast } from 'sonner';
+import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
 import {
   loadConferenceRoomSnapshot,
@@ -66,6 +67,7 @@ export default function ConferenceRoom({ students }: Props) {
   const [historyItems, setHistoryItems] = useState<ConferenceRoomHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('conference'));
+  const [showOrgColorMark, setShowOrgColorMark] = useState(true);
   const [dragFrom, setDragFrom] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [seated, setSeated] = useState(false);
@@ -157,6 +159,24 @@ export default function ConferenceRoom({ students }: Props) {
   }, [mode, seatsPerSide]);
 
   const scoreTitle = useMemo(() => buildTitleScorer(titleRankRuleText), [titleRankRuleText]);
+
+  const orgByName = useMemo(() => {
+    const map = new Map<string, string>();
+    students.forEach(student => {
+      const org = student.organization?.trim();
+      if (org) map.set(student.name, org);
+    });
+    return map;
+  }, [students]);
+
+  const resolveOrgColor = useMemo(() => buildOrganizationColorResolver(Array.from(orgByName.values())), [orgByName]);
+
+  const getNameColor = (name: string) => {
+    if (!showOrgColorMark) return undefined;
+    const org = orgByName.get(name);
+    if (!org) return undefined;
+    return resolveOrgColor(org);
+  };
 
   const getCenterOutIndexes = (size: number) => {
     const indexes: number[] = [];
@@ -656,6 +676,7 @@ export default function ConferenceRoom({ students }: Props) {
             textAnchor="middle"
             dominantBaseline="middle"
             className="fill-foreground text-xs"
+            style={{ fill: getNameColor(name) }}
           >
             {name.length > 3 ? name.slice(0, 3) : name}
           </text>
@@ -730,6 +751,15 @@ export default function ConferenceRoom({ students }: Props) {
             />
           </label>
         )}
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showOrgColorMark}
+            onChange={e => setShowOrgColorMark(e.target.checked)}
+            className="accent-primary"
+          />
+          单位颜色标识
+        </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           模式
           <select

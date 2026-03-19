@@ -8,6 +8,7 @@ import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
 import { toast } from 'sonner';
+import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
 import {
   loadLastGroups,
@@ -74,6 +75,7 @@ export default function SmartClassroom({ students }: Props) {
   const [historyItems, setHistoryItems] = useState<SmartClassroomHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('smartClassroom'));
+  const [showOrgColorMark, setShowOrgColorMark] = useState(true);
 
   const printRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef<{ index: number; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -138,6 +140,24 @@ export default function SmartClassroom({ students }: Props) {
   };
 
   const scoreTitle = useMemo(() => buildTitleScorer(titleRankRuleText), [titleRankRuleText]);
+
+  const orgByName = useMemo(() => {
+    const map = new Map<string, string>();
+    students.forEach(student => {
+      const org = student.organization?.trim();
+      if (org) map.set(student.name, org);
+    });
+    return map;
+  }, [students]);
+
+  const resolveOrgColor = useMemo(() => buildOrganizationColorResolver(Array.from(orgByName.values())), [orgByName]);
+
+  const getNameColor = (name: string) => {
+    if (!showOrgColorMark) return undefined;
+    const org = orgByName.get(name);
+    if (!org) return undefined;
+    return resolveOrgColor(org);
+  };
 
   const getPodiumPriorityTableOrder = () => {
     const center = (tableCols - 1) / 2;
@@ -656,7 +676,14 @@ export default function SmartClassroom({ students }: Props) {
                   </text>
                 )}
                 {name && !isDragging && (
-                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-foreground text-xs pointer-events-none">
+                  <text
+                    x={sx}
+                    y={sy + 1}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    className="fill-foreground text-xs pointer-events-none"
+                    style={{ fill: getNameColor(name) }}
+                  >
                     {name.length > 3 ? name.slice(0, 3) : name}
                   </text>
                 )}
@@ -752,6 +779,15 @@ export default function SmartClassroom({ students }: Props) {
           桌子间距
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showOrgColorMark}
+            onChange={e => setShowOrgColorMark(e.target.checked)}
+            className="accent-primary"
+          />
+          单位颜色标识
         </label>
         <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
           <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={assignment.length === 0}>
