@@ -64,19 +64,29 @@ serve(async (req) => {
       }
     }
 
-    // Verify topic exists and creator_token matches
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    );
+    // Verify topic exists and creator_token matches.
+    // Use service role here so topic validation is not blocked by table RLS.
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      throw new Error('Supabase service credentials are not configured');
+    }
+
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
 
     const { data: topic, error: topicError } = await supabaseClient
       .from('discussion_topics')
       .select('id, creator_token')
       .eq('id', topic_id)
-      .single();
+      .maybeSingle();
 
-    if (topicError || !topic) {
+    if (topicError) {
+      console.error('Failed to load discussion topic:', topicError);
+      return errorResponse(req, 'Topic lookup failed', 500);
+    }
+
+    if (!topic) {
       return errorResponse(req, 'Topic not found', 404);
     }
 
