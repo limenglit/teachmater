@@ -117,6 +117,19 @@ export default function QuizPanel() {
     setSessions(all);
   };
 
+  const ensureSessionToken = (session: QuizSession | null): string | null => {
+    if (!session) return null;
+    const cached = getSessionToken(session.id);
+    if (cached) return cached;
+
+    const fallback = (session as any).creator_token as string | undefined;
+    if (fallback && fallback.trim()) {
+      saveSessionToken(session.id, fallback);
+      return fallback;
+    }
+    return null;
+  };
+
   const startSession = async () => {
     if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
     const selected = questions.filter(q => selectedIds.has(q.id));
@@ -138,7 +151,7 @@ export default function QuizPanel() {
 
   const endSession = async () => {
     if (!activeSession || ending) return;
-    const token = getSessionToken(activeSession.id);
+    const token = ensureSessionToken(activeSession);
     if (!token) {
       toast({ title: '无法结束测验：缺少会话凭证', variant: 'destructive' });
       return;
@@ -183,7 +196,7 @@ export default function QuizPanel() {
   };
 
   const deleteSession = async (s: QuizSession) => {
-    const token = getSessionToken(s.id);
+    const token = ensureSessionToken(s);
     if (!token) return;
     await supabase.rpc('delete_quiz_session', { p_session_id: s.id, p_token: token } as any);
     setSessions(prev => prev.filter(x => x.id !== s.id));
@@ -401,7 +414,12 @@ export default function QuizPanel() {
             ) : sessions.map(s => (
               <div key={s.id}
                 className="p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors cursor-pointer group"
-                onClick={() => { setActiveSession(s); setShowSession(true); }}>
+                onClick={() => {
+                  ensureSessionToken(s);
+                  setRevealAfterEnd(!!(s as any).reveal_answers);
+                  setActiveSession(s);
+                  setShowSession(true);
+                }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-foreground truncate">{s.title}</span>
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${s.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
