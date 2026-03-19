@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,7 @@ import {
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type StartFrom = 'door' | 'window';
-type GenderSeatPolicy = 'none' | 'alternate' | 'cluster';
+type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
 type GenderFirst = 'male' | 'female';
 
 export default function SeatChart() {
@@ -70,6 +70,7 @@ export default function SeatChart() {
   const [startFrom, setStartFrom] = useState<StartFrom>('door');
   const [genderSeatPolicy, setGenderSeatPolicy] = useState<GenderSeatPolicy>('none');
   const [genderFirst, setGenderFirst] = useState<GenderFirst>('male');
+  const [centerRowsByGender, setCenterRowsByGender] = useState(true);
 
   const [colAisles, setColAisles] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
@@ -130,6 +131,13 @@ export default function SeatChart() {
     return Array.from({ length: cols }, (_, i) => i);
   }, [cols, startFrom, windowOnLeft]);
 
+  const genderStats = useMemo(() => {
+    const male = students.filter(s => (s.gender ?? 'unknown') === 'male').length;
+    const female = students.filter(s => (s.gender ?? 'unknown') === 'female').length;
+    const unknown = students.length - male - female;
+    return { male, female, unknown };
+  }, [students]);
+
   const getGenderOrderedNames = useCallback(() => {
     if (genderSeatPolicy === 'none') return students.map(s => s.name);
 
@@ -168,9 +176,62 @@ export default function SeatChart() {
 
   const autoSeat = useCallback(() => {
     const grid = makeGrid();
-    const names = getGenderOrderedNames();
     const isAvailable = (r: number, c: number) => !disabledSeats.has(seatKey(r, c));
+    const names = getGenderOrderedNames();
     const colOrder = getColOrder();
+
+    const getCenteredCols = (availableCols: number[], count: number) => {
+      if (count >= availableCols.length) return availableCols;
+      const sorted = [...availableCols].sort((a, b) => a - b);
+      const start = Math.floor((sorted.length - count) / 2);
+      return sorted.slice(start, start + count);
+    };
+
+    if (genderSeatPolicy === 'alternateRows') {
+      const maleQueue = students.filter(s => (s.gender ?? 'unknown') === 'male').map(s => s.name);
+      const femaleQueue = students.filter(s => (s.gender ?? 'unknown') === 'female').map(s => s.name);
+      const unknownQueue = students.filter(s => (s.gender ?? 'unknown') === 'unknown').map(s => s.name);
+
+      const takeFromQueue = (queue: string[], count: number) => {
+        if (count <= 0) return [] as string[];
+        return queue.splice(0, count);
+      };
+
+      for (let r = 0; r < rows; r++) {
+        const rowAvailableCols = colOrder.filter(c => isAvailable(r, c));
+        if (rowAvailableCols.length === 0) continue;
+
+        const useMaleFirst = genderFirst === 'male';
+        const primaryQueue = (r % 2 === 0)
+          ? (useMaleFirst ? maleQueue : femaleQueue)
+          : (useMaleFirst ? femaleQueue : maleQueue);
+        const secondaryQueue = (r % 2 === 0)
+          ? (useMaleFirst ? femaleQueue : maleQueue)
+          : (useMaleFirst ? maleQueue : femaleQueue);
+
+        const rowNames: string[] = [];
+        rowNames.push(...takeFromQueue(primaryQueue, rowAvailableCols.length - rowNames.length));
+        if (rowNames.length < rowAvailableCols.length) {
+          rowNames.push(...takeFromQueue(secondaryQueue, rowAvailableCols.length - rowNames.length));
+        }
+        if (rowNames.length < rowAvailableCols.length) {
+          rowNames.push(...takeFromQueue(unknownQueue, rowAvailableCols.length - rowNames.length));
+        }
+
+        if (rowNames.length === 0) continue;
+        const targetCols = centerRowsByGender
+          ? getCenteredCols(rowAvailableCols, rowNames.length)
+          : rowAvailableCols.slice(0, rowNames.length);
+
+        for (let i = 0; i < rowNames.length; i++) {
+          const c = targetCols[i];
+          if (c !== undefined) grid[r][c] = rowNames[i];
+        }
+      }
+
+      setSeats(grid);
+      return;
+    }
 
     switch (mode) {
       case 'verticalS': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
@@ -182,7 +243,7 @@ export default function SeatChart() {
       case 'random': { const shuffled = [...names].sort(() => Math.random() - 0.5); let idx = 0; for (let r = 0; r < rows && idx < shuffled.length; r++) { for (let c = 0; c < cols && idx < shuffled.length; c++) { if (isAvailable(r, c)) grid[r][c] = shuffled[idx++]; } } break; }
     }
     setSeats(grid);
-  }, [rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames]);
+  }, [rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender]);
 
   const handleDragStart = (r: number, c: number) => { if (!seats[r][c]) return; setDragFrom({ r, c }); };
   const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
@@ -579,6 +640,7 @@ export default function SeatChart() {
                 <option value="none">不限制</option>
                 <option value="alternate">男女间隔</option>
                 <option value="cluster">男女集中</option>
+                <option value="alternateRows">男女隔行</option>
               </select>
             </label>
             {genderSeatPolicy !== 'none' && (
@@ -593,6 +655,22 @@ export default function SeatChart() {
                   <option value="female">女生在前</option>
                 </select>
               </label>
+            )}
+            {genderSeatPolicy === 'alternateRows' && (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={centerRowsByGender}
+                  onChange={e => setCenterRowsByGender(e.target.checked)}
+                  className="accent-primary"
+                />
+                自动居中
+              </label>
+            )}
+            {genderSeatPolicy !== 'none' && (
+              <div className="text-xs text-muted-foreground rounded-md border border-border/60 px-2 py-1 bg-background/70">
+                男 {genderStats.male} / 女 {genderStats.female} / 未知 {genderStats.unknown}
+              </div>
             )}
           </div>
         </div>
