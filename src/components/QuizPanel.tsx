@@ -62,6 +62,7 @@ export default function QuizPanel() {
   const [ending, setEnding] = useState(false);
   const [endConfirmOpen, setEndConfirmOpen] = useState(false);
   const [revealAfterEnd, setRevealAfterEnd] = useState(false);
+  const [revealFeatureUnsupported, setRevealFeatureUnsupported] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const REVEAL_AFTER_END_KEY = 'quiz-reveal-after-end';
@@ -137,11 +138,33 @@ export default function QuizPanel() {
     // Default to sidebar students if no roster selected
     const names = sessionStudentNames.length > 0 ? sessionStudentNames : sidebarStudents.map(s => s.name);
     const title = sessionTitle.trim() || t('quiz.defaultTitle');
-    const { data, error } = await supabase.from('quiz_sessions').insert({
-      user_id: user.id, title, questions: selected as any,
+    const payload: any = {
+      user_id: user.id,
+      title,
+      questions: selected as any,
       reveal_answers: revealAfterEnd,
       student_names: names as any,
-    }).select().single() as any;
+    };
+
+    const isRevealSchemaError = (message?: string) => {
+      const m = (message || '').toLowerCase();
+      return m.includes('reveal_answers') && (m.includes('schema cache') || m.includes('column') || m.includes('could not find'));
+    };
+
+    let { data, error } = await supabase.from('quiz_sessions').insert(payload).select().single() as any;
+
+    if (error && isRevealSchemaError(error.message)) {
+      // Auto fallback when database column is not migrated or PostgREST schema cache is stale.
+      const { reveal_answers: _skip, ...fallbackPayload } = payload;
+      const retry = await supabase.from('quiz_sessions').insert(fallbackPayload).select().single() as any;
+      data = retry.data;
+      error = retry.error;
+      if (!retry.error) {
+        setRevealFeatureUnsupported(true);
+        toast({ title: '测验已发布（数据库未升级公开答案功能，已自动降级）' });
+      }
+    }
+
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     saveSessionToken(data.id, data.creator_token);
     setActiveSession(data); setShowSession(true);
@@ -295,9 +318,13 @@ export default function QuizPanel() {
             <div className="flex items-center justify-between rounded-md border border-border p-3">
               <div className="text-sm">
                 <p className="font-medium text-foreground">结束后公开参考答案</p>
-                <p className="text-xs text-muted-foreground">开启后，学生端在结束页可查看每题参考答案</p>
+                <p className="text-xs text-muted-foreground">
+                  {revealFeatureUnsupported
+                    ? '当前数据库未升级公开答案功能，开关暂不可用'
+                    : '开启后，学生端在结束页可查看每题参考答案'}
+                </p>
               </div>
-              <Switch checked={revealAfterEnd} onCheckedChange={setRevealAfterEnd} />
+              <Switch checked={revealAfterEnd} onCheckedChange={setRevealAfterEnd} disabled={revealFeatureUnsupported} />
             </div>
 
             <AlertDialogFooter>
