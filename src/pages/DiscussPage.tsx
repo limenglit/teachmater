@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, User } from 'lucide-react';
+import { Send, User, ChevronDown } from 'lucide-react';
 
 export default function DiscussPage() {
   const { topicId } = useParams<{ topicId: string }>();
   const { t } = useLanguage();
-  const [topic, setTopic] = useState<{ title: string } | null>(null);
+  const [topic, setTopic] = useState<{ title: string; student_names?: string[] | null } | null>(null);
   const [nickname, setNickname] = useState('');
   const [nicknameConfirmed, setNicknameConfirmed] = useState(false);
   const [content, setContent] = useState('');
@@ -17,12 +17,25 @@ export default function DiscussPage() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
   const [recentMessages, setRecentMessages] = useState<{ nickname: string; content: string }[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filterText, setFilterText] = useState('');
+
+  const studentNames: string[] = useMemo(() => {
+    if (!topic?.student_names) return [];
+    return Array.isArray(topic.student_names) ? topic.student_names : [];
+  }, [topic]);
+
+  const filteredNames = useMemo(() => {
+    if (!filterText.trim()) return studentNames;
+    const q = filterText.trim().toLowerCase();
+    return studentNames.filter(n => n.toLowerCase().includes(q));
+  }, [studentNames, filterText]);
 
   useEffect(() => {
     if (!topicId) return;
     supabase
       .from('discussion_topics' as any)
-      .select('title')
+      .select('title, student_names')
       .eq('id', topicId)
       .single()
       .then(({ data, error }) => {
@@ -51,6 +64,12 @@ export default function DiscussPage() {
     if (!nickname.trim()) return;
     setNicknameConfirmed(true);
     localStorage.setItem(`discuss-nick-${topicId}`, nickname.trim());
+  };
+
+  const handleSelectName = (name: string) => {
+    setNickname(name);
+    setFilterText('');
+    setShowDropdown(false);
   };
 
   const handleSend = async () => {
@@ -88,17 +107,60 @@ export default function DiscussPage() {
             <p className="text-sm text-muted-foreground mt-1">{t('discuss.enterNickname')}</p>
           </div>
           <div className="space-y-3">
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                value={nickname}
-                onChange={e => setNickname(e.target.value.slice(0, 12))}
-                placeholder={t('discuss.nicknamePlaceholder')}
-                className="pl-9"
-                maxLength={12}
-                onKeyDown={e => e.key === 'Enter' && handleConfirmNickname()}
-              />
-            </div>
+            {studentNames.length > 0 ? (
+              /* Name picker from linked roster */
+              <div className="relative">
+                <div
+                  className="flex items-center border border-border rounded-md bg-card cursor-pointer"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                >
+                  <User className="ml-3 w-4 h-4 text-muted-foreground shrink-0" />
+                  <input
+                    value={nickname || filterText}
+                    onChange={e => {
+                      setFilterText(e.target.value);
+                      setNickname('');
+                      setShowDropdown(true);
+                    }}
+                    placeholder={t('discuss.selectName') || '请选择或搜索姓名'}
+                    className="flex-1 bg-transparent px-2 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                    onFocus={() => setShowDropdown(true)}
+                    onKeyDown={e => e.key === 'Enter' && handleConfirmNickname()}
+                  />
+                  <ChevronDown className="mr-2 w-4 h-4 text-muted-foreground shrink-0" />
+                </div>
+                {showDropdown && (
+                  <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto bg-card border border-border rounded-md shadow-lg">
+                    {filteredNames.length > 0 ? filteredNames.map(name => (
+                      <button
+                        key={name}
+                        className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                        onClick={() => handleSelectName(name)}
+                      >
+                        {name}
+                      </button>
+                    )) : (
+                      <div className="px-3 py-2 text-sm text-muted-foreground">
+                        {t('discuss.noMatch') || '未找到匹配姓名'}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Fallback: free text input */
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={nickname}
+                  onChange={e => setNickname(e.target.value.slice(0, 12))}
+                  placeholder={t('discuss.nicknamePlaceholder')}
+                  className="pl-9"
+                  maxLength={12}
+                  onKeyDown={e => e.key === 'Enter' && handleConfirmNickname()}
+                />
+              </div>
+            )}
             <Button onClick={handleConfirmNickname} disabled={!nickname.trim()} className="w-full gap-2">
               {t('discuss.enterDiscussion')}
             </Button>

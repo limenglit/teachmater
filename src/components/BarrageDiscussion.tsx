@@ -253,8 +253,8 @@ export default function BarrageDiscussion() {
   }, [messages, isPlaying]);
 
   const handleReport = async () => {
-    if (messages.length === 0) {
-      toast({ title: t('barrage.noData'), variant: 'destructive' });
+    if (messages.length < 3) {
+      toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成报告', variant: 'destructive' });
       return;
     }
     if (!recordGuestAIUsage(isLoggedIn)) {
