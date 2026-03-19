@@ -6,6 +6,8 @@ export interface Student {
   id: string;
   name: string;
   gender?: StudentGender;
+  organization?: string;
+  title?: string;
 }
 
 const STORAGE_KEY_PREFIX = 'teachmate_students';
@@ -21,7 +23,9 @@ const loadStudents = (storageKey: string): Student[] => {
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((item): item is Student => {
       const genderValid = item?.gender === undefined || item?.gender === 'male' || item?.gender === 'female' || item?.gender === 'unknown';
-      return !!item && typeof item.id === 'string' && typeof item.name === 'string' && genderValid;
+      const organizationValid = item?.organization === undefined || typeof item.organization === 'string';
+      const titleValid = item?.title === undefined || typeof item.title === 'string';
+      return !!item && typeof item.id === 'string' && typeof item.name === 'string' && genderValid && organizationValid && titleValid;
     });
   } catch {
     return [];
@@ -80,29 +84,51 @@ const parseStudentsFromText = (text: string): Student[] => {
 
   if (lines.length === 0) return [];
 
-  const hasHeader = /姓名|name/i.test(lines[0]) && /性别|gender|sex/i.test(lines[0]);
+  const splitParts = (line: string) => {
+    const byDelimiter = line
+      .split(/[\t,，]/)
+      .map(part => part.trim())
+      .filter(Boolean);
+
+    // Fallback: support "姓名 空格 性别 单位 职务" style lines.
+    if (byDelimiter.length <= 1) {
+      return line.split(/\s+/).map(part => part.trim()).filter(Boolean);
+    }
+    return byDelimiter;
+  };
+
+  const headerParts = splitParts(lines[0]).map(part => part.toLowerCase());
+  const hasHeader = headerParts.some(part => /姓名|name/.test(part));
+
+  const getHeaderIndex = (matcher: RegExp) => headerParts.findIndex(part => matcher.test(part));
+  const nameIdx = hasHeader ? getHeaderIndex(/姓名|name/) : -1;
+  const genderIdx = hasHeader ? getHeaderIndex(/性别|gender|sex/) : -1;
+  const orgIdx = hasHeader ? getHeaderIndex(/单位|组织|部门|company|org|organization|unit/) : -1;
+  const titleIdx = hasHeader ? getHeaderIndex(/职务|职位|title|position|role/) : -1;
+
   const rows = hasHeader ? lines.slice(1) : lines;
 
   return rows
     .map((line, i) => {
-      const parts = line
-        .split(/[\t,，]/)
-        .map(part => part.trim())
-        .filter(Boolean);
+      const parts = splitParts(line);
 
-      // Fallback: support "姓名 空格 性别" inputs if no comma/tab separator is used.
-      const normalizedParts = parts.length <= 1
-        ? line.split(/\s+/).map(part => part.trim()).filter(Boolean)
-        : parts;
-
-      const name = normalizedParts[0] ?? '';
+      const name = (hasHeader && nameIdx >= 0 ? parts[nameIdx] : parts[0]) ?? '';
       if (!name) return null;
 
-      const gender = normalizeGender(normalizedParts[1]);
+      const genderRaw = hasHeader && genderIdx >= 0 ? parts[genderIdx] : parts[1];
+      const organizationRaw = hasHeader && orgIdx >= 0 ? parts[orgIdx] : parts[2];
+      const titleRaw = hasHeader && titleIdx >= 0 ? parts[titleIdx] : parts[3];
+
+      const gender = normalizeGender(genderRaw);
+      const organization = organizationRaw?.trim() || undefined;
+      const title = titleRaw?.trim() || undefined;
+
       return {
         id: `s_${Date.now()}_${i}`,
         name,
         gender,
+        organization,
+        title,
       } as Student;
     })
     .filter((student): student is Student => !!student);

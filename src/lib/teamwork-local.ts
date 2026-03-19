@@ -28,7 +28,7 @@ export interface SmartClassroomSnapshot {
   tableCols: number;
   tableRows: number;
   groupCount: number;
-  mode: 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+  mode: 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
   tableGap: number;
   assignment: string[][];
   closedSeats: string[];
@@ -49,7 +49,7 @@ export interface BanquetHallSnapshot {
   tableCols: number;
   tableRows: number;
   groupCount: number;
-  mode: 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+  mode: 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTableStage';
   tableGap: number;
   assignment: string[][];
   closedSeats: string[];
@@ -76,7 +76,7 @@ export interface ConferenceRoomAssignment {
 export interface ConferenceRoomSnapshot {
   seatsPerSide: number;
   groupCount: number;
-  mode: 'balanced' | 'groupCluster' | 'verticalS' | 'horizontalS';
+  mode: 'balanced' | 'groupCluster' | 'verticalS' | 'horizontalS' | 'orgSideRankCenter';
   seatGap: number;
   showCompanionSeats: boolean;
   companionRows: number;

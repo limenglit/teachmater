@@ -20,10 +20,10 @@ import {
 } from '@/lib/teamwork-local';
 
 interface Props {
-  students: { id: string; name: string }[];
+  students: { id: string; name: string; organization?: string; title?: string }[];
 }
 
-type BanquetSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS';
+type BanquetSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTableStage';
 type RefKey = 'screen' | 'podium' | 'window' | 'frontDoor' | 'backDoor';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
@@ -52,7 +52,7 @@ export default function BanquetHall({ students }: Props) {
   const [tableRows, setTableRows] = useState(initialTableRows);
   const [tableCount, setTableCount] = useState(initialTableCount);
   const [groupCount, setGroupCount] = useState(4);
-  const [mode, setMode] = useState<BanquetSeatMode>('tableRoundRobin');
+  const [mode, setMode] = useState<BanquetSeatMode>('orgTableStage');
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [reservedTables, setReservedTables] = useState<Set<number>>(new Set());
@@ -204,6 +204,53 @@ export default function BanquetHall({ students }: Props) {
     return groups;
   };
 
+  const getTitleScore = (title?: string) => {
+    if (!title) return 0;
+    const normalized = title.toLowerCase();
+    const scoreRules: Array<{ rule: RegExp; score: number }> = [
+      { rule: /董事长|总裁|首席|ceo|president/, score: 120 },
+      { rule: /副总裁|总经理|总监|director general|vice president|vp/, score: 100 },
+      { rule: /司长|处长|院长|校长|主任|馆长/, score: 85 },
+      { rule: /副主任|副处长|副院长|副校长/, score: 75 },
+      { rule: /经理|主管|team lead|lead|manager/, score: 60 },
+      { rule: /老师|教师|讲师|教授|研究员|engineer|specialist/, score: 45 },
+    ];
+    for (const item of scoreRules) {
+      if (item.rule.test(normalized)) return item.score;
+    }
+    return 30;
+  };
+
+  const getStagePriorityTableOrder = () => {
+    const center = (tableCols - 1) / 2;
+    return Array.from({ length: tableCount }, (_, i) => i)
+      .filter(index => !reservedTables.has(index))
+      .sort((a, b) => {
+        const rowA = Math.floor(a / tableCols);
+        const rowB = Math.floor(b / tableCols);
+        if (rowA !== rowB) return rowA - rowB;
+        const colA = a % tableCols;
+        const colB = b % tableCols;
+        const centerDistA = Math.abs(colA - center);
+        const centerDistB = Math.abs(colB - center);
+        if (centerDistA !== centerDistB) return centerDistA - centerDistB;
+        return colA - colB;
+      });
+  };
+
+  const getSeatOrderNearStage = () => {
+    const radius = 60;
+    return Array.from({ length: seatsPerTable }, (_, i) => i)
+      .sort((a, b) => {
+        const angleA = (2 * Math.PI * a) / seatsPerTable - Math.PI / 2;
+        const angleB = (2 * Math.PI * b) / seatsPerTable - Math.PI / 2;
+        const yA = radius * Math.sin(angleA);
+        const yB = radius * Math.sin(angleB);
+        if (yA !== yB) return yA - yB;
+        return Math.abs(Math.cos(angleA)) - Math.abs(Math.cos(angleB));
+      });
+  };
+
   const applyGroupsToSeat = (fromGroups: ReturnType<typeof loadLastGroups>) => {
     const availableNames = new Set(students.map(s => s.name));
     const filteredGroups = fromGroups
@@ -276,6 +323,52 @@ export default function BanquetHall({ students }: Props) {
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
       : students.map(s => s.name);
     const tables: string[][] = Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => ''));
+
+    if (mode === 'orgTableStage' && !shuffle) {
+      const tableOrder = getStagePriorityTableOrder();
+      const seatOrder = getSeatOrderNearStage();
+
+      const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
+      students.forEach(student => {
+        const org = student.organization?.trim() || '未分配单位';
+        const item = { name: student.name, score: getTitleScore(student.title) };
+        const bucket = groupsMap.get(org);
+        if (bucket) bucket.push(item);
+        else groupsMap.set(org, [item]);
+      });
+
+      const groups = Array.from(groupsMap.values())
+        .map(group => group.sort((a, b) => b.score - a.score))
+        .sort((a, b) => {
+          const topScoreDiff = (b[0]?.score ?? 0) - (a[0]?.score ?? 0);
+          if (topScoreDiff !== 0) return topScoreDiff;
+          return b.length - a.length;
+        });
+
+      let tableCursor = 0;
+      groups.forEach(group => {
+        let nameCursor = 0;
+        while (nameCursor < group.length && tableCursor < tableOrder.length) {
+          const tableIndex = tableOrder[tableCursor];
+          const availableSeats = seatOrder.filter(seatIndex => !closedSeats.has(seatKey(tableIndex, seatIndex)) && !tables[tableIndex][seatIndex]);
+          if (availableSeats.length === 0) {
+            tableCursor++;
+            continue;
+          }
+
+          const placeCount = Math.min(availableSeats.length, group.length - nameCursor);
+          for (let i = 0; i < placeCount; i++) {
+            const seatIndex = availableSeats[i];
+            tables[tableIndex][seatIndex] = group[nameCursor + i].name;
+          }
+          nameCursor += placeCount;
+          tableCursor++;
+        }
+      });
+
+      setAssignment(tables);
+      return;
+    }
 
     if (mode === 'tableGrouped') {
       const cachedGroups = loadLastGroups();
@@ -680,6 +773,7 @@ export default function BanquetHall({ students }: Props) {
             <option value="tableGrouped">每组一桌</option>
             <option value="verticalS">纵向 S 型</option>
             <option value="horizontalS">横向 S 型</option>
+            <option value="orgTableStage">同单位一桌+高职近舞台</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (

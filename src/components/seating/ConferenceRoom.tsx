@@ -16,10 +16,10 @@ import {
 } from '@/lib/teamwork-local';
 
 interface Props {
-  students: { id: string; name: string }[];
+  students: { id: string; name: string; organization?: string; title?: string }[];
 }
 
-type ConferenceSeatMode = 'balanced' | 'groupCluster' | 'verticalS' | 'horizontalS';
+type ConferenceSeatMode = 'balanced' | 'groupCluster' | 'verticalS' | 'horizontalS' | 'orgSideRankCenter';
 type RefKey = 'screen' | 'podium' | 'window' | 'frontDoor' | 'backDoor';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
@@ -47,7 +47,7 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 export default function ConferenceRoom({ students }: Props) {
   const [seatsPerSide, setSeatsPerSide] = useState(10);
   const [groupCount, setGroupCount] = useState(4);
-  const [mode, setMode] = useState<ConferenceSeatMode>('balanced');
+  const [mode, setMode] = useState<ConferenceSeatMode>('orgSideRankCenter');
   const [seatGap, setSeatGap] = useState(6);
   const [showCompanionSeats, setShowCompanionSeats] = useState(true);
   const [companionRows, setCompanionRows] = useState(1);
@@ -152,6 +152,62 @@ export default function ConferenceRoom({ students }: Props) {
     for (let c = 0; c < seatsPerSide; c++) slots.push({ side: 'bottom', index: c });
     return slots;
   }, [mode, seatsPerSide]);
+
+  const titleScore = (title?: string) => {
+    if (!title) return 0;
+    const normalized = title.toLowerCase();
+    const scoreRules: Array<{ rule: RegExp; score: number }> = [
+      { rule: /董事长|总裁|首席|ceo|president/, score: 120 },
+      { rule: /副总裁|总经理|总监|director general|vice president|vp/, score: 100 },
+      { rule: /司长|处长|院长|校长|主任|馆长/, score: 85 },
+      { rule: /副主任|副处长|副院长|副校长/, score: 75 },
+      { rule: /经理|主管|team lead|lead|manager/, score: 60 },
+      { rule: /老师|教师|讲师|教授|研究员|engineer|specialist/, score: 45 },
+    ];
+    for (const item of scoreRules) {
+      if (item.rule.test(normalized)) return item.score;
+    }
+    return 30;
+  };
+
+  const getCenterOutIndexes = (size: number) => {
+    const indexes: number[] = [];
+    if (size <= 0) return indexes;
+    const leftCenter = Math.floor((size - 1) / 2);
+    const rightCenter = Math.ceil((size - 1) / 2);
+    indexes.push(leftCenter);
+    if (rightCenter !== leftCenter) indexes.push(rightCenter);
+    for (let offset = 1; indexes.length < size; offset++) {
+      const left = leftCenter - offset;
+      const right = rightCenter + offset;
+      if (left >= 0) indexes.push(left);
+      if (right < size) indexes.push(right);
+    }
+    return indexes;
+  };
+
+  const getSidePrioritySlots = (side: 'top' | 'bottom', availableSlots: string[]) => {
+    const sideSlots = new Set(
+      availableSlots.filter(slot => slot.startsWith(`main-${side}-`) || slot.startsWith(`companion-${side}-`))
+    );
+
+    const prioritized: string[] = [];
+    const centeredMain = getCenterOutIndexes(seatsPerSide).map(index => `main-${side}-${index}`);
+    centeredMain.forEach(slot => {
+      if (sideSlots.has(slot)) prioritized.push(slot);
+    });
+
+    if (showCompanionSeats) {
+      for (let row = 0; row < companionRows; row++) {
+        const centeredCompanion = getCenterOutIndexes(seatsPerSide).map(index => `companion-${side}-${row}-${index}`);
+        centeredCompanion.forEach(slot => {
+          if (sideSlots.has(slot)) prioritized.push(slot);
+        });
+      }
+    }
+
+    return prioritized;
+  };
 
   const allSlots = useMemo(() => {
     const slots: string[] = ['head-left', 'head-right'];
@@ -313,6 +369,76 @@ export default function ConferenceRoom({ students }: Props) {
     };
 
     const availableSlots = allSlots.filter(slot => !closedSeats.has(slot));
+
+    if (mode === 'orgSideRankCenter' && !shuffle) {
+      const topSlots = getSidePrioritySlots('top', availableSlots);
+      const bottomSlots = getSidePrioritySlots('bottom', availableSlots);
+      const neutralSlots = availableSlots.filter(slot => !topSlots.includes(slot) && !bottomSlots.includes(slot));
+
+      const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
+      students.forEach(student => {
+        const org = student.organization?.trim() || '未分配单位';
+        const item = { name: student.name, score: titleScore(student.title) };
+        const bucket = groupsMap.get(org);
+        if (bucket) bucket.push(item);
+        else groupsMap.set(org, [item]);
+      });
+
+      const groups = Array.from(groupsMap.values())
+        .map(items => items.sort((a, b) => b.score - a.score).map(item => item.name))
+        .sort((a, b) => b.length - a.length);
+
+      const topQueue: string[] = [];
+      const bottomQueue: string[] = [];
+
+      let topRemain = topSlots.length;
+      let bottomRemain = bottomSlots.length;
+
+      groups.forEach((group, idx) => {
+        const preferTop = topRemain === bottomRemain ? idx % 2 === 0 : topRemain > bottomRemain;
+        const target = preferTop ? topQueue : bottomQueue;
+        const fallback = preferTop ? bottomQueue : topQueue;
+        const targetRemain = preferTop ? topRemain : bottomRemain;
+        const fallbackRemain = preferTop ? bottomRemain : topRemain;
+
+        if (group.length <= targetRemain) {
+          target.push(...group);
+          if (preferTop) topRemain -= group.length;
+          else bottomRemain -= group.length;
+          return;
+        }
+
+        target.push(...group.slice(0, targetRemain));
+        fallback.push(...group.slice(targetRemain, targetRemain + fallbackRemain));
+        if (preferTop) {
+          topRemain = 0;
+          bottomRemain = Math.max(0, bottomRemain - (group.length - targetRemain));
+        } else {
+          bottomRemain = 0;
+          topRemain = Math.max(0, topRemain - (group.length - targetRemain));
+        }
+      });
+
+      topSlots.forEach((slot, index) => {
+        const name = topQueue[index];
+        if (name) setSeatValue(next, slot, name);
+      });
+
+      bottomSlots.forEach((slot, index) => {
+        const name = bottomQueue[index];
+        if (name) setSeatValue(next, slot, name);
+      });
+
+      const remaining = [...topQueue.slice(topSlots.length), ...bottomQueue.slice(bottomSlots.length)];
+      neutralSlots.forEach((slot, index) => {
+        const name = remaining[index];
+        if (name) setSeatValue(next, slot, name);
+      });
+
+      setAssignment(next);
+      setSeated(true);
+      return;
+    }
 
     if (mode === 'groupCluster') {
       const groups = splitIntoGroups(names, Math.max(1, groupCount));
@@ -627,6 +753,7 @@ export default function ConferenceRoom({ students }: Props) {
             <option value="groupCluster">分组同侧</option>
             <option value="verticalS">竖S分配</option>
             <option value="horizontalS">横S分配</option>
+            <option value="orgSideRankCenter">单位同侧+职务居中</option>
           </select>
         </label>
         {mode === 'groupCluster' && (
