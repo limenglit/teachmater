@@ -3,29 +3,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { FeatureConfigProvider } from "@/contexts/FeatureConfigContext";
+import { lazyRetry } from "@/lib/lazy-retry";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-
-/** Retry dynamic import once then force-reload to pick up new chunks */
-function lazyRetry<T extends { default: React.ComponentType<any> }>(
-  factory: () => Promise<T>,
-) {
-  return lazy(() =>
-    factory().catch(() => {
-      // Chunk likely outdated after a new deploy – reload once
-      const key = 'chunk_reload';
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, '1');
-        window.location.reload();
-      }
-      return factory(); // second attempt
-    }),
-  );
-}
 
 const DiscussPage = lazyRetry(() => import("./pages/DiscussPage"));
 const CheckInPage = lazyRetry(() => import("./pages/CheckInPage"));

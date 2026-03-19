@@ -1,0 +1,1 @@
+ALTER TABLE public.discussion_topics ADD COLUMN IF NOT EXISTS student_names jsonb DEFAULT NULL;

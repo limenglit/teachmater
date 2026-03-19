@@ -1,11 +1,12 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Download, Copy, RefreshCw, Maximize2, X, ImageIcon, Type } from 'lucide-react';
-import { useState, lazy, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { toast } from 'sonner';
 import { TextOverlay } from './types';
+import { lazyRetry } from '@/lib/lazy-retry';
 
-const TextOverlayEditor = lazy(() => import('./TextOverlayEditor'));
+const TextOverlayEditor = lazyRetry(() => import('./TextOverlayEditor'));
 
 /** Copy text to clipboard with fallback for older browsers */
 async function safeClipboardWrite(text: string): Promise<void> {
