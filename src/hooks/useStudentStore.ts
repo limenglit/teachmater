@@ -32,13 +32,35 @@ const saveStudents = (storageKey: string, students: Student[]) => {
   localStorage.setItem(storageKey, JSON.stringify(students));
 };
 
-// Default demo students
-const DEFAULT_STUDENTS: Student[] = [
-  '张思睿', '李雨桐', '王知行', '陈小星', '赵一一', '刘夏天',
-  '周恬恬', '吴子涵', '郑子琪', '孙悦然', '黄晓明', '林可欣',
-  '杨思远', '胡晨曦', '朱明远', '马天宇', '罗嘉怡', '谢雨霏',
-  '韩冬阳', '唐一宸', '沈清秋', '许诺言', '冯晚晴', '曹书语'
-].map((name, i) => ({ id: `s_${i}`, name }));
+// Default demo students (24 total, gender-tagged for seating policy verification)
+const DEFAULT_STUDENT_SEEDS: Array<{ name: string; gender: StudentGender }> = [
+  { name: '张思睿', gender: 'male' },
+  { name: '李雨桐', gender: 'female' },
+  { name: '王知行', gender: 'male' },
+  { name: '陈小星', gender: 'female' },
+  { name: '赵一一', gender: 'male' },
+  { name: '刘夏天', gender: 'female' },
+  { name: '周恬恬', gender: 'female' },
+  { name: '吴子涵', gender: 'male' },
+  { name: '郑子琪', gender: 'female' },
+  { name: '孙悦然', gender: 'female' },
+  { name: '黄晓明', gender: 'male' },
+  { name: '林可欣', gender: 'female' },
+  { name: '杨思远', gender: 'male' },
+  { name: '胡晨曦', gender: 'female' },
+  { name: '朱明远', gender: 'male' },
+  { name: '马天宇', gender: 'male' },
+  { name: '罗嘉怡', gender: 'female' },
+  { name: '谢雨霏', gender: 'female' },
+  { name: '韩冬阳', gender: 'male' },
+  { name: '唐一宸', gender: 'male' },
+  { name: '沈清秋', gender: 'female' },
+  { name: '许诺言', gender: 'male' },
+  { name: '冯晚晴', gender: 'female' },
+  { name: '曹书语', gender: 'female' },
+];
+
+const DEFAULT_STUDENTS: Student[] = DEFAULT_STUDENT_SEEDS.map((student, i) => ({ id: `s_${i}`, ...student }));
 
 const EMPTY_STUDENTS: Student[] = [];
 
@@ -68,10 +90,15 @@ const parseStudentsFromText = (text: string): Student[] => {
         .map(part => part.trim())
         .filter(Boolean);
 
-      const name = parts[0] ?? '';
+      // Fallback: support "姓名 空格 性别" inputs if no comma/tab separator is used.
+      const normalizedParts = parts.length <= 1
+        ? line.split(/\s+/).map(part => part.trim()).filter(Boolean)
+        : parts;
+
+      const name = normalizedParts[0] ?? '';
       if (!name) return null;
 
-      const gender = normalizeGender(parts[1]);
+      const gender = normalizeGender(normalizedParts[1]);
       return {
         id: `s_${Date.now()}_${i}`,
         name,

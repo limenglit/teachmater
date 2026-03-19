@@ -138,6 +138,21 @@ export default function SeatChart() {
     return { male, female, unknown };
   }, [students]);
 
+  const genderByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const student of students) {
+      map.set(student.name, student.gender ?? 'unknown');
+    }
+    return map;
+  }, [students]);
+
+  const formatSeatLabel = useCallback((name: string | null) => {
+    if (!name) return t('seat.empty');
+    const gender = genderByName.get(name) ?? 'unknown';
+    const marker = gender === 'male' ? ' ♂️' : gender === 'female' ? ' ♀️' : ' ✨';
+    return `${name}${marker}`;
+  }, [genderByName, t]);
+
   const getGenderOrderedNames = useCallback(() => {
     if (genderSeatPolicy === 'none') return students.map(s => s.name);
 
@@ -210,8 +225,11 @@ export default function SeatChart() {
           : (useMaleFirst ? maleQueue : femaleQueue);
 
         const rowNames: string[] = [];
-        rowNames.push(...takeFromQueue(primaryQueue, rowAvailableCols.length - rowNames.length));
-        if (rowNames.length < rowAvailableCols.length) {
+        const primarySlice = takeFromQueue(primaryQueue, rowAvailableCols.length);
+        rowNames.push(...primarySlice);
+
+        // Keep "alternate rows" visually clear: only backfill with another gender when primary queue is empty.
+        if (primarySlice.length === 0 && rowNames.length < rowAvailableCols.length) {
           rowNames.push(...takeFromQueue(secondaryQueue, rowAvailableCols.length - rowNames.length));
         }
         if (rowNames.length < rowAvailableCols.length) {
@@ -486,7 +504,7 @@ export default function SeatChart() {
                 : name ? `bg-card border-border text-foreground shadow-card cursor-grab active:cursor-grabbing hover:border-primary/40 ${isDragging ? 'opacity-30 scale-90' : ''} ${isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-105' : ''}`
                 : `bg-muted/50 border-dashed border-border text-muted-foreground cursor-pointer hover:border-destructive/40 ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`}`}
           >
-            {isDisabled ? <X className="w-4 h-4" /> : name || t('seat.empty')}
+            {isDisabled ? <X className="w-4 h-4" /> : formatSeatLabel(name)}
           </div>
         );
       }
