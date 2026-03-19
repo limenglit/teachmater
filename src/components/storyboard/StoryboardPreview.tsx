@@ -5,7 +5,21 @@ import { useState, lazy, Suspense } from 'react';
 import { toast } from 'sonner';
 import { TextOverlay } from './types';
 
-const TextOverlayEditor = lazy(() => import('./TextOverlayEditor'));
+/** Retry dynamic import once then force-reload to pick up new chunks */
+function lazyRetry<T extends { default: React.ComponentType<any> }>(factory: () => Promise<T>) {
+  return lazy(() =>
+    factory().catch(() => {
+      const key = 'chunk_reload';
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, '1');
+        window.location.reload();
+      }
+      return factory();
+    }),
+  );
+}
+
+const TextOverlayEditor = lazyRetry(() => import('./TextOverlayEditor'));
 
 /** Copy text to clipboard with fallback for older browsers */
 async function safeClipboardWrite(text: string): Promise<void> {
