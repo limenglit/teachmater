@@ -59,6 +59,7 @@ export interface QuizSession {
   title: string;
   questions: QuizQuestion[];
   status: string;
+  reveal_answers?: boolean;
   student_names: string[];
   created_at: string;
   ended_at: string | null;

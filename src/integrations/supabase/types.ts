@@ -691,6 +691,7 @@ export type Database = {
           ended_at: string | null
           id: string
           questions: Json
+          reveal_answers: boolean
           status: string
           student_names: Json | null
           title: string
@@ -702,6 +703,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           questions?: Json
+          reveal_answers?: boolean
           status?: string
           student_names?: Json | null
           title?: string
@@ -713,6 +715,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           questions?: Json
+          reveal_answers?: boolean
           status?: string
           student_names?: Json | null
           title?: string
@@ -1119,6 +1122,7 @@ export type Database = {
       }
       update_quiz_session: {
         Args: {
+          p_reveal_answers?: boolean
           p_session_id: string
           p_status?: string
           p_title?: string

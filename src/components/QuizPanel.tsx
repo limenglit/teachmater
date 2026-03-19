@@ -4,6 +4,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOpen, FileCheck, History, Users, Sparkles } from 'lucide-react';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
@@ -48,7 +59,21 @@ export default function QuizPanel() {
   const [showQR, setShowQR] = useState(false);
   const [showRoster, setShowRoster] = useState(false);
   const [sessionStudentNames, setSessionStudentNames] = useState<string[]>([]);
+  const [ending, setEnding] = useState(false);
+  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [revealAfterEnd, setRevealAfterEnd] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
+
+  const REVEAL_AFTER_END_KEY = 'quiz-reveal-after-end';
+
+  useEffect(() => {
+    const raw = localStorage.getItem(REVEAL_AFTER_END_KEY);
+    if (raw === '1') setRevealAfterEnd(true);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(REVEAL_AFTER_END_KEY, revealAfterEnd ? '1' : '0');
+  }, [revealAfterEnd]);
 
   useEffect(() => {
     if (user) {
@@ -101,6 +126,7 @@ export default function QuizPanel() {
     const title = sessionTitle.trim() || t('quiz.defaultTitle');
     const { data, error } = await supabase.from('quiz_sessions').insert({
       user_id: user.id, title, questions: selected as any,
+      reveal_answers: revealAfterEnd,
       student_names: names as any,
     }).select().single() as any;
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
@@ -111,11 +137,48 @@ export default function QuizPanel() {
   };
 
   const endSession = async () => {
-    if (!activeSession) return;
+    if (!activeSession || ending) return;
     const token = getSessionToken(activeSession.id);
-    if (!token) return;
-    await supabase.rpc('update_quiz_session', { p_session_id: activeSession.id, p_token: token, p_status: 'ended' } as any);
-    setActiveSession(prev => prev ? { ...prev, status: 'ended' } : null);
+    if (!token) {
+      toast({ title: '无法结束测验：缺少会话凭证', variant: 'destructive' });
+      return;
+    }
+
+    setEnding(true);
+    const { error } = await supabase.rpc('update_quiz_session', {
+      p_session_id: activeSession.id,
+      p_token: token,
+      p_status: 'ended',
+      p_reveal_answers: revealAfterEnd,
+    } as any);
+
+    if (error && /p_reveal_answers/i.test(error.message || '')) {
+      // Backward compatibility for databases not yet migrated.
+      const fallback = await supabase.rpc('update_quiz_session', {
+        p_session_id: activeSession.id,
+        p_token: token,
+        p_status: 'ended',
+      } as any);
+      setEnding(false);
+      if (fallback.error) {
+        toast({ title: `结束测验失败：${fallback.error.message}`, variant: 'destructive' });
+        return;
+      }
+      setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: false } : null);
+      toast({ title: '测验已结束。当前数据库未升级，暂不支持公开参考答案开关' });
+      loadSessions();
+      return;
+    }
+
+    setEnding(false);
+
+    if (error) {
+      toast({ title: `结束测验失败：${error.message}`, variant: 'destructive' });
+      return;
+    }
+
+    setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: revealAfterEnd } : null);
+    toast({ title: revealAfterEnd ? '测验已结束，学生端将显示参考答案' : '测验已结束，学生端不公开参考答案' });
     loadSessions();
   };
 
@@ -167,7 +230,7 @@ export default function QuizPanel() {
               <Download className="w-3 h-3" /> {t('quiz.exportCSV')}
             </Button>
             {activeSession.status === 'active' && (
-              <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={endSession}>
+              <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => setEndConfirmOpen(true)} disabled={ending}>
                 <StopCircle className="w-3 h-3" /> {t('quiz.endSession')}
               </Button>
             )}
@@ -206,6 +269,39 @@ export default function QuizPanel() {
             />
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={endConfirmOpen} onOpenChange={setEndConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('quiz.endSession')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                结束后学生将无法继续提交答案。请确认是否立即结束本场测验。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div className="text-sm">
+                <p className="font-medium text-foreground">结束后公开参考答案</p>
+                <p className="text-xs text-muted-foreground">开启后，学生端在结束页可查看每题参考答案</p>
+              </div>
+              <Switch checked={revealAfterEnd} onCheckedChange={setRevealAfterEnd} />
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={ending}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  void endSession().then(() => setEndConfirmOpen(false));
+                }}
+                disabled={ending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {ending ? '处理中...' : '确认结束'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -256,6 +352,8 @@ export default function QuizPanel() {
             selectedIds={selectedIds} setSelectedIds={setSelectedIds}
             onStartSession={startSession}
             sessionTitle={sessionTitle} setSessionTitle={setSessionTitle}
+            revealAfterEnd={revealAfterEnd}
+            onRevealAfterEndChange={setRevealAfterEnd}
             isGuest={isGuest}
             rosterButton={
               <Button

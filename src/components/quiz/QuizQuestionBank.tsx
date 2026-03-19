@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Plus, Trash2, Star, Search, Filter, Edit3, CheckCircle2, XCircle,
   HelpCircle, ListChecks, ToggleLeft, FileText, FolderPlus, Folder, ChevronRight
@@ -39,6 +40,8 @@ interface Props {
   onStartSession: () => void;
   sessionTitle: string;
   setSessionTitle: (s: string) => void;
+  revealAfterEnd: boolean;
+  onRevealAfterEndChange: (v: boolean) => void;
   isGuest: boolean;
   rosterButton?: React.ReactNode;
 }
@@ -46,7 +49,7 @@ interface Props {
 export default function QuizQuestionBank({
   questions, setQuestions, categories, setCategories,
   selectedIds, setSelectedIds, onStartSession,
-  sessionTitle, setSessionTitle, isGuest, rosterButton,
+  sessionTitle, setSessionTitle, revealAfterEnd, onRevealAfterEndChange, isGuest, rosterButton,
 }: Props) {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -479,6 +482,10 @@ export default function QuizQuestionBank({
           <span className="text-sm text-foreground font-medium">{t('quiz.selected')}: {selectedIds.size}</span>
           <Input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)}
             placeholder={t('quiz.sessionTitle')} className="flex-1 h-8 text-sm min-w-[120px]" />
+          <label className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+            <span>结束后公开参考答案</span>
+            <Switch checked={revealAfterEnd} onCheckedChange={onRevealAfterEndChange} />
+          </label>
           {rosterButton}
           <Button size="sm" onClick={onStartSession} disabled={isGuest} className="gap-1 shrink-0"
             title={isGuest ? t('quiz.loginToPublish') : ''}>
