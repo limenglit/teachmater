@@ -167,7 +167,7 @@ export default function BarrageDiscussion() {
     const token = crypto.randomUUID();
     const { data, error } = await supabase
       .from('discussion_topics' as any)
-      .insert({ title: topicTitle.trim(), creator_token: token } as any)
+      .insert({ title: topicTitle.trim(), creator_token: token, student_names: resolvedNames } as any)
       .select('id')
       .single();
     if (error) {
