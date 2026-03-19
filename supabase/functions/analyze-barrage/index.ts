@@ -47,6 +47,9 @@ serve(async (req) => {
     if (!Array.isArray(messages) || messages.length === 0) {
       return errorResponse(req, 'Messages must be a non-empty array', 400);
     }
+    if (messages.length < 3) {
+      return errorResponse(req, '消息太少，至少需要3条弹幕才能分析', 400);
+    }
     if (messages.length > 1000) {
       return errorResponse(req, 'Too many messages (max 1000)', 400);
     }

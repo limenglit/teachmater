@@ -167,7 +167,7 @@ export default function BarrageDiscussion() {
     const token = crypto.randomUUID();
     const { data, error } = await supabase
       .from('discussion_topics' as any)
-      .insert({ title: topicTitle.trim(), creator_token: token } as any)
+      .insert({ title: topicTitle.trim(), creator_token: token, student_names: resolvedNames } as any)
       .select('id')
       .single();
     if (error) {
@@ -253,8 +253,8 @@ export default function BarrageDiscussion() {
   }, [messages, isPlaying]);
 
   const handleReport = async () => {
-    if (messages.length === 0) {
-      toast({ title: t('barrage.noData'), variant: 'destructive' });
+    if (messages.length < 3) {
+      toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成报告', variant: 'destructive' });
       return;
     }
     if (!recordGuestAIUsage(isLoggedIn)) {
@@ -277,8 +277,8 @@ export default function BarrageDiscussion() {
   };
 
   const handleWordCloud = async () => {
-    if (messages.length === 0) {
-      toast({ title: t('barrage.noData'), variant: 'destructive' });
+    if (messages.length < 3) {
+      toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成词云', variant: 'destructive' });
       return;
     }
     if (!recordGuestAIUsage(isLoggedIn)) {

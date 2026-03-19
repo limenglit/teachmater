@@ -411,18 +411,21 @@ export type Database = {
           created_at: string
           creator_token: string | null
           id: string
+          student_names: Json | null
           title: string
         }
         Insert: {
           created_at?: string
           creator_token?: string | null
           id?: string
+          student_names?: Json | null
           title: string
         }
         Update: {
           created_at?: string
           creator_token?: string | null
           id?: string
+          student_names?: Json | null
           title?: string
         }
         Relationships: []
