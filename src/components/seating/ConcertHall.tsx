@@ -13,12 +13,15 @@ import {
   saveConcertHallHistory,
   type ConcertHallHistoryItem,
 } from '@/lib/teamwork-local';
+import type { StudentGender } from '@/hooks/useStudentStore';
 
 interface Props {
-  students: { id: string; name: string }[];
+  students: { id: string; name: string; gender?: StudentGender }[];
 }
 
 type ConcertSeatMode = 'arcBalanced' | 'groupZone' | 'verticalS' | 'horizontalS';
+type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
+type GenderFirst = 'male' | 'female';
 type RefKey = 'screen' | 'podium' | 'window' | 'frontDoor' | 'backDoor';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
@@ -58,6 +61,9 @@ export default function ConcertHall({ students }: Props) {
   const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 12));
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<ConcertSeatMode>('arcBalanced');
+  const [genderSeatPolicy, setGenderSeatPolicy] = useState<GenderSeatPolicy>('none');
+  const [genderFirst, setGenderFirst] = useState<GenderFirst>('male');
+  const [centerRowsByGender, setCenterRowsByGender] = useState(true);
   const [assignment, setAssignment] = useState<string[][]>([]);
   const [recordName, setRecordName] = useState('');
   const [historyItems, setHistoryItems] = useState<ConcertHallHistoryItem[]>([]);
@@ -84,6 +90,25 @@ export default function ConcertHall({ students }: Props) {
     () => Array.from({ length: rowCount }, (_, r) => seatsPerRow + r * 2),
     [rowCount, seatsPerRow]
   );
+
+  const genderStats = useMemo(() => {
+    const male = students.filter(s => (s.gender ?? 'unknown') === 'male').length;
+    const female = students.filter(s => (s.gender ?? 'unknown') === 'female').length;
+    const unknown = students.length - male - female;
+    return { male, female, unknown };
+  }, [students]);
+
+  const genderByName = useMemo(() => {
+    const map = new Map<string, StudentGender>();
+    students.forEach(student => map.set(student.name, student.gender ?? 'unknown'));
+    return map;
+  }, [students]);
+
+  const formatSeatName = (name: string) => {
+    const gender = genderByName.get(name) ?? 'unknown';
+    const marker = gender === 'male' ? ' ♂' : gender === 'female' ? ' ♀' : ' ✨';
+    return `${name}${marker}`;
+  };
   const seatKey = (row: number, col: number) => `${row}-${col}`;
 
   const seatR = 18;
@@ -207,6 +232,9 @@ export default function ConcertHall({ students }: Props) {
     setRowCount(nextRowCount);
     setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
     setMode(snapshot.mode);
+    setGenderSeatPolicy(snapshot.genderSeatPolicy ?? 'none');
+    setGenderFirst(snapshot.genderFirst ?? 'male');
+    setCenterRowsByGender(snapshot.centerRowsByGender ?? true);
     setAssignment(sanitizeAssignment(snapshot.assignment || [], nextCaps));
     setClosedSeats(new Set(snapshot.closedSeats || []));
     restoredOnceRef.current = true;
@@ -215,7 +243,7 @@ export default function ConcertHall({ students }: Props) {
   useEffect(() => {
     if (!restoredOnceRef.current) return;
     saveConcertHallSnapshot(buildSnapshot());
-  }, [seatsPerRow, rowCount, groupCount, mode, assignment, closedSeats]);
+  }, [seatsPerRow, rowCount, groupCount, mode, genderSeatPolicy, genderFirst, centerRowsByGender, assignment, closedSeats]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -319,12 +347,104 @@ export default function ConcertHall({ students }: Props) {
     return slots;
   };
 
+  const getGenderOrderedNames = () => {
+    if (genderSeatPolicy === 'none') return students.map(s => s.name);
+
+    const male = students.filter(s => (s.gender ?? 'unknown') === 'male').map(s => s.name);
+    const female = students.filter(s => (s.gender ?? 'unknown') === 'female').map(s => s.name);
+    const unknown = students.filter(s => (s.gender ?? 'unknown') === 'unknown').map(s => s.name);
+
+    if (genderSeatPolicy === 'cluster') {
+      return genderFirst === 'male'
+        ? [...male, ...female, ...unknown]
+        : [...female, ...male, ...unknown];
+    }
+
+    const firstBucket = genderFirst === 'male' ? male : female;
+    const secondBucket = genderFirst === 'male' ? female : male;
+    const alternated: string[] = [];
+    let firstIndex = 0;
+    let secondIndex = 0;
+    let pickFirst = true;
+
+    while (firstIndex < firstBucket.length || secondIndex < secondBucket.length) {
+      if (pickFirst && firstIndex < firstBucket.length) {
+        alternated.push(firstBucket[firstIndex++]);
+      } else if (!pickFirst && secondIndex < secondBucket.length) {
+        alternated.push(secondBucket[secondIndex++]);
+      } else if (firstIndex < firstBucket.length) {
+        alternated.push(firstBucket[firstIndex++]);
+      } else if (secondIndex < secondBucket.length) {
+        alternated.push(secondBucket[secondIndex++]);
+      }
+      pickFirst = !pickFirst;
+    }
+
+    return [...alternated, ...unknown];
+  };
+
+  const getCenteredCols = (availableCols: number[], count: number) => {
+    if (count >= availableCols.length) return availableCols;
+    const sorted = [...availableCols].sort((a, b) => a - b);
+    const start = Math.floor((sorted.length - count) / 2);
+    return sorted.slice(start, start + count);
+  };
+
   const autoSeat = (shuffle = false) => {
+    const rows: string[][] = seatCaps.map(cap => Array.from({ length: cap }, () => ''));
+
+    if (!shuffle && genderSeatPolicy === 'alternateRows') {
+      const maleQueue = students.filter(s => (s.gender ?? 'unknown') === 'male').map(s => s.name);
+      const femaleQueue = students.filter(s => (s.gender ?? 'unknown') === 'female').map(s => s.name);
+      const unknownQueue = students.filter(s => (s.gender ?? 'unknown') === 'unknown').map(s => s.name);
+
+      const takeFromQueue = (queue: string[], count: number) => {
+        if (count <= 0) return [] as string[];
+        return queue.splice(0, count);
+      };
+
+      for (let r = 0; r < rowCount; r++) {
+        const availableCols = Array.from({ length: seatCaps[r] }, (_, c) => c)
+          .filter(c => !closedSeats.has(seatKey(r, c)));
+
+        if (availableCols.length === 0) continue;
+
+        const useMaleFirst = genderFirst === 'male';
+        const primaryQueue = (r % 2 === 0)
+          ? (useMaleFirst ? maleQueue : femaleQueue)
+          : (useMaleFirst ? femaleQueue : maleQueue);
+        const secondaryQueue = (r % 2 === 0)
+          ? (useMaleFirst ? femaleQueue : maleQueue)
+          : (useMaleFirst ? maleQueue : femaleQueue);
+
+        const rowNames: string[] = [];
+        const primarySlice = takeFromQueue(primaryQueue, availableCols.length);
+        rowNames.push(...primarySlice);
+
+        if (primarySlice.length === 0 && rowNames.length < availableCols.length) {
+          rowNames.push(...takeFromQueue(secondaryQueue, availableCols.length - rowNames.length));
+        }
+        if (rowNames.length < availableCols.length) {
+          rowNames.push(...takeFromQueue(unknownQueue, availableCols.length - rowNames.length));
+        }
+
+        const targetCols = centerRowsByGender
+          ? getCenteredCols(availableCols, rowNames.length)
+          : availableCols.slice(0, rowNames.length);
+
+        rowNames.forEach((name, i) => {
+          const c = targetCols[i];
+          if (c !== undefined) rows[r][c] = name;
+        });
+      }
+
+      setAssignment(rows);
+      return;
+    }
+
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
-      : students.map(s => s.name);
-
-    const rows: string[][] = seatCaps.map(cap => Array.from({ length: cap }, () => ''));
+      : getGenderOrderedNames();
 
     if (mode === 'groupZone') {
       const groups = splitIntoGroups(names, Math.max(1, groupCount));
@@ -353,6 +473,9 @@ export default function ConcertHall({ students }: Props) {
     rowCount,
     groupCount,
     mode,
+    genderSeatPolicy,
+    genderFirst,
+    centerRowsByGender,
     assignment,
     closedSeats: Array.from(closedSeats),
     updatedAt: new Date().toISOString(),
@@ -398,6 +521,9 @@ export default function ConcertHall({ students }: Props) {
     setRowCount(nextRowCount);
     setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
     setMode(snapshot.mode);
+    setGenderSeatPolicy(snapshot.genderSeatPolicy ?? 'none');
+    setGenderFirst(snapshot.genderFirst ?? 'male');
+    setCenterRowsByGender(snapshot.centerRowsByGender ?? true);
 
     const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextCaps);
     setAssignment(nextAssignment);
@@ -453,6 +579,48 @@ export default function ConcertHall({ students }: Props) {
             <option value="horizontalS">横S分配</option>
           </select>
         </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          性别排座
+          <select
+            value={genderSeatPolicy}
+            onChange={e => setGenderSeatPolicy(e.target.value as GenderSeatPolicy)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="none">不限制</option>
+            <option value="alternate">男女间隔</option>
+            <option value="cluster">男女集中</option>
+            <option value="alternateRows">男女隔行</option>
+          </select>
+        </label>
+        {genderSeatPolicy !== 'none' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            起始性别
+            <select
+              value={genderFirst}
+              onChange={e => setGenderFirst(e.target.value as GenderFirst)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="male">男生在前</option>
+              <option value="female">女生在前</option>
+            </select>
+          </label>
+        )}
+        {genderSeatPolicy === 'alternateRows' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={centerRowsByGender}
+              onChange={e => setCenterRowsByGender(e.target.checked)}
+              className="accent-primary"
+            />
+            自动居中
+          </label>
+        )}
+        {genderSeatPolicy !== 'none' && (
+          <div className="inline-flex items-center gap-2 text-xs text-muted-foreground px-2.5 h-8 rounded-md border border-border bg-muted/40">
+            男 {genderStats.male} / 女 {genderStats.female} / 未知 {genderStats.unknown}
+          </div>
+        )}
         {mode === 'groupZone' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             组数
@@ -642,7 +810,7 @@ export default function ConcertHall({ students }: Props) {
                             lengthAdjust={name.length > 2 ? 'spacingAndGlyphs' : undefined}
                             className="fill-foreground text-[10px]"
                           >
-                            {name}
+                            {formatSeatName(name)}
                           </text>
                         )}
                       </g>

@@ -154,6 +154,9 @@ export interface ConcertHallSnapshot {
   rowCount: number;
   groupCount: number;
   mode: 'arcBalanced' | 'groupZone' | 'verticalS' | 'horizontalS';
+  genderSeatPolicy?: 'none' | 'alternate' | 'cluster' | 'alternateRows';
+  genderFirst?: 'male' | 'female';
+  centerRowsByGender?: boolean;
   assignment: string[][];
   closedSeats: string[];
   updatedAt: string;
