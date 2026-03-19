@@ -1,8 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 
+export type StudentGender = 'male' | 'female' | 'unknown';
+
 export interface Student {
   id: string;
   name: string;
+  gender?: StudentGender;
 }
 
 const STORAGE_KEY_PREFIX = 'teachmate_students';
@@ -17,7 +20,8 @@ const loadStudents = (storageKey: string): Student[] => {
     const parsed = data ? JSON.parse(data) : [];
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((item): item is Student => {
-      return !!item && typeof item.id === 'string' && typeof item.name === 'string';
+      const genderValid = item?.gender === undefined || item?.gender === 'male' || item?.gender === 'female' || item?.gender === 'unknown';
+      return !!item && typeof item.id === 'string' && typeof item.name === 'string' && genderValid;
     });
   } catch {
     return [];
@@ -37,6 +41,45 @@ const DEFAULT_STUDENTS: Student[] = [
 ].map((name, i) => ({ id: `s_${i}`, name }));
 
 const EMPTY_STUDENTS: Student[] = [];
+
+const normalizeGender = (raw?: string): StudentGender => {
+  if (!raw) return 'unknown';
+  const value = raw.trim().toLowerCase();
+  if (['男', '男生', 'm', 'male'].includes(value)) return 'male';
+  if (['女', '女生', 'f', 'female'].includes(value)) return 'female';
+  return 'unknown';
+};
+
+const parseStudentsFromText = (text: string): Student[] => {
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return [];
+
+  const hasHeader = /姓名|name/i.test(lines[0]) && /性别|gender|sex/i.test(lines[0]);
+  const rows = hasHeader ? lines.slice(1) : lines;
+
+  return rows
+    .map((line, i) => {
+      const parts = line
+        .split(/[\t,，]/)
+        .map(part => part.trim())
+        .filter(Boolean);
+
+      const name = parts[0] ?? '';
+      if (!name) return null;
+
+      const gender = normalizeGender(parts[1]);
+      return {
+        id: `s_${Date.now()}_${i}`,
+        name,
+        gender,
+      } as Student;
+    })
+    .filter((student): student is Student => !!student);
+};
 
 export function useStudentStore(userId?: string | null) {
   const storageKey = getStorageKey(userId);
@@ -81,9 +124,9 @@ export function useStudentStore(userId?: string | null) {
     saveStudents(storageKey, students);
   }, [storageKey, students]);
 
-  const addStudent = useCallback((name: string) => {
+  const addStudent = useCallback((name: string, gender: StudentGender = 'unknown') => {
     if (!name.trim()) return;
-    setStudents(prev => [...prev, { id: `s_${Date.now()}`, name: name.trim() }]);
+    setStudents(prev => [...prev, { id: `s_${Date.now()}`, name: name.trim(), gender }]);
   }, []);
 
   const removeStudent = useCallback((id: string) => {
@@ -99,8 +142,7 @@ export function useStudentStore(userId?: string | null) {
   }, []);
 
   const importFromText = useCallback((text: string) => {
-    const names = text.split('\n').map(n => n.trim()).filter(Boolean);
-    const newStudents = names.map((name, i) => ({ id: `s_${Date.now()}_${i}`, name }));
+    const newStudents = parseStudentsFromText(text);
     setStudents(newStudents);
   }, []);
 

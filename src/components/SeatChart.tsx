@@ -25,6 +25,8 @@ import {
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type StartFrom = 'door' | 'window';
+type GenderSeatPolicy = 'none' | 'alternate' | 'cluster';
+type GenderFirst = 'male' | 'female';
 
 export default function SeatChart() {
   const { students } = useStudents();
@@ -66,6 +68,8 @@ export default function SeatChart() {
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
   const [windowOnLeft, setWindowOnLeft] = useState(true);
   const [startFrom, setStartFrom] = useState<StartFrom>('door');
+  const [genderSeatPolicy, setGenderSeatPolicy] = useState<GenderSeatPolicy>('none');
+  const [genderFirst, setGenderFirst] = useState<GenderFirst>('male');
 
   const [colAisles, setColAisles] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
@@ -126,9 +130,45 @@ export default function SeatChart() {
     return Array.from({ length: cols }, (_, i) => i);
   }, [cols, startFrom, windowOnLeft]);
 
+  const getGenderOrderedNames = useCallback(() => {
+    if (genderSeatPolicy === 'none') return students.map(s => s.name);
+
+    const male = students.filter(s => (s.gender ?? 'unknown') === 'male').map(s => s.name);
+    const female = students.filter(s => (s.gender ?? 'unknown') === 'female').map(s => s.name);
+    const unknown = students.filter(s => (s.gender ?? 'unknown') === 'unknown').map(s => s.name);
+
+    if (genderSeatPolicy === 'cluster') {
+      return genderFirst === 'male'
+        ? [...male, ...female, ...unknown]
+        : [...female, ...male, ...unknown];
+    }
+
+    const firstBucket = genderFirst === 'male' ? male : female;
+    const secondBucket = genderFirst === 'male' ? female : male;
+    const alternated: string[] = [];
+    let firstIndex = 0;
+    let secondIndex = 0;
+    let pickFirst = true;
+
+    while (firstIndex < firstBucket.length || secondIndex < secondBucket.length) {
+      if (pickFirst && firstIndex < firstBucket.length) {
+        alternated.push(firstBucket[firstIndex++]);
+      } else if (!pickFirst && secondIndex < secondBucket.length) {
+        alternated.push(secondBucket[secondIndex++]);
+      } else if (firstIndex < firstBucket.length) {
+        alternated.push(firstBucket[firstIndex++]);
+      } else if (secondIndex < secondBucket.length) {
+        alternated.push(secondBucket[secondIndex++]);
+      }
+      pickFirst = !pickFirst;
+    }
+
+    return [...alternated, ...unknown];
+  }, [genderFirst, genderSeatPolicy, students]);
+
   const autoSeat = useCallback(() => {
     const grid = makeGrid();
-    const names = students.map(s => s.name);
+    const names = getGenderOrderedNames();
     const isAvailable = (r: number, c: number) => !disabledSeats.has(seatKey(r, c));
     const colOrder = getColOrder();
 
@@ -142,7 +182,7 @@ export default function SeatChart() {
       case 'random': { const shuffled = [...names].sort(() => Math.random() - 0.5); let idx = 0; for (let r = 0; r < rows && idx < shuffled.length; r++) { for (let c = 0; c < cols && idx < shuffled.length; c++) { if (isAvailable(r, c)) grid[r][c] = shuffled[idx++]; } } break; }
     }
     setSeats(grid);
-  }, [students, rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, getColOrder]);
+  }, [rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames]);
 
   const handleDragStart = (r: number, c: number) => { if (!seats[r][c]) return; setDragFrom({ r, c }); };
   const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
@@ -529,6 +569,31 @@ export default function SeatChart() {
                 <option value="window">{t('seat.fromWindow')}</option>
               </select>
             </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              性别排座
+              <select
+                value={genderSeatPolicy}
+                onChange={e => setGenderSeatPolicy(e.target.value as GenderSeatPolicy)}
+                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              >
+                <option value="none">不限制</option>
+                <option value="alternate">男女间隔</option>
+                <option value="cluster">男女集中</option>
+              </select>
+            </label>
+            {genderSeatPolicy !== 'none' && (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                起始性别
+                <select
+                  value={genderFirst}
+                  onChange={e => setGenderFirst(e.target.value as GenderFirst)}
+                  className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                >
+                  <option value="male">男生在前</option>
+                  <option value="female">女生在前</option>
+                </select>
+              </label>
+            )}
           </div>
         </div>
 
