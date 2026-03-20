@@ -19,6 +19,8 @@ import {
   saveClassroomSnapshot,
   loadClassroomHistory,
   saveClassroomHistory,
+  loadLastGroups,
+  loadLastTeams,
   type ClassroomHistoryItem,
 } from '@/lib/teamwork-local';
 
@@ -28,6 +30,7 @@ type StartFrom = 'door' | 'window';
 type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
 type GenderFirst = 'male' | 'female';
 type GenderMarkerStyle = 'suffix' | 'badge';
+type SeatGroupSource = 'auto' | 'groups' | 'teams' | 'count';
 
 export default function SeatChart() {
   const { students } = useStudents();
@@ -62,6 +65,7 @@ export default function SeatChart() {
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
+  const [groupSource, setGroupSource] = useState<SeatGroupSource>('auto');
   const [disabledSeats, setDisabledSeats] = useState<Set<string>>(new Set());
   const [examSkipRow, setExamSkipRow] = useState(true);
   const [examSkipCol, setExamSkipCol] = useState(false);
@@ -202,6 +206,33 @@ export default function SeatChart() {
     const names = getGenderOrderedNames();
     const colOrder = getColOrder();
 
+    const normalizeBuckets = (buckets: string[][]) => {
+      const validStudentNames = new Set(students.map(s => s.name));
+      const used = new Set<string>();
+      return buckets
+        .map(bucket => bucket.filter(name => validStudentNames.has(name) && !used.has(name) && (used.add(name), true)))
+        .filter(bucket => bucket.length > 0);
+    };
+
+    const resolvePersistedBuckets = (source: 'groups' | 'teams') => {
+      const rawBuckets = source === 'groups'
+        ? loadLastGroups().map(group => group.members.map(member => member.name))
+        : loadLastTeams().map(team => team.members.map(member => member.name));
+      return normalizeBuckets(rawBuckets);
+    };
+
+    const resolveGroupBuckets = () => {
+      if (groupSource === 'groups') return resolvePersistedBuckets('groups');
+      if (groupSource === 'teams') return resolvePersistedBuckets('teams');
+      if (groupSource === 'count') return splitIntoGroups(names, groupCount);
+
+      const fromGroups = resolvePersistedBuckets('groups');
+      if (fromGroups.length > 0) return fromGroups;
+      const fromTeams = resolvePersistedBuckets('teams');
+      if (fromTeams.length > 0) return fromTeams;
+      return splitIntoGroups(names, groupCount);
+    };
+
     const getCenteredCols = (availableCols: number[], count: number) => {
       if (count >= availableCols.length) return availableCols;
       const sorted = [...availableCols].sort((a, b) => a - b);
@@ -262,13 +293,13 @@ export default function SeatChart() {
       case 'verticalS': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
       case 'horizontalS': { let idx = 0; for (let r = 0; r < rows && idx < names.length; r++) { for (let ci = 0; ci < cols && idx < names.length; ci++) { const rawCol = r % 2 === 0 ? ci : cols - 1 - ci; const c = colOrder[rawCol]; if (isAvailable(r, c)) grid[r][c] = names[idx++]; } } break; }
       case 'exam': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; if (examSkipCol && ci % 2 !== 0) continue; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (examSkipRow && row % 2 !== 0) continue; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
-      case 'groupCol': { const groups = splitIntoGroups(names, groupCount); groups.forEach((group, gi) => { const colIdx = gi % cols; const c = colOrder[colIdx]; let placed = 0; for (let r = 0; r < rows && placed < group.length; r++) { const row = r + Math.floor(gi / cols) * Math.ceil(names.length / groupCount); if (row < rows && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
-      case 'groupRow': { const groups = splitIntoGroups(names, groupCount); groups.forEach((group, gi) => { const row = gi % rows; let placed = 0; for (let ci = 0; ci < cols && placed < group.length; ci++) { const c = colOrder[ci]; const colShift = ci + Math.floor(gi / rows) * Math.ceil(names.length / groupCount); if (row < rows && colShift < cols && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
-      case 'smartCluster': { const groups = splitIntoGroups(names, groupCount); const blocksPerRow = Math.ceil(Math.sqrt(groupCount)); const blockRows = Math.ceil(groupCount / blocksPerRow); const blockH = Math.floor(rows / blockRows); const blockW = Math.floor(cols / blocksPerRow); groups.forEach((group, gi) => { const bRow = Math.floor(gi / blocksPerRow); const bCol = gi % blocksPerRow; const startR = bRow * blockH; const startC = bCol * blockW; let placed = 0; for (let mi = 0; placed < group.length; mi++) { const lr = mi % blockH; const lc = Math.floor(mi / blockH); const r = startR + lr; const c = startC + lc; if (r >= rows || c >= cols) break; if (isAvailable(r, c)) grid[r][c] = group[placed++]; } }); break; }
+      case 'groupCol': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const colIdx = gi % cols; const c = colOrder[colIdx]; const baseRow = Math.floor(gi / cols) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let r = 0; r < rows && placed < group.length; r++) { const row = r + baseRow; if (row < rows && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
+      case 'groupRow': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const row = gi % rows; const baseShift = Math.floor(gi / rows) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let ci = 0; ci < cols && placed < group.length; ci++) { const c = colOrder[ci]; const colShift = ci + baseShift; if (row < rows && colShift < cols && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
+      case 'smartCluster': { const groups = resolveGroupBuckets(); const clusterCount = Math.max(1, groups.length); const blocksPerRow = Math.ceil(Math.sqrt(clusterCount)); const blockRows = Math.ceil(clusterCount / blocksPerRow); const blockH = Math.max(1, Math.floor(rows / blockRows)); const blockW = Math.max(1, Math.floor(cols / blocksPerRow)); groups.forEach((group, gi) => { const bRow = Math.floor(gi / blocksPerRow); const bCol = gi % blocksPerRow; const startR = bRow * blockH; const startC = bCol * blockW; let placed = 0; for (let mi = 0; placed < group.length; mi++) { const lr = mi % blockH; const lc = Math.floor(mi / blockH); const r = startR + lr; const c = startC + lc; if (r >= rows || c >= cols) break; if (isAvailable(r, c)) grid[r][c] = group[placed++]; } }); break; }
       case 'random': { const shuffled = [...names].sort(() => Math.random() - 0.5); let idx = 0; for (let r = 0; r < rows && idx < shuffled.length; r++) { for (let c = 0; c < cols && idx < shuffled.length; c++) { if (isAvailable(r, c)) grid[r][c] = shuffled[idx++]; } } break; }
     }
     setSeats(grid);
-  }, [rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender]);
+  }, [rows, cols, mode, groupCount, groupSource, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender]);
 
   const handleDragStart = (r: number, c: number) => { if (!seats[r][c]) return; setDragFrom({ r, c }); };
   const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
@@ -367,6 +398,7 @@ export default function SeatChart() {
     cols,
     mode,
     groupCount,
+    groupSource,
     disabledSeats: Array.from(disabledSeats),
     examSkipRow,
     examSkipCol,
@@ -408,6 +440,7 @@ export default function SeatChart() {
     setCols(nextCols);
     setMode(snapshot.mode);
     setGroupCount(Math.max(2, Math.min(10, snapshot.groupCount)));
+    setGroupSource(snapshot.groupSource ?? 'auto');
     setExamSkipRow(!!snapshot.examSkipRow);
     setExamSkipCol(!!snapshot.examSkipCol);
     setStartFrom(snapshot.startFrom);
@@ -450,6 +483,7 @@ export default function SeatChart() {
     setCols(nextCols);
     setMode(snapshot.mode);
     setGroupCount(Math.max(2, Math.min(10, snapshot.groupCount)));
+    setGroupSource(snapshot.groupSource ?? 'auto');
     setExamSkipRow(!!snapshot.examSkipRow);
     setExamSkipCol(!!snapshot.examSkipCol);
     setStartFrom(snapshot.startFrom);
@@ -467,7 +501,7 @@ export default function SeatChart() {
   useEffect(() => {
     if (!restoredClassroomRef.current) return;
     saveClassroomSnapshot(buildClassroomSnapshot());
-  }, [rows, cols, mode, groupCount, disabledSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
+  }, [rows, cols, mode, groupCount, groupSource, disabledSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
 
   const buildVisualGrid = () => {
     if (seats.length === 0) return null;
@@ -638,10 +672,25 @@ export default function SeatChart() {
               <Input type="number" min={2} value={cols} onChange={e => setCols(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
             </label>
             {needsGroupCount && (
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                {t('seat.groups')}
-                <Input type="number" min={2} max={10} value={groupCount} onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))} className="w-14 h-8 text-center" />
-              </label>
+              <>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  分组来源
+                  <select
+                    value={groupSource}
+                    onChange={e => setGroupSource(e.target.value as SeatGroupSource)}
+                    className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                  >
+                    <option value="auto">自动（优先分组，其次建队）</option>
+                    <option value="groups">已分组结果</option>
+                    <option value="teams">已建队结果</option>
+                    <option value="count">按组数临时分组</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  {t('seat.groups')}
+                  <Input type="number" min={2} max={10} value={groupCount} onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))} className="w-14 h-8 text-center" />
+                </label>
+              </>
             )}
             {isExamMode && (
               <>

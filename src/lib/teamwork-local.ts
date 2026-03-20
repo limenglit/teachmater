@@ -98,6 +98,7 @@ export interface ClassroomSnapshot {
   cols: number;
   mode: 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
   groupCount: number;
+  groupSource?: 'auto' | 'groups' | 'teams' | 'count';
   disabledSeats: string[];
   examSkipRow: boolean;
   examSkipCol: boolean;
