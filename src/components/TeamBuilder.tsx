@@ -12,6 +12,12 @@ import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastTeams, saveLastTeams } from '@/lib/teamwork-local';
 import { buildTeamBuckets, type TeamingDimension, type TeamingStrategy } from '@/lib/team-assignment';
+import {
+  deleteCustomTeamingPreset,
+  loadTeamingPresets,
+  saveCustomTeamingPreset,
+  type TeamingPreset,
+} from '@/lib/teaming-presets';
 
 interface TeamMember { id: string; name: string; isCaptain: boolean }
 interface Team { id: string; name: string; members: TeamMember[] }
@@ -30,11 +36,22 @@ export default function TeamBuilder() {
   const [teamStrategy, setTeamStrategy] = useState<TeamingStrategy>('random');
   const [customPrimaryDimension, setCustomPrimaryDimension] = useState<TeamingDimension | 'none'>('none');
   const [customBalanceDimensions, setCustomBalanceDimensions] = useState<TeamingDimension[]>(['organization', 'titleLevel']);
+  const [presets, setPresets] = useState<TeamingPreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState('');
+  const [presetName, setPresetName] = useState('');
 
   useEffect(() => {
     const cached = loadLastTeams();
     if (cached.length > 0) {
       setTeams(cached as Team[]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loaded = loadTeamingPresets('teams');
+    setPresets(loaded);
+    if (!selectedPresetId && loaded.length > 0) {
+      setSelectedPresetId(loaded[0].id);
     }
   }, []);
 
@@ -68,6 +85,45 @@ export default function TeamBuilder() {
       }
       return [...prev, dimension];
     });
+  };
+
+  const applyPreset = (preset: TeamingPreset) => {
+    setTeamStrategy(preset.strategy);
+    setCustomPrimaryDimension(preset.customPrimaryDimension);
+    setCustomBalanceDimensions(preset.customBalanceDimensions);
+    setSelectedPresetId(preset.id);
+    toast.success(`已切换预设：${preset.name}`);
+  };
+
+  const handleSavePreset = () => {
+    if (!presetName.trim()) {
+      toast.error('请输入预设名称');
+      return;
+    }
+    const created = saveCustomTeamingPreset('teams', {
+      name: presetName,
+      strategy: teamStrategy,
+      customPrimaryDimension,
+      customBalanceDimensions,
+    });
+    const loaded = loadTeamingPresets('teams');
+    setPresets(loaded);
+    setSelectedPresetId(created.id);
+    setPresetName('');
+    toast.success('已保存建队预设');
+  };
+
+  const handleDeletePreset = () => {
+    const current = presets.find(item => item.id === selectedPresetId);
+    if (!current || current.builtIn) {
+      toast.error('内置模板不可删除');
+      return;
+    }
+    deleteCustomTeamingPreset('teams', current.id);
+    const loaded = loadTeamingPresets('teams');
+    setPresets(loaded);
+    setSelectedPresetId(loaded[0]?.id ?? '');
+    toast.success('已删除预设');
   };
 
   const toggleCaptain = (teamId: string, memberId: string) => {
@@ -171,9 +227,38 @@ export default function TeamBuilder() {
                 <option value="custom">自定义方案</option>
               </select>
             </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              预设
+              <select
+                value={selectedPresetId}
+                onChange={e => {
+                  const preset = presets.find(item => item.id === e.target.value);
+                  if (preset) applyPreset(preset);
+                }}
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                {presets.map(preset => (
+                  <option key={preset.id} value={preset.id}>{preset.name}</option>
+                ))}
+              </select>
+            </label>
             <Button onClick={autoTeam} className="gap-2">
               <Shuffle className="w-4 h-4" /> {t('team.autoTeam')}
             </Button>
+          </div>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="输入预设名称（如：政务会议模板）"
+              value={presetName}
+              onChange={e => setPresetName(e.target.value)}
+              className="h-8 w-56"
+            />
+            <Button variant="outline" size="sm" onClick={handleSavePreset}>保存当前为预设</Button>
+            <Button variant="outline" size="sm" onClick={handleDeletePreset}>删除当前预设</Button>
+            <span className="text-xs text-muted-foreground">选择预设即一键切换策略配置</span>
           </div>
         </div>
 
