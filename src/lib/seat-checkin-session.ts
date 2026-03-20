@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 
 const SEAT_CHECKIN_SESSION_TOKENS_KEY = 'teachmate_seat_checkin_session_tokens_v1';
+const SEAT_CHECKIN_SESSION_IDS_KEY = 'teachmate_seat_checkin_session_ids_v1';
 
 export interface SeatCheckinSessionSummary {
   id: string;
@@ -48,6 +49,28 @@ const getSeatCheckinSessionTokens = (): Record<string, string> => {
   }
 };
 
+const getSeatCheckinSessionIds = (): string[] => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SEAT_CHECKIN_SESSION_IDS_KEY) || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((id): id is string => typeof id === 'string' && id.length > 0);
+  } catch {
+    return [];
+  }
+};
+
+const saveSeatCheckinSessionId = (sessionId: string) => {
+  const ids = getSeatCheckinSessionIds();
+  if (ids.includes(sessionId)) return;
+  const next = [sessionId, ...ids].slice(0, 200);
+  localStorage.setItem(SEAT_CHECKIN_SESSION_IDS_KEY, JSON.stringify(next));
+};
+
+const removeSeatCheckinSessionId = (sessionId: string) => {
+  const ids = getSeatCheckinSessionIds().filter(id => id !== sessionId);
+  localStorage.setItem(SEAT_CHECKIN_SESSION_IDS_KEY, JSON.stringify(ids));
+};
+
 const saveSeatCheckinSessionToken = (sessionId: string, token: string) => {
   const tokens = getSeatCheckinSessionTokens();
   tokens[sessionId] = token;
@@ -58,6 +81,7 @@ export const removeSeatCheckinSessionToken = (sessionId: string) => {
   const tokens = getSeatCheckinSessionTokens();
   delete tokens[sessionId];
   localStorage.setItem(SEAT_CHECKIN_SESSION_TOKENS_KEY, JSON.stringify(tokens));
+  removeSeatCheckinSessionId(sessionId);
 };
 
 export const getSeatCheckinSessionToken = (sessionId: string) => {
@@ -116,6 +140,7 @@ export async function createSeatCheckinSession({
   if ((data as any).creator_token) {
     saveSeatCheckinSessionToken(data.id, (data as any).creator_token);
   }
+  saveSeatCheckinSessionId(data.id);
 
   return {
     sessionId: data.id,
@@ -134,7 +159,8 @@ export async function createSeatCheckinSession({
 }
 
 export async function loadSeatCheckinSessionHistory(sceneType?: string) {
-  const ids = Object.keys(getSeatCheckinSessionTokens());
+  const tokenIds = Object.keys(getSeatCheckinSessionTokens());
+  const ids = Array.from(new Set([...tokenIds, ...getSeatCheckinSessionIds()]));
   let rows: SeatCheckinHistoryRow[] = [];
 
   const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names';

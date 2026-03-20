@@ -33,14 +33,50 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
 
   const pathCells = useMemo(() => {
     if (!myPosition) return [];
-    const path: { r: number; c: number }[] = [];
-    const colStep = doorCol <= myPosition.c ? 1 : -1;
-    for (let c = doorCol; c !== myPosition.c; c += colStep) path.push({ r: doorRow, c });
-    const rowStep = doorRow <= myPosition.r ? 1 : -1;
-    for (let r = doorRow; r !== myPosition.r; r += rowStep) path.push({ r, c: myPosition.c });
-    path.push(myPosition);
+
+    const keyOf = (r: number, c: number) => `${r}-${c}`;
+    const visited = new Set<string>();
+    const prev = new Map<string, { r: number; c: number }>();
+    const queue: Array<{ r: number; c: number }> = [{ r: doorRow, c: doorCol }];
+    visited.add(keyOf(doorRow, doorCol));
+
+    const directions = [
+      { dr: -1, dc: 0 },
+      { dr: 1, dc: 0 },
+      { dr: 0, dc: -1 },
+      { dr: 0, dc: 1 },
+    ];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (!current) break;
+      if (current.r === myPosition.r && current.c === myPosition.c) break;
+
+      for (const { dr, dc } of directions) {
+        const nr = current.r + dr;
+        const nc = current.c + dc;
+        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        const key = keyOf(nr, nc);
+        if (visited.has(key)) continue;
+        visited.add(key);
+        prev.set(key, current);
+        queue.push({ r: nr, c: nc });
+      }
+    }
+
+    const endKey = keyOf(myPosition.r, myPosition.c);
+    if (!visited.has(endKey)) return [myPosition];
+
+    const path: Array<{ r: number; c: number }> = [];
+    let node: { r: number; c: number } | undefined = myPosition;
+    while (node) {
+      path.push(node);
+      const parent = prev.get(keyOf(node.r, node.c));
+      node = parent;
+    }
+    path.reverse();
     return path;
-  }, [myPosition, doorCol, doorRow]);
+  }, [cols, doorCol, doorRow, myPosition, rows]);
 
   if (!myPosition) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
@@ -77,8 +113,8 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
           ? <span className="text-base">🚪</span>
           : <span className="inline-flex items-center justify-center w-6 h-6 border border-primary/40 rounded bg-primary/10 text-xs text-primary">窗</span>}</span>
       </div>
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
-        <div className="inline-grid gap-1" style={{
+      <div ref={seatContainerRef} className="seat-checkin-surface overflow-auto pb-4 rounded-lg border border-border/60 bg-muted/20">
+        <div className="inline-grid gap-1 min-w-max min-h-max shrink-0 p-2" style={{
           gridTemplateColumns: `repeat(${totalVisualCols}, 2.5rem)`,
         }}>
           {Array.from({ length: rows }).flatMap((_, ri) =>
