@@ -68,7 +68,16 @@ describe('QuizSubmitPage ended result visibility', () => {
       expect(screen.getByText('参考答案：B. 2')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('成绩：1 / 1')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(rpcMock).toHaveBeenCalledWith('get_quiz_student_result', expect.objectContaining({
+        p_session_id: 'session-1',
+        p_student_name: '张三',
+      }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('成绩：1 / 1')).toBeInTheDocument();
+    });
     expect(screen.getByText('你的作答：B')).toBeInTheDocument();
   });
 });

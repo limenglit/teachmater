@@ -292,7 +292,7 @@ export default function QuizPanel() {
               </Button>
             )}
             {activeSession.status === 'ended' && (
-              <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => requestDeleteSession(activeSession)} disabled={deleting}>
+              <Button data-testid="quiz-session-detail-delete-trigger" variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => requestDeleteSession(activeSession)} disabled={deleting}>
                 <Trash2 className="w-3 h-3" /> {t('common.delete')}
               </Button>
             )}
@@ -380,6 +380,7 @@ export default function QuizPanel() {
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
               <AlertDialogAction
+                data-testid="quiz-session-delete-confirm"
                 onClick={(event) => {
                   event.preventDefault();
                   if (sessionToDelete) {
@@ -511,6 +512,7 @@ export default function QuizPanel() {
                   </span>
                   {s.status === 'ended' && (
                     <Button
+                      data-testid={`quiz-session-list-delete-${s.id}`}
                       variant="ghost"
                       size="sm"
                       className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"

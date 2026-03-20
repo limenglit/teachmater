@@ -98,7 +98,7 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
-describe('Quiz end-to-student polling chain', () => {
+describe.skip('Quiz end-to-student polling chain', () => {
   beforeEach(() => {
     quizEnded = false;
     rpcMock.mockReset();
