@@ -338,6 +338,7 @@ export default function SeatChart() {
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
     studentNames: students.map(s => s.name),
+    seatAssignmentReady: seats.length > 0,
     sceneConfig: exportSceneConfig,
     sceneType: 'classroom',
   });
@@ -841,7 +842,7 @@ export default function SeatChart() {
         {seats.length > 0 && (
           <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
         )}
-        <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} sceneType="classroom"
+        <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
           sceneConfig={exportSceneConfig} className={exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
         </>)}
       </div>
