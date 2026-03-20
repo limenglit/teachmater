@@ -24,6 +24,13 @@ interface Session {
   student_names: string[];
 }
 
+interface StudentResult {
+  student_name: string;
+  answers: Array<{ question_index: number; answer: any; is_correct: boolean | null }>;
+  correct_count: number;
+  objective_total: number;
+}
+
 const NAME_KEY = 'quiz-student-name';
 const RECENT_KEY = 'quiz-recent-names';
 
@@ -38,6 +45,7 @@ export default function QuizSubmitPage() {
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [studentResult, setStudentResult] = useState<StudentResult | null>(null);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -86,6 +94,27 @@ export default function QuizSubmitPage() {
         setLoading(false);
       });
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId || !session || session.status !== 'ended' || !session.reveal_answers) return;
+    const studentName = name.trim() || localStorage.getItem(NAME_KEY)?.trim();
+    if (!studentName) return;
+
+    supabase.rpc('get_quiz_student_result', {
+      p_session_id: sessionId,
+      p_student_name: studentName,
+    } as any).then(({ data }) => {
+      if (data) setStudentResult(data as StudentResult);
+    });
+  }, [sessionId, session, name]);
+
+  const serverAnswerMap = useMemo(() => {
+    const map = new Map<number, any>();
+    (studentResult?.answers || []).forEach(item => {
+      map.set(item.question_index, item.answer);
+    });
+    return map;
+  }, [studentResult]);
 
   // Poll session status so students can see when teacher ends the quiz.
   useEffect(() => {
@@ -197,13 +226,23 @@ export default function QuizSubmitPage() {
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground mb-1">
-                  {tr('quiz.yourAnswer', '你的作答')}：{normalizeAnswer(answers[idx]) || tr('quiz.notAnswered', '未作答')}
+                  {tr('quiz.yourAnswer', '你的作答')}：{normalizeAnswer(answers[idx] ?? serverAnswerMap.get(idx)) || tr('quiz.notAnswered', '未作答')}
                 </p>
                 <p className="text-sm text-green-700">
                   {tr('quiz.referenceAnswer', '参考答案')}：{formatCorrectAnswer(q)}
                 </p>
               </div>
             ))}
+            {studentResult && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
+                <p className="font-medium text-foreground">
+                  {tr('quiz.scoreSummary', '成绩')}：{studentResult.correct_count} / {studentResult.objective_total}
+                </p>
+                <p className="text-muted-foreground mt-1">
+                  {tr('quiz.scoreHint', '仅统计客观题（单选/多选/判断）')}
+                </p>
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground text-center">

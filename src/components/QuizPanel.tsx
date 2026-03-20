@@ -61,7 +61,7 @@ export default function QuizPanel() {
   const [sessionStudentNames, setSessionStudentNames] = useState<string[]>([]);
   const [ending, setEnding] = useState(false);
   const [endConfirmOpen, setEndConfirmOpen] = useState(false);
-  const [revealAfterEnd, setRevealAfterEnd] = useState(false);
+  const [revealAfterEnd, setRevealAfterEnd] = useState(true);
   const [revealFeatureUnsupported, setRevealFeatureUnsupported] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +70,7 @@ export default function QuizPanel() {
   useEffect(() => {
     const raw = localStorage.getItem(REVEAL_AFTER_END_KEY);
     if (raw === '1') setRevealAfterEnd(true);
+    if (raw === '0') setRevealAfterEnd(false);
   }, []);
 
   useEffect(() => {
@@ -185,7 +186,7 @@ export default function QuizPanel() {
       p_session_id: activeSession.id,
       p_token: token,
       p_status: 'ended',
-      p_reveal_answers: revealAfterEnd,
+      p_reveal_answers: true,
     } as any);
 
     if (error && /p_reveal_answers/i.test(error.message || '')) {
@@ -213,8 +214,8 @@ export default function QuizPanel() {
       return;
     }
 
-    setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: revealAfterEnd } : null);
-    toast({ title: revealAfterEnd ? '测验已结束，学生端将显示参考答案' : '测验已结束，学生端不公开参考答案' });
+    setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: true } : null);
+    toast({ title: '测验已结束，学生端将显示参考答案与成绩' });
     loadSessions();
   };
 
