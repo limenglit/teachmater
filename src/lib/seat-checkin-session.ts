@@ -20,6 +20,17 @@ export interface SeatCheckinRecord {
   checked_in_at: string;
 }
 
+type SeatCheckinHistoryRow = {
+  id: string;
+  created_at: string;
+  duration_minutes?: number;
+  status?: string;
+  ended_at?: string | null;
+  scene_type?: string;
+  class_name?: string;
+  student_names?: unknown;
+};
+
 interface CreateSeatCheckinSessionParams {
   seatData: unknown;
   studentNames: string[];
@@ -124,37 +135,54 @@ export async function createSeatCheckinSession({
 
 export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   const ids = Object.keys(getSeatCheckinSessionTokens());
-  let rows: any[] = [];
+  let rows: SeatCheckinHistoryRow[] = [];
+
+  const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names';
+  const selectLegacy = 'id, created_at, status, scene_type, student_names';
+
+  const queryHistoryRows = async (build: (selectClause: string) => Promise<{ data: unknown; error: unknown }>) => {
+    const enhanced = await build(selectEnhanced);
+    if (!enhanced.error && Array.isArray(enhanced.data)) {
+      return enhanced.data as SeatCheckinHistoryRow[];
+    }
+
+    const legacy = await build(selectLegacy);
+    if (!legacy.error && Array.isArray(legacy.data)) {
+      return legacy.data as SeatCheckinHistoryRow[];
+    }
+
+    return [] as SeatCheckinHistoryRow[];
+  };
 
   // 1) Prefer owner-linked sessions (newer flow with token).
   if (ids.length > 0) {
-    const ownerLinked = await supabase
-      .from('seat_checkin_sessions')
-      .select('id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names')
-      .in('id', ids)
-      .order('created_at', { ascending: false });
-
-    if (!ownerLinked.error && ownerLinked.data) {
-      rows = ownerLinked.data as any[];
-    }
+    rows = await queryHistoryRows((selectClause) =>
+      supabase
+        .from('seat_checkin_sessions')
+        .select(selectClause)
+        .in('id', ids)
+        .order('created_at', { ascending: false })
+    );
   }
 
   // 2) Compatibility fallback: load recent scene sessions when token list is empty
   // or when owner-linked sessions are not available yet.
   if (rows.length === 0) {
-    let query = supabase
-      .from('seat_checkin_sessions')
-      .select('id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names')
-      .order('created_at', { ascending: false })
-      .limit(30);
+    rows = await queryHistoryRows((selectClause) => {
+      let query = supabase
+        .from('seat_checkin_sessions')
+        .select(selectClause)
+        .order('created_at', { ascending: false })
+        .limit(30);
 
-    if (sceneType) {
-      query = query.eq('scene_type', sceneType);
-    }
+      if (sceneType) {
+        query = query.eq('scene_type', sceneType);
+      }
 
-    const fallback = await query;
-    if (fallback.error || !fallback.data) return [];
-    rows = fallback.data as any[];
+      return query;
+    });
+
+    if (rows.length === 0) return [];
   }
 
   return rows
