@@ -14,16 +14,34 @@ import { downloadSvgAsPng } from '@/lib/qr-download';
 
 const HISTORY_KEY = 'teachmate_checkin_history';
 
+function loadHistory() {
+  try {
+    const fromLocal = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    if (Array.isArray(fromLocal) && fromLocal.length > 0) return fromLocal;
+
+    // Backward compatibility: old versions wrote history into sessionStorage.
+    const fromSession = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
+    if (Array.isArray(fromSession) && fromSession.length > 0) {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(fromSession.slice(0, 50)));
+      sessionStorage.removeItem(HISTORY_KEY);
+      return fromSession;
+    }
+  } catch {
+    // ignore parse/migration errors
+  }
+  return [] as any[];
+}
+
 function saveHistory(session: SessionData, records: CheckinRecord[], studentNames: string[]) {
   try {
-    const history = JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]');
+    const history = loadHistory();
     history.unshift({
       session,
       records,
       unchecked: studentNames.filter(n => !records.some(r => r.student_name === n && r.status === 'matched')),
       savedAt: new Date().toISOString(),
     });
-    sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
   } catch { }
 }
 
@@ -197,7 +215,7 @@ export default function CheckInPanel() {
 
   // History view
   if (showHistory) {
-    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    const history = loadHistory();
     return (
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-2xl mx-auto">
