@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -16,6 +17,11 @@ import {
 } from '@/lib/seat-checkin-session';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import {
+  getRequireSeatAssignmentBeforeCheckin,
+  isSeatAssignmentComplete,
+  setRequireSeatAssignmentBeforeCheckin,
+} from '@/lib/seat-checkin-policy';
 
 interface Props {
   open: boolean;
@@ -49,7 +55,13 @@ export default function SeatCheckinDialog({
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
   const qrPreviewRef = useRef<HTMLDivElement>(null);
+
+  const seatAssignmentComplete = useMemo(
+    () => isSeatAssignmentComplete(seatData, studentNames),
+    [seatData, studentNames],
+  );
 
   const refreshHistory = async () => {
     const next = await loadSeatCheckinSessionHistory(sceneType);
@@ -109,6 +121,11 @@ export default function SeatCheckinDialog({
   }, [currentSession?.id, currentSession?.status, timeLeft]);
 
   const createSession = async () => {
+    if (requireSeatAssignment && !seatAssignmentComplete) {
+      toast({ title: '请先完成排座后再发起签到', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
     try {
       const created = await createSeatCheckinSession({
@@ -187,6 +204,11 @@ export default function SeatCheckinDialog({
     setRecords(nextRecords);
   };
 
+  const handleToggleRequirement = (checked: boolean) => {
+    setRequireSeatAssignment(checked);
+    setRequireSeatAssignmentBeforeCheckin(checked);
+  };
+
   const copyUrl = () => {
     navigator.clipboard.writeText(checkinUrl);
     setCopied(true);
@@ -219,7 +241,21 @@ export default function SeatCheckinDialog({
               />
               <span className="text-sm text-muted-foreground">分钟</span>
             </div>
-            <Button onClick={createSession} disabled={loading} className="w-full">
+
+            <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-foreground">签到前需完成排座</p>
+                <Switch checked={requireSeatAssignment} onCheckedChange={handleToggleRequirement} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                缺省开启。关闭后可无需排座直接发起签到。
+              </p>
+              {requireSeatAssignment && !seatAssignmentComplete && (
+                <p className="text-xs text-destructive">当前尚未完成排座，暂不可发起签到。</p>
+              )}
+            </div>
+
+            <Button onClick={createSession} disabled={loading || (requireSeatAssignment && !seatAssignmentComplete)} className="w-full">
               {loading ? '生成中...' : '生成签到码'}
             </Button>
 
