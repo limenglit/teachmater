@@ -45,6 +45,109 @@ const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: stri
   return Boolean(data);
 };
 
+const isSeatEmptyValue = (value: unknown) => value === null || value === '';
+
+const countEmptySeatSlots = (node: unknown): number => {
+  if (Array.isArray(node)) {
+    return node.reduce((sum, item) => sum + countEmptySeatSlots(item), 0);
+  }
+  if (node && typeof node === 'object') {
+    return Object.values(node as Record<string, unknown>).reduce((sum, value) => sum + countEmptySeatSlots(value), 0);
+  }
+  return isSeatEmptyValue(node) ? 1 : 0;
+};
+
+const cloneSeatDataWithGuestAssignments = (seatData: unknown, guestNames: string[]) => {
+  let cursor = 0;
+
+  const assign = (node: unknown): unknown => {
+    if (Array.isArray(node)) {
+      return node.map(item => assign(item));
+    }
+
+    if (node && typeof node === 'object') {
+      const next: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        next[key] = assign(value);
+      }
+      return next;
+    }
+
+    if (isSeatEmptyValue(node) && cursor < guestNames.length) {
+      const assigned = guestNames[cursor];
+      cursor += 1;
+      return assigned;
+    }
+
+    return node;
+  };
+
+  return assign(seatData);
+};
+
+const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string) => {
+  if (sceneType === 'classroom') {
+    const seats = seatData as (string | null)[][];
+    for (let r = 0; r < seats.length; r++) {
+      for (let c = 0; c < seats[r].length; c++) {
+        if (seats[r][c] === studentName) return `第${r + 1}排第${c + 1}列`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'smartClassroom' || sceneType === 'banquet') {
+    const tables = seatData as string[][];
+    for (let t = 0; t < tables.length; t++) {
+      for (let s = 0; s < tables[t].length; s++) {
+        if (tables[t][s] === studentName) return `第${t + 1}桌第${s + 1}号座`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'conference') {
+    const data = seatData as {
+      headLeft?: string;
+      headRight?: string;
+      top?: string[];
+      bottom?: string[];
+      mainTop?: string[];
+      mainBottom?: string[];
+    };
+    if (data.headLeft === studentName) return '左侧主位';
+    if (data.headRight === studentName) return '右侧主位';
+    const top = data.top || data.mainTop || [];
+    const bottom = data.bottom || data.mainBottom || [];
+    const topIdx = top.indexOf(studentName);
+    if (topIdx >= 0) return `上方第${topIdx + 1}位`;
+    const bottomIdx = bottom.indexOf(studentName);
+    if (bottomIdx >= 0) return `下方第${bottomIdx + 1}位`;
+    return null;
+  }
+
+  if (sceneType === 'concertHall') {
+    const rows = seatData as string[][];
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        if (rows[r][c] === studentName) return `第${r + 1}排第${c + 1}座`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'computerLab') {
+    const rows = seatData as Array<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }>;
+    for (const row of rows) {
+      const idx = row.students.indexOf(studentName);
+      if (idx >= 0) return `第${row.rowIndex + 1}排${row.side === 'top' ? '上侧' : '下侧'}第${idx + 1}位`;
+    }
+    return null;
+  }
+
+  return null;
+};
+
 export default function SeatCheckinPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { t } = useLanguage();
@@ -61,6 +164,58 @@ export default function SeatCheckinPage() {
   const [checkedIn, setCheckedIn] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [displaySeatData, setDisplaySeatData] = useState<unknown | null>(null);
+  const [isGuestAssigned, setIsGuestAssigned] = useState(false);
+  const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
+
+  const resolveSeatDataForName = async (sessionData: {
+    seat_data: unknown;
+    student_names: string[];
+    scene_type: string;
+  }, targetName: string, includeCurrentAsGuest: boolean) => {
+    const normalized = targetName.trim();
+    const registeredSet = new Set(sessionData.student_names);
+    const isRegistered = registeredSet.has(normalized);
+
+    if (isRegistered) {
+      return {
+        seatData: sessionData.seat_data,
+        guestAssigned: false,
+        hint: buildSeatHint(sessionData.scene_type, sessionData.seat_data, normalized),
+      };
+    }
+
+    const { data, error } = await supabase
+      .from('seat_checkin_records')
+      .select('student_name, checked_in_at')
+      .eq('session_id', sessionId)
+      .order('checked_in_at', { ascending: true });
+
+    if (error) throw error;
+
+    const guestNames: string[] = [];
+    const seen = new Set<string>();
+    for (const row of (data || []) as Array<{ student_name: string }>) {
+      const studentName = row.student_name.trim();
+      if (!studentName || registeredSet.has(studentName) || seen.has(studentName)) continue;
+      seen.add(studentName);
+      guestNames.push(studentName);
+    }
+
+    if (includeCurrentAsGuest && !seen.has(normalized)) {
+      guestNames.push(normalized);
+      seen.add(normalized);
+    }
+
+    const capacity = countEmptySeatSlots(sessionData.seat_data);
+    if (includeCurrentAsGuest && guestNames.length > capacity) {
+      throw new Error('NO_SEAT_FOR_GUEST');
+    }
+
+    const assignedSeatData = cloneSeatDataWithGuestAssignments(sessionData.seat_data, guestNames);
+    const hint = buildSeatHint(sessionData.scene_type, assignedSeatData, normalized);
+    return { seatData: assignedSeatData, guestAssigned: true, hint };
+  };
 
   useEffect(() => {
     if (!sessionId) return;
@@ -81,11 +236,15 @@ export default function SeatCheckinPage() {
         setSession(nextSession);
 
         const storedName = getStoredSeatCheckinName(sessionId).trim();
-        if (storedName && nextSession.student_names.includes(storedName)) {
+        if (storedName) {
           setName(storedName);
           try {
             const exists = await hasExistingSeatCheckinRecord(sessionId, storedName);
             if (exists) {
+              const resolved = await resolveSeatDataForName(nextSession, storedName, false);
+              setDisplaySeatData(resolved.seatData);
+              setIsGuestAssigned(resolved.guestAssigned);
+              setAssignedSeatHint(resolved.hint);
               setCheckedIn(true);
               setAlreadyCheckedIn(true);
             }
@@ -110,18 +269,25 @@ export default function SeatCheckinPage() {
   const handleSubmit = async () => {
     if (!name.trim() || !sessionId || !session) return;
     const trimmedName = name.trim();
-    if (!session.student_names.includes(trimmedName)) {
-      toast({ title: t('seatCheckin.nameNotFound'), description: t('seatCheckin.checkName'), variant: 'destructive' });
-      return;
-    }
+    const isRegistered = session.student_names.includes(trimmedName);
     setSubmitting(true);
     try {
       const exists = await hasExistingSeatCheckinRecord(sessionId, trimmedName);
       if (exists) {
+        const resolved = await resolveSeatDataForName(session, trimmedName, false);
+        setDisplaySeatData(resolved.seatData);
+        setIsGuestAssigned(resolved.guestAssigned);
+        setAssignedSeatHint(resolved.hint);
         saveStoredSeatCheckinName(sessionId, trimmedName);
         setName(trimmedName);
         setCheckedIn(true);
         setAlreadyCheckedIn(true);
+        if (resolved.guestAssigned) {
+          toast({
+            title: '您没提前注册，已为您分配临时座位',
+            description: resolved.hint ? `分配座位在${resolved.hint}，请按下方引导入座。` : '请按下方引导入座。',
+          });
+        }
         return;
       }
 
@@ -134,12 +300,28 @@ export default function SeatCheckinPage() {
         session_id: sessionId,
         student_name: trimmedName,
       });
+
+      const resolved = await resolveSeatDataForName(session, trimmedName, !isRegistered);
+      setDisplaySeatData(resolved.seatData);
+      setIsGuestAssigned(resolved.guestAssigned);
+      setAssignedSeatHint(resolved.hint);
       saveStoredSeatCheckinName(sessionId, trimmedName);
       setName(trimmedName);
       setCheckedIn(true);
       setAlreadyCheckedIn(false);
-    } catch {
-      toast({ title: t('seatCheckin.failed'), variant: 'destructive' });
+      if (resolved.guestAssigned) {
+        toast({
+          title: '您没提前注册，已为您分配临时座位',
+          description: resolved.hint ? `分配座位在${resolved.hint}，请按下方引导入座。` : '请按下方引导入座。',
+        });
+      }
+    } catch (err) {
+      const code = err instanceof Error ? err.message : '';
+      if (code === 'NO_SEAT_FOR_GUEST') {
+        toast({ title: '当前可分配座位已满，请联系老师现场安排。', variant: 'destructive' });
+      } else {
+        toast({ title: t('seatCheckin.failed'), variant: 'destructive' });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -193,6 +375,7 @@ export default function SeatCheckinPage() {
 
   const sceneType = session.scene_type;
   const studentName = name.trim();
+  const effectiveSeatData = displaySeatData ?? session.seat_data;
 
   return (
     <div className="min-h-[100dvh] bg-background overflow-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
@@ -202,25 +385,30 @@ export default function SeatCheckinPage() {
             <CheckCircle2 className="w-6 h-6" />
             <span className="text-lg font-bold">{t('seatCheckin.success')}</span>
           </div>
+          {isGuestAssigned && (
+            <p className="text-sm text-amber-600">
+              您没提前注册，已为您分配临时座位{assignedSeatHint ? `（${assignedSeatHint}）` : ''}，请按引导入座。
+            </p>
+          )}
           {alreadyCheckedIn && (
             <p className="text-sm text-muted-foreground">已经完成签到，以下为你的座位信息。</p>
           )}
         </div>
 
         {sceneType === 'classroom' && (
-          <ClassroomCheckinView seatData={session.seat_data} sceneConfig={session.scene_config} studentName={studentName} />
+          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
         )}
         {(sceneType === 'smartClassroom' || sceneType === 'banquet') && (
-          <RoundTableCheckinView seatData={session.seat_data} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} />
+          <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} />
         )}
         {sceneType === 'conference' && (
-          <ConferenceCheckinView seatData={session.seat_data} sceneConfig={session.scene_config} studentName={studentName} />
+          <ConferenceCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
         )}
         {sceneType === 'concertHall' && (
-          <ConcertCheckinView seatData={session.seat_data} sceneConfig={session.scene_config} studentName={studentName} />
+          <ConcertCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
         )}
         {sceneType === 'computerLab' && (
-          <ComputerLabCheckinView seatData={session.seat_data} sceneConfig={session.scene_config} studentName={studentName} />
+          <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
         )}
       </div>
     </div>

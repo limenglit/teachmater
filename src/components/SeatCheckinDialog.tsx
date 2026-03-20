@@ -34,6 +34,99 @@ interface Props {
   onSessionCreated?: (payload: { sessionId: string; checkinUrl: string }) => void;
 }
 
+const isSeatEmptyValue = (value: unknown) => value === null || value === '';
+
+const cloneSeatDataWithGuestAssignments = (seatData: unknown, guestNames: string[]) => {
+  let cursor = 0;
+
+  const assign = (node: unknown): unknown => {
+    if (Array.isArray(node)) {
+      return node.map(item => assign(item));
+    }
+
+    if (node && typeof node === 'object') {
+      const next: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+        next[key] = assign(value);
+      }
+      return next;
+    }
+
+    if (isSeatEmptyValue(node) && cursor < guestNames.length) {
+      const assigned = guestNames[cursor];
+      cursor += 1;
+      return assigned;
+    }
+
+    return node;
+  };
+
+  return assign(seatData);
+};
+
+const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string) => {
+  if (sceneType === 'classroom') {
+    const seats = seatData as (string | null)[][];
+    for (let r = 0; r < seats.length; r++) {
+      for (let c = 0; c < seats[r].length; c++) {
+        if (seats[r][c] === studentName) return `第${r + 1}排第${c + 1}列`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'smartClassroom' || sceneType === 'banquet') {
+    const tables = seatData as string[][];
+    for (let t = 0; t < tables.length; t++) {
+      for (let s = 0; s < tables[t].length; s++) {
+        if (tables[t][s] === studentName) return `第${t + 1}桌第${s + 1}号座`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'conference') {
+    const data = seatData as {
+      headLeft?: string;
+      headRight?: string;
+      top?: string[];
+      bottom?: string[];
+      mainTop?: string[];
+      mainBottom?: string[];
+    };
+    if (data.headLeft === studentName) return '左侧主位';
+    if (data.headRight === studentName) return '右侧主位';
+    const top = data.top || data.mainTop || [];
+    const bottom = data.bottom || data.mainBottom || [];
+    const topIdx = top.indexOf(studentName);
+    if (topIdx >= 0) return `上方第${topIdx + 1}位`;
+    const bottomIdx = bottom.indexOf(studentName);
+    if (bottomIdx >= 0) return `下方第${bottomIdx + 1}位`;
+    return null;
+  }
+
+  if (sceneType === 'concertHall') {
+    const rows = seatData as string[][];
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 0; c < rows[r].length; c++) {
+        if (rows[r][c] === studentName) return `第${r + 1}排第${c + 1}座`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'computerLab') {
+    const rows = seatData as Array<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }>;
+    for (const row of rows) {
+      const idx = row.students.indexOf(studentName);
+      if (idx >= 0) return `第${row.rowIndex + 1}排${row.side === 'top' ? '上侧' : '下侧'}第${idx + 1}位`;
+    }
+    return null;
+  }
+
+  return null;
+};
+
 export default function SeatCheckinDialog({
   open,
   onOpenChange,
@@ -51,6 +144,7 @@ export default function SeatCheckinDialog({
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [records, setRecords] = useState<SeatCheckinRecord[]>([]);
+  const [sessionSeatData, setSessionSeatData] = useState<unknown | null>(null);
   const [historySessions, setHistorySessions] = useState<SeatCheckinSessionSummary[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(5);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -77,6 +171,7 @@ export default function SeatCheckinDialog({
   useEffect(() => {
     if (!currentSession) {
       setRecords([]);
+      setSessionSeatData(null);
       setTimeLeft(null);
       return;
     }
@@ -105,6 +200,29 @@ export default function SeatCheckinDialog({
       .subscribe();
 
     return () => { void supabase.removeChannel(channel); };
+  }, [currentSession?.id]);
+
+  useEffect(() => {
+    if (!currentSession) return;
+
+    let canceled = false;
+    void supabase
+      .from('seat_checkin_sessions')
+      .select('seat_data')
+      .eq('id', currentSession.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (canceled) return;
+        setSessionSeatData((data as { seat_data?: unknown } | null)?.seat_data ?? null);
+      })
+      .catch(() => {
+        if (canceled) return;
+        setSessionSeatData(null);
+      });
+
+    return () => {
+      canceled = true;
+    };
   }, [currentSession?.id]);
 
   useEffect(() => {
@@ -138,6 +256,7 @@ export default function SeatCheckinDialog({
         className,
       });
       setCurrentSession(created.session);
+      setSessionSeatData(seatData);
       setRecords([]);
       onSessionCreated?.({ sessionId: created.sessionId, checkinUrl: created.checkinUrl });
       await refreshHistory();
@@ -192,6 +311,31 @@ export default function SeatCheckinDialog({
   const checkedInNames = useMemo(() => Array.from(new Set(records.map(record => record.student_name.trim()))), [records]);
   const currentStudentNames = currentSession?.student_names ?? studentNames;
   const uncheckedNames = currentStudentNames.filter(name => !checkedInNames.includes(name.trim()));
+  const guestSeatAssignments = useMemo(() => {
+    if (!currentSession) return [] as Array<{ name: string; seatHint: string }>;
+
+    const baseSeatData = sessionSeatData ?? seatData;
+    if (!baseSeatData) return [] as Array<{ name: string; seatHint: string }>;
+
+    const registeredSet = new Set(currentStudentNames.map(item => item.trim()));
+    const guestNames: string[] = [];
+    const seen = new Set<string>();
+    for (const record of records) {
+      const checkedName = record.student_name.trim();
+      if (!checkedName || registeredSet.has(checkedName) || seen.has(checkedName)) continue;
+      seen.add(checkedName);
+      guestNames.push(checkedName);
+    }
+
+    if (guestNames.length === 0) return [] as Array<{ name: string; seatHint: string }>;
+
+    const assignedSeatData = cloneSeatDataWithGuestAssignments(baseSeatData, guestNames);
+    return guestNames
+      .map(name => ({
+        name,
+        seatHint: buildSeatHint(currentSession.scene_type, assignedSeatData, name) || '待老师现场确认',
+      }));
+  }, [currentSession, currentStudentNames, records, seatData, sessionSeatData]);
 
   const formatTimeLeft = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -356,6 +500,22 @@ export default function SeatCheckinDialog({
                   </span>
                 ))}
               </div>
+            </div>
+
+            <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
+              <p className="font-medium text-foreground mb-2">未注册临时座位名单</p>
+              {guestSeatAssignments.length === 0 ? (
+                <p className="text-xs text-muted-foreground">暂无未注册签到人员</p>
+              ) : (
+                <div className="max-h-36 overflow-auto space-y-1.5 pr-1">
+                  {guestSeatAssignments.map(item => (
+                    <div key={item.name} className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background px-2 py-1.5">
+                      <span className="text-xs text-foreground truncate">{item.name}</span>
+                      <span className="text-xs text-primary whitespace-nowrap">{item.seatHint}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {currentSession.status === 'ended' && (
