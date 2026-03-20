@@ -1,6 +1,10 @@
 const REQUIRE_SEAT_ASSIGNMENT_KEY = 'teachmate_require_seat_assignment_before_checkin_v1';
+const SYSTEM_REQUIRE_SEAT_ASSIGNMENT_KEY = 'teachmate_system_require_seat_assignment_before_checkin_v1';
 
 export const getRequireSeatAssignmentBeforeCheckin = () => {
+  const systemRaw = localStorage.getItem(SYSTEM_REQUIRE_SEAT_ASSIGNMENT_KEY);
+  if (systemRaw !== null) return systemRaw !== 'false';
+
   const raw = localStorage.getItem(REQUIRE_SEAT_ASSIGNMENT_KEY);
   if (raw === null) return true;
   return raw !== 'false';
@@ -8,6 +12,10 @@ export const getRequireSeatAssignmentBeforeCheckin = () => {
 
 export const setRequireSeatAssignmentBeforeCheckin = (required: boolean) => {
   localStorage.setItem(REQUIRE_SEAT_ASSIGNMENT_KEY, String(required));
+};
+
+export const setSystemRequireSeatAssignmentBeforeCheckin = (required: boolean) => {
+  localStorage.setItem(SYSTEM_REQUIRE_SEAT_ASSIGNMENT_KEY, String(required));
 };
 
 const normalize = (value: string) => value.trim();

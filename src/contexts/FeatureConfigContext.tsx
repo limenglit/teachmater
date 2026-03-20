@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TabId } from '@/components/TabNavigation';
+import { setSystemRequireSeatAssignmentBeforeCheckin } from '@/lib/seat-checkin-policy';
 
 export interface FeatureFlags {
   random: boolean;
@@ -20,6 +21,9 @@ export interface FeatureFlags {
 export interface SystemConfig {
   guest: FeatureFlags;
   registered: FeatureFlags;
+  checkinPolicy: {
+    require_seat_assignment_before_checkin: boolean;
+  };
 }
 
 const DEFAULT_CONFIG: SystemConfig = {
@@ -32,6 +36,9 @@ const DEFAULT_CONFIG: SystemConfig = {
     random: true, teamwork: true, seats: true, board: true, quiz: true,
     sketch: true, ppt: true, visual: true, achieve: true, toolkit: true,
     ai_daily_limit: -1,
+  },
+  checkinPolicy: {
+    require_seat_assignment_before_checkin: true,
   },
 };
 
@@ -66,15 +73,25 @@ export function FeatureConfigProvider({ children }: { children: ReactNode }) {
       if (!error && data) {
         const raw = (data as any).config;
         if (raw && typeof raw === 'object' && raw.guest && raw.registered) {
-          setConfig({
+          const nextConfig = {
             guest: { ...DEFAULT_CONFIG.guest, ...raw.guest },
             registered: { ...DEFAULT_CONFIG.registered, ...raw.registered },
-          });
+            checkinPolicy: {
+              ...DEFAULT_CONFIG.checkinPolicy,
+              ...((raw as any).checkinPolicy || {}),
+            },
+          };
+
+          setConfig(nextConfig);
+          setSystemRequireSeatAssignmentBeforeCheckin(nextConfig.checkinPolicy.require_seat_assignment_before_checkin);
+          setLoading(false);
+          return;
         }
       }
     } catch {
       // Use defaults
     }
+    setSystemRequireSeatAssignmentBeforeCheckin(DEFAULT_CONFIG.checkinPolicy.require_seat_assignment_before_checkin);
     setLoading(false);
   };
 

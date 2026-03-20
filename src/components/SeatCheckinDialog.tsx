@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -20,7 +19,6 @@ import QRActionPanel from '@/components/qr/QRActionPanel';
 import {
   getRequireSeatAssignmentBeforeCheckin,
   isSeatAssignmentComplete,
-  setRequireSeatAssignmentBeforeCheckin,
 } from '@/lib/seat-checkin-policy';
 
 interface Props {
@@ -204,11 +202,6 @@ export default function SeatCheckinDialog({
     setRecords(nextRecords);
   };
 
-  const handleToggleRequirement = (checked: boolean) => {
-    setRequireSeatAssignment(checked);
-    setRequireSeatAssignmentBeforeCheckin(checked);
-  };
-
   const copyUrl = () => {
     navigator.clipboard.writeText(checkinUrl);
     setCopied(true);
@@ -245,10 +238,12 @@ export default function SeatCheckinDialog({
             <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">签到前需完成排座</p>
-                <Switch checked={requireSeatAssignment} onCheckedChange={handleToggleRequirement} />
+                <span className={`text-xs px-2 py-0.5 rounded-full border ${requireSeatAssignment ? 'text-primary border-primary/40 bg-primary/10' : 'text-muted-foreground border-border bg-muted'}`}>
+                  {requireSeatAssignment ? '已开启' : '已关闭'}
+                </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                缺省开启。关闭后可无需排座直接发起签到。
+                该策略由系统配置统一管理。关闭后可无需排座直接发起签到。
               </p>
               {requireSeatAssignment && !seatAssignmentComplete && (
                 <p className="text-xs text-destructive">当前尚未完成排座，暂不可发起签到。</p>

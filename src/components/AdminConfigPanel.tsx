@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Save, Settings2 } from 'lucide-react';
 import type { SystemConfig, FeatureFlags } from '@/contexts/FeatureConfigContext';
+import { setSystemRequireSeatAssignmentBeforeCheckin } from '@/lib/seat-checkin-policy';
 
 const FEATURE_KEYS: { key: keyof Omit<FeatureFlags, 'ai_daily_limit'>; emoji: string; labelKey: string }[] = [
   { key: 'random', emoji: '🎲', labelKey: 'tab.random' },
@@ -31,6 +32,9 @@ const DEFAULT_CONFIG: SystemConfig = {
     random: true, teamwork: true, seats: true, board: true, quiz: true,
     sketch: true, ppt: true, visual: true, achieve: true, toolkit: true,
     ai_daily_limit: -1,
+  },
+  checkinPolicy: {
+    require_seat_assignment_before_checkin: true,
   },
 };
 
@@ -59,6 +63,10 @@ export default function AdminConfigPanel() {
         setConfig({
           guest: { ...DEFAULT_CONFIG.guest, ...d.config.guest },
           registered: { ...DEFAULT_CONFIG.registered, ...d.config.registered },
+          checkinPolicy: {
+            ...DEFAULT_CONFIG.checkinPolicy,
+            ...((d.config as any).checkinPolicy || {}),
+          },
         });
       }
     }
@@ -76,8 +84,19 @@ export default function AdminConfigPanel() {
     if (error) {
       toast({ title: t('sysconfig.saveFailed'), description: error.message, variant: 'destructive' });
     } else {
+      setSystemRequireSeatAssignmentBeforeCheckin(config.checkinPolicy.require_seat_assignment_before_checkin);
       toast({ title: t('sysconfig.saved') });
     }
+  };
+
+  const toggleSeatCheckinPolicy = () => {
+    setConfig(prev => ({
+      ...prev,
+      checkinPolicy: {
+        ...prev.checkinPolicy,
+        require_seat_assignment_before_checkin: !prev.checkinPolicy.require_seat_assignment_before_checkin,
+      },
+    }));
   };
 
   const toggleFeature = (userType: 'guest' | 'registered', key: keyof Omit<FeatureFlags, 'ai_daily_limit'>) => {
@@ -167,6 +186,20 @@ export default function AdminConfigPanel() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {renderUserTypeSection('guest', t('sysconfig.guest'))}
         {renderUserTypeSection('registered', t('sysconfig.registered'))}
+      </div>
+
+      <div className="bg-card rounded-xl border border-border p-4 space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">签到策略</h3>
+        <div className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border">
+          <div className="text-xs">
+            <p className="font-medium text-foreground">签到前需完成排座</p>
+            <p className="text-muted-foreground mt-0.5">缺省开启。关闭后可无需排座直接发起签到。</p>
+          </div>
+          <Switch
+            checked={config.checkinPolicy.require_seat_assignment_before_checkin}
+            onCheckedChange={toggleSeatCheckinPolicy}
+          />
+        </div>
       </div>
     </div>
   );
