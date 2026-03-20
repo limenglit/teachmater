@@ -74,6 +74,17 @@ describe('useStudentStore', () => {
     expect(result.current.students.map(s => s.name)).toEqual(['甲', '乙', '丙']);
   });
 
+  // Case 6.0: 支持仅 CR 和 Unicode 换行分隔，避免整文件被当成一行
+  it('importFromText supports CR-only and Unicode line separators', () => {
+    const { result } = renderHook(() => useStudentStore());
+
+    act(() => result.current.importFromText('韩新月\r王梦茹\r王晨甜'));
+    expect(result.current.students.map(s => s.name)).toEqual(['韩新月', '王梦茹', '王晨甜']);
+
+    act(() => result.current.importFromText('甲\u2028乙\u2029丙'));
+    expect(result.current.students.map(s => s.name)).toEqual(['甲', '乙', '丙']);
+  });
+
   // Case 6.1: 无表头三列数据按 姓名/单位/职务 解析
   it('importFromText infers name, organization and title for 3-column rows without header', () => {
     const { result } = renderHook(() => useStudentStore());

@@ -77,8 +77,12 @@ const normalizeGender = (raw?: string): StudentGender => {
 };
 
 const parseStudentsFromText = (text: string): Student[] => {
-  const lines = text
-    .split(/\r?\n/)
+  const normalizedText = text
+    .replace(/^\uFEFF/, '')
+    .replace(/\u0000/g, '');
+
+  const lines = normalizedText
+    .split(/\r\n|[\n\r\u2028\u2029]/)
     .map(line => line.trim())
     .filter(Boolean);
 
