@@ -61,20 +61,42 @@ export async function createSeatCheckinSession({
   durationMinutes,
   className,
 }: CreateSeatCheckinSessionParams) {
-  const insertData = {
+  const baseInsertData = {
     seat_data: JSON.parse(JSON.stringify(seatData)),
     student_names: JSON.parse(JSON.stringify(studentNames)),
     scene_config: JSON.parse(JSON.stringify(sceneConfig)),
     scene_type: sceneType,
+  };
+
+  const enhancedInsertData = {
+    ...baseInsertData,
     duration_minutes: durationMinutes,
     class_name: className?.trim() || '',
   };
 
-  const { data, error } = await supabase
+  let data: any = null;
+  let error: any = null;
+
+  const enhancedResult = await supabase
     .from('seat_checkin_sessions')
-    .insert([insertData])
+    .insert([enhancedInsertData as any])
     .select('id, creator_token, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names')
     .single();
+
+  data = enhancedResult.data as any;
+  error = enhancedResult.error;
+
+  // Compatibility fallback: old schema may not have duration_minutes/class_name/creator_token/ended_at yet.
+  if (error) {
+    const legacyResult = await supabase
+      .from('seat_checkin_sessions')
+      .insert([baseInsertData as any])
+      .select('id, created_at, status, scene_type, student_names')
+      .single();
+
+    data = legacyResult.data as any;
+    error = legacyResult.error;
+  }
 
   if (error || !data?.id) {
     throw error || new Error('Failed to create seat checkin session');
@@ -90,11 +112,11 @@ export async function createSeatCheckinSession({
     session: {
       id: data.id,
       created_at: (data as any).created_at,
-      duration_minutes: (data as any).duration_minutes,
-      status: (data as any).status,
-      ended_at: (data as any).ended_at,
-      scene_type: (data as any).scene_type,
-      class_name: (data as any).class_name,
+      duration_minutes: (data as any).duration_minutes ?? durationMinutes,
+      status: (data as any).status ?? 'active',
+      ended_at: (data as any).ended_at ?? null,
+      scene_type: (data as any).scene_type ?? sceneType,
+      class_name: (data as any).class_name ?? className?.trim() ?? '',
       student_names: ((data as any).student_names || []) as string[],
     } as SeatCheckinSessionSummary,
   };

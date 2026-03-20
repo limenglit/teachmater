@@ -124,7 +124,8 @@ export default function SeatCheckinDialog({
       onSessionCreated?.({ sessionId: created.sessionId, checkinUrl: created.checkinUrl });
       await refreshHistory();
     } catch (err) {
-      toast({ title: '创建签到失败', variant: 'destructive' });
+      const description = err instanceof Error ? err.message : undefined;
+      toast({ title: '创建签到失败', description, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
