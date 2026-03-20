@@ -356,6 +356,12 @@ export default function SeatChart() {
     );
   };
 
+  const normalizeClassroomDimension = (value: number) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 2;
+    return Math.max(2, Math.floor(parsed));
+  };
+
   const buildClassroomSnapshot = () => ({
     rows,
     cols,
@@ -394,8 +400,8 @@ export default function SeatChart() {
       return;
     }
     const snapshot = item.snapshot;
-    const nextRows = Math.max(2, Math.min(12, snapshot.rows));
-    const nextCols = Math.max(2, Math.min(12, snapshot.cols));
+    const nextRows = normalizeClassroomDimension(snapshot.rows);
+    const nextCols = normalizeClassroomDimension(snapshot.cols);
     const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols);
 
     setRows(nextRows);
@@ -436,8 +442,8 @@ export default function SeatChart() {
       return;
     }
 
-    const nextRows = Math.max(2, Math.min(12, snapshot.rows));
-    const nextCols = Math.max(2, Math.min(12, snapshot.cols));
+    const nextRows = normalizeClassroomDimension(snapshot.rows);
+    const nextCols = normalizeClassroomDimension(snapshot.cols);
     const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols);
 
     setRows(nextRows);
@@ -625,11 +631,11 @@ export default function SeatChart() {
           <div className="flex items-center gap-3 flex-wrap">
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('seat.rows')}
-              <Input type="number" min={2} max={12} value={rows} onChange={e => setRows(Math.max(2, Math.min(12, Number(e.target.value))))} className="w-14 h-8 text-center" />
+              <Input type="number" min={2} value={rows} onChange={e => setRows(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
             </label>
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('seat.cols')}
-              <Input type="number" min={2} max={12} value={cols} onChange={e => setCols(Math.max(2, Math.min(12, Number(e.target.value))))} className="w-14 h-8 text-center" />
+              <Input type="number" min={2} value={cols} onChange={e => setCols(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
             </label>
             {needsGroupCount && (
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
