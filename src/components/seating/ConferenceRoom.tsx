@@ -109,6 +109,7 @@ export default function ConferenceRoom({ students }: Props) {
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
+    seatAssignmentReady: seated,
     sceneConfig: exportSceneConfig,
     sceneType: 'conference',
   });
@@ -978,6 +979,7 @@ export default function ConferenceRoom({ students }: Props) {
         onOpenChange={setCheckinOpen}
         seatData={assignment}
         studentNames={students.map(s => s.name)}
+        seatAssignmentReady={seated}
         sceneType="conference"
         sceneConfig={exportSceneConfig}
         className={exportClassName}

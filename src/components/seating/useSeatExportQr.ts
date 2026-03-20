@@ -6,11 +6,12 @@ import { getRequireSeatAssignmentBeforeCheckin, isSeatAssignmentComplete } from 
 interface UseSeatExportQrParams {
   seatData: unknown;
   studentNames: string[];
+  seatAssignmentReady?: boolean;
   sceneConfig: Record<string, unknown>;
   sceneType: string;
 }
 
-export function useSeatExportQr({ seatData, studentNames, sceneConfig, sceneType }: UseSeatExportQrParams) {
+export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, sceneConfig, sceneType }: UseSeatExportQrParams) {
   const [checkinUrl, setCheckinUrl] = useState<string | null>(null);
 
   const className = useMemo(() => getActiveClassName() || '当前班级', []);
@@ -21,7 +22,9 @@ export function useSeatExportQr({ seatData, studentNames, sceneConfig, sceneType
     }
 
     const requireSeatAssignment = getRequireSeatAssignmentBeforeCheckin();
-    const completed = isSeatAssignmentComplete(seatData, studentNames);
+    const completed = typeof seatAssignmentReady === 'boolean'
+      ? seatAssignmentReady
+      : isSeatAssignmentComplete(seatData, studentNames);
     if (requireSeatAssignment && !completed) {
       throw new Error('请先完成排座后再发起签到');
     }

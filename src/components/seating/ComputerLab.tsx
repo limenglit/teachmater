@@ -85,6 +85,7 @@ export default function ComputerLab({ students }: Props) {
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
+    seatAssignmentReady: seated,
     sceneConfig: exportSceneConfig,
     sceneType: 'computerLab',
   });
@@ -726,6 +727,7 @@ export default function ComputerLab({ students }: Props) {
         onOpenChange={setCheckinOpen}
         seatData={assignment}
         studentNames={students.map(s => s.name)}
+        seatAssignmentReady={seated}
         sceneType="computerLab"
         sceneConfig={exportSceneConfig}
         className={exportClassName}

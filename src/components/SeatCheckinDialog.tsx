@@ -26,6 +26,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   seatData: unknown;
   studentNames: string[];
+  seatAssignmentReady?: boolean;
   sceneConfig: Record<string, unknown>;
   sceneType: string;
   className?: string;
@@ -38,6 +39,7 @@ export default function SeatCheckinDialog({
   onOpenChange,
   seatData,
   studentNames,
+  seatAssignmentReady,
   sceneConfig,
   sceneType,
   className,
@@ -57,8 +59,8 @@ export default function SeatCheckinDialog({
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const seatAssignmentComplete = useMemo(
-    () => isSeatAssignmentComplete(seatData, studentNames),
-    [seatData, studentNames],
+    () => (typeof seatAssignmentReady === 'boolean' ? seatAssignmentReady : isSeatAssignmentComplete(seatData, studentNames)),
+    [seatAssignmentReady, seatData, studentNames],
   );
 
   const refreshHistory = async () => {
