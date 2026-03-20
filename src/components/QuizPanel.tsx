@@ -16,7 +16,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOpen, FileCheck, History, Users, Sparkles } from 'lucide-react';
+import { Play, StopCircle, QrCode, ArrowLeft, Download, Cloud, HardDrive, BookOpen, FileCheck, History, Users, Sparkles, Trash2 } from 'lucide-react';
 import ClassRosterPicker from '@/components/ClassRosterPicker';
 import { useStudents } from '@/contexts/StudentContext';
 import { tFormat } from '@/contexts/LanguageContext';
@@ -61,6 +61,9 @@ export default function QuizPanel() {
   const [sessionStudentNames, setSessionStudentNames] = useState<string[]>([]);
   const [ending, setEnding] = useState(false);
   const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [sessionToDelete, setSessionToDelete] = useState<QuizSession | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [revealAfterEnd, setRevealAfterEnd] = useState(true);
   const [revealFeatureUnsupported, setRevealFeatureUnsupported] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
@@ -221,10 +224,27 @@ export default function QuizPanel() {
 
   const deleteSession = async (s: QuizSession) => {
     const token = ensureSessionToken(s);
-    if (!token) return;
-    await supabase.rpc('delete_quiz_session', { p_session_id: s.id, p_token: token } as any);
+    if (!token) {
+      toast({ title: '无法删除测验：缺少会话凭证', variant: 'destructive' });
+      return;
+    }
+    setDeleting(true);
+    const { error } = await supabase.rpc('delete_quiz_session', { p_session_id: s.id, p_token: token } as any);
+    setDeleting(false);
+    if (error) {
+      toast({ title: `删除测验失败：${error.message}`, variant: 'destructive' });
+      return;
+    }
     setSessions(prev => prev.filter(x => x.id !== s.id));
     if (activeSession?.id === s.id) { setActiveSession(null); setShowSession(false); }
+    setSessionToDelete(null);
+    setDeleteConfirmOpen(false);
+    toast({ title: '测验已删除' });
+  };
+
+  const requestDeleteSession = (session: QuizSession) => {
+    setSessionToDelete(session);
+    setDeleteConfirmOpen(true);
   };
 
   const exportCSV = async () => {
@@ -269,6 +289,11 @@ export default function QuizPanel() {
             {activeSession.status === 'active' && (
               <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => setEndConfirmOpen(true)} disabled={ending}>
                 <StopCircle className="w-3 h-3" /> {t('quiz.endSession')}
+              </Button>
+            )}
+            {activeSession.status === 'ended' && (
+              <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => requestDeleteSession(activeSession)} disabled={deleting}>
+                <Trash2 className="w-3 h-3" /> {t('common.delete')}
               </Button>
             )}
           </div>
@@ -339,6 +364,32 @@ export default function QuizPanel() {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {ending ? '处理中...' : '确认结束'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('common.delete')}</AlertDialogTitle>
+              <AlertDialogDescription>
+                确定要删除这场已结束测验吗？删除后学生作答记录也将不可恢复。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (sessionToDelete) {
+                    void deleteSession(sessionToDelete);
+                  }
+                }}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? '删除中...' : t('common.delete')}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -458,6 +509,19 @@ export default function QuizPanel() {
                   <span className="text-[10px] text-muted-foreground">
                     {(s.questions as any[]).length} {t('quiz.questionsCount')} · {new Date(s.created_at).toLocaleDateString()}
                   </span>
+                  {s.status === 'ended' && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        requestDeleteSession(s);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

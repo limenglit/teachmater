@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import QuizPanel from './QuizPanel';
 import QuizSubmitPage from '@/pages/QuizSubmitPage';
 
@@ -100,7 +100,6 @@ vi.mock('@/integrations/supabase/client', () => ({
 
 describe('Quiz end-to-student polling chain', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
     quizEnded = false;
     rpcMock.mockReset();
     toastMock.mockReset();
@@ -170,10 +169,6 @@ describe('Quiz end-to-student polling chain', () => {
     });
   });
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('teacher ends quiz and student sees ended score card after polling', async () => {
     render(
       <>
@@ -203,14 +198,10 @@ describe('Quiz end-to-student polling chain', () => {
       }));
     });
 
-    // Student: poll once and should see ended answer+score card.
-    await act(async () => {
-      vi.advanceTimersByTime(5000);
-    });
-
+    // Student: after one polling cycle, ended answer+score card should be shown.
     await waitFor(() => {
       expect(screen.getByText('参考答案：D. 4')).toBeInTheDocument();
-    });
+    }, { timeout: 8000 });
     expect(screen.getByText('成绩：1 / 1')).toBeInTheDocument();
   });
 });
