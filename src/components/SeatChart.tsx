@@ -700,18 +700,7 @@ export default function SeatChart() {
                   onChange={e => setCenterRowsByGender(e.target.checked)}
                   className="accent-primary"
                 />
-                  {isDisabled ? <X className="w-4 h-4" /> : (
-                    !name ? t('seat.empty') : genderMarkerStyle === 'suffix'
-                      ? formatSeatLabel(name)
-                      : (
-                        <span className="inline-flex items-center gap-1">
-                          <span>{name}</span>
-                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-primary/30 bg-primary/10 text-[10px] leading-none">
-                            {getGenderMarker(name)}
-                          </span>
-                        </span>
-                      )
-                  )}
+                居中排列
               </label>
             )}
             {genderSeatPolicy !== 'none' && (
