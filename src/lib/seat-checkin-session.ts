@@ -124,25 +124,49 @@ export async function createSeatCheckinSession({
 
 export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   const ids = Object.keys(getSeatCheckinSessionTokens());
-  if (ids.length === 0) return [] as SeatCheckinSessionSummary[];
+  let rows: any[] = [];
 
-  const { data, error } = await supabase
-    .from('seat_checkin_sessions')
-    .select('id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names')
-    .in('id', ids)
-    .order('created_at', { ascending: false });
+  // 1) Prefer owner-linked sessions (newer flow with token).
+  if (ids.length > 0) {
+    const ownerLinked = await supabase
+      .from('seat_checkin_sessions')
+      .select('id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names')
+      .in('id', ids)
+      .order('created_at', { ascending: false });
 
-  if (error || !data) return [];
+    if (!ownerLinked.error && ownerLinked.data) {
+      rows = ownerLinked.data as any[];
+    }
+  }
 
-  return (data as any[])
+  // 2) Compatibility fallback: load recent scene sessions when token list is empty
+  // or when owner-linked sessions are not available yet.
+  if (rows.length === 0) {
+    let query = supabase
+      .from('seat_checkin_sessions')
+      .select('id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names')
+      .order('created_at', { ascending: false })
+      .limit(30);
+
+    if (sceneType) {
+      query = query.eq('scene_type', sceneType);
+    }
+
+    const fallback = await query;
+    if (fallback.error || !fallback.data) return [];
+    rows = fallback.data as any[];
+  }
+
+  return rows
     .filter(item => !sceneType || item.scene_type === sceneType)
+    .filter(item => item.status !== 'deleted')
     .map(item => ({
       id: item.id,
       created_at: item.created_at,
       duration_minutes: item.duration_minutes ?? 5,
-      status: item.status,
+      status: item.status ?? 'active',
       ended_at: item.ended_at,
-      scene_type: item.scene_type,
+      scene_type: item.scene_type ?? sceneType ?? 'classroom',
       class_name: item.class_name || '',
       student_names: (item.student_names || []) as string[],
     }));
@@ -161,26 +185,62 @@ export async function loadSeatCheckinRecords(sessionId: string) {
 
 export async function endSeatCheckinSession(sessionId: string) {
   const token = getSeatCheckinSessionToken(sessionId);
-  if (!token) throw new Error('Missing session token');
 
-  const { error } = await supabase.rpc('update_seat_checkin_session', {
+  // New RPC signature with token.
+  if (token) {
+    const next = await supabase.rpc('update_seat_checkin_session', {
+      p_session_id: sessionId,
+      p_token: token,
+      p_status: 'ended',
+    } as any);
+    if (!next.error) return;
+  }
+
+  // Legacy fallback: update_seat_checkin_session(p_session_id, p_status)
+  const legacy = await supabase.rpc('update_seat_checkin_session', {
     p_session_id: sessionId,
-    p_token: token,
     p_status: 'ended',
   } as any);
 
-  if (error) throw error;
+  if (legacy.error) throw legacy.error;
 }
 
 export async function deleteSeatCheckinSession(sessionId: string) {
   const token = getSeatCheckinSessionToken(sessionId);
-  if (!token) throw new Error('Missing session token');
 
-  const { error } = await supabase.rpc('delete_seat_checkin_session', {
+  // Preferred hard delete path (new migration).
+  if (token) {
+    const hardDelete = await supabase.rpc('delete_seat_checkin_session', {
+      p_session_id: sessionId,
+      p_token: token,
+    } as any);
+
+    if (!hardDelete.error) {
+      removeSeatCheckinSessionToken(sessionId);
+      return;
+    }
+  }
+
+  // Compatibility fallback for older DB: mark session as deleted using update RPC
+  // so it disappears from UI and no longer accepts sign-ins.
+  const softDeleteWithToken = token
+    ? await supabase.rpc('update_seat_checkin_session', {
+        p_session_id: sessionId,
+        p_token: token,
+        p_status: 'deleted',
+      } as any)
+    : { error: new Error('no-token') };
+
+  if (!softDeleteWithToken.error) {
+    removeSeatCheckinSessionToken(sessionId);
+    return;
+  }
+
+  const softDeleteLegacy = await supabase.rpc('update_seat_checkin_session', {
     p_session_id: sessionId,
-    p_token: token,
+    p_status: 'deleted',
   } as any);
 
-  if (error) throw error;
+  if (softDeleteLegacy.error) throw softDeleteLegacy.error;
   removeSeatCheckinSessionToken(sessionId);
 }
