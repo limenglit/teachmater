@@ -11,6 +11,7 @@ import ExportButtons from '@/components/ExportButtons';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastTeams, saveLastTeams } from '@/lib/teamwork-local';
+import { buildTeamBuckets, type TeamingDimension, type TeamingStrategy } from '@/lib/team-assignment';
 
 interface TeamMember { id: string; name: string; isCaptain: boolean }
 interface Team { id: string; name: string; members: TeamMember[] }
@@ -26,6 +27,9 @@ export default function TeamBuilder() {
   const [dragItem, setDragItem] = useState<{ teamId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ teamId: string; memberIdx: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [teamStrategy, setTeamStrategy] = useState<TeamingStrategy>('random');
+  const [customPrimaryDimension, setCustomPrimaryDimension] = useState<TeamingDimension | 'none'>('none');
+  const [customBalanceDimensions, setCustomBalanceDimensions] = useState<TeamingDimension[]>(['organization', 'titleLevel']);
 
   useEffect(() => {
     const cached = loadLastTeams();
@@ -41,19 +45,30 @@ export default function TeamBuilder() {
 
   const autoTeam = useCallback(() => {
     if (students.length === 0) return;
-    const shuffled = [...students].sort(() => Math.random() - 0.5);
-    const teamCount = Math.ceil(shuffled.length / membersPerTeam);
+    const teamCount = Math.max(1, Math.ceil(students.length / membersPerTeam));
+    const buckets = buildTeamBuckets(students, {
+      strategy: teamStrategy,
+      bucketCount: teamCount,
+      customPrimaryDimension,
+      customBalanceDimensions,
+    });
     const newTeams: Team[] = Array.from({ length: teamCount }, (_, i) => ({
       id: `t_${i}`,
       name: t('team.namePrefix').replace('{0}', TEAM_NAMES_ZH[i] || String(i + 1)),
-      members: [],
+      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isCaptain: false })) ?? [],
     }));
-    shuffled.forEach((s, i) => {
-      const teamIdx = Math.floor(i / membersPerTeam);
-      if (teamIdx < newTeams.length) newTeams[teamIdx].members.push({ ...s, isCaptain: false });
-    });
     setTeams(newTeams);
-  }, [students, membersPerTeam, t]);
+  }, [students, membersPerTeam, teamStrategy, customPrimaryDimension, customBalanceDimensions, t]);
+
+  const toggleCustomBalanceDimension = (dimension: TeamingDimension) => {
+    setCustomBalanceDimensions(prev => {
+      if (prev.includes(dimension)) {
+        const next = prev.filter(item => item !== dimension);
+        return next.length > 0 ? next : prev;
+      }
+      return [...prev, dimension];
+    });
+  };
 
   const toggleCaptain = (teamId: string, memberId: string) => {
     setTeams(prev => prev.map(t => {
@@ -140,11 +155,72 @@ export default function TeamBuilder() {
                 onChange={e => setMembersPerTeam(Math.max(2, Math.min(10, Number(e.target.value))))}
                 className="w-16 h-8 text-center" />
             </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              建队策略
+              <select
+                value={teamStrategy}
+                onChange={e => setTeamStrategy(e.target.value as TeamingStrategy)}
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="random">随机均分</option>
+                <option value="sameOrganization">同单位一队</option>
+                <option value="sameTitleLevel">同级别一队</option>
+                <option value="sameGender">同性别一队</option>
+                <option value="balancedGender">性别均衡建队</option>
+                <option value="balancedOrganizationAndTitle">单位均衡 + 职务级别均衡</option>
+                <option value="custom">自定义方案</option>
+              </select>
+            </label>
             <Button onClick={autoTeam} className="gap-2">
               <Shuffle className="w-4 h-4" /> {t('team.autoTeam')}
             </Button>
           </div>
         </div>
+
+        {teamStrategy === 'custom' && (
+          <div className="mb-4 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-muted-foreground">
+                主聚合维度
+                <select
+                  value={customPrimaryDimension}
+                  onChange={e => setCustomPrimaryDimension(e.target.value as TeamingDimension | 'none')}
+                  className="h-8 rounded-md border border-input bg-background px-2"
+                >
+                  <option value="none">无（纯均衡）</option>
+                  <option value="organization">单位</option>
+                  <option value="titleLevel">职务级别</option>
+                  <option value="gender">性别</option>
+                </select>
+              </label>
+              <span className="text-muted-foreground">均衡维度</span>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={customBalanceDimensions.includes('organization')}
+                  onChange={() => toggleCustomBalanceDimension('organization')}
+                />
+                单位
+              </label>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={customBalanceDimensions.includes('titleLevel')}
+                  onChange={() => toggleCustomBalanceDimension('titleLevel')}
+                />
+                职务级别
+              </label>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={customBalanceDimensions.includes('gender')}
+                  onChange={() => toggleCustomBalanceDimension('gender')}
+                />
+                性别
+              </label>
+            </div>
+          </div>
+        )}
 
         {teams.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">

@@ -11,6 +11,7 @@ import ExportButtons from '@/components/ExportButtons';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastGroups, saveLastGroups } from '@/lib/teamwork-local';
+import { buildTeamBuckets, type TeamingDimension, type TeamingStrategy } from '@/lib/team-assignment';
 
 interface GroupMember { id: string; name: string; isLeader: boolean }
 interface Group { id: string; name: string; members: GroupMember[] }
@@ -26,6 +27,9 @@ export default function GroupManager() {
   const [dragItem, setDragItem] = useState<{ groupId: string; memberIdx: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ groupId: string; memberIdx: number } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [groupStrategy, setGroupStrategy] = useState<TeamingStrategy>('random');
+  const [customPrimaryDimension, setCustomPrimaryDimension] = useState<TeamingDimension | 'none'>('none');
+  const [customBalanceDimensions, setCustomBalanceDimensions] = useState<TeamingDimension[]>(['organization', 'titleLevel']);
 
   useEffect(() => {
     const cached = loadLastGroups();
@@ -41,17 +45,29 @@ export default function GroupManager() {
 
   const autoGroup = useCallback(() => {
     if (students.length === 0) return;
-    const shuffled = [...students].sort(() => Math.random() - 0.5);
+    const buckets = buildTeamBuckets(students, {
+      strategy: groupStrategy,
+      bucketCount: groupCount,
+      customPrimaryDimension,
+      customBalanceDimensions,
+    });
     const newGroups: Group[] = Array.from({ length: groupCount }, (_, i) => ({
       id: `g_${i}`,
       name: t('group.namePrefix').replace('{0}', GROUP_NAMES_ZH[i] || String(i + 1)),
-      members: [],
+      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isLeader: false })) ?? [],
     }));
-    shuffled.forEach((s, i) => {
-      newGroups[i % groupCount].members.push({ ...s, isLeader: false });
-    });
     setGroups(newGroups);
-  }, [students, groupCount, t]);
+  }, [students, groupCount, groupStrategy, customPrimaryDimension, customBalanceDimensions, t]);
+
+  const toggleCustomBalanceDimension = (dimension: TeamingDimension) => {
+    setCustomBalanceDimensions(prev => {
+      if (prev.includes(dimension)) {
+        const next = prev.filter(item => item !== dimension);
+        return next.length > 0 ? next : prev;
+      }
+      return [...prev, dimension];
+    });
+  };
 
   const toggleLeader = (groupId: string, memberId: string) => {
     setGroups(prev => prev.map(g => {
@@ -152,11 +168,72 @@ export default function GroupManager() {
                 onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))}
                 className="w-16 h-8 text-center" />
             </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              分组策略
+              <select
+                value={groupStrategy}
+                onChange={e => setGroupStrategy(e.target.value as TeamingStrategy)}
+                className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="random">随机均分</option>
+                <option value="sameOrganization">同单位一组</option>
+                <option value="sameTitleLevel">同级别一组</option>
+                <option value="sameGender">同性别一组</option>
+                <option value="balancedGender">性别均衡分组</option>
+                <option value="balancedOrganizationAndTitle">单位均衡 + 职务级别均衡</option>
+                <option value="custom">自定义方案</option>
+              </select>
+            </label>
             <Button onClick={autoGroup} className="gap-2">
               <Shuffle className="w-4 h-4" /> {t('group.autoGroup')}
             </Button>
           </div>
         </div>
+
+        {groupStrategy === 'custom' && (
+          <div className="mb-4 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-muted-foreground">
+                主聚合维度
+                <select
+                  value={customPrimaryDimension}
+                  onChange={e => setCustomPrimaryDimension(e.target.value as TeamingDimension | 'none')}
+                  className="h-8 rounded-md border border-input bg-background px-2"
+                >
+                  <option value="none">无（纯均衡）</option>
+                  <option value="organization">单位</option>
+                  <option value="titleLevel">职务级别</option>
+                  <option value="gender">性别</option>
+                </select>
+              </label>
+              <span className="text-muted-foreground">均衡维度</span>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={customBalanceDimensions.includes('organization')}
+                  onChange={() => toggleCustomBalanceDimension('organization')}
+                />
+                单位
+              </label>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={customBalanceDimensions.includes('titleLevel')}
+                  onChange={() => toggleCustomBalanceDimension('titleLevel')}
+                />
+                职务级别
+              </label>
+              <label className="flex items-center gap-1 text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={customBalanceDimensions.includes('gender')}
+                  onChange={() => toggleCustomBalanceDimension('gender')}
+                />
+                性别
+              </label>
+            </div>
+          </div>
+        )}
 
         {groups.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
