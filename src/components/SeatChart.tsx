@@ -33,6 +33,19 @@ type GenderMarkerStyle = 'suffix' | 'badge';
 type SeatGroupSource = 'auto' | 'groups' | 'teams' | 'count';
 type SmartClusterStrategy = 'classic' | 'orgFrontWeighted';
 
+const ORGANIZATION_COLOR_CLASSES = [
+  'text-sky-700 dark:text-sky-300',
+  'text-emerald-700 dark:text-emerald-300',
+  'text-amber-700 dark:text-amber-300',
+  'text-rose-700 dark:text-rose-300',
+  'text-violet-700 dark:text-violet-300',
+  'text-cyan-700 dark:text-cyan-300',
+  'text-lime-700 dark:text-lime-300',
+  'text-orange-700 dark:text-orange-300',
+  'text-fuchsia-700 dark:text-fuchsia-300',
+  'text-teal-700 dark:text-teal-300',
+];
+
 export default function SeatChart() {
   const { students } = useStudents();
   const { t } = useLanguage();
@@ -179,12 +192,48 @@ export default function SeatChart() {
     return map;
   }, [students]);
 
+  const organizationByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const student of students) {
+      map.set(student.name, student.organization?.trim() || '未分单位');
+    }
+    return map;
+  }, [students]);
+
+  const organizationColorMap = useMemo(() => {
+    const organizations = Array.from(new Set(students.map(student => student.organization?.trim() || '未分单位')))
+      .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    const map = new Map<string, string>();
+    organizations.forEach((organization, index) => {
+      map.set(organization, ORGANIZATION_COLOR_CLASSES[index % ORGANIZATION_COLOR_CLASSES.length]);
+    });
+    return map;
+  }, [students]);
+
+  const organizationLegend = useMemo(() => {
+    return Array.from(organizationColorMap.entries());
+  }, [organizationColorMap]);
+
   const formatSeatLabel = useCallback((name: string | null) => {
     if (!name) return t('seat.empty');
     const gender = genderByName.get(name) ?? 'unknown';
-    const marker = gender === 'male' ? ' ♂️' : gender === 'female' ? ' ♀️' : ' ✨';
-    return `${name}${marker}`;
-  }, [genderByName, t]);
+    const marker = gender === 'male' ? '♂️' : gender === 'female' ? '♀️' : '✨';
+    const organization = organizationByName.get(name) ?? '未分单位';
+    const organizationColorClass = organizationColorMap.get(organization) ?? 'text-foreground';
+
+    if (genderMarkerStyle === 'badge') {
+      return (
+        <span className={`inline-flex items-center gap-1 max-w-full ${organizationColorClass}`} title={organization}>
+          <span className="truncate max-w-[3.2rem]">{name}</span>
+          <span className="inline-flex items-center justify-center rounded px-1 py-0.5 text-[10px] leading-none bg-muted border border-border/70 text-muted-foreground">
+            {marker}
+          </span>
+        </span>
+      );
+    }
+
+    return <span className={`${organizationColorClass} truncate max-w-[3.6rem]`} title={organization}>{`${name} ${marker}`}</span>;
+  }, [genderByName, genderMarkerStyle, organizationByName, organizationColorMap, t]);
 
   const getGenderMarker = useCallback((name: string) => {
     const gender = genderByName.get(name) ?? 'unknown';
@@ -1021,6 +1070,17 @@ export default function SeatChart() {
               <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
                 {t('seat.rowAisleAfter').replace('{0}', String(a + 1))}
                 <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        {organizationLegend.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+            {organizationLegend.map(([organization, colorClass]) => (
+              <span key={organization} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border border-border/60 text-xs">
+                <span className={`inline-block w-2 h-2 rounded-full bg-current ${colorClass}`} />
+                <span className={colorClass}>{organization}</span>
               </span>
             ))}
           </div>
