@@ -26,11 +26,12 @@ import {
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
-type StartFrom = 'door' | 'window';
+type StartFrom = 'door' | 'window' | 'center';
 type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
 type GenderFirst = 'male' | 'female';
 type GenderMarkerStyle = 'suffix' | 'badge';
 type SeatGroupSource = 'auto' | 'groups' | 'teams' | 'count';
+type SmartClusterStrategy = 'classic' | 'orgFrontWeighted';
 
 export default function SeatChart() {
   const { students } = useStudents();
@@ -66,6 +67,7 @@ export default function SeatChart() {
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
   const [groupSource, setGroupSource] = useState<SeatGroupSource>('auto');
+  const [smartClusterStrategy, setSmartClusterStrategy] = useState<SmartClusterStrategy>('orgFrontWeighted');
   const [disabledSeats, setDisabledSeats] = useState<Set<string>>(new Set());
   const [examSkipRow, setExamSkipRow] = useState(true);
   const [examSkipCol, setExamSkipCol] = useState(false);
@@ -130,12 +132,37 @@ export default function SeatChart() {
 
   const makeGrid = (): (string | null)[][] => Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
 
+  const getCenteredColOrder = useCallback(() => {
+    if (cols <= 0) return [] as number[];
+    const order: number[] = [];
+    if (cols % 2 === 1) {
+      const mid = Math.floor(cols / 2);
+      order.push(mid);
+      let left = mid - 1;
+      let right = mid + 1;
+      while (left >= 0 || right < cols) {
+        if (left >= 0) order.push(left--);
+        if (right < cols) order.push(right++);
+      }
+      return order;
+    }
+
+    let left = cols / 2 - 1;
+    let right = cols / 2;
+    while (left >= 0 || right < cols) {
+      if (left >= 0) order.push(left--);
+      if (right < cols) order.push(right++);
+    }
+    return order;
+  }, [cols]);
+
   const getColOrder = useCallback(() => {
+    if (startFrom === 'center') return getCenteredColOrder();
     const doorOnRight = windowOnLeft;
     const startFromRight = (startFrom === 'door' && doorOnRight) || (startFrom === 'window' && !doorOnRight);
     if (startFromRight) return Array.from({ length: cols }, (_, i) => cols - 1 - i);
     return Array.from({ length: cols }, (_, i) => i);
-  }, [cols, startFrom, windowOnLeft]);
+  }, [cols, getCenteredColOrder, startFrom, windowOnLeft]);
 
   const genderStats = useMemo(() => {
     const male = students.filter(s => (s.gender ?? 'unknown') === 'male').length;
@@ -295,11 +322,141 @@ export default function SeatChart() {
       case 'exam': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; if (examSkipCol && ci % 2 !== 0) continue; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (examSkipRow && row % 2 !== 0) continue; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
       case 'groupCol': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const colIdx = gi % cols; const c = colOrder[colIdx]; const baseRow = Math.floor(gi / cols) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let r = 0; r < rows && placed < group.length; r++) { const row = r + baseRow; if (row < rows && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
       case 'groupRow': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const row = gi % rows; const baseShift = Math.floor(gi / rows) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let ci = 0; ci < cols && placed < group.length; ci++) { const c = colOrder[ci]; const colShift = ci + baseShift; if (row < rows && colShift < cols && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
-      case 'smartCluster': { const groups = resolveGroupBuckets(); const clusterCount = Math.max(1, groups.length); const blocksPerRow = Math.ceil(Math.sqrt(clusterCount)); const blockRows = Math.ceil(clusterCount / blocksPerRow); const blockH = Math.max(1, Math.floor(rows / blockRows)); const blockW = Math.max(1, Math.floor(cols / blocksPerRow)); groups.forEach((group, gi) => { const bRow = Math.floor(gi / blocksPerRow); const bCol = gi % blocksPerRow; const startR = bRow * blockH; const startC = bCol * blockW; let placed = 0; for (let mi = 0; placed < group.length; mi++) { const lr = mi % blockH; const lc = Math.floor(mi / blockH); const r = startR + lr; const c = startC + lc; if (r >= rows || c >= cols) break; if (isAvailable(r, c)) grid[r][c] = group[placed++]; } }); break; }
+      case 'smartCluster': {
+        if (smartClusterStrategy === 'orgFrontWeighted') {
+          const orgByName = new Map(students.map(student => [student.name, (student.organization?.trim() || '未分单位')]));
+          const orgQueues = new Map<string, string[]>();
+          for (const name of names) {
+            const org = orgByName.get(name) ?? '未分单位';
+            const queue = orgQueues.get(org) ?? [];
+            queue.push(name);
+            orgQueues.set(org, queue);
+          }
+
+          const orgEntries = Array.from(orgQueues.entries())
+            .filter(([, queue]) => queue.length > 0)
+            .sort((a, b) => b[1].length - a[1].length);
+
+          if (orgEntries.length === 0) break;
+
+          const organizationCount = orgEntries.length;
+          const totalCols = cols;
+          const totalStudentsCount = orgEntries.reduce((sum, [, queue]) => sum + queue.length, 0);
+
+          const quotas = orgEntries.map(([, queue]) => (queue.length / Math.max(1, totalStudentsCount)) * totalCols);
+          const allocations = quotas.map(value => Math.floor(value));
+
+          if (organizationCount <= totalCols) {
+            for (let i = 0; i < allocations.length; i++) {
+              if (allocations[i] === 0) allocations[i] = 1;
+            }
+          } else {
+            for (let i = 0; i < allocations.length; i++) allocations[i] = 0;
+            for (let i = 0; i < totalCols; i++) allocations[i] = 1;
+          }
+
+          let allocatedCols = allocations.reduce((sum, value) => sum + value, 0);
+          if (allocatedCols < totalCols) {
+            const remainders = quotas
+              .map((value, index) => ({ index, remainder: value - allocations[index] }))
+              .sort((a, b) => b.remainder - a.remainder);
+            let cursor = 0;
+            while (allocatedCols < totalCols && remainders.length > 0) {
+              const target = remainders[cursor % remainders.length];
+              allocations[target.index] += 1;
+              allocatedCols += 1;
+              cursor += 1;
+            }
+          } else if (allocatedCols > totalCols) {
+            const reducible = quotas
+              .map((value, index) => ({ index, remainder: value - allocations[index] }))
+              .sort((a, b) => a.remainder - b.remainder);
+            let cursor = 0;
+            while (allocatedCols > totalCols && reducible.length > 0) {
+              const target = reducible[cursor % reducible.length];
+              const minKeep = organizationCount <= totalCols ? 1 : 0;
+              if (allocations[target.index] > minKeep) {
+                allocations[target.index] -= 1;
+                allocatedCols -= 1;
+              }
+              cursor += 1;
+              if (cursor > reducible.length * Math.max(2, totalCols)) break;
+            }
+          }
+
+          const orgCols = new Map<string, number[]>();
+          let colCursor = 0;
+          for (let i = 0; i < orgEntries.length; i++) {
+            const [org] = orgEntries[i];
+            const count = allocations[i];
+            const colsForOrg: number[] = [];
+            for (let k = 0; k < count && colCursor < colOrder.length; k++) {
+              colsForOrg.push(colOrder[colCursor]);
+              colCursor += 1;
+            }
+            if (colsForOrg.length > 0) orgCols.set(org, colsForOrg);
+          }
+
+          for (let r = 0; r < rows; r++) {
+            for (const [org] of orgEntries) {
+              const queue = orgQueues.get(org);
+              const colsForOrg = orgCols.get(org);
+              if (!queue || queue.length === 0 || !colsForOrg || colsForOrg.length === 0) continue;
+              for (const c of colsForOrg) {
+                if (queue.length === 0) break;
+                if (!isAvailable(r, c) || grid[r][c]) continue;
+                const nextName = queue.shift();
+                if (nextName) grid[r][c] = nextName;
+              }
+            }
+          }
+
+          const leftovers: string[] = [];
+          for (const [, queue] of orgEntries) {
+            while (queue.length > 0) {
+              const nextName = queue.shift();
+              if (nextName) leftovers.push(nextName);
+            }
+          }
+
+          let leftoverIndex = 0;
+          for (let r = 0; r < rows && leftoverIndex < leftovers.length; r++) {
+            for (const c of colOrder) {
+              if (leftoverIndex >= leftovers.length) break;
+              if (!isAvailable(r, c) || grid[r][c]) continue;
+              grid[r][c] = leftovers[leftoverIndex++];
+            }
+          }
+          break;
+        }
+
+        const groups = resolveGroupBuckets();
+        const clusterCount = Math.max(1, groups.length);
+        const blocksPerRow = Math.ceil(Math.sqrt(clusterCount));
+        const blockRows = Math.ceil(clusterCount / blocksPerRow);
+        const blockH = Math.max(1, Math.floor(rows / blockRows));
+        const blockW = Math.max(1, Math.floor(cols / blocksPerRow));
+        groups.forEach((group, gi) => {
+          const bRow = Math.floor(gi / blocksPerRow);
+          const bCol = gi % blocksPerRow;
+          const startR = bRow * blockH;
+          const startC = bCol * blockW;
+          let placed = 0;
+          for (let mi = 0; placed < group.length; mi++) {
+            const lr = mi % blockH;
+            const lc = Math.floor(mi / blockH);
+            const r = startR + lr;
+            const c = startC + lc;
+            if (r >= rows || c >= cols) break;
+            if (isAvailable(r, c)) grid[r][c] = group[placed++];
+          }
+        });
+        break;
+      }
       case 'random': { const shuffled = [...names].sort(() => Math.random() - 0.5); let idx = 0; for (let r = 0; r < rows && idx < shuffled.length; r++) { for (let c = 0; c < cols && idx < shuffled.length; c++) { if (isAvailable(r, c)) grid[r][c] = shuffled[idx++]; } } break; }
     }
     setSeats(grid);
-  }, [rows, cols, mode, groupCount, groupSource, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender]);
+  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender]);
 
   const handleDragStart = (r: number, c: number) => { if (!seats[r][c]) return; setDragFrom({ r, c }); };
   const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
@@ -399,6 +556,7 @@ export default function SeatChart() {
     mode,
     groupCount,
     groupSource,
+    smartClusterStrategy,
     disabledSeats: Array.from(disabledSeats),
     examSkipRow,
     examSkipCol,
@@ -443,7 +601,8 @@ export default function SeatChart() {
     setGroupSource(snapshot.groupSource ?? 'auto');
     setExamSkipRow(!!snapshot.examSkipRow);
     setExamSkipCol(!!snapshot.examSkipCol);
-    setStartFrom(snapshot.startFrom);
+    setStartFrom(snapshot.startFrom === 'center' ? 'center' : snapshot.startFrom);
+    setSmartClusterStrategy(snapshot.smartClusterStrategy ?? 'orgFrontWeighted');
     setWindowOnLeft(!!snapshot.windowOnLeft);
     setColAisles((snapshot.colAisles || []).filter(a => a >= 0 && a < nextCols - 1));
     setRowAisles((snapshot.rowAisles || []).filter(a => a >= 0 && a < nextRows - 1));
@@ -486,7 +645,8 @@ export default function SeatChart() {
     setGroupSource(snapshot.groupSource ?? 'auto');
     setExamSkipRow(!!snapshot.examSkipRow);
     setExamSkipCol(!!snapshot.examSkipCol);
-    setStartFrom(snapshot.startFrom);
+    setStartFrom(snapshot.startFrom === 'center' ? 'center' : snapshot.startFrom);
+    setSmartClusterStrategy(snapshot.smartClusterStrategy ?? 'orgFrontWeighted');
     setWindowOnLeft(!!snapshot.windowOnLeft);
     setColAisles((snapshot.colAisles || []).filter(a => a >= 0 && a < nextCols - 1));
     setRowAisles((snapshot.rowAisles || []).filter(a => a >= 0 && a < nextRows - 1));
@@ -501,7 +661,7 @@ export default function SeatChart() {
   useEffect(() => {
     if (!restoredClassroomRef.current) return;
     saveClassroomSnapshot(buildClassroomSnapshot());
-  }, [rows, cols, mode, groupCount, groupSource, disabledSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
+  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
 
   const buildVisualGrid = () => {
     if (seats.length === 0) return null;
@@ -709,8 +869,22 @@ export default function SeatChart() {
               <select value={startFrom} onChange={e => setStartFrom(e.target.value as StartFrom)} className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm">
                 <option value="door">{t('seat.fromDoor')}</option>
                 <option value="window">{t('seat.fromWindow')}</option>
+                <option value="center">居中开始</option>
               </select>
             </label>
+            {mode === 'smartCluster' && (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                智慧集中策略
+                <select
+                  value={smartClusterStrategy}
+                  onChange={e => setSmartClusterStrategy(e.target.value as SmartClusterStrategy)}
+                  className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                >
+                  <option value="orgFrontWeighted">策略1：前排优先 + 按单位人数分列</option>
+                  <option value="classic">经典聚类</option>
+                </select>
+              </label>
+            )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               性别排座
               <select

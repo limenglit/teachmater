@@ -102,7 +102,8 @@ export interface ClassroomSnapshot {
   disabledSeats: string[];
   examSkipRow: boolean;
   examSkipCol: boolean;
-  startFrom: 'door' | 'window';
+  startFrom: 'door' | 'window' | 'center';
+  smartClusterStrategy?: 'classic' | 'orgFrontWeighted';
   windowOnLeft: boolean;
   colAisles: number[];
   rowAisles: number[];
