@@ -100,10 +100,10 @@ export default function QuizSubmitPage() {
     const studentName = name.trim() || localStorage.getItem(NAME_KEY)?.trim();
     if (!studentName) return;
 
-    supabase.rpc('get_quiz_student_result', {
+    (supabase.rpc as any)('get_quiz_student_result', {
       p_session_id: sessionId,
       p_student_name: studentName,
-    } as any).then(({ data }) => {
+    }).then(({ data }: any) => {
       if (data) setStudentResult(data as StudentResult);
     });
   }, [sessionId, session, name]);
