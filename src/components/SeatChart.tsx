@@ -27,6 +27,7 @@ type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCl
 type StartFrom = 'door' | 'window';
 type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
 type GenderFirst = 'male' | 'female';
+type GenderMarkerStyle = 'suffix' | 'badge';
 
 export default function SeatChart() {
   const { students } = useStudents();
@@ -71,6 +72,7 @@ export default function SeatChart() {
   const [genderSeatPolicy, setGenderSeatPolicy] = useState<GenderSeatPolicy>('none');
   const [genderFirst, setGenderFirst] = useState<GenderFirst>('male');
   const [centerRowsByGender, setCenterRowsByGender] = useState(true);
+  const [genderMarkerStyle, setGenderMarkerStyle] = useState<GenderMarkerStyle>('suffix');
 
   const [colAisles, setColAisles] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
@@ -152,6 +154,11 @@ export default function SeatChart() {
     const marker = gender === 'male' ? ' ♂️' : gender === 'female' ? ' ♀️' : ' ✨';
     return `${name}${marker}`;
   }, [genderByName, t]);
+
+  const getGenderMarker = useCallback((name: string) => {
+    const gender = genderByName.get(name) ?? 'unknown';
+    return gender === 'male' ? '♂️' : gender === 'female' ? '♀️' : '✨';
+  }, [genderByName]);
 
   const getGenderOrderedNames = useCallback(() => {
     if (genderSeatPolicy === 'none') return students.map(s => s.name);
@@ -674,6 +681,17 @@ export default function SeatChart() {
                 </select>
               </label>
             )}
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              性别标识
+              <select
+                value={genderMarkerStyle}
+                onChange={e => setGenderMarkerStyle(e.target.value as GenderMarkerStyle)}
+                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              >
+                <option value="suffix">后缀样式</option>
+                <option value="badge">徽章样式</option>
+              </select>
+            </label>
             {genderSeatPolicy === 'alternateRows' && (
               <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
                 <input
@@ -682,7 +700,18 @@ export default function SeatChart() {
                   onChange={e => setCenterRowsByGender(e.target.checked)}
                   className="accent-primary"
                 />
-                自动居中
+                  {isDisabled ? <X className="w-4 h-4" /> : (
+                    !name ? t('seat.empty') : genderMarkerStyle === 'suffix'
+                      ? formatSeatLabel(name)
+                      : (
+                        <span className="inline-flex items-center gap-1">
+                          <span>{name}</span>
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-primary/30 bg-primary/10 text-[10px] leading-none">
+                            {getGenderMarker(name)}
+                          </span>
+                        </span>
+                      )
+                  )}
               </label>
             )}
             {genderSeatPolicy !== 'none' && (

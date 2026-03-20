@@ -104,10 +104,16 @@ export default function ConcertHall({ students }: Props) {
     return map;
   }, [students]);
 
-  const formatSeatName = (name: string) => {
-    const gender = genderByName.get(name) ?? 'unknown';
-    const marker = gender === 'male' ? ' ♂' : gender === 'female' ? ' ♀' : ' ✨';
-    return `${name}${marker}`;
+  const getSeatGender = (name: string) => genderByName.get(name) ?? 'unknown';
+  const getGenderMarker = (gender: StudentGender) => {
+    if (gender === 'male') return '♂️';
+    if (gender === 'female') return '♀️';
+    return '✨';
+  };
+  const getGenderBadgeFill = (gender: StudentGender) => {
+    if (gender === 'male') return '#1d4ed8';
+    if (gender === 'female') return '#be123c';
+    return '#475569';
   };
   const seatKey = (row: number, col: number) => `${row}-${col}`;
 
@@ -755,6 +761,9 @@ export default function ConcertHall({ students }: Props) {
                     const isClosed = closedSeats.has(slot);
                     const isDragging = dragFrom === slot;
                     const isOver = dropTarget === slot;
+                    const seatGender = name ? getSeatGender(name) : 'unknown';
+                    const seatMarker = getGenderMarker(seatGender);
+                    const seatMarkerFill = getGenderBadgeFill(seatGender);
 
                     return (
                       <g
@@ -794,7 +803,7 @@ export default function ConcertHall({ students }: Props) {
                           }
                           strokeWidth={isOver ? 2.5 : 1.5}
                         />
-                        {name && <title>{name}</title>}
+                        {name && <title>{`${name} ${seatMarker}`}</title>}
                         {isClosed && (
                           <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
                             关
@@ -810,8 +819,23 @@ export default function ConcertHall({ students }: Props) {
                             lengthAdjust={name.length > 2 ? 'spacingAndGlyphs' : undefined}
                             className="fill-foreground text-[10px]"
                           >
-                            {formatSeatName(name)}
+                            {name}
                           </text>
+                        )}
+                        {name && !isDragging && (
+                          <g>
+                            <circle cx={sx + seatR - 6} cy={sy - seatR + 6} r={6.5} fill={seatMarkerFill} opacity={0.95} />
+                            <text
+                              x={sx + seatR - 6}
+                              y={sy - seatR + 6.5}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              className="text-[8px]"
+                              fill="#ffffff"
+                            >
+                              {seatMarker}
+                            </text>
+                          </g>
                         )}
                       </g>
                     );
