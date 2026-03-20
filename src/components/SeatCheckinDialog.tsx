@@ -46,6 +46,7 @@ export default function SeatCheckinDialog({
   pngFileName,
   onSessionCreated,
 }: Props) {
+  const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -212,12 +213,14 @@ export default function SeatCheckinDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setCurrentSession(null); setRecords([]); setTimeLeft(null); } }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
+      <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+        <DialogHeader className="px-4 sm:px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <DialogTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" /> 座位签到
+            <QrCode className="w-5 h-5" /> {resolvedThemeTitle} · 座位签到
           </DialogTitle>
         </DialogHeader>
+
+        <div className="overflow-y-auto px-4 sm:px-6 pb-5 max-h-[calc(90vh-74px)]">
 
         {!currentSession ? (
           <div className="space-y-4 py-4">
@@ -273,7 +276,7 @@ export default function SeatCheckinDialog({
                       <div key={session.id} className="rounded-lg border border-border bg-card p-3">
                         <div className="flex items-center justify-between gap-2">
                           <button className="flex-1 text-left" onClick={() => void openHistorySession(session)}>
-                            <p className="text-sm font-medium text-foreground truncate">{session.class_name || '座位签到'}</p>
+                            <p className="text-sm font-medium text-foreground truncate">{session.class_name || className || '座位签到'}</p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(session.created_at).toLocaleString()} · {session.duration_minutes} 分钟 · {session.status === 'active' ? '进行中' : '已结束'}
                             </p>
@@ -292,9 +295,7 @@ export default function SeatCheckinDialog({
         ) : (
           <div className="flex flex-col items-center gap-3 py-2">
 
-            {(currentSession.class_name || className) && (
-              <p className="text-center text-sm font-medium text-foreground">{currentSession.class_name || className}</p>
-            )}
+            <p className="text-center text-sm font-medium text-foreground">{resolvedThemeTitle}</p>
 
             <div className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
               <div className="flex items-center gap-2 text-foreground">
@@ -308,9 +309,9 @@ export default function SeatCheckinDialog({
 
             <QRActionPanel
               url={checkinUrl}
-              qrSize={200}
+              qrSize={220}
               qrContainerRef={qrPreviewRef}
-              className="flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-3 w-full"
               actions={(
                 <>
                   <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap" onClick={copyUrl}>
@@ -381,6 +382,7 @@ export default function SeatCheckinDialog({
             </div>
           </div>
         )}
+        </div>
       </DialogContent>
     </Dialog>
   );
