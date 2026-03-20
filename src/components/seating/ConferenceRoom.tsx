@@ -982,7 +982,7 @@ export default function ConferenceRoom({ students }: Props) {
         seatAssignmentReady={seated}
         sceneType="conference"
         sceneConfig={exportSceneConfig}
-        className={exportClassName}
+        className={recordName.trim() || exportClassName}
         pngFileName={recordName.trim() || '会议室座位'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

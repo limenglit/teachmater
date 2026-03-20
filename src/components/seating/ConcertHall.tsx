@@ -864,7 +864,7 @@ export default function ConcertHall({ students }: Props) {
         studentNames={students.map(s => s.name)}
         sceneType="concertHall"
         sceneConfig={exportSceneConfig}
-        className={exportClassName}
+        className={recordName.trim() || exportClassName}
         pngFileName={recordName.trim() || '音乐厅座位'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

@@ -1025,7 +1025,7 @@ export default function SmartClassroom({ students }: Props) {
         studentNames={students.map(s => s.name)}
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}
-        className={exportClassName}
+        className={recordName.trim() || exportClassName}
         pngFileName={recordName.trim() || '智能教室座位'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

@@ -730,7 +730,7 @@ export default function ComputerLab({ students }: Props) {
         seatAssignmentReady={seated}
         sceneType="computerLab"
         sceneConfig={exportSceneConfig}
-        className={exportClassName}
+        className={recordName.trim() || exportClassName}
         pngFileName={recordName.trim() || '机房座位'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

@@ -1106,7 +1106,7 @@ export default function BanquetHall({ students }: Props) {
         studentNames={students.map(s => s.name)}
         sceneType="banquet"
         sceneConfig={exportSceneConfig}
-        className={exportClassName}
+        className={recordName.trim() || exportClassName}
         pngFileName={recordName.trim() || '宴会厅座位安排'}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
