@@ -46,8 +46,8 @@ export default function SeatCheckinDialog({
   pngFileName,
   onSessionCreated,
 }: Props) {
-  const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
+  const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [records, setRecords] = useState<SeatCheckinRecord[]>([]);
