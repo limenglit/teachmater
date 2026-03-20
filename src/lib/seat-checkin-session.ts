@@ -210,10 +210,10 @@ export async function deleteSeatCheckinSession(sessionId: string) {
 
   // Preferred hard delete path (new migration).
   if (token) {
-    const hardDelete = await supabase.rpc('delete_seat_checkin_session', {
+    const hardDelete = await (supabase.rpc as any)('delete_seat_checkin_session', {
       p_session_id: sessionId,
       p_token: token,
-    } as any);
+    });
 
     if (!hardDelete.error) {
       removeSeatCheckinSessionToken(sessionId);
