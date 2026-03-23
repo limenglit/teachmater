@@ -11,6 +11,7 @@ import ConferenceRoom from '@/components/seating/ConferenceRoom';
 import ConcertHall from '@/components/seating/ConcertHall';
 import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
+import ArtStudio from '@/components/seating/ArtStudio';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { toast } from 'sonner';
@@ -24,7 +25,7 @@ import {
   type ClassroomHistoryItem,
 } from '@/lib/teamwork-local';
 
-type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab';
+type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type StartFrom = 'door' | 'window' | 'center';
 type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
@@ -57,6 +58,7 @@ export default function SeatChart() {
     { id: 'concertHall', label: t('scene.concertHall'), desc: t('scene.concertHallDesc') },
     { id: 'banquet', label: t('scene.banquet'), desc: t('scene.banquetDesc') },
     { id: 'computerLab', label: t('scene.computerLab'), desc: t('scene.computerLabDesc') },
+    { id: 'artStudio', label: t('scene.artStudio'), desc: t('scene.artStudioDesc') },
   ];
 
   const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -864,6 +866,7 @@ export default function SeatChart() {
         {scene === 'concertHall' && <ConcertHall students={students} />}
         {scene === 'banquet' && <BanquetHall students={students} />}
         {scene === 'computerLab' && <ComputerLab students={students} />}
+        {scene === 'artStudio' && <ArtStudio students={students} />}
 
         {scene === 'classroom' && (<>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
