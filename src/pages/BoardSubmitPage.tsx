@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   CheckCircle2, Lock, Send, User, Paperclip, X, Search, Plus,
@@ -17,6 +18,7 @@ import BoardCardItem from '@/components/board/BoardCardItem';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 const RECORDING_MAX_SECONDS = 60;
+const ASR_FORCE_ENGLISH_KEY = 'board-asr-force-english';
 
 const formatSeconds = (seconds: number) => {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -56,14 +58,17 @@ export default function BoardSubmitPage() {
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'document'>('image');
   const [uploading, setUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(0);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
   const [waveBars, setWaveBars] = useState<number[]>(() => Array.from({ length: 20 }, () => 12));
   const [asrPreview, setAsrPreview] = useState('');
+  const [asrForceEnglish, setAsrForceEnglish] = useState<boolean>(() => localStorage.getItem(ASR_FORCE_ENGLISH_KEY) === '1');
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const countdownTimerRef = useRef<number | null>(null);
   const recordingTimerRef = useRef<number | null>(null);
   const reachedMaxDurationRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -94,6 +99,10 @@ export default function BoardSubmitPage() {
       setNicknameConfirmed(true);
     }
   }, [boardId]);
+
+  useEffect(() => {
+    localStorage.setItem(ASR_FORCE_ENGLISH_KEY, asrForceEnglish ? '1' : '0');
+  }, [asrForceEnglish]);
 
   /* ── Load cards once nickname confirmed ── */
   const loadCards = useCallback(async () => {
@@ -255,6 +264,13 @@ export default function BoardSubmitPage() {
     }
   }, []);
 
+  const clearCountdownTimer = useCallback(() => {
+    if (countdownTimerRef.current !== null) {
+      window.clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+  }, []);
+
   const stopAudioAnalysis = useCallback(() => {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
@@ -294,7 +310,7 @@ export default function BoardSubmitPage() {
       const recognition = new SpeechRecognitionCtor();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
+      recognition.lang = asrForceEnglish ? 'en-US' : (lang === 'zh' ? 'zh-CN' : 'en-US');
       asrFinalTextRef.current = '';
       setAsrPreview('');
 
@@ -324,7 +340,7 @@ export default function BoardSubmitPage() {
     } catch {
       return false;
     }
-  }, [lang]);
+  }, [asrForceEnglish, lang]);
 
   const startAudioAnalysis = useCallback((stream: MediaStream) => {
     try {
@@ -381,7 +397,7 @@ export default function BoardSubmitPage() {
     }
   }, []);
 
-  const startRecording = useCallback(async () => {
+  const startRecordingInternal = useCallback(async () => {
     if (isRecording || uploading) return;
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       toast({ title: t('board.recordNotSupported'), variant: 'destructive' });
@@ -495,15 +511,38 @@ export default function BoardSubmitPage() {
     stopRecording,
   ]);
 
+  const cancelCountdown = useCallback(() => {
+    clearCountdownTimer();
+    setCountdownSeconds(0);
+  }, [clearCountdownTimer]);
+
+  const startRecordingWithCountdown = useCallback(() => {
+    if (isRecording || uploading || countdownSeconds > 0) return;
+    setCountdownSeconds(3);
+    clearCountdownTimer();
+    countdownTimerRef.current = window.setInterval(() => {
+      setCountdownSeconds(prev => {
+        const next = prev - 1;
+        if (next <= 0) {
+          clearCountdownTimer();
+          window.setTimeout(() => { void startRecordingInternal(); }, 0);
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+  }, [clearCountdownTimer, countdownSeconds, isRecording, startRecordingInternal, uploading]);
+
   useEffect(() => {
     return () => {
+      clearCountdownTimer();
       clearRecordingTimer();
       stopSpeechRecognition();
       stopAudioAnalysis();
       stopRecording();
       stopRecordingTracks();
     };
-  }, [clearRecordingTimer, stopRecording, stopRecordingTracks, stopSpeechRecognition, stopAudioAnalysis]);
+  }, [clearCountdownTimer, clearRecordingTimer, stopRecording, stopRecordingTracks, stopSpeechRecognition, stopAudioAnalysis]);
 
   const clearMedia = () => { setMediaUrl(''); setFileName(''); };
 
@@ -797,18 +836,33 @@ export default function BoardSubmitPage() {
               <div className="flex items-center gap-2">
                 <Button
                   type="button"
-                  variant={isRecording ? 'destructive' : 'outline'}
+                  variant={isRecording ? 'destructive' : countdownSeconds > 0 ? 'secondary' : 'outline'}
                   size="sm"
-                  onClick={isRecording ? stopRecording : startRecording}
+                  onClick={isRecording ? stopRecording : (countdownSeconds > 0 ? cancelCountdown : startRecordingWithCountdown)}
                   disabled={uploading || submitting}
                   className="gap-1"
                 >
                   {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  {isRecording ? t('board.stopRecording') : t('board.recordAudio')}
+                  {isRecording
+                    ? t('board.stopRecording')
+                    : countdownSeconds > 0
+                      ? `${t('board.countdownCancel')} (${countdownSeconds})`
+                      : t('board.recordAudio')}
                 </Button>
                 {isRecording && (
                   <span className="text-xs text-destructive">{t('board.recording')}</span>
                 )}
+                {!isRecording && countdownSeconds > 0 && (
+                  <span className="text-xs text-muted-foreground">{t('board.recordCountdownHint')}</span>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-border p-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-foreground">{t('board.asrForceEnglish')}</p>
+                  <p className="text-xs text-muted-foreground">{t('board.asrForceEnglishHint')}</p>
+                </div>
+                <Switch checked={asrForceEnglish} onCheckedChange={setAsrForceEnglish} />
               </div>
 
               {(isRecording || asrPreview) && (
