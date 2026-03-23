@@ -20,9 +20,10 @@ interface Props {
 }
 
 type LabSeatMode = 'balanced' | 'groupRow' | 'verticalS' | 'horizontalS';
-type RefKey = 'window' | 'door';
+type RefKey = 'window' | 'door' | 'blackboard';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
+const REF_BLACKBOARD_TOP = 12;
 
 function getAutoRowCount(totalStudents: number, seatsPerSide: number) {
   const capacityPerRow = Math.max(1, seatsPerSide * 2);
@@ -33,7 +34,9 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
   const badgeW = 90;
   const rightX = Math.max(24, roomWidth - badgeW - 24);
   const midY = Math.max(20, Math.round((roomHeight - 32) / 2));
+  const centerX = Math.max(24, Math.round((roomWidth - badgeW) / 2));
   return {
+    blackboard: { x: centerX, y: REF_BLACKBOARD_TOP },
     window: { x: 24, y: midY },
     door: { x: rightX, y: Math.max(140, roomHeight - 64) },
   };
@@ -58,6 +61,7 @@ export default function ComputerLab({ students }: Props) {
   const [checkinOpen, setCheckinOpen] = useState(false);
 
   const [refVisible, setRefVisible] = useState<RefVisible>({
+    blackboard: true,
     window: true,
     door: true,
   });
@@ -371,7 +375,7 @@ export default function ComputerLab({ students }: Props) {
           ...prev,
           [key]: {
             x: refDraggingRef.current!.origX + dx,
-            y: refDraggingRef.current!.origY + dy,
+            y: key === 'blackboard' ? REF_BLACKBOARD_TOP : refDraggingRef.current!.origY + dy,
           },
         }));
       }
@@ -594,6 +598,9 @@ export default function ComputerLab({ students }: Props) {
         </Button>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={refVisible.blackboard} onChange={() => toggleRefVisible('blackboard')} className="accent-primary" /> 前黑板
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
@@ -633,6 +640,12 @@ export default function ComputerLab({ students }: Props) {
         {seated ? (
           <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
             <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
+              {refVisible.blackboard && (
+                <div className={refBadgeClass} style={{ left: refPositions.blackboard.x, top: refPositions.blackboard.y }} onMouseDown={e => startRefDrag(e, 'blackboard')}>
+                  <span className={refIconClass}>🖥️</span>
+                  <span className={refTextClass}>前黑板</span>
+                </div>
+              )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>🪟</span>
@@ -719,7 +732,7 @@ export default function ComputerLab({ students }: Props) {
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可换座；点击空座位可关闭/开放使用；每排长桌可拖拽与旋转90°；门窗支持显隐与拖拽
+          拖拽姓名可换座；点击空座位可关闭/开放使用；每排长桌可拖拽与旋转90°；前黑板/门窗支持显隐与拖拽
         </p>
       )}
       <SeatCheckinDialog
