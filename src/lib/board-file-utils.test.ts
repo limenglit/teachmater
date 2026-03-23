@@ -21,12 +21,19 @@ describe('getFileCategory', () => {
   it('is case-insensitive', () => {
     expect(getFileCategory('JPG')).toBe('image');
     expect(getFileCategory('MP4')).toBe('video');
+    expect(getFileCategory('MP3')).toBe('audio');
     expect(getFileCategory('PDF')).toBe('document');
   });
 
   it('recognizes video extensions', () => {
     for (const ext of ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv']) {
       expect(getFileCategory(ext)).toBe('video');
+    }
+  });
+
+  it('recognizes audio extensions', () => {
+    for (const ext of ['mp3', 'wav', 'ogg', 'aac', 'm4a']) {
+      expect(getFileCategory(ext)).toBe('audio');
     }
   });
 
@@ -49,6 +56,7 @@ describe('getCardType', () => {
   it('maps category directly to card type', () => {
     expect(getCardType('image')).toBe('image');
     expect(getCardType('video')).toBe('video');
+    expect(getCardType('audio')).toBe('audio');
     expect(getCardType('document')).toBe('document');
   });
 });
@@ -161,6 +169,11 @@ describe('ACCEPT_ALL_MEDIA', () => {
 
   it('includes video MIME types', () => {
     expect(ACCEPT_ALL_MEDIA).toContain('video/mp4');
+  });
+
+  it('includes audio MIME types', () => {
+    expect(ACCEPT_ALL_MEDIA).toContain('audio/*');
+    expect(ACCEPT_ALL_MEDIA).toContain('.mp3');
   });
 
   it('includes document extensions', () => {

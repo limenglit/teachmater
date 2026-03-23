@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
   CheckCircle2, Lock, Send, User, Paperclip, X, Search, Plus,
-  Heart, MessageCircle, ChevronDown, RefreshCw,
+  Heart, MessageCircle, ChevronDown, RefreshCw, Mic, Square,
 } from 'lucide-react';
 import type { Board, BoardCard } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getDocIcon, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
@@ -16,11 +16,18 @@ import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
 import BoardCardItem from '@/components/board/BoardCardItem';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
+const RECORDING_MAX_SECONDS = 60;
+
+const formatSeconds = (seconds: number) => {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+};
 
 /* ───── Mobile Board Page: Browse + FAB Submit ───── */
 export default function BoardSubmitPage() {
   const { boardId } = useParams<{ boardId: string }>();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
   /* ── board & auth state ── */
   const [board, setBoard] = useState<Board | null>(null);
@@ -46,9 +53,25 @@ export default function BoardSubmitPage() {
   const [submitted, setSubmitted] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
-  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'document'>('image');
+  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'document'>('image');
   const [uploading, setUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [waveBars, setWaveBars] = useState<number[]>(() => Array.from({ length: 20 }, () => 12));
+  const [asrPreview, setAsrPreview] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<number | null>(null);
+  const reachedMaxDurationRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
+  const asrFinalTextRef = useRef('');
 
   const isStoryboard = board?.view_mode === 'storyboard' && Array.isArray(board?.columns) && (board?.columns?.length || 0) > 0;
 
@@ -183,14 +206,14 @@ export default function BoardSubmitPage() {
   };
 
   /* ── Upload ── */
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !boardId) return;
+  const uploadFileToBoardMedia = useCallback(async (file: File) => {
+    if (!boardId) return;
     const validationError = validateFile(file);
     if (validationError) { toast({ title: validationError, variant: 'destructive' }); return; }
+
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const category = getFileCategory(ext);
+    const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
     let fileToUpload: File = file;
     if (category === 'image') fileToUpload = await compressImage(file);
     const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
@@ -210,7 +233,278 @@ export default function BoardSubmitPage() {
     }
     if (lastError) toast({ title: `上传失败: ${lastError}`, variant: 'destructive' });
     setUploading(false);
+  }, [boardId]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await uploadFileToBoardMedia(file);
   };
+
+  const stopRecordingTracks = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+  }, []);
+
+  const clearRecordingTimer = useCallback(() => {
+    if (recordingTimerRef.current !== null) {
+      window.clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+  }, []);
+
+  const stopAudioAnalysis = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    sourceRef.current?.disconnect();
+    analyserRef.current?.disconnect();
+    sourceRef.current = null;
+    analyserRef.current = null;
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+  }, []);
+
+  const stopSpeechRecognition = useCallback(() => {
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.onresult = null;
+        speechRecognitionRef.current.onerror = null;
+        speechRecognitionRef.current.onend = null;
+        speechRecognitionRef.current.stop();
+      } catch {
+        // Ignore stop errors from browser speech engine.
+      }
+      speechRecognitionRef.current = null;
+    }
+  }, []);
+
+  const startSpeechRecognition = useCallback(() => {
+    const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      return false;
+    }
+
+    try {
+      const recognition = new SpeechRecognitionCtor();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
+      asrFinalTextRef.current = '';
+      setAsrPreview('');
+
+      recognition.onresult = (event: any) => {
+        let finalText = asrFinalTextRef.current;
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const transcript = event.results[i][0]?.transcript?.trim();
+          if (!transcript) continue;
+          if (event.results[i].isFinal) {
+            finalText = `${finalText} ${transcript}`.trim();
+          } else {
+            interimText = `${interimText} ${transcript}`.trim();
+          }
+        }
+        asrFinalTextRef.current = finalText;
+        setAsrPreview(`${finalText} ${interimText}`.trim());
+      };
+
+      recognition.onerror = () => {
+        setAsrPreview(asrFinalTextRef.current);
+      };
+
+      recognition.start();
+      speechRecognitionRef.current = recognition;
+      return true;
+    } catch {
+      return false;
+    }
+  }, [lang]);
+
+  const startAudioAnalysis = useCallback((stream: MediaStream) => {
+    try {
+      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextCtor) return;
+
+      const audioContext = new AudioContextCtor();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 128;
+      analyser.smoothingTimeConstant = 0.85;
+      const source = audioContext.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+      sourceRef.current = source;
+
+      const freq = new Uint8Array(analyser.frequencyBinCount);
+      const update = () => {
+        const currentAnalyser = analyserRef.current;
+        if (!currentAnalyser) return;
+        currentAnalyser.getByteFrequencyData(freq);
+
+        const avg = freq.reduce((sum, val) => sum + val, 0) / (freq.length || 1);
+        const normalized = Math.min(100, Math.round((avg / 255) * 100 * 2.2));
+        setAudioLevel(normalized);
+
+        const nextBars = Array.from({ length: 20 }, (_, i) => {
+          const idx = Math.floor((i / 20) * freq.length);
+          const val = freq[idx] || 0;
+          return 8 + Math.round((val / 255) * 28);
+        });
+        setWaveBars(nextBars);
+
+        rafRef.current = requestAnimationFrame(update);
+      };
+
+      rafRef.current = requestAnimationFrame(update);
+    } catch {
+      // Level meter is optional enhancement, fail silently.
+    }
+  }, []);
+
+  const resetRecordingVisuals = useCallback(() => {
+    setRecordingSeconds(0);
+    setAudioLevel(0);
+    setWaveBars(Array.from({ length: 20 }, () => 12));
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+    }
+  }, []);
+
+  const startRecording = useCallback(async () => {
+    if (isRecording || uploading) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      toast({ title: t('board.recordNotSupported'), variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const preferredMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+      ];
+      const mimeType = preferredMimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      reachedMaxDurationRef.current = false;
+
+      recordedChunksRef.current = [];
+      recorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        clearRecordingTimer();
+        stopAudioAnalysis();
+        stopSpeechRecognition();
+        stopRecordingTracks();
+
+        if (recordedChunksRef.current.length === 0) {
+          setIsRecording(false);
+          resetRecordingVisuals();
+          return;
+        }
+
+        const mime = recorder.mimeType || 'audio/webm';
+        const blob = new Blob(recordedChunksRef.current, { type: mime });
+        const ext = mime.includes('ogg') ? 'ogg' : 'webm';
+        const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: mime });
+
+        await uploadFileToBoardMedia(file);
+        if (asrFinalTextRef.current.trim()) {
+          setContent(prev => prev.trim() ? `${prev.trim()}\n${asrFinalTextRef.current.trim()}` : asrFinalTextRef.current.trim());
+          toast({ title: t('board.asrFilled') });
+        }
+        toast({ title: reachedMaxDurationRef.current ? t('board.recordMaxDurationReached') : t('board.audioUploaded') });
+        setIsRecording(false);
+        reachedMaxDurationRef.current = false;
+        asrFinalTextRef.current = '';
+        setAsrPreview('');
+        resetRecordingVisuals();
+        mediaRecorderRef.current = null;
+      };
+
+      recorder.onerror = () => {
+        clearRecordingTimer();
+        stopAudioAnalysis();
+        stopSpeechRecognition();
+        stopRecordingTracks();
+        setIsRecording(false);
+        resetRecordingVisuals();
+        toast({ title: t('board.recordStartFailed'), variant: 'destructive' });
+      };
+
+      setRecordingSeconds(0);
+      resetRecordingVisuals();
+      startAudioAnalysis(stream);
+      const asrStarted = startSpeechRecognition();
+      if (!asrStarted) {
+        setAsrPreview(t('board.asrNotSupported'));
+      }
+
+      recorder.start(250);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+
+      clearRecordingTimer();
+      recordingTimerRef.current = window.setInterval(() => {
+        setRecordingSeconds(prev => {
+          const next = prev + 1;
+          if (next >= RECORDING_MAX_SECONDS) {
+            reachedMaxDurationRef.current = true;
+            stopRecording();
+          }
+          return next;
+        });
+      }, 1000);
+    } catch {
+      clearRecordingTimer();
+      stopAudioAnalysis();
+      stopSpeechRecognition();
+      stopRecordingTracks();
+      resetRecordingVisuals();
+      toast({ title: t('board.recordPermissionDenied'), variant: 'destructive' });
+    }
+  }, [
+    isRecording,
+    uploading,
+    stopRecordingTracks,
+    t,
+    uploadFileToBoardMedia,
+    clearRecordingTimer,
+    stopAudioAnalysis,
+    stopSpeechRecognition,
+    resetRecordingVisuals,
+    startAudioAnalysis,
+    startSpeechRecognition,
+    stopRecording,
+  ]);
+
+  useEffect(() => {
+    return () => {
+      clearRecordingTimer();
+      stopSpeechRecognition();
+      stopAudioAnalysis();
+      stopRecording();
+      stopRecordingTracks();
+    };
+  }, [clearRecordingTimer, stopRecording, stopRecordingTracks, stopSpeechRecognition, stopAudioAnalysis]);
+
   const clearMedia = () => { setMediaUrl(''); setFileName(''); };
 
   /* ── Submit ── */
@@ -476,6 +770,11 @@ export default function BoardSubmitPage() {
                 <div className="relative inline-block">
                   {fileCategory === 'image' && <img src={mediaUrl} alt="" className="h-24 rounded-lg object-cover" />}
                   {fileCategory === 'video' && <video src={mediaUrl} className="h-24 rounded-lg object-cover" controls={false} />}
+                  {fileCategory === 'audio' && (
+                    <div className="h-16 px-3 rounded-lg bg-muted flex items-center text-sm">
+                      <audio src={mediaUrl} controls preload="metadata" className="max-w-[250px]" />
+                    </div>
+                  )}
                   {fileCategory === 'document' && (
                     <div className="h-16 px-4 rounded-lg bg-muted flex items-center gap-2 text-sm text-muted-foreground">
                       <span className="text-lg">{getDocIcon(fileName.split('.').pop() || '')}</span>
@@ -494,6 +793,47 @@ export default function BoardSubmitPage() {
                   {uploading ? t('board.uploading') : t('board.uploadFile')}
                 </Button>
               </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant={isRecording ? 'destructive' : 'outline'}
+                  size="sm"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={uploading || submitting}
+                  className="gap-1"
+                >
+                  {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  {isRecording ? t('board.stopRecording') : t('board.recordAudio')}
+                </Button>
+                {isRecording && (
+                  <span className="text-xs text-destructive">{t('board.recording')}</span>
+                )}
+              </div>
+
+              {(isRecording || asrPreview) && (
+                <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{t('board.recordingTime')}</span>
+                    <span>{formatSeconds(recordingSeconds)} / {formatSeconds(RECORDING_MAX_SECONDS)}</span>
+                  </div>
+                  <div className="h-9 flex items-end gap-1">
+                    {waveBars.map((bar, idx) => (
+                      <span
+                        key={`wave-${idx}`}
+                        className="flex-1 rounded-sm bg-primary/70 transition-all"
+                        style={{ height: `${bar}px` }}
+                      />
+                    ))}
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${audioLevel}%` }} />
+                  </div>
+                  <p className="text-xs text-muted-foreground break-words">
+                    {t('board.asrPreview')}: {asrPreview || t('board.asrListening')}
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{t('board.cardColor')}:</span>

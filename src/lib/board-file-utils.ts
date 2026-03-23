@@ -2,22 +2,29 @@
 
 const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
 const VIDEO_EXTS = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv', 'wmv'];
+const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'webm'];
 const DOC_EXTS = ['doc', 'docx', 'pdf', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'txt', 'rtf', 'odt', 'ods', 'odp'];
+
+export type BoardMediaCategory = 'image' | 'video' | 'audio' | 'document';
 
 export const ACCEPT_ALL_MEDIA = [
   'image/*',
   'video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska',
+  'audio/*',
+  '.mp3,.wav,.ogg,.aac,.m4a',
   '.doc,.docx,.pdf,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.rtf,.odt,.ods,.odp',
 ].join(',');
 
-export function getFileCategory(ext: string): 'image' | 'video' | 'document' {
+export function getFileCategory(ext: string): BoardMediaCategory {
   const lower = ext.toLowerCase();
   if (IMAGE_EXTS.includes(lower)) return 'image';
   if (VIDEO_EXTS.includes(lower)) return 'video';
+  if (AUDIO_EXTS.includes(lower)) return 'audio';
+  if (DOC_EXTS.includes(lower)) return 'document';
   return 'document';
 }
 
-export function getCardType(category: 'image' | 'video' | 'document'): string {
+export function getCardType(category: BoardMediaCategory): string {
   return category; // card_type maps directly: 'image' | 'video' | 'document'
 }
 
@@ -31,7 +38,7 @@ export function getFileExtFromUrl(url: string): string {
   }
 }
 
-export function getFileCategoryFromUrl(url: string): 'image' | 'video' | 'document' {
+export function getFileCategoryFromUrl(url: string): BoardMediaCategory {
   return getFileCategory(getFileExtFromUrl(url));
 }
 

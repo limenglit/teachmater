@@ -76,8 +76,8 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
 
   // Determine media type from card_type or URL
   const mediaCategory = card.media_url
-    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image')
-      ? card.card_type as 'image' | 'video' | 'document'
+    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image' || card.card_type === 'audio')
+      ? card.card_type as 'image' | 'video' | 'audio' | 'document'
       : getFileCategoryFromUrl(card.media_url)
     : null;
 
@@ -110,6 +110,15 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
           src={card.media_url}
           controls
           className="rounded-lg w-full max-h-48 mb-2"
+          preload="metadata"
+        />
+      )}
+
+      {card.media_url && mediaCategory === 'audio' && (
+        <audio
+          src={card.media_url}
+          controls
+          className="w-full mb-2"
           preload="metadata"
         />
       )}

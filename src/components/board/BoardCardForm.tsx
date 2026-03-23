@@ -29,7 +29,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const [uploading, setUploading] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
-  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'document'>('image');
+  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'document'>('image');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
-    const category = getFileCategory(ext);
+    const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
     
     const { data, error } = await supabase.storage.from('board-media').upload(path, file);
     if (error) { setUploading(false); return; }
@@ -96,6 +96,11 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
             )}
             {fileCategory === 'video' && (
               <video src={mediaUrl} className="h-16 rounded-lg object-cover" />
+            )}
+            {fileCategory === 'audio' && (
+              <div className="h-16 px-3 rounded-lg bg-muted flex items-center">
+                <audio src={mediaUrl} controls preload="metadata" className="max-w-[180px]" />
+              </div>
             )}
             {fileCategory === 'document' && (
               <div className="h-16 px-3 rounded-lg bg-muted flex items-center gap-2 text-xs text-muted-foreground">
