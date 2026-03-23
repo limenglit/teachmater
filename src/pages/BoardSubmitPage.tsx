@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   CheckCircle2, Lock, Send, User, Paperclip, X, Search, Plus,
@@ -18,7 +17,6 @@ import BoardCardItem from '@/components/board/BoardCardItem';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 const RECORDING_MAX_SECONDS = 60;
-const ASR_FORCE_ENGLISH_KEY = 'board-asr-force-english';
 
 const formatSeconds = (seconds: number) => {
   const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -63,7 +61,6 @@ export default function BoardSubmitPage() {
   const [audioLevel, setAudioLevel] = useState(0);
   const [waveBars, setWaveBars] = useState<number[]>(() => Array.from({ length: 20 }, () => 12));
   const [asrPreview, setAsrPreview] = useState('');
-  const [asrForceEnglish, setAsrForceEnglish] = useState<boolean>(() => localStorage.getItem(ASR_FORCE_ENGLISH_KEY) === '1');
   const fileRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -100,10 +97,6 @@ export default function BoardSubmitPage() {
       setNicknameConfirmed(true);
     }
   }, [boardId]);
-
-  useEffect(() => {
-    localStorage.setItem(ASR_FORCE_ENGLISH_KEY, asrForceEnglish ? '1' : '0');
-  }, [asrForceEnglish]);
 
   /* ── Load cards once nickname confirmed ── */
   const loadCards = useCallback(async () => {
@@ -315,7 +308,7 @@ export default function BoardSubmitPage() {
       const recognition = new SpeechRecognitionCtor();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = asrForceEnglish ? 'en-US' : (lang === 'zh' ? 'zh-CN' : 'en-US');
+      recognition.lang = lang === 'zh' ? 'zh-CN' : 'en-US';
       asrFinalTextRef.current = '';
       asrCombinedTextRef.current = '';
       setAsrPreview('');
@@ -358,7 +351,7 @@ export default function BoardSubmitPage() {
     } catch {
       return false;
     }
-  }, [asrForceEnglish, lang, t]);
+  }, [lang, t]);
 
   const startAudioAnalysis = useCallback((stream: MediaStream) => {
     try {
@@ -885,14 +878,6 @@ export default function BoardSubmitPage() {
                 {!isRecording && countdownSeconds > 0 && (
                   <span className="text-xs text-muted-foreground">{t('board.recordCountdownHint')}</span>
                 )}
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div className="space-y-0.5">
-                  <p className="text-sm font-medium text-foreground">{t('board.asrForceEnglish')}</p>
-                  <p className="text-xs text-muted-foreground">{t('board.asrForceEnglishHint')}</p>
-                </div>
-                <Switch checked={asrForceEnglish} onCheckedChange={setAsrForceEnglish} />
               </div>
 
               {(isRecording || asrPreview) && (
