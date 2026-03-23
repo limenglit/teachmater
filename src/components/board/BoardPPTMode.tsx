@@ -14,7 +14,18 @@ interface Props {
 export default function BoardPPTMode({ cards, onExit }: Props) {
   const { t } = useLanguage();
   const [index, setIndex] = useState(0);
+  const [showImagePreview, setShowImagePreview] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const triggerDownload = useCallback((url: string, filename?: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || '';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
 
   const exitFullscreenAndClose = useCallback(() => {
     if (document.fullscreenElement) {
@@ -56,6 +67,10 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
   const prev = () => setIndex(i => Math.max(0, i - 1));
   const next = () => setIndex(i => Math.min(cards.length - 1, i + 1));
 
+  useEffect(() => {
+    setShowImagePreview(false);
+  }, [index]);
+
   return (
     <div
       ref={containerRef}
@@ -94,15 +109,45 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
         {card.media_url && (() => {
           const cat = (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image' || card.card_type === 'audio')
             ? card.card_type as string : getFileCategoryFromUrl(card.media_url);
-          if (cat === 'image') return <img src={card.media_url} alt="" className="rounded-2xl max-h-[40vh] mx-auto object-contain" />;
+          if (cat === 'image') {
+            return (
+              <div className="relative max-w-6xl mx-auto">
+                <img
+                  src={card.media_url}
+                  alt=""
+                  className="rounded-2xl max-h-[78vh] max-w-[90vw] mx-auto object-contain cursor-zoom-in"
+                  onClick={() => setShowImagePreview(true)}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 bottom-2 p-2 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors"
+                  onClick={() => triggerDownload(card.media_url, getFileNameFromUrl(card.media_url))}
+                  title={t('board.downloadFile')}
+                  aria-label={t('board.downloadFile')}
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              </div>
+            );
+          }
           if (cat === 'video') return <video src={card.media_url} controls className="rounded-2xl max-h-[40vh] mx-auto" />;
           if (cat === 'audio') return <audio src={card.media_url} controls className="w-full max-w-xl mx-auto" preload="metadata" />;
           return (
-            <a href={card.media_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 transition-colors">
-              <span className="text-3xl">{getDocIcon(getFileExtFromUrl(card.media_url))}</span>
-              <span className="text-lg text-foreground">{getFileNameFromUrl(card.media_url)}</span>
-              <Download className="w-5 h-5 text-muted-foreground" />
-            </a>
+            <div className="inline-flex items-center gap-2">
+              <a href={card.media_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-foreground/5 hover:bg-foreground/10 transition-colors">
+                <span className="text-3xl">{getDocIcon(getFileExtFromUrl(card.media_url))}</span>
+                <span className="text-lg text-foreground">{getFileNameFromUrl(card.media_url)}</span>
+              </a>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 px-4 gap-2"
+                onClick={() => triggerDownload(card.media_url, getFileNameFromUrl(card.media_url))}
+              >
+                <Download className="w-4 h-4" />
+                {t('board.downloadFile')}
+              </Button>
+            </div>
           );
         })()}
 
@@ -128,6 +173,43 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
           {t('board.pptNext')} <ChevronRight className="w-5 h-5" />
         </Button>
       </div>
+
+      {showImagePreview && card.media_url && (
+        <div
+          className="fixed inset-0 z-[130] bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setShowImagePreview(false)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 p-2 rounded-md bg-black/40 text-white hover:bg-black/60 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowImagePreview(false);
+            }}
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            className="absolute top-4 left-4 p-2 rounded-md bg-black/40 text-white hover:bg-black/60 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              triggerDownload(card.media_url, getFileNameFromUrl(card.media_url));
+            }}
+            title={t('board.downloadFile')}
+            aria-label={t('board.downloadFile')}
+          >
+            <Download className="w-5 h-5" />
+          </button>
+          <img
+            src={card.media_url}
+            alt=""
+            className="max-w-[97vw] max-h-[94vh] object-contain rounded"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

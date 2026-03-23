@@ -25,9 +25,20 @@ interface Props {
 export default function BoardCardItem({ card, onManage, onLike, isCreator, isCloud }: Props) {
   const { t } = useLanguage();
   const [showComments, setShowComments] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+
+  const triggerDownload = (url: string, filename?: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || '';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const loadComments = async () => {
     if (!isCloud) return;
@@ -102,7 +113,26 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
 
       {/* Media rendering based on type */}
       {card.media_url && mediaCategory === 'image' && (
-        <img src={card.media_url} alt="" className="rounded-lg w-full max-h-40 object-cover mb-2" />
+        <div className="relative mb-2">
+          <img
+            src={card.media_url}
+            alt=""
+            className="rounded-lg w-full max-h-40 object-cover cursor-zoom-in"
+            onClick={() => setShowImagePreview(true)}
+          />
+          <button
+            type="button"
+            className="absolute right-2 bottom-2 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              triggerDownload(card.media_url, getFileNameFromUrl(card.media_url));
+            }}
+            title={t('board.downloadFile')}
+            aria-label={t('board.downloadFile')}
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
 
       {card.media_url && mediaCategory === 'video' && (
@@ -207,6 +237,43 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
               <Send className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+      )}
+
+      {showImagePreview && card.media_url && mediaCategory === 'image' && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setShowImagePreview(false)}
+        >
+          <button
+            type="button"
+            className="absolute top-4 right-4 p-2 rounded-md bg-black/40 text-white hover:bg-black/60 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowImagePreview(false);
+            }}
+            aria-label="Close"
+          >
+            ✕
+          </button>
+          <button
+            type="button"
+            className="absolute top-4 left-4 p-2 rounded-md bg-black/40 text-white hover:bg-black/60 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              triggerDownload(card.media_url, getFileNameFromUrl(card.media_url));
+            }}
+            title={t('board.downloadFile')}
+            aria-label={t('board.downloadFile')}
+          >
+            <Download className="w-4 h-4" />
+          </button>
+          <img
+            src={card.media_url}
+            alt=""
+            className="max-w-[96vw] max-h-[92vh] object-contain rounded"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
