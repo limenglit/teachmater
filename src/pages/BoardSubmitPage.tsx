@@ -77,6 +77,7 @@ export default function BoardSubmitPage() {
   const rafRef = useRef<number | null>(null);
   const speechRecognitionRef = useRef<any>(null);
   const asrFinalTextRef = useRef('');
+  const asrCombinedTextRef = useRef('');
 
   const isStoryboard = board?.view_mode === 'storyboard' && Array.isArray(board?.columns) && (board?.columns?.length || 0) > 0;
 
@@ -286,21 +287,25 @@ export default function BoardSubmitPage() {
     }
   }, []);
 
-  const stopSpeechRecognition = useCallback(() => {
-    if (speechRecognitionRef.current) {
-      try {
-        speechRecognitionRef.current.onresult = null;
-        speechRecognitionRef.current.onerror = null;
-        speechRecognitionRef.current.onend = null;
-        speechRecognitionRef.current.stop();
-      } catch {
-        // Ignore stop errors from browser speech engine.
-      }
+  const stopSpeechRecognition = useCallback((hard = false) => {
+    if (!speechRecognitionRef.current) return;
+    try {
+      speechRecognitionRef.current.stop();
+    } catch {
+      // Ignore stop errors from browser speech engine.
+    }
+
+    if (hard) {
+      speechRecognitionRef.current.onresult = null;
+      speechRecognitionRef.current.onerror = null;
+      speechRecognitionRef.current.onend = null;
       speechRecognitionRef.current = null;
     }
   }, []);
 
   const startSpeechRecognition = useCallback(() => {
+    if (speechRecognitionRef.current) return true;
+
     const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognitionCtor) {
       return false;
@@ -312,6 +317,7 @@ export default function BoardSubmitPage() {
       recognition.interimResults = true;
       recognition.lang = asrForceEnglish ? 'en-US' : (lang === 'zh' ? 'zh-CN' : 'en-US');
       asrFinalTextRef.current = '';
+      asrCombinedTextRef.current = '';
       setAsrPreview('');
 
       recognition.onresult = (event: any) => {
@@ -327,11 +333,23 @@ export default function BoardSubmitPage() {
           }
         }
         asrFinalTextRef.current = finalText;
-        setAsrPreview(`${finalText} ${interimText}`.trim());
+        const combined = `${finalText} ${interimText}`.trim();
+        asrCombinedTextRef.current = combined;
+        setAsrPreview(combined);
       };
 
-      recognition.onerror = () => {
-        setAsrPreview(asrFinalTextRef.current);
+      recognition.onerror = (event: any) => {
+        if (event?.error === 'not-allowed' || event?.error === 'service-not-allowed') {
+          setAsrPreview(t('board.asrPermissionDenied'));
+          return;
+        }
+        setAsrPreview(asrCombinedTextRef.current || asrFinalTextRef.current);
+      };
+
+      recognition.onend = () => {
+        if (speechRecognitionRef.current === recognition) {
+          speechRecognitionRef.current = null;
+        }
       };
 
       recognition.start();
@@ -340,7 +358,7 @@ export default function BoardSubmitPage() {
     } catch {
       return false;
     }
-  }, [asrForceEnglish, lang]);
+  }, [asrForceEnglish, lang, t]);
 
   const startAudioAnalysis = useCallback((stream: MediaStream) => {
     try {
@@ -442,14 +460,16 @@ export default function BoardSubmitPage() {
         const file = new File([blob], `recording-${Date.now()}.${ext}`, { type: mime });
 
         await uploadFileToBoardMedia(file);
-        if (asrFinalTextRef.current.trim()) {
-          setContent(prev => prev.trim() ? `${prev.trim()}\n${asrFinalTextRef.current.trim()}` : asrFinalTextRef.current.trim());
+        const transcript = asrFinalTextRef.current.trim() || asrCombinedTextRef.current.trim();
+        if (transcript) {
+          setContent(prev => prev.trim() ? `${prev.trim()}\n${transcript}` : transcript);
           toast({ title: t('board.asrFilled') });
         }
         toast({ title: reachedMaxDurationRef.current ? t('board.recordMaxDurationReached') : t('board.audioUploaded') });
         setIsRecording(false);
         reachedMaxDurationRef.current = false;
         asrFinalTextRef.current = '';
+        asrCombinedTextRef.current = '';
         setAsrPreview('');
         resetRecordingVisuals();
         mediaRecorderRef.current = null;
@@ -514,10 +534,20 @@ export default function BoardSubmitPage() {
   const cancelCountdown = useCallback(() => {
     clearCountdownTimer();
     setCountdownSeconds(0);
-  }, [clearCountdownTimer]);
+    stopSpeechRecognition(true);
+    asrFinalTextRef.current = '';
+    asrCombinedTextRef.current = '';
+    setAsrPreview('');
+  }, [clearCountdownTimer, stopSpeechRecognition]);
 
   const startRecordingWithCountdown = useCallback(() => {
     if (isRecording || uploading || countdownSeconds > 0) return;
+
+    const asrSupported = startSpeechRecognition();
+    if (!asrSupported) {
+      setAsrPreview(t('board.asrNotSupported'));
+    }
+
     setCountdownSeconds(3);
     clearCountdownTimer();
     countdownTimerRef.current = window.setInterval(() => {
@@ -531,13 +561,13 @@ export default function BoardSubmitPage() {
         return next;
       });
     }, 1000);
-  }, [clearCountdownTimer, countdownSeconds, isRecording, startRecordingInternal, uploading]);
+  }, [clearCountdownTimer, countdownSeconds, isRecording, startRecordingInternal, startSpeechRecognition, t, uploading]);
 
   useEffect(() => {
     return () => {
       clearCountdownTimer();
       clearRecordingTimer();
-      stopSpeechRecognition();
+      stopSpeechRecognition(true);
       stopAudioAnalysis();
       stopRecording();
       stopRecordingTracks();
