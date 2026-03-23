@@ -19,17 +19,21 @@ interface Point {
 }
 
 interface DragState {
-  kind: 'seat' | 'platform';
+  kind: 'seat' | 'platform' | 'marker';
   key: string;
 }
 
 const CANVAS_W = 900;
 const CANVAS_H = 560;
-const SEAT_W = 78;
-const SEAT_H = 44;
-const SEAT_COLLISION_DIST = 80;
+const SEAT_W = 40;
+const SEAT_H = 22;
+const SEAT_COLLISION_DIST = 44;
 const CENTER_SAFE_RADIUS = 62;
 const CENTER_DEFAULT: Point = { x: 450, y: 280 };
+const MARKER_DEFAULT = {
+  window: { x: 720, y: 24 },
+  door: { x: 834, y: 266 },
+};
 const CHINESE_NUMERAL_MAP: Record<string, number> = {
   一: 1,
   二: 2,
@@ -218,6 +222,10 @@ export default function ArtStudio({ students }: Props) {
     model: { x: CENTER_DEFAULT.x + 44, y: CENTER_DEFAULT.y - 10 },
     stillLife: { x: CENTER_DEFAULT.x - 44, y: CENTER_DEFAULT.y + 10 },
   });
+  const [markers, setMarkers] = useState<{ window: Point; door: Point }>({
+    window: { ...MARKER_DEFAULT.window },
+    door: { ...MARKER_DEFAULT.door },
+  });
   const [dragging, setDragging] = useState<DragState | null>(null);
   const [recordName, setRecordName] = useState('');
   const [checkinOpen, setCheckinOpen] = useState(false);
@@ -344,6 +352,20 @@ export default function ArtStudio({ students }: Props) {
     setAssignment(ensureAssignmentShape([]));
   };
 
+  const resetMarkers = () => {
+    setMarkers({
+      window: { ...MARKER_DEFAULT.window },
+      door: { ...MARKER_DEFAULT.door },
+    });
+  };
+
+  const swapMarkerSides = () => {
+    setMarkers(prev => ({
+      window: { x: CANVAS_W - prev.window.x, y: prev.window.y },
+      door: { x: CANVAS_W - prev.door.x, y: prev.door.y },
+    }));
+  };
+
   const applyPreset = (nextPreset: PresetType) => {
     setPreset(nextPreset);
     if (nextPreset === 'stillLife') {
@@ -408,6 +430,18 @@ export default function ArtStudio({ students }: Props) {
           next[dragging.key] = {
             x: clamp(point.x, 14 + SEAT_W / 2, CANVAS_W - 14 - SEAT_W / 2),
             y: clamp(point.y, 14 + SEAT_H / 2, CANVAS_H - 14 - SEAT_H / 2),
+          };
+          return next;
+        });
+        return;
+      }
+
+      if (dragging.kind === 'marker') {
+        setMarkers(prev => {
+          const next = { ...prev };
+          next[dragging.key as 'window' | 'door'] = {
+            x: clamp(point.x, 32, CANVAS_W - 32),
+            y: clamp(point.y, 18, CANVAS_H - 24),
           };
           return next;
         });
@@ -549,13 +583,39 @@ export default function ArtStudio({ students }: Props) {
             <div className="text-muted-foreground mt-1">白板 / 投影幕</div>
           </div>
           <div className="col-span-3 rounded-lg border border-border bg-muted/40 p-2">
-            <div className="font-semibold text-foreground">窗户（北向）</div>
-            <div className="text-muted-foreground mt-1">自然光</div>
+            <div className="font-semibold text-foreground">门窗参照</div>
+            <div className="text-muted-foreground mt-1">画布内可拖拽调整</div>
           </div>
+        </div>
+
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+          <span className="text-muted-foreground">门窗位置:</span>
+          <Button variant="outline" size="sm" className="h-7 px-2" onClick={swapMarkerSides}>左右互换</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2" onClick={resetMarkers}>重置</Button>
         </div>
 
         <div ref={canvasRef} className="relative rounded-xl border border-border bg-[linear-gradient(180deg,rgba(250,250,245,0.95)_0%,rgba(245,247,250,0.92)_100%)] overflow-hidden mx-auto" style={{ width: `${CANVAS_W}px`, height: `${CANVAS_H}px` }}>
           <div className="absolute left-3 top-3 rounded-md bg-primary/10 border border-primary/20 px-2 py-1 text-xs text-primary font-medium">写生区（核心）</div>
+
+          <div
+            className="absolute inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-100/90 px-2 py-1 text-[11px] text-sky-800 font-medium shadow-sm cursor-grab active:cursor-grabbing select-none"
+            style={{ left: markers.window.x - 26, top: markers.window.y - 12 }}
+            onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'marker', key: 'window' }); }}
+            title="拖拽移动窗户位置"
+          >
+            <span>🪟</span>
+            <span>窗</span>
+          </div>
+
+          <div
+            className="absolute inline-flex items-center gap-1 rounded-md border border-amber-600/35 bg-amber-100/90 px-2 py-1 text-[11px] text-amber-800 font-medium shadow-sm cursor-grab active:cursor-grabbing select-none"
+            style={{ left: markers.door.x - 26, top: markers.door.y - 12 }}
+            onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'marker', key: 'door' }); }}
+            title="拖拽移动门位置"
+          >
+            <span>🚪</span>
+            <span>门</span>
+          </div>
 
           <div className="absolute right-3 top-16 w-28 rounded-lg border border-border bg-white/80 p-2 text-[11px]">
             <div className="font-semibold">写生区</div>
@@ -592,19 +652,18 @@ export default function ArtStudio({ students }: Props) {
             return (
               <div
                 key={`seat-${node.key}`}
-                className={`absolute rounded-md border text-[11px] flex flex-col items-center justify-center px-1 text-center leading-tight cursor-grab active:cursor-grabbing select-none ${name ? 'bg-white border-primary/40 text-foreground shadow-sm' : 'bg-muted/60 border-border text-muted-foreground'}`}
+                className={`absolute rounded-md border text-[10px] flex items-center justify-center px-1 text-center leading-tight cursor-grab active:cursor-grabbing select-none ${name ? 'bg-white border-primary/40 text-foreground shadow-sm' : 'bg-muted/60 border-border text-muted-foreground'}`}
                 style={{ left: pos.x - SEAT_W / 2, top: pos.y - SEAT_H / 2, width: `${SEAT_W}px`, height: `${SEAT_H}px` }}
                 onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'seat', key: node.key }); }}
                 title={`${name || '空位'} · 第${node.ringIndex + 1}环第${node.seatIndex + 1}位 · ${layerText}`}
               >
-                <span className="truncate w-full">{name || '画架位'}</span>
-                <span className="text-[9px] text-muted-foreground">{layerText}</span>
+                <span className="truncate w-full">{name || '画架'}</span>
               </div>
             );
           })}
 
           <div className="absolute right-3 bottom-3 rounded-md border border-border bg-background/80 px-2 py-1 text-[11px] text-muted-foreground flex items-center gap-1">
-            <Move className="w-3 h-3" /> 拖拽可调整全部画架位与中心台
+            <Move className="w-3 h-3" /> 拖拽可调整画架位、中心台与门窗标识
           </div>
         </div>
 
