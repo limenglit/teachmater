@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
+import '@/components/board/prism-theme.css';
+
+const CodeHighlight = lazy(() => import('@/components/board/CodeHighlight'));
 
 interface Comment {
   id: string;
@@ -221,9 +224,9 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                 {codeLoading ? (
                   <div className="p-3 text-xs text-muted-foreground">Loading...</div>
                 ) : (
-                  <pre className="p-3 text-xs font-mono text-foreground whitespace-pre overflow-x-auto leading-relaxed">
-                    <code>{codeContent ?? ''}</code>
-                  </pre>
+                  <Suspense fallback={<div className="p-3 text-xs text-muted-foreground">Loading...</div>}>
+                    <CodeHighlight code={codeContent ?? ''} ext={ext} />
+                  </Suspense>
                 )}
               </div>
             )}
