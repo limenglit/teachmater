@@ -39,6 +39,12 @@ describe('getFileCategory', () => {
     }
   });
 
+  it('recognizes code extensions', () => {
+    for (const ext of ['c', 'cpp', 'py', 'js', 'ts', 'html', 'css', 'go', 'rs', 'java', 'rb', 'sh', 'sql', 'json', 'xml', 'yaml', 'md']) {
+      expect(getFileCategory(ext)).toBe('code');
+    }
+  });
+
   it('falls back to document for unknown extensions', () => {
     expect(getFileCategory('doc')).toBe('document');
     expect(getFileCategory('pdf')).toBe('document');
