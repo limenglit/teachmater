@@ -11,7 +11,7 @@ import {
   Heart, MessageCircle, ChevronDown, RefreshCw, Mic, Square,
 } from 'lucide-react';
 import type { Board, BoardCard } from '@/components/BoardPanel';
-import { getFileCategory, getCardType, getDocIcon, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
+import { getFileCategory, getCardType, getDocIcon, getCodeIcon, getCodeLanguage, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
 import BoardCardItem from '@/components/board/BoardCardItem';
 
@@ -53,7 +53,7 @@ export default function BoardSubmitPage() {
   const [submitted, setSubmitted] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
-  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'document'>('image');
+  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
   const [uploading, setUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
@@ -841,6 +841,13 @@ export default function BoardSubmitPage() {
                     <div className="h-16 px-4 rounded-lg bg-muted flex items-center gap-2 text-sm text-muted-foreground">
                       <span className="text-lg">{getDocIcon(fileName.split('.').pop() || '')}</span>
                       <span className="truncate max-w-[200px]">{fileName}</span>
+                    </div>
+                  )}
+                  {fileCategory === 'code' && (
+                    <div className="h-16 px-4 rounded-lg bg-muted flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="text-lg">{getCodeIcon(fileName.split('.').pop() || '')}</span>
+                      <span className="truncate max-w-[160px]">{fileName}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{getCodeLanguage(fileName.split('.').pop() || '')}</span>
                     </div>
                   )}
                   <button onClick={clearMedia} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center"><X className="w-3 h-3" /></button>

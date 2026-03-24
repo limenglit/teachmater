@@ -6,6 +6,8 @@ import {
   getFileCategoryFromUrl,
   getFileNameFromUrl,
   getDocIcon,
+  getCodeIcon,
+  getCodeLanguage,
   ACCEPT_ALL_MEDIA,
 } from './board-file-utils';
 
@@ -37,6 +39,12 @@ describe('getFileCategory', () => {
     }
   });
 
+  it('recognizes code extensions', () => {
+    for (const ext of ['c', 'cpp', 'py', 'js', 'ts', 'html', 'css', 'go', 'rs', 'java', 'rb', 'sh', 'sql', 'json', 'xml', 'yaml', 'md']) {
+      expect(getFileCategory(ext)).toBe('code');
+    }
+  });
+
   it('falls back to document for unknown extensions', () => {
     expect(getFileCategory('doc')).toBe('document');
     expect(getFileCategory('pdf')).toBe('document');
@@ -57,7 +65,35 @@ describe('getCardType', () => {
     expect(getCardType('image')).toBe('image');
     expect(getCardType('video')).toBe('video');
     expect(getCardType('audio')).toBe('audio');
+    expect(getCardType('code')).toBe('code');
     expect(getCardType('document')).toBe('document');
+  });
+});
+
+// ── getCodeIcon ──────────────────────────────────────────
+
+describe('getCodeIcon', () => {
+  it('returns Python icon', () => {
+    expect(getCodeIcon('py')).toBe('🐍');
+  });
+  it('returns JS icon', () => {
+    expect(getCodeIcon('js')).toBe('⚡');
+  });
+  it('returns fallback for unknown', () => {
+    expect(getCodeIcon('zig')).toBe('💻');
+  });
+});
+
+// ── getCodeLanguage ─────────────────────────────────────
+
+describe('getCodeLanguage', () => {
+  it('returns language name', () => {
+    expect(getCodeLanguage('py')).toBe('Python');
+    expect(getCodeLanguage('ts')).toBe('TypeScript');
+    expect(getCodeLanguage('html')).toBe('HTML');
+  });
+  it('uppercases unknown extensions', () => {
+    expect(getCodeLanguage('xyz')).toBe('XYZ');
   });
 });
 
@@ -180,5 +216,13 @@ describe('ACCEPT_ALL_MEDIA', () => {
     expect(ACCEPT_ALL_MEDIA).toContain('.pdf');
     expect(ACCEPT_ALL_MEDIA).toContain('.docx');
     expect(ACCEPT_ALL_MEDIA).toContain('.xlsx');
+  });
+
+  it('includes code file extensions', () => {
+    expect(ACCEPT_ALL_MEDIA).toContain('.py');
+    expect(ACCEPT_ALL_MEDIA).toContain('.c');
+    expect(ACCEPT_ALL_MEDIA).toContain('.html');
+    expect(ACCEPT_ALL_MEDIA).toContain('.js');
+    expect(ACCEPT_ALL_MEDIA).toContain('.go');
   });
 });

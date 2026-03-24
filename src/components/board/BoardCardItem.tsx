@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download } from 'lucide-react';
+import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
-import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon } from '@/lib/board-file-utils';
+import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
 
 interface Comment {
   id: string;
@@ -87,10 +87,31 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
 
   // Determine media type from card_type or URL
   const mediaCategory = card.media_url
-    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image' || card.card_type === 'audio')
-      ? card.card_type as 'image' | 'video' | 'audio' | 'document'
+    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image' || card.card_type === 'audio' || card.card_type === 'code')
+      ? card.card_type as 'image' | 'video' | 'audio' | 'code' | 'document'
       : getFileCategoryFromUrl(card.media_url)
     : null;
+
+  const [codeContent, setCodeContent] = useState<string | null>(null);
+  const [codeExpanded, setCodeExpanded] = useState(false);
+  const [codeLoading, setCodeLoading] = useState(false);
+
+  const loadCodeContent = async () => {
+    if (!card.media_url || codeContent !== null) return;
+    setCodeLoading(true);
+    try {
+      const res = await fetch(card.media_url);
+      if (res.ok) {
+        const text = await res.text();
+        setCodeContent(text);
+      } else {
+        setCodeContent('// Failed to load file');
+      }
+    } catch {
+      setCodeContent('// Failed to load file');
+    }
+    setCodeLoading(false);
+  };
 
   return (
     <div
@@ -165,6 +186,50 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
           <Download className="w-3.5 h-3.5 text-muted-foreground group-hover/doc:text-primary transition-colors" />
         </a>
       )}
+
+      {/* Code file rendering */}
+      {card.media_url && mediaCategory === 'code' && (() => {
+        const ext = getFileExtFromUrl(card.media_url);
+        const lang = getCodeLanguage(ext);
+        const icon = getCodeIcon(ext);
+        return (
+          <div className="mb-2 rounded-lg border border-border/50 overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 bg-muted/80 border-b border-border/50">
+              <span className="text-base">{icon}</span>
+              <span className="flex-1 text-xs font-medium text-foreground truncate">{getFileNameFromUrl(card.media_url)}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{lang}</span>
+              <button
+                onClick={() => {
+                  if (!codeExpanded) loadCodeContent();
+                  setCodeExpanded(!codeExpanded);
+                }}
+                className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              >
+                {codeExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+              </button>
+              <a
+                href={card.media_url}
+                download
+                className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+                onClick={e => e.stopPropagation()}
+              >
+                <Download className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />
+              </a>
+            </div>
+            {codeExpanded && (
+              <div className="max-h-64 overflow-auto bg-card">
+                {codeLoading ? (
+                  <div className="p-3 text-xs text-muted-foreground">Loading...</div>
+                ) : (
+                  <pre className="p-3 text-xs font-mono text-foreground whitespace-pre overflow-x-auto leading-relaxed">
+                    <code>{codeContent ?? ''}</code>
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <div className="flex items-center justify-between mt-2">
         <div className="text-xs text-muted-foreground">

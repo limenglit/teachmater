@@ -49,10 +49,10 @@ const isSeatEmptyValue = (value: unknown) => value === null || value === '';
 
 const countEmptySeatSlots = (node: unknown): number => {
   if (Array.isArray(node)) {
-    return node.reduce((sum, item) => sum + countEmptySeatSlots(item), 0);
+    return node.reduce((sum: number, item) => sum + countEmptySeatSlots(item), 0 as number);
   }
   if (node && typeof node === 'object') {
-    return Object.values(node as Record<string, unknown>).reduce((sum, value) => sum + countEmptySeatSlots(value), 0);
+    return (Object.values(node as Record<string, unknown>) as unknown[]).reduce<number>((sum, value) => sum + countEmptySeatSlots(value), 0);
   }
   return isSeatEmptyValue(node) ? 1 : 0;
 };
