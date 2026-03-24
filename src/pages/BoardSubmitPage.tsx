@@ -53,7 +53,7 @@ export default function BoardSubmitPage() {
   const [submitted, setSubmitted] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
-  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'document'>('image');
+  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
   const [uploading, setUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
