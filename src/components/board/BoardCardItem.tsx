@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download } from 'lucide-react';
+import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
-import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon } from '@/lib/board-file-utils';
+import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
 
 interface Comment {
   id: string;
