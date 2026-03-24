@@ -52,7 +52,7 @@ const countEmptySeatSlots = (node: unknown): number => {
     return node.reduce((sum: number, item) => sum + countEmptySeatSlots(item), 0 as number);
   }
   if (node && typeof node === 'object') {
-    return Object.values(node as Record<string, unknown>).reduce((sum: number, value) => sum + countEmptySeatSlots(value), 0 as number);
+    return (Object.values(node as Record<string, unknown>) as unknown[]).reduce<number>((sum, value) => sum + countEmptySeatSlots(value), 0);
   }
   return isSeatEmptyValue(node) ? 1 : 0;
 };
