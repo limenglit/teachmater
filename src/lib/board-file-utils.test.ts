@@ -6,6 +6,8 @@ import {
   getFileCategoryFromUrl,
   getFileNameFromUrl,
   getDocIcon,
+  getCodeIcon,
+  getCodeLanguage,
   ACCEPT_ALL_MEDIA,
 } from './board-file-utils';
 
