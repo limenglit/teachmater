@@ -215,7 +215,7 @@ export default function SeatCheckinDialog({
         if (canceled) return;
         setSessionSeatData((data as { seat_data?: unknown } | null)?.seat_data ?? null);
       })
-      .catch(() => {
+      .then(null, () => {
         if (canceled) return;
         setSessionSeatData(null);
       });

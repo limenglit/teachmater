@@ -166,7 +166,7 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names';
   const selectLegacy = 'id, created_at, status, scene_type, student_names';
 
-  const queryHistoryRows = async (build: (selectClause: string) => Promise<{ data: unknown; error: unknown }>) => {
+  const queryHistoryRows = async (build: (selectClause: string) => PromiseLike<{ data: unknown; error: unknown }>) => {
     const enhanced = await build(selectEnhanced);
     if (!enhanced.error && Array.isArray(enhanced.data)) {
       return enhanced.data as SeatCheckinHistoryRow[];
