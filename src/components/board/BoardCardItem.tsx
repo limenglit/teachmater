@@ -187,7 +187,50 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         </a>
       )}
 
-      <div className="flex items-center justify-between mt-2">
+      {/* Code file rendering */}
+      {card.media_url && mediaCategory === 'code' && (() => {
+        const ext = getFileExtFromUrl(card.media_url);
+        const lang = getCodeLanguage(ext);
+        const icon = getCodeIcon(ext);
+        return (
+          <div className="mb-2 rounded-lg border border-border/50 overflow-hidden">
+            <div className="flex items-center gap-2 px-3 py-2 bg-muted/80 border-b border-border/50">
+              <span className="text-base">{icon}</span>
+              <span className="flex-1 text-xs font-medium text-foreground truncate">{getFileNameFromUrl(card.media_url)}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{lang}</span>
+              <button
+                onClick={() => {
+                  if (!codeExpanded) loadCodeContent();
+                  setCodeExpanded(!codeExpanded);
+                }}
+                className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              >
+                {codeExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+              </button>
+              <a
+                href={card.media_url}
+                download
+                className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+                onClick={e => e.stopPropagation()}
+              >
+                <Download className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />
+              </a>
+            </div>
+            {codeExpanded && (
+              <div className="max-h-64 overflow-auto bg-card">
+                {codeLoading ? (
+                  <div className="p-3 text-xs text-muted-foreground">Loading...</div>
+                ) : (
+                  <pre className="p-3 text-xs font-mono text-foreground whitespace-pre overflow-x-auto leading-relaxed">
+                    <code>{codeContent ?? ''}</code>
+                  </pre>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
         <div className="text-xs text-muted-foreground">
           <span className="font-medium">{card.author_nickname}</span>
           <span className="mx-1">·</span>
