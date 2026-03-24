@@ -217,4 +217,12 @@ describe('ACCEPT_ALL_MEDIA', () => {
     expect(ACCEPT_ALL_MEDIA).toContain('.docx');
     expect(ACCEPT_ALL_MEDIA).toContain('.xlsx');
   });
+
+  it('includes code file extensions', () => {
+    expect(ACCEPT_ALL_MEDIA).toContain('.py');
+    expect(ACCEPT_ALL_MEDIA).toContain('.c');
+    expect(ACCEPT_ALL_MEDIA).toContain('.html');
+    expect(ACCEPT_ALL_MEDIA).toContain('.js');
+    expect(ACCEPT_ALL_MEDIA).toContain('.go');
+  });
 });
