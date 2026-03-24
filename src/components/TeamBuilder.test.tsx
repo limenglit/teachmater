@@ -27,13 +27,13 @@ describe('TeamBuilder', () => {
     expect(personLabels.length).toBe(3);
   });
 
-  it('membersPerTeam input is clamped 2-10', () => {
+  it('membersPerTeam input keeps minimum but has no upper cap', () => {
     render(<TeamBuilder />, { wrapper });
     const input = screen.getByDisplayValue('4');
     fireEvent.change(input, { target: { value: '0' } });
     expect((input as HTMLInputElement).value).toBe('2');
     fireEvent.change(input, { target: { value: '20' } });
-    expect((input as HTMLInputElement).value).toBe('10');
+    expect((input as HTMLInputElement).value).toBe('20');
   });
 
   it('all students present with no duplicates after auto-team', () => {

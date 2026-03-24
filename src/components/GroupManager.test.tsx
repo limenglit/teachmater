@@ -33,13 +33,13 @@ describe('GroupManager', () => {
     }
   });
 
-  it('group count input is clamped between 2 and 10', () => {
+  it('group count input keeps minimum but has no upper cap', () => {
     render(<GroupManager />, { wrapper });
     const input = screen.getByDisplayValue('4');
     fireEvent.change(input, { target: { value: '1' } });
     expect((input as HTMLInputElement).value).toBe('2');
     fireEvent.change(input, { target: { value: '15' } });
-    expect((input as HTMLInputElement).value).toBe('10');
+    expect((input as HTMLInputElement).value).toBe('15');
   });
 
   it('groups are balanced (difference <= 1)', () => {

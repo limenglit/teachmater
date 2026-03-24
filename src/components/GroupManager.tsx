@@ -220,8 +220,8 @@ export default function GroupManager() {
             )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('group.count')}
-              <Input type="number" min={2} max={10} value={groupCount}
-                onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))}
+              <Input type="number" min={2} value={groupCount}
+                onChange={e => setGroupCount(Math.max(2, Number(e.target.value)))}
                 className="w-16 h-8 text-center" />
             </label>
             <label className="flex items-center gap-2 text-sm text-muted-foreground">

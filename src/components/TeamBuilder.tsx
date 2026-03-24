@@ -207,8 +207,8 @@ export default function TeamBuilder() {
             )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('team.perTeam')}
-              <Input type="number" min={2} max={10} value={membersPerTeam}
-                onChange={e => setMembersPerTeam(Math.max(2, Math.min(10, Number(e.target.value))))}
+              <Input type="number" min={2} value={membersPerTeam}
+                onChange={e => setMembersPerTeam(Math.max(2, Number(e.target.value)))}
                 className="w-16 h-8 text-center" />
             </label>
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
