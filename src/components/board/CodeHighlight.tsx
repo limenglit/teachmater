@@ -1,42 +1,4 @@
-import { useEffect, useRef } from 'react';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-c';
-import 'prismjs/components/prism-cpp';
-import 'prismjs/components/prism-csharp';
-import 'prismjs/components/prism-java';
-import 'prismjs/components/prism-kotlin';
-import 'prismjs/components/prism-scala';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-ruby';
-import 'prismjs/components/prism-php';
-import 'prismjs/components/prism-perl';
-import 'prismjs/components/prism-r';
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-jsx';
-import 'prismjs/components/prism-tsx';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-scss';
-import 'prismjs/components/prism-sass';
-import 'prismjs/components/prism-less';
-import 'prismjs/components/prism-markup';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-yaml';
-import 'prismjs/components/prism-toml';
-import 'prismjs/components/prism-ini';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-powershell';
-import 'prismjs/components/prism-batch';
-import 'prismjs/components/prism-sql';
-import 'prismjs/components/prism-graphql';
-import 'prismjs/components/prism-go';
-import 'prismjs/components/prism-rust';
-import 'prismjs/components/prism-swift';
-import 'prismjs/components/prism-dart';
-import 'prismjs/components/prism-lua';
-import 'prismjs/components/prism-zig';
-import 'prismjs/components/prism-markdown';
-import 'prismjs/components/prism-latex';
+import { useEffect, useRef, useState } from 'react';
 
 const EXT_TO_PRISM: Record<string, string> = {
   c: 'c', cpp: 'cpp', cc: 'cpp', h: 'c', hpp: 'cpp',
@@ -57,24 +19,63 @@ export function getPrismLanguage(ext: string): string {
   return EXT_TO_PRISM[ext.toLowerCase()] || 'plain';
 }
 
+// Language dependency map – load prerequisites first
+const LANG_DEPS: Record<string, string[]> = {
+  jsx: ['markup', 'javascript'],
+  tsx: ['markup', 'javascript', 'jsx', 'typescript'],
+  cpp: ['c'],
+  scss: ['css'],
+  sass: ['css'],
+  less: ['css'],
+  kotlin: ['java'],
+  scala: ['java'],
+};
+
+async function loadPrismLanguage(lang: string) {
+  if (lang === 'plain') return;
+  const deps = LANG_DEPS[lang];
+  if (deps) {
+    for (const dep of deps) {
+      try { await import(`prismjs/components/prism-${dep}.js`); } catch {}
+    }
+  }
+  try { await import(`prismjs/components/prism-${lang}.js`); } catch {}
+}
+
 interface Props {
   code: string;
   ext: string;
 }
 
 export default function CodeHighlight({ code, ext }: Props) {
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLPreElement>(null);
   const lang = getPrismLanguage(ext);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (ref.current) {
-      Prism.highlightElement(ref.current);
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const Prism = (await import('prismjs')).default;
+        await loadPrismLanguage(lang);
+        if (!cancelled && ref.current) {
+          const codeEl = ref.current.querySelector('code');
+          if (codeEl) {
+            try { Prism.highlightElement(codeEl); } catch {}
+          }
+        }
+      } catch {}
+      if (!cancelled) setReady(true);
+    })();
+    return () => { cancelled = true; };
   }, [code, lang]);
 
   return (
-    <pre className="p-3 text-xs font-mono whitespace-pre overflow-x-auto leading-relaxed m-0 bg-transparent">
-      <code ref={ref} className={`language-${lang}`}>
+    <pre
+      ref={ref}
+      className="p-3 text-xs font-mono whitespace-pre overflow-x-auto leading-relaxed m-0 bg-transparent"
+    >
+      <code className={`language-${lang}`}>
         {code}
       </code>
     </pre>
