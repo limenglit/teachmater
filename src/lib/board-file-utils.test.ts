@@ -65,7 +65,35 @@ describe('getCardType', () => {
     expect(getCardType('image')).toBe('image');
     expect(getCardType('video')).toBe('video');
     expect(getCardType('audio')).toBe('audio');
+    expect(getCardType('code')).toBe('code');
     expect(getCardType('document')).toBe('document');
+  });
+});
+
+// ── getCodeIcon ──────────────────────────────────────────
+
+describe('getCodeIcon', () => {
+  it('returns Python icon', () => {
+    expect(getCodeIcon('py')).toBe('🐍');
+  });
+  it('returns JS icon', () => {
+    expect(getCodeIcon('js')).toBe('⚡');
+  });
+  it('returns fallback for unknown', () => {
+    expect(getCodeIcon('zig')).toBe('💻');
+  });
+});
+
+// ── getCodeLanguage ─────────────────────────────────────
+
+describe('getCodeLanguage', () => {
+  it('returns language name', () => {
+    expect(getCodeLanguage('py')).toBe('Python');
+    expect(getCodeLanguage('ts')).toBe('TypeScript');
+    expect(getCodeLanguage('html')).toBe('HTML');
+  });
+  it('uppercases unknown extensions', () => {
+    expect(getCodeLanguage('xyz')).toBe('XYZ');
   });
 });
 
