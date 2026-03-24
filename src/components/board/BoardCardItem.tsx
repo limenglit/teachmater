@@ -87,10 +87,31 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
 
   // Determine media type from card_type or URL
   const mediaCategory = card.media_url
-    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image' || card.card_type === 'audio')
-      ? card.card_type as 'image' | 'video' | 'audio' | 'document'
+    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image' || card.card_type === 'audio' || card.card_type === 'code')
+      ? card.card_type as 'image' | 'video' | 'audio' | 'code' | 'document'
       : getFileCategoryFromUrl(card.media_url)
     : null;
+
+  const [codeContent, setCodeContent] = useState<string | null>(null);
+  const [codeExpanded, setCodeExpanded] = useState(false);
+  const [codeLoading, setCodeLoading] = useState(false);
+
+  const loadCodeContent = async () => {
+    if (!card.media_url || codeContent !== null) return;
+    setCodeLoading(true);
+    try {
+      const res = await fetch(card.media_url);
+      if (res.ok) {
+        const text = await res.text();
+        setCodeContent(text);
+      } else {
+        setCodeContent('// Failed to load file');
+      }
+    } catch {
+      setCodeContent('// Failed to load file');
+    }
+    setCodeLoading(false);
+  };
 
   return (
     <div
