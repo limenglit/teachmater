@@ -29,7 +29,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const [uploading, setUploading] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
-  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'document'>('image');
+  const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
