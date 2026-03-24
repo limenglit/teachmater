@@ -231,6 +231,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         );
       })()}
 
+      <div className="flex items-center justify-between mt-2">
         <div className="text-xs text-muted-foreground">
           <span className="font-medium">{card.author_nickname}</span>
           <span className="mx-1">·</span>
