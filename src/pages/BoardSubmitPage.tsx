@@ -11,7 +11,7 @@ import {
   Heart, MessageCircle, ChevronDown, RefreshCw, Mic, Square,
 } from 'lucide-react';
 import type { Board, BoardCard } from '@/components/BoardPanel';
-import { getFileCategory, getCardType, getDocIcon, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
+import { getFileCategory, getCardType, getDocIcon, getCodeIcon, getCodeLanguage, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
 import BoardCardItem from '@/components/board/BoardCardItem';
 
