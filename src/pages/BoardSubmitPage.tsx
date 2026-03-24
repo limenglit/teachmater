@@ -843,6 +843,13 @@ export default function BoardSubmitPage() {
                       <span className="truncate max-w-[200px]">{fileName}</span>
                     </div>
                   )}
+                  {fileCategory === 'code' && (
+                    <div className="h-16 px-4 rounded-lg bg-muted flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="text-lg">{getCodeIcon(fileName.split('.').pop() || '')}</span>
+                      <span className="truncate max-w-[160px]">{fileName}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{getCodeLanguage(fileName.split('.').pop() || '')}</span>
+                    </div>
+                  )}
                   <button onClick={clearMedia} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center"><X className="w-3 h-3" /></button>
                 </div>
               )}

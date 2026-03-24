@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ImagePlus, Paperclip, X } from 'lucide-react';
 import type { BoardCard } from '@/components/BoardPanel';
-import { getFileCategory, getCardType, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
+import { getFileCategory, getCardType, getCodeIcon, getCodeLanguage, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 
@@ -106,6 +106,13 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
               <div className="h-16 px-3 rounded-lg bg-muted flex items-center gap-2 text-xs text-muted-foreground">
                 <Paperclip className="w-4 h-4" />
                 <span className="truncate max-w-[120px]">{fileName}</span>
+              </div>
+            )}
+            {fileCategory === 'code' && (
+              <div className="h-16 px-3 rounded-lg bg-muted flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="text-base">{getCodeIcon(fileName.split('.').pop() || '')}</span>
+                <span className="truncate max-w-[100px]">{fileName}</span>
+                <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-mono">{getCodeLanguage(fileName.split('.').pop() || '')}</span>
               </div>
             )}
             <button onClick={clearMedia} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
