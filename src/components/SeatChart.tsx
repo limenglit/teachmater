@@ -1,6 +1,3 @@
-  // 新增：学生入场门选择
-  type EntryDoorMode = 'front' | 'back' | 'both';
-  const [entryDoorMode, setEntryDoorMode] = useState<EntryDoorMode>('front');
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
