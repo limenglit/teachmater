@@ -278,94 +278,99 @@ export default function SmartClassroom({
     }
 
     if (seatMode === 'horizontalS') {
-      for (let r = 0; r < rows; r++) {
-        for (let ci = 0; ci < cols; ci++) {
-          const c = r % 2 === 0 ? ci : cols - 1 - ci;
-          const idx = r * cols + c;
-          if (idx < tableCount) order.push(idx);
-        }
-      }
-      return order;
-    }
-
-    return Array.from({ length: tableCount }, (_, i) => i);
-  };
-
-  const applyGroupsToSeat = (fromGroups: ReturnType<typeof loadLastGroups>) => {
-    const availableNames = new Set(students.map(s => s.name));
-    const filteredGroups = fromGroups
-      .map(group => ({
-        ...group,
-        members: group.members.filter(member => availableNames.has(member.name)),
-      }))
-      .filter(group => group.members.length > 0);
-
-    if (filteredGroups.length === 0) {
-      toast.error('没有可用分组数据');
-      return false;
-    }
-
-    const nextTableCount = filteredGroups.length;
-    const maxGroupSize = Math.max(...filteredGroups.map(group => group.members.length));
-    const nextSeatsPerTable = Math.max(3, maxGroupSize);
-    const nextTableCols = Math.max(1, Math.min(tableCols, nextTableCount));
-    const nextTableRows = Math.max(1, Math.ceil(nextTableCount / nextTableCols));
-    const nextAssignment = Array.from({ length: nextTableCount }, (_, index) => {
-      const row = filteredGroups[index]?.members.map(member => member.name) ?? [];
-      if (row.length >= nextSeatsPerTable) return row.slice(0, nextSeatsPerTable);
-      return [...row, ...Array.from({ length: nextSeatsPerTable - row.length }, () => '')];
-    });
-
-    setSeatsPerTable(nextSeatsPerTable);
-    setTableCount(nextTableCount);
-    setTableCols(nextTableCols);
-    setTableRows(nextTableRows);
-    setGroupCount(nextTableCount);
-    setMode('tableGrouped');
-    setLinkedGroupNames(filteredGroups.map(group => group.name));
-    setAssignment(nextAssignment);
-    setReservedTables(new Set());
-    return true;
-  };
-
-  const buildSnapshot = () => ({
-    seatsPerTable,
-    tableCount,
-    tableCols,
-    tableRows,
-    groupCount,
-    mode,
-    tableGap,
-    assignment,
-    closedSeats: Array.from(closedSeats),
-    reservedTables: Array.from(reservedTables),
-    updatedAt: new Date().toISOString(),
-  });
-
-  const saveToHistory = () => {
-    if (assignment.length === 0) {
-      toast.error('请先完成排座再保存');
-      return;
-    }
-    const name = recordName.trim() || `智能教室-${new Date().toLocaleString()}`;
-    const item = saveSmartClassroomHistory(name, buildSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
-    setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
-    setRecordName(name);
-    saveSmartClassroomSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
-  };
-
-  const restoreFromHistory = () => {
-    const item = historyItems.find(history => history.id === selectedHistoryId);
-    if (!item) {
-      toast.error('请选择要恢复的历史记录');
-      return;
-    }
-    const snapshot = item.snapshot;
-    const validStudentNames = new Set(students.map(s => s.name));
-    const sanitizedAssignment = snapshot.assignment.map(table =>
+      <div ref={printRef}>
+        {students.length === 0 ? (
+          <div className="text-center py-20 text-destructive">
+            <p className="text-lg mb-2">未检测到学生名单，无法排座</p>
+            <p className="text-sm">请先导入或填写学生名单</p>
+          </div>
+        ) : assignment.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
+            <p className="text-sm">圆形桌智能教室，每桌 {seatsPerTable} 人，共 {tableCount} 桌（{tableRows} 行 × {tableCols} 列）</p>
+          </div>
+        ) : (
+          <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <div
+              className="relative rounded-xl border border-border bg-card/40"
+              style={{ width: roomWidth, height: roomHeight }}
+            >
+              {refVisible.screen && (
+                <div
+                  className={refBadgeClass}
+                  style={{ left: refPositions.screen.x, top: refPositions.screen.y }}
+                  onMouseDown={e => startRefDrag(e, 'screen')}
+                >
+                  <span className={refIconClass}>🖥️</span>
+                  <span className={refTextClass}>幕布</span>
+                </div>
+              )}
+              {/* 前门渲染 */}
+              {refVisible.frontDoor && (() => {
+                let style: React.CSSProperties = {};
+                if (frontDoor === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
+                if (frontDoor === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
+                if (frontDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 48) };
+                if (frontDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 48) };
+                // 高亮可入场门
+                const highlight = entryDoor === 'front' || entryDoor === 'both';
+                return (
+                  <div
+                    className={refBadgeClass + (highlight ? ' ring-4 ring-green-400/80 ring-offset-2 animate-pulse' : '')}
+                    style={{...style, zIndex: 10, background: 'linear-gradient(90deg,#e0ffe0 0%,#fff 100%)'}}
+                    onMouseDown={e => startRefDrag(e, 'frontDoor')}
+                    title={highlight ? '学生可从此门入场' : undefined}
+                  >
+                    <span className={refIconClass + ' text-green-700 bg-green-100'}>🚪</span>
+                    <span className={refTextClass + ' font-bold'}>前门</span>
+                  </div>
+                );
+              })()}
+              {/* 后门渲染 */}
+              {refVisible.backDoor && (() => {
+                let style: React.CSSProperties = {};
+                if (backDoor === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
+                if (backDoor === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
+                if (backDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 + 48) };
+                if (backDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 + 48) };
+                // 高亮可入场门
+                const highlight = entryDoor === 'back' || entryDoor === 'both';
+                return (
+                  <div
+                    className={refBadgeClass + (highlight ? ' ring-4 ring-green-400/80 ring-offset-2 animate-pulse' : '')}
+                    style={{...style, zIndex: 10, background: 'linear-gradient(90deg,#e0ffe0 0%,#fff 100%)'}}
+                    onMouseDown={e => startRefDrag(e, 'backDoor')}
+                    title={highlight ? '学生可从此门入场' : undefined}
+                  >
+                    <span className={refIconClass + ' text-green-700 bg-green-100'}>🚪</span>
+                    <span className={refTextClass + ' font-bold'}>后门</span>
+                  </div>
+                );
+              })()}
+              {refVisible.window && (() => {
+                let style: React.CSSProperties = {};
+                if (windowPos === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 16) };
+                if (windowPos === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
+                return (
+                  <div
+                    className={refBadgeClass + ' bg-blue-50/80'}
+                    style={{...style, zIndex: 9}}
+                    onMouseDown={e => startRefDrag(e, 'window')}
+                  >
+                    <span className={refIconClass + ' text-blue-700 bg-blue-100'}>🪟</span>
+                    <span className={refTextClass + ' font-bold'}>窗</span>
+                  </div>
+                );
+              })()}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
+                  {assignment.map((people, i) => renderRoundTable(i, people))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       table.map(name => (validStudentNames.has(name) ? name : ''))
     );
 
@@ -561,7 +566,8 @@ export default function SmartClassroom({
   useEffect(() => {
     if (restoredOnceRef.current) return;
     const snapshot = loadSmartClassroomSnapshot();
-    if (snapshot && snapshot.assignment.length > 0) {
+    let valid = false;
+    if (snapshot && Array.isArray(snapshot.assignment) && snapshot.assignment.length > 0) {
       const validStudentNames = new Set(students.map(s => s.name));
       const sanitizedAssignment = snapshot.assignment.map(table =>
         table.map(name => (validStudentNames.has(name) ? name : ''))
@@ -576,6 +582,14 @@ export default function SmartClassroom({
       setAssignment(sanitizedAssignment);
       setClosedSeats(new Set(snapshot.closedSeats || []));
       setReservedTables(new Set(snapshot.reservedTables || []));
+      valid = true;
+    }
+    if (!valid) {
+      // 快照损坏或无效，自动清空并恢复初始状态
+      setAssignment([]);
+      setClosedSeats(new Set());
+      setReservedTables(new Set());
+      localStorage.removeItem('smartClassroomSnapshot');
     }
     restoredOnceRef.current = true;
   }, [students]);
