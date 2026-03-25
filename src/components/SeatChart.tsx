@@ -72,6 +72,7 @@ export default function SeatChart() {
     { id: 'exam', label: t('seatMode.exam'), icon: <BookOpen className="w-3.5 h-3.5" />, desc: t('seatMode.examDesc') },
   ];
 
+  const [entryDoorMode, setEntryDoorMode] = useState<EntryDoorMode>('front');
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [scene, setScene] = useState<SceneType>('classroom');
   const [rows, setRows] = useState(10);
