@@ -216,7 +216,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
               </a>
             </div>
             {codeExpanded && (
-              <div className="max-h-64 overflow-auto bg-card">
+              <div className="bg-card">
                 {codeLoading ? (
                   <div className="p-3 text-xs text-muted-foreground">Loading...</div>
                 ) : (
