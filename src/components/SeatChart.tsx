@@ -866,6 +866,7 @@ export default function SeatChart() {
   return (
     <div data-testid="seat-chart-panel" className="flex-1 p-4 sm:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] overflow-auto">
       <div className="max-w-6xl mx-auto">
+        {/* 1. 教室类型选择 */}
         <div className="flex flex-wrap gap-2 mb-5 pb-1">
           {SCENES.map(s => (
             <button key={s.id} onClick={() => setScene(s.id)}
@@ -874,71 +875,49 @@ export default function SeatChart() {
           ))}
         </div>
 
-        {scene === 'smartClassroom' && (
-          <SmartClassroom
-            students={students}
-            frontDoorPosition={frontDoorPosition}
-            backDoorPosition={backDoorPosition}
-            entryDoorMode={entryDoorMode}
-          />
-        )}
-                {/* 学生入场门选择 */}
-                <div className="flex flex-wrap gap-2 mb-2 items-center">
-                  <label className="flex items-center gap-1 text-sm">
-                    学生入场门：
-                    <select
-                      value={entryDoorMode}
-                      onChange={e => setEntryDoorMode(e.target.value as EntryDoorMode)}
-                      className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-                    >
-                      <option value="front">仅前门</option>
-                      <option value="back">仅后门</option>
-                      <option value="both">前后门都可</option>
-                    </select>
-                  </label>
-                </div>
-        {scene === 'conference' && <ConferenceRoom students={students} />}
-        {scene === 'concertHall' && <ConcertHall students={students} />}
-        {scene === 'banquet' && <BanquetHall students={students} />}
-        {scene === 'computerLab' && <ComputerLab students={students} />}
-        {scene === 'artStudio' && <ArtStudio students={students} />}
-
-        {scene === 'classroom' && (<>
-        {/* 前门/后门位置设置 */}
-        <div className="flex flex-wrap gap-2 mb-2 items-center">
-          <label className="flex items-center gap-1 text-sm">
-            前门位置：
-            <select
-              value={frontDoorPosition}
-              onChange={e => setFrontDoorPosition(e.target.value as DoorPosition)}
-              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-            >
-              <option value="top">上方</option>
-              <option value="bottom">下方</option>
-              <option value="left">左侧</option>
-              <option value="right">右侧</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-1 text-sm">
-            后门位置：
-            <select
-              value={backDoorPosition}
-              onChange={e => setBackDoorPosition(e.target.value as DoorPosition)}
-              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-            >
-              <option value="top">上方</option>
-              <option value="bottom">下方</option>
-              <option value="left">左侧</option>
-              <option value="right">右侧</option>
-            </select>
-          </label>
-        </div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-lg sm:text-xl font-semibold text-foreground">{t('seat.title')}</h2>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">{t('seat.subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
+        {/* 2. 教室结构设置卡片 */}
+        <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10">
+          <div className="font-semibold text-base mb-2">教室结构设置</div>
+          {/* 门窗、前后门、入场门、行列、走道等 */}
+          <div className="flex flex-wrap gap-4 items-center mb-2">
+            <label className="flex items-center gap-1 text-sm">
+              前门位置：
+              <select
+                value={frontDoorPosition}
+                onChange={e => setFrontDoorPosition(e.target.value as DoorPosition)}
+                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              >
+                <option value="top">上方</option>
+                <option value="bottom">下方</option>
+                <option value="left">左侧</option>
+                <option value="right">右侧</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1 text-sm">
+              后门位置：
+              <select
+                value={backDoorPosition}
+                onChange={e => setBackDoorPosition(e.target.value as DoorPosition)}
+                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              >
+                <option value="top">上方</option>
+                <option value="bottom">下方</option>
+                <option value="left">左侧</option>
+                <option value="right">右侧</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1 text-sm">
+              学生入场门：
+              <select
+                value={entryDoorMode}
+                onChange={e => setEntryDoorMode(e.target.value as EntryDoorMode)}
+                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              >
+                <option value="front">仅前门</option>
+                <option value="back">仅后门</option>
+                <option value="both">前后门都可</option>
+              </select>
+            </label>
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
               {t('seat.rows')}
               <Input type="number" min={2} value={rows} onChange={e => setRows(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
@@ -947,6 +926,55 @@ export default function SeatChart() {
               {t('seat.cols')}
               <Input type="number" min={2} value={cols} onChange={e => setCols(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
             </label>
+            <Button variant="outline" size="sm" onClick={addColAisle} className="gap-1 text-xs h-8" title={t('seat.colAisle')}>
+              <Plus className="w-3 h-3" /> {t('seat.colAisle')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={addRowAisle} className="gap-1 text-xs h-8" title={t('seat.rowAisle')}>
+              <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
+            </Button>
+            <button onClick={() => setWindowOnLeft(prev => !prev)}
+              className="p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title={t('seat.swapDoorWindow')}>
+              <ArrowRightLeft className="w-4 h-4" />
+            </button>
+          </div>
+          {(colAisles.length > 0 || rowAisles.length > 0) && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {colAisles.map(a => (
+                <span key={`ca-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                  {t('seat.colAisleAfter').replace('{0}', String(a + 1))}
+                  <button onClick={() => removeColAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+              {rowAisles.map(a => (
+                <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                  {t('seat.rowAisleAfter').replace('{0}', String(a + 1))}
+                  <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 3. 排座策略设置卡片 */}
+        <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10">
+          <div className="font-semibold text-base mb-2">排座策略设置</div>
+          <div className="flex flex-wrap gap-3 items-center">
+            <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
+              名称
+              <Input
+                type="text"
+                value={recordName}
+                onChange={e => setRecordName(e.target.value)}
+                placeholder="输入名称（用于保存历史和导出文件名）"
+                className="h-8 w-full sm:w-72"
+              />
+            </label>
+            {MODES.map(m => (
+              <button key={m.id} onClick={() => setMode(m.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${mode === m.id ? 'bg-primary text-primary-foreground border-primary shadow-soft' : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted'}`}
+                title={m.desc}>{m.icon}{m.label}</button>
+            ))}
             {needsGroupCount && (
               <>
                 <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1057,50 +1085,39 @@ export default function SeatChart() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
-          <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
-            名称
-            <Input
-              type="text"
-              value={recordName}
-              onChange={e => setRecordName(e.target.value)}
-              placeholder="输入名称（用于保存历史和导出文件名）"
-              className="h-8 w-full sm:w-72"
-            />
-          </label>
-          {MODES.map(m => (
-            <button key={m.id} onClick={() => setMode(m.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${mode === m.id ? 'bg-primary text-primary-foreground border-primary shadow-soft' : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted'}`}
-              title={m.desc}>{m.icon}{m.label}</button>
-          ))}
-          <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">
-            <Button variant="outline" size="sm" onClick={addColAisle} className="gap-1 text-xs h-8" title={t('seat.colAisle')}>
-              <Plus className="w-3 h-3" /> {t('seat.colAisle')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={addRowAisle} className="gap-1 text-xs h-8" title={t('seat.rowAisle')}>
-              <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
-            </Button>
-          </div>
-          <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
-            <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2 h-8" disabled={seats.length === 0}>
-              <Save className="w-4 h-4" /> 保存历史
-            </Button>
-            <select
-              value={selectedHistoryId}
-              onChange={e => setSelectedHistoryId(e.target.value)}
-              className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-            >
-              <option value="">选择历史记录</option>
-              {historyItems.map(item => (
-                <option key={item.id} value={item.id}>
-                  {item.name}（{new Date(item.createdAt).toLocaleString()}）
-                </option>
-              ))}
-            </select>
-            <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
-              <RotateCcw className="w-4 h-4" /> 恢复历史
-            </Button>
-          </div>
+        {/* 4. 操作区卡片 */}
+        <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10 flex flex-wrap gap-3 items-center">
+          <Button onClick={autoSeat} className="gap-2">
+            <LayoutGrid className="w-4 h-4" /> {t('seat.autoSeat')}
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
+            }}
+            title="清空所有座位"
+          >
+            <X className="w-4 h-4" /> 清空座位
+          </Button>
+          <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2" disabled={seats.length === 0}>
+            <Save className="w-4 h-4" /> 保存历史
+          </Button>
+          <select
+            value={selectedHistoryId}
+            onChange={e => setSelectedHistoryId(e.target.value)}
+            className="h-8 min-w-0 max-w-60 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="">选择历史记录</option>
+            {historyItems.map(item => (
+              <option key={item.id} value={item.id}>
+                {item.name}（{new Date(item.createdAt).toLocaleString()}）
+              </option>
+            ))}
+          </select>
+          <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2">
+            <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
           {seats.length > 0 && (
             <ExportButtons
               targetRef={printRef}
@@ -1120,38 +1137,9 @@ export default function SeatChart() {
               {t('seat.checkin')}
             </Button>
           )}
-          <Button onClick={autoSeat} className="gap-2 ml-auto">
-            <LayoutGrid className="w-4 h-4" /> {t('seat.autoSeat')}
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
-            }}
-            title="清空所有座位"
-          >
-            <X className="w-4 h-4" /> 清空座位
-          </Button>
         </div>
 
-        {(colAisles.length > 0 || rowAisles.length > 0) && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {colAisles.map(a => (
-              <span key={`ca-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
-                {t('seat.colAisleAfter').replace('{0}', String(a + 1))}
-                <button onClick={() => removeColAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
-              </span>
-            ))}
-            {rowAisles.map(a => (
-              <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
-                {t('seat.rowAisleAfter').replace('{0}', String(a + 1))}
-                <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
-              </span>
-            ))}
-          </div>
-        )}
-
+        {/* 5. 组织图例 */}
         {organizationLegend.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
             {organizationLegend.map(([organization, colorClass]) => (
@@ -1163,6 +1151,7 @@ export default function SeatChart() {
           </div>
         )}
 
+        {/* 6. 座位可视化与主内容区 */}
         <div ref={printRef}>
           <div className="mb-4 flex items-center justify-center gap-3">
             <div className="cursor-default select-none" title={windowOnLeft ? t('seat.window') : t('seat.door')}>
@@ -1174,13 +1163,7 @@ export default function SeatChart() {
             <div className="cursor-default select-none" title={windowOnLeft ? t('seat.door') : t('seat.window')}>
               {windowOnLeft ? <span className={sideIconClass}>🚪</span> : <span className={sideIconClass}>🪟</span>}
             </div>
-            <button onClick={() => setWindowOnLeft(prev => !prev)}
-              className="ml-1 p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              title={t('seat.swapDoorWindow')}>
-              <ArrowRightLeft className="w-4 h-4" />
-            </button>
           </div>
-
           {seats.length > 0 ? (
             <div className="overflow-auto pb-2">
               <div className="flex justify-center">
@@ -1208,13 +1191,26 @@ export default function SeatChart() {
             </div>
           )}
         </div>
-
         {seats.length > 0 && (
           <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
         )}
         <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
           sceneConfig={exportSceneConfig} className={recordName.trim() || exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
-        </>)}
+
+        {/* 7. 其它场景渲染 */}
+        {scene === 'smartClassroom' && (
+          <SmartClassroom
+            students={students}
+            frontDoorPosition={frontDoorPosition}
+            backDoorPosition={backDoorPosition}
+            entryDoorMode={entryDoorMode}
+          />
+        )}
+        {scene === 'conference' && <ConferenceRoom students={students} />}
+        {scene === 'concertHall' && <ConcertHall students={students} />}
+        {scene === 'banquet' && <BanquetHall students={students} />}
+        {scene === 'computerLab' && <ComputerLab students={students} />}
+        {scene === 'artStudio' && <ArtStudio students={students} />}
       </div>
     </div>
   );
