@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { ArrowRightLeft } from 'lucide-react';
 import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
@@ -47,7 +48,13 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
   };
 }
 
-export default function SmartClassroom({ students, frontDoorPosition = 'top', backDoorPosition = 'bottom', entryDoorMode = 'front' }: Props) {
+  // 门窗位置状态
+  const [frontDoor, setFrontDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(frontDoorPosition);
+  const [backDoor, setBackDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(backDoorPosition);
+  const [windowPos, setWindowPos] = useState<'left' | 'right'>('left');
+  const [entryDoor, setEntryDoor] = useState<'front' | 'back' | 'both'>(entryDoorMode);
+  // 默认讲台隐藏
+  const [showPodium, setShowPodium] = useState(false);
   const initialTableCount = Math.max(1, Math.ceil(students.length / 6));
   const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
@@ -771,7 +778,69 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
         refDraggingRef.current = null;
       }}
     >
-      <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
+      {/* 结构设置分区 */}
+      <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10">
+        <div className="font-semibold text-base mb-2">教室结构设置</div>
+        <div className="flex flex-wrap gap-4 items-center mb-2">
+          <label className="flex items-center gap-1 text-sm">
+            前门位置：
+            <select
+              value={frontDoor}
+              onChange={e => setFrontDoor(e.target.value as any)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="top">上方</option>
+              <option value="bottom">下方</option>
+              <option value="left">左侧</option>
+              <option value="right">右侧</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1 text-sm">
+            后门位置：
+            <select
+              value={backDoor}
+              onChange={e => setBackDoor(e.target.value as any)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="top">上方</option>
+              <option value="bottom">下方</option>
+              <option value="left">左侧</option>
+              <option value="right">右侧</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1 text-sm">
+            学生入场门：
+            <select
+              value={entryDoor}
+              onChange={e => setEntryDoor(e.target.value as any)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="front">仅前门</option>
+              <option value="back">仅后门</option>
+              <option value="both">前后门都可</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1 text-sm">
+            窗位置：
+            <select
+              value={windowPos}
+              onChange={e => setWindowPos(e.target.value as any)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="left">左侧</option>
+              <option value="right">右侧</option>
+            </select>
+          </label>
+          <button
+            className="p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="切换窗/门位置"
+            onClick={() => setWindowPos(p => (p === 'left' ? 'right' : 'left'))}
+            type="button"
+          >
+            <ArrowRightLeft className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
           名称
           <Input
@@ -896,7 +965,7 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
             <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
+            <input type="checkbox" checked={showPodium} onChange={e => setShowPodium(e.target.checked)} className="accent-primary" /> 讲台
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
@@ -957,7 +1026,7 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
                 </div>
               )}
 
-              {refVisible.podium && (
+              {showPodium && (
                 <div
                   className={refBadgeClass}
                   style={{ left: refPositions.podium.x, top: refPositions.podium.y }}
@@ -971,12 +1040,12 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
               {/* 前门渲染 */}
               {refVisible.frontDoor && (() => {
                 let style: React.CSSProperties = {};
-                if (frontDoorPosition === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
-                if (frontDoorPosition === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
-                if (frontDoorPosition === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 16) };
-                if (frontDoorPosition === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
+                if (frontDoor === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
+                if (frontDoor === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
+                if (frontDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 16) };
+                if (frontDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
                 // 高亮可入场门
-                const highlight = entryDoorMode === 'front' || entryDoorMode === 'both';
+                const highlight = entryDoor === 'front' || entryDoor === 'both';
                 return (
                   <div
                     className={refBadgeClass + (highlight ? ' ring-2 ring-green-500 ring-offset-2' : '')}
@@ -993,12 +1062,12 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
               {/* 后门渲染 */}
               {refVisible.backDoor && (() => {
                 let style: React.CSSProperties = {};
-                if (backDoorPosition === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
-                if (backDoorPosition === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
-                if (backDoorPosition === 'left') style = { left: 8, top: Math.round(roomHeight / 2 + 24) };
-                if (backDoorPosition === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 + 24) };
+                if (backDoor === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
+                if (backDoor === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
+                if (backDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 + 24) };
+                if (backDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 + 24) };
                 // 高亮可入场门
-                const highlight = entryDoorMode === 'back' || entryDoorMode === 'both';
+                const highlight = entryDoor === 'back' || entryDoor === 'both';
                 return (
                   <div
                     className={refBadgeClass + (highlight ? ' ring-2 ring-green-500 ring-offset-2' : '')}
@@ -1012,16 +1081,21 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
                 );
               })()}
 
-              {refVisible.window && (
-                <div
-                  className={refBadgeClass}
-                  style={{ left: refPositions.window.x, top: refPositions.window.y }}
-                  onMouseDown={e => startRefDrag(e, 'window')}
-                >
-                  <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗</span>
-                </div>
-              )}
+              {refVisible.window && (() => {
+                let style: React.CSSProperties = {};
+                if (windowPos === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 16) };
+                if (windowPos === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
+                return (
+                  <div
+                    className={refBadgeClass}
+                    style={style}
+                    onMouseDown={e => startRefDrag(e, 'window')}
+                  >
+                    <span className={refIconClass}>🪟</span>
+                    <span className={refTextClass}>窗</span>
+                  </div>
+                );
+              })()}
 
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>

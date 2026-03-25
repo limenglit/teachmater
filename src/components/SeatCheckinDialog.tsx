@@ -253,10 +253,22 @@ export default function SeatCheckinDialog({
     setLoading(true);
     try {
       const minutes = unlimited ? 99999 : durationMinutes;
+      // 确保智能教室/宴会厅场景 sceneConfig 包含门口信息
+      let nextSceneConfig = { ...sceneConfig };
+      if (sceneType === 'smartClassroom' || sceneType === 'banquet') {
+        // 默认仅支持前门，后续可扩展
+        if (!nextSceneConfig.entryDoorMode) {
+          nextSceneConfig.entryDoorMode = 'front';
+        }
+        if (!nextSceneConfig.entryDoorPosition) {
+          // 默认前门在顶部中央
+          nextSceneConfig.entryDoorPosition = 'top';
+        }
+      }
       const created = await createSeatCheckinSession({
         seatData,
         studentNames,
-        sceneConfig,
+        sceneConfig: nextSceneConfig,
         sceneType,
         durationMinutes: minutes,
         className,
