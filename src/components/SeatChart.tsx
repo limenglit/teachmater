@@ -1,3 +1,6 @@
+  // 折叠状态
+  const [structureOpen, setStructureOpen] = useState(true);
+  const [strategyOpen, setStrategyOpen] = useState(true);
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -875,11 +878,21 @@ export default function SeatChart() {
           ))}
         </div>
 
-        {/* 2. 教室结构设置卡片 */}
-        <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10">
-          <div className="font-semibold text-base mb-2">教室结构设置</div>
-          {/* 门窗、前后门、入场门、行列、走道等 */}
-          <div className="flex flex-wrap gap-4 items-center mb-2">
+        {/* 2. 教室结构设置卡片（可折叠） */}
+        <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
+            onClick={() => setStructureOpen(v => !v)}
+            aria-expanded={structureOpen}
+            type="button"
+          >
+            <span>教室结构设置</span>
+            <span className={`transition-transform ${structureOpen ? '' : 'rotate-90'}`}>▼</span>
+          </button>
+          {structureOpen && (
+            <div className="px-4 pb-4 pt-2">
+              {/* 门窗、前后门、入场门、行列、走道等 */}
+              <div className="flex flex-wrap gap-4 items-center mb-2">
             <label className="flex items-center gap-1 text-sm">
               前门位置：
               <select
@@ -938,28 +951,41 @@ export default function SeatChart() {
               <ArrowRightLeft className="w-4 h-4" />
             </button>
           </div>
-          {(colAisles.length > 0 || rowAisles.length > 0) && (
-            <div className="flex flex-wrap gap-2 mb-2">
-              {colAisles.map(a => (
-                <span key={`ca-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
-                  {t('seat.colAisleAfter').replace('{0}', String(a + 1))}
-                  <button onClick={() => removeColAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
-                </span>
-              ))}
-              {rowAisles.map(a => (
-                <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
-                  {t('seat.rowAisleAfter').replace('{0}', String(a + 1))}
-                  <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
-                </span>
-              ))}
+              {(colAisles.length > 0 || rowAisles.length > 0) && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {colAisles.map(a => (
+                    <span key={`ca-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                      {t('seat.colAisleAfter').replace('{0}', String(a + 1))}
+                      <button onClick={() => removeColAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                  {rowAisles.map(a => (
+                    <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                      {t('seat.rowAisleAfter').replace('{0}', String(a + 1))}
+                      <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
+        </div>
 
-        {/* 3. 排座策略设置卡片 */}
-        <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10">
-          <div className="font-semibold text-base mb-2">排座策略设置</div>
-          <div className="flex flex-wrap gap-3 items-center">
+        {/* 3. 排座策略设置卡片（可折叠） */}
+        <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
+            onClick={() => setStrategyOpen(v => !v)}
+            aria-expanded={strategyOpen}
+            type="button"
+          >
+            <span>排座策略设置</span>
+            <span className={`transition-transform ${strategyOpen ? '' : 'rotate-90'}`}>▼</span>
+          </button>
+          {strategyOpen && (
+            <div className="px-4 pb-4 pt-2">
+              <div className="flex flex-wrap gap-3 items-center">
             <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
               名称
               <Input
