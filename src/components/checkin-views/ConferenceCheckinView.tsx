@@ -19,6 +19,21 @@ interface ConferenceData {
 }
 
 export default function ConferenceCheckinView({ seatData, sceneConfig, studentName }: Props) {
+  // 健壮性校验
+  const valid = seatData && typeof seatData === 'object'
+    && Array.isArray((seatData as any).top)
+    && Array.isArray((seatData as any).bottom)
+    && typeof (seatData as any).headLeft === 'string'
+    && typeof (seatData as any).headRight === 'string';
+  if (!valid) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="text-3xl mb-4 text-destructive">⚠️</div>
+        <div className="text-xl font-bold text-destructive mb-2">座位数据异常</div>
+        <div className="text-sm text-muted-foreground">请联系管理员或刷新页面重试</div>
+      </div>
+    );
+  }
   const data = seatData as ConferenceData;
   const seatsPerSide = (sceneConfig.seatsPerSide as number) || data.top.length;
 
