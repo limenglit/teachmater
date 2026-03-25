@@ -1107,6 +1107,7 @@ export default function SeatChart() {
               </div>
             )}
               </div>
+            </div>
             )}
         </div>
 
