@@ -1,6 +1,3 @@
-  // 折叠状态
-  const [structureOpen, setStructureOpen] = useState(true);
-  const [strategyOpen, setStrategyOpen] = useState(true);
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -54,6 +51,8 @@ const ORGANIZATION_COLOR_CLASSES = [
 export default function SeatChart() {
   const { students } = useStudents();
   const { t } = useLanguage();
+  const [structureOpen, setStructureOpen] = useState(true);
+  const [strategyOpen, setStrategyOpen] = useState(true);
 
   const SCENES: { id: SceneType; label: string; desc: string }[] = [
     { id: 'classroom', label: t('scene.classroom'), desc: t('scene.classroomDesc') },
@@ -970,7 +969,6 @@ export default function SeatChart() {
             </div>
           )}
         </div>
-        </div>
 
         {/* 3. 排座策略设置卡片（可折叠） */}
         <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
@@ -1108,7 +1106,9 @@ export default function SeatChart() {
                 男 {genderStats.male} / 女 {genderStats.female} / 未知 {genderStats.unknown}
               </div>
             )}
-          </div>
+              </div>
+            </div>
+            )}
         </div>
 
         {/* 4. 操作区卡片 */}
