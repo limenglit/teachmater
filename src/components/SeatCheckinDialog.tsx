@@ -178,12 +178,17 @@ export default function SeatCheckinDialog({
 
     void loadSeatCheckinRecords(currentSession.id).then(setRecords);
 
-    const remaining = currentSession.status === 'active'
-      ? Math.max(
+    let remaining = 0;
+    if (currentSession.status === 'active') {
+      if (currentSession.duration_minutes === -1) {
+        remaining = -1; // 无限时长
+      } else {
+        remaining = Math.max(
           0,
           currentSession.duration_minutes * 60 - Math.floor((Date.now() - new Date(currentSession.created_at).getTime()) / 1000),
-        )
-      : 0;
+        );
+      }
+    }
     setTimeLeft(currentSession.status === 'active' ? remaining : null);
 
     const channel = supabase
@@ -227,15 +232,14 @@ export default function SeatCheckinDialog({
 
   useEffect(() => {
     if (!currentSession || currentSession.status !== 'active' || timeLeft === null) return;
+    if (currentSession.duration_minutes === -1) return; // 无限时长，不自动结束
     if (timeLeft <= 0) {
       void handleEndSession();
       return;
     }
-
     const timerId = window.setInterval(() => {
       setTimeLeft(prev => (prev === null ? null : Math.max(0, prev - 1)));
     }, 1000);
-
     return () => window.clearInterval(timerId);
   }, [currentSession?.id, currentSession?.status, timeLeft]);
 
@@ -338,6 +342,7 @@ export default function SeatCheckinDialog({
   }, [currentSession, currentStudentNames, records, seatData, sessionSeatData]);
 
   const formatTimeLeft = (seconds: number) => {
+    if (seconds === -1) return '不限时长';
     const minutes = Math.floor(seconds / 60);
     const remainder = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
@@ -375,14 +380,20 @@ export default function SeatCheckinDialog({
               <span className="text-sm text-muted-foreground">签到时长</span>
               <Input
                 type="number"
-                min={1}
+                min={-1}
                 max={120}
                 value={durationMinutes}
-                onChange={e => setDurationMinutes(Math.max(1, Math.min(120, Number(e.target.value) || 1)))}
+                onChange={e => {
+                  let v = Number(e.target.value) || 1;
+                  if (v < -1) v = -1;
+                  if (v > 120) v = 120;
+                  setDurationMinutes(v);
+                }}
                 className="h-9 w-20 text-center"
               />
-              <span className="text-sm text-muted-foreground">分钟</span>
+              <span className="text-sm text-muted-foreground">{durationMinutes === -1 ? '不限/需手动结束' : '分钟'}</span>
             </div>
+            <div className="text-xs text-muted-foreground pl-1 pb-1">输入 -1 表示签到不限时长，需手动结束</div>
 
             <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
               <div className="flex items-center justify-between gap-2">

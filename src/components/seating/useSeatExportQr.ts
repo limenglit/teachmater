@@ -9,9 +9,10 @@ interface UseSeatExportQrParams {
   seatAssignmentReady?: boolean;
   sceneConfig: Record<string, unknown>;
   sceneType: string;
+  durationMinutes?: number;
 }
 
-export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, sceneConfig, sceneType }: UseSeatExportQrParams) {
+export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, sceneConfig, sceneType, durationMinutes }: UseSeatExportQrParams) {
   const [checkinUrl, setCheckinUrl] = useState<string | null>(null);
 
   const className = useMemo(() => getActiveClassName() || '当前班级', []);
@@ -34,7 +35,7 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
       studentNames,
       sceneConfig,
       sceneType,
-      durationMinutes: 5,
+      durationMinutes: typeof durationMinutes === 'number' ? durationMinutes : 5,
       className,
     });
     setCheckinUrl(created.checkinUrl);
