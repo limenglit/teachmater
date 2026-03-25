@@ -5,6 +5,7 @@ import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, Chevro
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
+import { fetchCodePreviewText } from '@/lib/code-preview';
 import '@/components/board/prism-theme.css';
 
 const CodeHighlight = lazy(() => import('@/components/board/CodeHighlight'));
@@ -103,13 +104,8 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     if (!card.media_url || codeContent !== null) return;
     setCodeLoading(true);
     try {
-      const res = await fetch(card.media_url);
-      if (res.ok) {
-        const text = await res.text();
-        setCodeContent(text);
-      } else {
-        setCodeContent('// Failed to load file');
-      }
+      const text = await fetchCodePreviewText(card.media_url);
+      setCodeContent(text);
     } catch {
       setCodeContent('// Failed to load file');
     }

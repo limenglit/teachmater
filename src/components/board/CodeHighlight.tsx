@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 const EXT_TO_PRISM: Record<string, string> = {
   c: 'c', cpp: 'cpp', cc: 'cpp', h: 'c', hpp: 'cpp',
@@ -48,34 +48,30 @@ interface Props {
 }
 
 export default function CodeHighlight({ code, ext }: Props) {
-  const ref = useRef<HTMLPreElement>(null);
+  const ref = useRef<HTMLElement>(null);
   const lang = getPrismLanguage(ext);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const Prism = (await import('prismjs')).default;
+        const prismModule = await import('prismjs');
+        const Prism = prismModule.default ?? prismModule;
         await loadPrismLanguage(lang);
         if (!cancelled && ref.current) {
-          const codeEl = ref.current.querySelector('code');
-          if (codeEl) {
-            try { Prism.highlightElement(codeEl); } catch {}
-          }
+          ref.current.textContent = code;
+          try { Prism.highlightElement(ref.current); } catch {}
         }
       } catch {}
-      if (!cancelled) setReady(true);
     })();
     return () => { cancelled = true; };
   }, [code, lang]);
 
   return (
     <pre
-      ref={ref}
       className="p-3 text-xs font-mono whitespace-pre overflow-x-auto leading-relaxed m-0 bg-transparent"
     >
-      <code className={`language-${lang}`}>
+      <code ref={ref} className={`language-${lang}`}>
         {code}
       </code>
     </pre>
