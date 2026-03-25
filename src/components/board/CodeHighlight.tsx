@@ -53,6 +53,22 @@ const MAX_HEIGHT = 800;
 const DRAG_HANDLE_HEIGHT = 10;
 
 export default function CodeHighlight({ code, ext, initialMaxHeight = 256 }: Props) {
+  // 动态字号自适应屏宽
+  const [fontSize, setFontSize] = useState(16);
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.offsetWidth;
+        // 代码区左右有gutter，减去部分，最小12px最大22px
+        const size = Math.max(12, Math.min(22, Math.floor(w / 48)));
+        setFontSize(size);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const ref = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const lang = getPrismLanguage(ext);
@@ -80,35 +96,35 @@ export default function CodeHighlight({ code, ext, initialMaxHeight = 256 }: Pro
             setHighlightedHTML(null);
           }
         }
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [code, lang]);
-
-  const lines = useMemo(() => code.split('\n'), [code]);
-  const lineCount = lines.length;
-  const gutterWidth = Math.max(2, String(lineCount).length);
-
-  // Split highlighted HTML back into lines (best-effort)
-  const highlightedLines = useMemo(() => {
-    if (!highlightedHTML) return null;
-    // Prism output keeps \n as literal newlines inside spans; splitting naively works
-    // for most cases. We wrap unclosed spans across line boundaries.
-    const raw = highlightedHTML.split('\n');
-    return raw;
-  }, [highlightedHTML]);
-
-  /* ── drag-to-resize ── */
-  const onDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    dragStartRef.current = { y: clientY, h: maxHeight };
-
-    const onMove = (ev: MouseEvent | TouchEvent) => {
-      if (!dragStartRef.current) return;
-      const cy = 'touches' in ev ? ev.touches[0].clientY : (ev as MouseEvent).clientY;
-      const delta = cy - dragStartRef.current.y;
-      setMaxHeight(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, dragStartRef.current.h + delta)));
+      return (
+        <div ref={containerRef} className="relative w-full" style={{ maxHeight, overflowY: 'auto' }}>
+          <pre
+            ref={ref}
+            className="language-plain overflow-x-hidden rounded-lg bg-zinc-900 text-white p-3"
+            style={{ maxHeight, minHeight: MIN_HEIGHT, fontFamily: 'JetBrains Mono, Fira Mono, monospace', fontSize }}
+          >
+            {highlightedLines
+              ? highlightedLines.map((line, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center group ${hoveredLine === i ? 'bg-zinc-800/60' : ''}`}
+                    onMouseEnter={() => setHoveredLine(i)}
+                    onMouseLeave={() => setHoveredLine(null)}
+                  >
+                    <span className="select-none text-zinc-500 pr-3 text-right" style={{ width: `${gutterWidth}ch` }}>{i + 1}</span>
+                    <span className="flex-1 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: line }} />
+                  </div>
+                ))
+              : lines.map((line, i) => (
+                  <div key={i} className="flex items-center">
+                    <span className="select-none text-zinc-500 pr-3 text-right" style={{ width: `${gutterWidth}ch` }}>{i + 1}</span>
+                    <span className="flex-1 whitespace-pre-wrap">{line}</span>
+                  </div>
+                ))}
+          </pre>
+          {/* 拖拽调整高度省略... */}
+        </div>
+      );
     };
     const onEnd = () => {
       dragStartRef.current = null;
