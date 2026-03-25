@@ -10,6 +10,7 @@ interface Props {
   studentName: string;
 }
 
+export default function ConcertCheckinView({ seatData, sceneConfig, studentName }: Props) {
   const rows = seatData as string[][];
   const seatsPerRow = (sceneConfig.seatsPerRow as number) || 12;
   const rowCount = rows.length;
