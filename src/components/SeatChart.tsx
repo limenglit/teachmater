@@ -225,8 +225,8 @@ export default function SeatChart() {
 
     if (genderMarkerStyle === 'badge') {
       return (
-        <span className={`inline-flex items-center gap-1 max-w-full ${organizationColorClass}`} title={organization}>
-          <span className="truncate max-w-[3.2rem]">{name}</span>
+        <span className={`inline-flex items-center justify-center gap-1 w-full px-0.5 ${organizationColorClass}`} title={organization}>
+          <span className="text-[11px] leading-tight whitespace-normal break-all text-center">{name}</span>
           <span className="inline-flex items-center justify-center rounded px-1 py-0.5 text-[10px] leading-none bg-muted border border-border/70 text-muted-foreground">
             {marker}
           </span>
@@ -234,7 +234,14 @@ export default function SeatChart() {
       );
     }
 
-    return <span className={`${organizationColorClass} truncate max-w-[3.6rem]`} title={organization}>{`${name} ${marker}`}</span>;
+    return (
+      <span
+        className={`${organizationColorClass} block w-full px-0.5 text-center text-[11px] leading-tight whitespace-normal break-all`}
+        title={organization}
+      >
+        {`${name}${marker}`}
+      </span>
+    );
   }, [genderByName, genderMarkerStyle, organizationByName, organizationColorMap, t]);
 
   const getGenderMarker = useCallback((name: string) => {
