@@ -712,6 +712,7 @@ export default function ConcertHall({ students }: Props) {
                   <span className={refTextClass}>幕布</span>
                 </div>
               )}
+              {/* 讲台默认不显示，用户可手动开启 */}
               {refVisible.podium && (
                 <div className={refBadgeClass} style={{ left: refPositions.podium.x, top: refPositions.podium.y }} onMouseDown={e => startRefDrag(e, 'podium')}>
                   <span className={refIconClass}>🎤</span>
@@ -721,7 +722,7 @@ export default function ConcertHall({ students }: Props) {
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗</span>
+                  <span className={refTextClass}>窗户</span>
                 </div>
               )}
               {refVisible.frontDoor && (
@@ -815,11 +816,12 @@ export default function ConcertHall({ students }: Props) {
                             y={sy + 1}
                             textAnchor="middle"
                             dominantBaseline="middle"
-                            textLength={name.length > 2 ? nameTextLength : undefined}
-                            lengthAdjust={name.length > 2 ? 'spacingAndGlyphs' : undefined}
-                            className="fill-foreground text-[10px]"
+                            fontSize={name.length >= 6 ? '8px' : name.length >= 4 ? '10px' : '12px'}
+                            textLength={name.length > 4 ? seatR * 2.2 : undefined}
+                            lengthAdjust={name.length > 4 ? 'spacingAndGlyphs' : undefined}
+                            className="fill-foreground"
                           >
-                            {name}
+                            {name.length > 8 ? name.slice(0, 7) + '…' : name}
                           </text>
                         )}
                         {name && !isDragging && (
@@ -830,7 +832,7 @@ export default function ConcertHall({ students }: Props) {
                               y={sy - seatR + 6.5}
                               textAnchor="middle"
                               dominantBaseline="middle"
-                              className="text-[8px]"
+                              fontSize="7px"
                               fill="#ffffff"
                             >
                               {seatMarker}
