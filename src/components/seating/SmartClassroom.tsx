@@ -48,6 +48,12 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
   };
 }
 
+export default function SmartClassroom({
+  students,
+  frontDoorPosition = 'right',
+  backDoorPosition = 'left',
+  entryDoorMode = 'front',
+}: Props) {
   // 门窗位置状态
   const [frontDoor, setFrontDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(frontDoorPosition);
   const [backDoor, setBackDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(backDoorPosition);
@@ -841,6 +847,8 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
           </button>
         </div>
       </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/60 p-4">
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
           名称
           <Input
