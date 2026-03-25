@@ -89,6 +89,10 @@ export default function SeatChart() {
   const [dragFrom, setDragFrom] = useState<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
   const [windowOnLeft, setWindowOnLeft] = useState(true);
+  // 新增：前门/后门位置设置
+  type DoorPosition = 'top' | 'bottom' | 'left' | 'right';
+  const [frontDoorPosition, setFrontDoorPosition] = useState<DoorPosition>('top');
+  const [backDoorPosition, setBackDoorPosition] = useState<DoorPosition>('bottom');
   const [startFrom, setStartFrom] = useState<StartFrom>('door');
   const [genderSeatPolicy, setGenderSeatPolicy] = useState<GenderSeatPolicy>('none');
   const [genderFirst, setGenderFirst] = useState<GenderFirst>('male');
@@ -868,7 +872,13 @@ export default function SeatChart() {
           ))}
         </div>
 
-        {scene === 'smartClassroom' && <SmartClassroom students={students} />}
+        {scene === 'smartClassroom' && (
+          <SmartClassroom
+            students={students}
+            frontDoorPosition={frontDoorPosition}
+            backDoorPosition={backDoorPosition}
+          />
+        )}
         {scene === 'conference' && <ConferenceRoom students={students} />}
         {scene === 'concertHall' && <ConcertHall students={students} />}
         {scene === 'banquet' && <BanquetHall students={students} />}
@@ -876,6 +886,35 @@ export default function SeatChart() {
         {scene === 'artStudio' && <ArtStudio students={students} />}
 
         {scene === 'classroom' && (<>
+        {/* 前门/后门位置设置 */}
+        <div className="flex flex-wrap gap-2 mb-2 items-center">
+          <label className="flex items-center gap-1 text-sm">
+            前门位置：
+            <select
+              value={frontDoorPosition}
+              onChange={e => setFrontDoorPosition(e.target.value as DoorPosition)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="top">上方</option>
+              <option value="bottom">下方</option>
+              <option value="left">左侧</option>
+              <option value="right">右侧</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1 text-sm">
+            后门位置：
+            <select
+              value={backDoorPosition}
+              onChange={e => setBackDoorPosition(e.target.value as DoorPosition)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value="top">上方</option>
+              <option value="bottom">下方</option>
+              <option value="left">左侧</option>
+              <option value="right">右侧</option>
+            </select>
+          </label>
+        </div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-lg sm:text-xl font-semibold text-foreground">{t('seat.title')}</h2>

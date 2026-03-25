@@ -23,6 +23,8 @@ import {
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
+  frontDoorPosition?: 'top' | 'bottom' | 'left' | 'right';
+  backDoorPosition?: 'top' | 'bottom' | 'left' | 'right';
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
@@ -44,7 +46,7 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
   };
 }
 
-export default function SmartClassroom({ students }: Props) {
+export default function SmartClassroom({ students, frontDoorPosition = 'top', backDoorPosition = 'bottom' }: Props) {
   const initialTableCount = Math.max(1, Math.ceil(students.length / 6));
   const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
@@ -965,27 +967,43 @@ export default function SmartClassroom({ students }: Props) {
                 </div>
               )}
 
-              {refVisible.frontDoor && (
-                <div
-                  className={refBadgeClass}
-                  style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }}
-                  onMouseDown={e => startRefDrag(e, 'frontDoor')}
-                >
-                  <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>前门</span>
-                </div>
-              )}
+              {/* 前门渲染 */}
+              {refVisible.frontDoor && (() => {
+                let style: React.CSSProperties = {};
+                if (frontDoorPosition === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
+                if (frontDoorPosition === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
+                if (frontDoorPosition === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 16) };
+                if (frontDoorPosition === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
+                return (
+                  <div
+                    className={refBadgeClass}
+                    style={style}
+                    onMouseDown={e => startRefDrag(e, 'frontDoor')}
+                  >
+                    <span className={refIconClass}>🚪</span>
+                    <span className={refTextClass}>前门</span>
+                  </div>
+                );
+              })()}
 
-              {refVisible.backDoor && (
-                <div
-                  className={refBadgeClass}
-                  style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }}
-                  onMouseDown={e => startRefDrag(e, 'backDoor')}
-                >
-                  <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>后门</span>
-                </div>
-              )}
+              {/* 后门渲染 */}
+              {refVisible.backDoor && (() => {
+                let style: React.CSSProperties = {};
+                if (backDoorPosition === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
+                if (backDoorPosition === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
+                if (backDoorPosition === 'left') style = { left: 8, top: Math.round(roomHeight / 2 + 24) };
+                if (backDoorPosition === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 + 24) };
+                return (
+                  <div
+                    className={refBadgeClass}
+                    style={style}
+                    onMouseDown={e => startRefDrag(e, 'backDoor')}
+                  >
+                    <span className={refIconClass}>🚪</span>
+                    <span className={refTextClass}>后门</span>
+                  </div>
+                );
+              })()}
 
               {refVisible.window && (
                 <div
