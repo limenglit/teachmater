@@ -404,7 +404,7 @@ export default function SeatCheckinDialog({
               )}
               {unlimited && <span className="text-sm text-muted-foreground">不限/需手动结束</span>}
             </div>
-            <div className="text-xs text-muted-foreground pl-1 pb-1">输入 -1 表示签到不限时长，需手动结束</div>
+            {/* 已移除-1说明文案 */}
 
             <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
               <div className="flex items-center justify-between gap-2">
