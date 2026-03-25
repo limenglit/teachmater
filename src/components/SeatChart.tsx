@@ -1,3 +1,6 @@
+  // 新增：学生入场门选择
+  type EntryDoorMode = 'front' | 'back' | 'both';
+  const [entryDoorMode, setEntryDoorMode] = useState<EntryDoorMode>('front');
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -877,8 +880,24 @@ export default function SeatChart() {
             students={students}
             frontDoorPosition={frontDoorPosition}
             backDoorPosition={backDoorPosition}
+            entryDoorMode={entryDoorMode}
           />
         )}
+                {/* 学生入场门选择 */}
+                <div className="flex flex-wrap gap-2 mb-2 items-center">
+                  <label className="flex items-center gap-1 text-sm">
+                    学生入场门：
+                    <select
+                      value={entryDoorMode}
+                      onChange={e => setEntryDoorMode(e.target.value as EntryDoorMode)}
+                      className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                    >
+                      <option value="front">仅前门</option>
+                      <option value="back">仅后门</option>
+                      <option value="both">前后门都可</option>
+                    </select>
+                  </label>
+                </div>
         {scene === 'conference' && <ConferenceRoom students={students} />}
         {scene === 'concertHall' && <ConcertHall students={students} />}
         {scene === 'banquet' && <BanquetHall students={students} />}
