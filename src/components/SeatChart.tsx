@@ -587,6 +587,7 @@ export default function SeatChart() {
 
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
   const isExamMode = mode === 'exam';
+  const isClassroomScene = scene === 'classroom';
   const printRef = useRef<HTMLDivElement>(null);
   const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
@@ -877,351 +878,356 @@ export default function SeatChart() {
           ))}
         </div>
 
-        {/* 2. 教室结构设置卡片（可折叠） */}
-        <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
-          <button
-            className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
-            onClick={() => setStructureOpen(v => !v)}
-            aria-expanded={structureOpen}
-            type="button"
-          >
-            <span>教室结构设置</span>
-            <span className={`transition-transform ${structureOpen ? '' : 'rotate-90'}`}>▼</span>
-          </button>
-          {structureOpen && (
-            <div className="px-4 pb-4 pt-2">
-              {/* 门窗、前后门、入场门、行列、走道等 */}
-              <div className="flex flex-wrap gap-4 items-center mb-2">
-            <label className="flex items-center gap-1 text-sm">
-              前门位置：
-              <select
-                value={frontDoorPosition}
-                onChange={e => setFrontDoorPosition(e.target.value as DoorPosition)}
-                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+        {isClassroomScene && (
+          <>
+            {/* 2. 教室结构设置卡片（可折叠） */}
+            <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
+                onClick={() => setStructureOpen(v => !v)}
+                aria-expanded={structureOpen}
+                type="button"
               >
-                <option value="top">上方</option>
-                <option value="bottom">下方</option>
-                <option value="left">左侧</option>
-                <option value="right">右侧</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-1 text-sm">
-              后门位置：
-              <select
-                value={backDoorPosition}
-                onChange={e => setBackDoorPosition(e.target.value as DoorPosition)}
-                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-              >
-                <option value="top">上方</option>
-                <option value="bottom">下方</option>
-                <option value="left">左侧</option>
-                <option value="right">右侧</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-1 text-sm">
-              学生入场门：
-              <select
-                value={entryDoorMode}
-                onChange={e => setEntryDoorMode(e.target.value as EntryDoorMode)}
-                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-              >
-                <option value="front">仅前门</option>
-                <option value="back">仅后门</option>
-                <option value="both">前后门都可</option>
-              </select>
-            </label>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              {t('seat.rows')}
-              <Input type="number" min={2} value={rows} onChange={e => setRows(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
-            </label>
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              {t('seat.cols')}
-              <Input type="number" min={2} value={cols} onChange={e => setCols(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
-            </label>
-            <Button variant="outline" size="sm" onClick={addColAisle} className="gap-1 text-xs h-8" title={t('seat.colAisle')}>
-              <Plus className="w-3 h-3" /> {t('seat.colAisle')}
-            </Button>
-            <Button variant="outline" size="sm" onClick={addRowAisle} className="gap-1 text-xs h-8" title={t('seat.rowAisle')}>
-              <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
-            </Button>
-            <button onClick={() => setWindowOnLeft(prev => !prev)}
-              className="p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              title={t('seat.swapDoorWindow')}>
-              <ArrowRightLeft className="w-4 h-4" />
-            </button>
-          </div>
-              {(colAisles.length > 0 || rowAisles.length > 0) && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {colAisles.map(a => (
-                    <span key={`ca-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
-                      {t('seat.colAisleAfter').replace('{0}', String(a + 1))}
-                      <button onClick={() => removeColAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
-                    </span>
-                  ))}
-                  {rowAisles.map(a => (
-                    <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
-                      {t('seat.rowAisleAfter').replace('{0}', String(a + 1))}
-                      <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
-                    </span>
-                  ))}
+                <span>教室结构设置</span>
+                <span className={`transition-transform ${structureOpen ? '' : 'rotate-90'}`}>▼</span>
+              </button>
+              {structureOpen && (
+                <div className="px-4 pb-4 pt-2">
+                  <div className="flex flex-wrap gap-4 items-center mb-2">
+                    <label className="flex items-center gap-1 text-sm">
+                      前门位置：
+                      <select
+                        value={frontDoorPosition}
+                        onChange={e => setFrontDoorPosition(e.target.value as DoorPosition)}
+                        className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                      >
+                        <option value="top">上方</option>
+                        <option value="bottom">下方</option>
+                        <option value="left">左侧</option>
+                        <option value="right">右侧</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1 text-sm">
+                      后门位置：
+                      <select
+                        value={backDoorPosition}
+                        onChange={e => setBackDoorPosition(e.target.value as DoorPosition)}
+                        className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                      >
+                        <option value="top">上方</option>
+                        <option value="bottom">下方</option>
+                        <option value="left">左侧</option>
+                        <option value="right">右侧</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1 text-sm">
+                      学生入场门：
+                      <select
+                        value={entryDoorMode}
+                        onChange={e => setEntryDoorMode(e.target.value as EntryDoorMode)}
+                        className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                      >
+                        <option value="front">仅前门</option>
+                        <option value="back">仅后门</option>
+                        <option value="both">前后门都可</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {t('seat.rows')}
+                      <Input type="number" min={2} value={rows} onChange={e => setRows(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {t('seat.cols')}
+                      <Input type="number" min={2} value={cols} onChange={e => setCols(normalizeClassroomDimension(Number(e.target.value)))} className="w-14 h-8 text-center" />
+                    </label>
+                    <Button variant="outline" size="sm" onClick={addColAisle} className="gap-1 text-xs h-8" title={t('seat.colAisle')}>
+                      <Plus className="w-3 h-3" /> {t('seat.colAisle')}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={addRowAisle} className="gap-1 text-xs h-8" title={t('seat.rowAisle')}>
+                      <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
+                    </Button>
+                    <button
+                      onClick={() => setWindowOnLeft(prev => !prev)}
+                      className="p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      title={t('seat.swapDoorWindow')}
+                    >
+                      <ArrowRightLeft className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {(colAisles.length > 0 || rowAisles.length > 0) && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {colAisles.map(a => (
+                        <span key={`ca-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                          {t('seat.colAisleAfter').replace('{0}', String(a + 1))}
+                          <button onClick={() => removeColAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                        </span>
+                      ))}
+                      {rowAisles.map(a => (
+                        <span key={`ra-${a}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs text-muted-foreground">
+                          {t('seat.rowAisleAfter').replace('{0}', String(a + 1))}
+                          <button onClick={() => removeRowAisle(a)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          )}
-        </div>
 
-        {/* 3. 排座策略设置卡片（可折叠） */}
-        <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
-          <button
-            className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
-            onClick={() => setStrategyOpen(v => !v)}
-            aria-expanded={strategyOpen}
-            type="button"
-          >
-            <span>排座策略设置</span>
-            <span className={`transition-transform ${strategyOpen ? '' : 'rotate-90'}`}>▼</span>
-          </button>
-          {strategyOpen && (
-            <div className="px-4 pb-4 pt-2">
-              <div className="flex flex-wrap gap-3 items-center">
-            <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
-              名称
-              <Input
-                type="text"
-                value={recordName}
-                onChange={e => setRecordName(e.target.value)}
-                placeholder="输入名称（用于保存历史和导出文件名）"
-                className="h-8 w-full sm:w-72"
-              />
-            </label>
-            {MODES.map(m => (
-              <button key={m.id} onClick={() => setMode(m.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${mode === m.id ? 'bg-primary text-primary-foreground border-primary shadow-soft' : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted'}`}
-                title={m.desc}>{m.icon}{m.label}</button>
-            ))}
-            {needsGroupCount && (
-              <>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  分组来源
-                  <select
-                    value={groupSource}
-                    onChange={e => setGroupSource(e.target.value as SeatGroupSource)}
-                    className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-                  >
-                    <option value="auto">自动（优先分组，其次建队）</option>
-                    <option value="groups">已分组结果</option>
-                    <option value="teams">已建队结果</option>
-                    <option value="count">按组数临时分组</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                  {t('seat.groups')}
-                  <Input type="number" min={2} max={10} value={groupCount} onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))} className="w-14 h-8 text-center" />
-                </label>
-              </>
-            )}
-            {isExamMode && (
-              <>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                  <input type="checkbox" checked={examSkipRow} onChange={e => setExamSkipRow(e.target.checked)} className="accent-primary" />
-                  {t('seat.skipRow')}
-                </label>
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                  <input type="checkbox" checked={examSkipCol} onChange={e => setExamSkipCol(e.target.checked)} className="accent-primary" />
-                  {t('seat.skipCol')}
-                </label>
-              </>
-            )}
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              {t('seat.startFrom')}
-              <select value={startFrom} onChange={e => setStartFrom(e.target.value as StartFrom)} className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm">
-                <option value="door">{t('seat.fromDoor')}</option>
-                <option value="window">{t('seat.fromWindow')}</option>
-                <option value="center">居中开始</option>
-              </select>
-            </label>
-            {mode === 'smartCluster' && (
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                智慧集中策略
-                <select
-                  value={smartClusterStrategy}
-                  onChange={e => setSmartClusterStrategy(e.target.value as SmartClusterStrategy)}
-                  className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-                >
-                  <option value="orgFrontWeighted">策略1：前排优先 + 按单位人数分列</option>
-                  <option value="classic">经典聚类</option>
-                </select>
-              </label>
-            )}
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              性别排座
-              <select
-                value={genderSeatPolicy}
-                onChange={e => setGenderSeatPolicy(e.target.value as GenderSeatPolicy)}
-                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            {/* 3. 排座策略设置卡片（可折叠） */}
+            <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
+              <button
+                className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
+                onClick={() => setStrategyOpen(v => !v)}
+                aria-expanded={strategyOpen}
+                type="button"
               >
-                <option value="none">不限制</option>
-                <option value="alternate">男女间隔</option>
-                <option value="cluster">男女集中</option>
-                <option value="alternateRows">男女隔行</option>
-              </select>
-            </label>
-            {genderSeatPolicy !== 'none' && (
-              <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                起始性别
-                <select
-                  value={genderFirst}
-                  onChange={e => setGenderFirst(e.target.value as GenderFirst)}
-                  className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-                >
-                  <option value="male">男生在前</option>
-                  <option value="female">女生在前</option>
-                </select>
-              </label>
-            )}
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              性别标识
-              <select
-                value={genderMarkerStyle}
-                onChange={e => setGenderMarkerStyle(e.target.value as GenderMarkerStyle)}
-                className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-              >
-                <option value="suffix">后缀样式</option>
-                <option value="badge">徽章样式</option>
-              </select>
-            </label>
-            {genderSeatPolicy === 'alternateRows' && (
-              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={centerRowsByGender}
-                  onChange={e => setCenterRowsByGender(e.target.checked)}
-                  className="accent-primary"
-                />
-                居中排列
-              </label>
-            )}
-            {genderSeatPolicy !== 'none' && (
-              <div className="text-xs text-muted-foreground rounded-md border border-border/60 px-2 py-1 bg-background/70">
-                男 {genderStats.male} / 女 {genderStats.female} / 未知 {genderStats.unknown}
-              </div>
-            )}
-              </div>
-            </div>
-            )}
-        </div>
-
-        {/* 4. 操作区卡片 */}
-        <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10 flex flex-wrap gap-3 items-center">
-          <Button onClick={autoSeat} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> {t('seat.autoSeat')}
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => {
-              setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
-            }}
-            title="清空所有座位"
-          >
-            <X className="w-4 h-4" /> 清空座位
-          </Button>
-          <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2" disabled={seats.length === 0}>
-            <Save className="w-4 h-4" /> 保存历史
-          </Button>
-          <select
-            value={selectedHistoryId}
-            onChange={e => setSelectedHistoryId(e.target.value)}
-            className="h-8 min-w-0 max-w-60 px-2 rounded-md border border-input bg-background text-foreground text-sm"
-          >
-            <option value="">选择历史记录</option>
-            {historyItems.map(item => (
-              <option key={item.id} value={item.id}>
-                {item.name}（{new Date(item.createdAt).toLocaleString()}）
-              </option>
-            ))}
-          </select>
-          <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2">
-            <RotateCcw className="w-4 h-4" /> 恢复历史
-          </Button>
-          {seats.length > 0 && (
-            <ExportButtons
-              targetRef={printRef}
-              filename={recordName.trim() || t('seat.exportName')}
-              resolveQrCode={resolveQrCode}
-              titleValue={recordName}
-              onTitleChange={setRecordName}
-              hideTitleInput
-            />
-          )}
-          {seats.length > 0 && (
-            <Button
-              onClick={() => setCheckinOpen(true)}
-              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ring-2 ring-primary/30 font-semibold"
-            >
-              <ClipboardCheck className="w-4 h-4" />
-              {t('seat.checkin')}
-            </Button>
-          )}
-        </div>
-
-        {/* 5. 组织图例 */}
-        {organizationLegend.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
-            {organizationLegend.map(([organization, colorClass]) => (
-              <span key={organization} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border border-border/60 text-xs">
-                <span className={`inline-block w-2 h-2 rounded-full bg-current ${colorClass}`} />
-                <span className={colorClass}>{organization}</span>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* 6. 座位可视化与主内容区 */}
-        <div ref={printRef}>
-          <div className="mb-4 flex items-center justify-center gap-3">
-            <div className="cursor-default select-none" title={windowOnLeft ? t('seat.window') : t('seat.door')}>
-              {windowOnLeft ? <span className={sideIconClass}>🪟</span> : <span className={sideIconClass}>🚪</span>}
-            </div>
-            <div className="bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
-              {t('seat.podium')}
-            </div>
-            <div className="cursor-default select-none" title={windowOnLeft ? t('seat.door') : t('seat.window')}>
-              {windowOnLeft ? <span className={sideIconClass}>🚪</span> : <span className={sideIconClass}>🪟</span>}
-            </div>
-          </div>
-          {seats.length > 0 ? (
-            <div className="overflow-auto pb-2">
-              <div className="flex justify-center">
-                <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
-                  <div className="flex items-center shrink-0">
-                    <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
-                      <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>
-                      <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.windowSide') : t('seat.doorSide')}</span>
-                    </div>
+                <span>排座策略设置</span>
+                <span className={`transition-transform ${strategyOpen ? '' : 'rotate-90'}`}>▼</span>
+              </button>
+              {strategyOpen && (
+                <div className="px-4 pb-4 pt-2">
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
+                      名称
+                      <Input
+                        type="text"
+                        value={recordName}
+                        onChange={e => setRecordName(e.target.value)}
+                        placeholder="输入名称（用于保存历史和导出文件名）"
+                        className="h-8 w-full sm:w-72"
+                      />
+                    </label>
+                    {MODES.map(m => (
+                      <button key={m.id} onClick={() => setMode(m.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${mode === m.id ? 'bg-primary text-primary-foreground border-primary shadow-soft' : 'bg-card text-muted-foreground border-border hover:text-foreground hover:bg-muted'}`}
+                        title={m.desc}>{m.icon}{m.label}</button>
+                    ))}
+                    {needsGroupCount && (
+                      <>
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                          分组来源
+                          <select
+                            value={groupSource}
+                            onChange={e => setGroupSource(e.target.value as SeatGroupSource)}
+                            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                          >
+                            <option value="auto">自动（优先分组，其次建队）</option>
+                            <option value="groups">已分组结果</option>
+                            <option value="teams">已建队结果</option>
+                            <option value="count">按组数临时分组</option>
+                          </select>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                          {t('seat.groups')}
+                          <Input type="number" min={2} max={10} value={groupCount} onChange={e => setGroupCount(Math.max(2, Math.min(10, Number(e.target.value))))} className="w-14 h-8 text-center" />
+                        </label>
+                      </>
+                    )}
+                    {isExamMode && (
+                      <>
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                          <input type="checkbox" checked={examSkipRow} onChange={e => setExamSkipRow(e.target.checked)} className="accent-primary" />
+                          {t('seat.skipRow')}
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                          <input type="checkbox" checked={examSkipCol} onChange={e => setExamSkipCol(e.target.checked)} className="accent-primary" />
+                          {t('seat.skipCol')}
+                        </label>
+                      </>
+                    )}
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {t('seat.startFrom')}
+                      <select value={startFrom} onChange={e => setStartFrom(e.target.value as StartFrom)} className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm">
+                        <option value="door">{t('seat.fromDoor')}</option>
+                        <option value="window">{t('seat.fromWindow')}</option>
+                        <option value="center">居中开始</option>
+                      </select>
+                    </label>
+                    {mode === 'smartCluster' && (
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                        智慧集中策略
+                        <select
+                          value={smartClusterStrategy}
+                          onChange={e => setSmartClusterStrategy(e.target.value as SmartClusterStrategy)}
+                          className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                        >
+                          <option value="orgFrontWeighted">策略1：前排优先 + 按单位人数分列</option>
+                          <option value="classic">经典聚类</option>
+                        </select>
+                      </label>
+                    )}
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      性别排座
+                      <select
+                        value={genderSeatPolicy}
+                        onChange={e => setGenderSeatPolicy(e.target.value as GenderSeatPolicy)}
+                        className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                      >
+                        <option value="none">不限制</option>
+                        <option value="alternate">男女间隔</option>
+                        <option value="cluster">男女集中</option>
+                        <option value="alternateRows">男女隔行</option>
+                      </select>
+                    </label>
+                    {genderSeatPolicy !== 'none' && (
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                        起始性别
+                        <select
+                          value={genderFirst}
+                          onChange={e => setGenderFirst(e.target.value as GenderFirst)}
+                          className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                        >
+                          <option value="male">男生在前</option>
+                          <option value="female">女生在前</option>
+                        </select>
+                      </label>
+                    )}
+                    <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                      性别标识
+                      <select
+                        value={genderMarkerStyle}
+                        onChange={e => setGenderMarkerStyle(e.target.value as GenderMarkerStyle)}
+                        className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+                      >
+                        <option value="suffix">后缀样式</option>
+                        <option value="badge">徽章样式</option>
+                      </select>
+                    </label>
+                    {genderSeatPolicy === 'alternateRows' && (
+                      <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={centerRowsByGender}
+                          onChange={e => setCenterRowsByGender(e.target.checked)}
+                          className="accent-primary"
+                        />
+                        居中排列
+                      </label>
+                    )}
+                    {genderSeatPolicy !== 'none' && (
+                      <div className="text-xs text-muted-foreground rounded-md border border-border/60 px-2 py-1 bg-background/70">
+                        男 {genderStats.male} / 女 {genderStats.female} / 未知 {genderStats.unknown}
+                      </div>
+                    )}
                   </div>
-                  <div className="shrink-0">{buildVisualGrid()}</div>
-                  <div className="flex items-center shrink-0">
-                    <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
-                      <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
-                      <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 4. 操作区卡片 */}
+            <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10 flex flex-wrap gap-3 items-center">
+              <Button onClick={autoSeat} className="gap-2">
+                <LayoutGrid className="w-4 h-4" /> {t('seat.autoSeat')}
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
+                }}
+                title="清空所有座位"
+              >
+                <X className="w-4 h-4" /> 清空座位
+              </Button>
+              <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2" disabled={seats.length === 0}>
+                <Save className="w-4 h-4" /> 保存历史
+              </Button>
+              <select
+                value={selectedHistoryId}
+                onChange={e => setSelectedHistoryId(e.target.value)}
+                className="h-8 min-w-0 max-w-60 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              >
+                <option value="">选择历史记录</option>
+                {historyItems.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}（{new Date(item.createdAt).toLocaleString()}）
+                  </option>
+                ))}
+              </select>
+              <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2">
+                <RotateCcw className="w-4 h-4" /> 恢复历史
+              </Button>
+              {seats.length > 0 && (
+                <ExportButtons
+                  targetRef={printRef}
+                  filename={recordName.trim() || t('seat.exportName')}
+                  resolveQrCode={resolveQrCode}
+                  titleValue={recordName}
+                  onTitleChange={setRecordName}
+                  hideTitleInput
+                />
+              )}
+              {seats.length > 0 && (
+                <Button
+                  onClick={() => setCheckinOpen(true)}
+                  className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md ring-2 ring-primary/30 font-semibold"
+                >
+                  <ClipboardCheck className="w-4 h-4" />
+                  {t('seat.checkin')}
+                </Button>
+              )}
+            </div>
+
+            {/* 5. 组织图例 */}
+            {organizationLegend.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
+                {organizationLegend.map(([organization, colorClass]) => (
+                  <span key={organization} className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-background border border-border/60 text-xs">
+                    <span className={`inline-block w-2 h-2 rounded-full bg-current ${colorClass}`} />
+                    <span className={colorClass}>{organization}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* 6. 座位可视化与主内容区 */}
+            <div ref={printRef}>
+              <div className="mb-4 flex items-center justify-center gap-3">
+                <div className="cursor-default select-none" title={windowOnLeft ? t('seat.window') : t('seat.door')}>
+                  {windowOnLeft ? <span className={sideIconClass}>🪟</span> : <span className={sideIconClass}>🚪</span>}
+                </div>
+                <div className="bg-primary/10 text-primary px-8 py-2 rounded-lg text-sm font-medium border border-primary/20">
+                  {t('seat.podium')}
+                </div>
+                <div className="cursor-default select-none" title={windowOnLeft ? t('seat.door') : t('seat.window')}>
+                  {windowOnLeft ? <span className={sideIconClass}>🚪</span> : <span className={sideIconClass}>🪟</span>}
+                </div>
+              </div>
+              {seats.length > 0 ? (
+                <div className="overflow-auto pb-2">
+                  <div className="flex justify-center">
+                    <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
+                      <div className="flex items-center shrink-0">
+                        <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>
+                          <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.windowSide') : t('seat.doorSide')}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0">{buildVisualGrid()}</div>
+                      <div className="flex items-center shrink-0">
+                        <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
+                          <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-20 text-muted-foreground">
+                  <p className="text-lg mb-2">{t('seat.emptyTitle')}</p>
+                  <p className="text-sm">{t('seat.emptyDesc')}</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-20 text-muted-foreground">
-              <p className="text-lg mb-2">{t('seat.emptyTitle')}</p>
-              <p className="text-sm">{t('seat.emptyDesc')}</p>
-            </div>
-          )}
-        </div>
-        {seats.length > 0 && (
-          <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
+            {seats.length > 0 && (
+              <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
+            )}
+            <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
+              sceneConfig={exportSceneConfig} className={recordName.trim() || exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
+          </>
         )}
-        <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
-          sceneConfig={exportSceneConfig} className={recordName.trim() || exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
 
         {/* 7. 其它场景渲染 */}
         {scene === 'smartClassroom' && (
