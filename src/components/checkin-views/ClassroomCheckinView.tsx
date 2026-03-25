@@ -138,29 +138,59 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
       </div>
       <div ref={seatContainerRef} className="seat-checkin-surface overflow-auto pb-4 rounded-lg border border-border/60 bg-muted/20">
         <div className="inline-grid gap-1 min-w-max min-h-max shrink-0 p-2" style={{
-          gridTemplateColumns: `repeat(${totalVisualCols}, 2.5rem)`,
+          gridTemplateColumns: `repeat(${totalVisualCols + 2}, 2.5rem)`,
+          gridTemplateRows: `repeat(${rows + 2}, 2.5rem)`,
         }}>
-          {Array.from({ length: rows }).flatMap((_, ri) =>
-            Array.from({ length: cols }).map((_, ci) => {
-              const seatName = seats[ri]?.[ci] ?? null;
-              const isMine = isMyPos(ri, ci);
-              const onPath = isOnPath(ri, ci) && !isMine;
-              const isDoor = entryDoors.some(d => d.row === ri && d.col === ci);
-              return (
-                <div key={`${ri}-${ci}`} style={{
-                  gridRow: getVisualRow(ri) + 1,
-                  gridColumn: realToVisualCol(ci) + 1,
-                }} data-my-seat={isMine ? 'true' : undefined} className={`w-10 h-8 rounded text-xs flex items-center justify-center border transition-all ${
-                  isMine ? 'bg-primary text-primary-foreground border-primary font-bold shadow-lg scale-110 z-10 ring-2 ring-primary/40'
-                  : onPath ? 'bg-primary/20 border-primary/40 text-primary/80'
-                  : isDoor ? 'bg-accent border-accent-foreground/20 text-accent-foreground'
-                  : seatName ? 'bg-card border-border text-foreground/60'
-                  : 'bg-muted/30 border-dashed border-border/50 text-muted-foreground/40'
-                }`}>
-                  {isDoor && !isMine ? <Navigation className="w-3 h-3" />
-                    : <span className={`${isMine ? 'text-[10px] sm:text-xs font-bold' : 'text-[9px] sm:text-[10px]'} px-0.5 leading-tight whitespace-nowrap`}>{isMine ? seatName : (seatName || '')}</span>}
-                </div>
-              );
+          {/* 渲染虚拟走道（四周）和走道格子 */}
+          {Array.from({ length: rows + 2 }).flatMap((_, ri) =>
+            Array.from({ length: cols + 2 }).map((_, ci) => {
+              // 虚拟走道区域
+              const isVirtualAisle = ri === 0 || ri === rows + 1 || ci === 0 || ci === cols + 1;
+              // 真实座位区
+              const realRow = ri - 1;
+              const realCol = ci - 1;
+              // 走道列/行
+              const isColAisle = !isVirtualAisle && colAisles.includes(realCol);
+              const isRowAisle = !isVirtualAisle && rowAisles.includes(realRow);
+              // 渲染座位
+              if (!isVirtualAisle && !isColAisle && !isRowAisle) {
+                const seatName = seats[realRow]?.[realCol] ?? null;
+                const isMine = isMyPos(realRow, realCol);
+                const onPath = isOnPath(realRow, realCol) && !isMine;
+                const isDoor = entryDoors.some(d => d.row === realRow && d.col === realCol);
+                return (
+                  <div key={`seat-${realRow}-${realCol}`} style={{
+                    gridRow: ri + 1,
+                    gridColumn: ci + 1,
+                  }} data-my-seat={isMine ? 'true' : undefined} className={`w-10 h-8 rounded text-xs flex items-center justify-center border transition-all ${
+                    isMine ? 'bg-primary text-primary-foreground border-primary font-bold shadow-lg scale-110 z-10 ring-2 ring-primary/40'
+                    : onPath ? 'bg-primary/20 border-primary/40 text-primary/80'
+                    : isDoor ? 'bg-accent border-accent-foreground/20 text-accent-foreground'
+                    : seatName ? 'bg-card border-border text-foreground/60'
+                    : 'bg-muted/30 border-dashed border-border/50 text-muted-foreground/40'
+                  }`}>
+                    {isDoor && !isMine ? <Navigation className="w-3 h-3" />
+                      : <span className={`${isMine ? 'text-[10px] sm:text-xs font-bold' : 'text-[9px] sm:text-[10px]'} px-0.5 leading-tight whitespace-nowrap`}>{isMine ? seatName : (seatName || '')}</span>}
+                  </div>
+                );
+              }
+              // 渲染走道格子
+              if (isVirtualAisle || isColAisle || isRowAisle) {
+                // 路径高亮分段：走道路径高亮
+                const onPath = isVirtualAisle
+                  ? false
+                  : (isColAisle && pathCells.some(p => p.r === realRow && p.c === ci - 1))
+                    || (isRowAisle && pathCells.some(p => p.r === ri - 1 && p.c === realCol));
+                return (
+                  <div key={`aisle-${ri}-${ci}`} style={{
+                    gridRow: ri + 1,
+                    gridColumn: ci + 1,
+                  }} className={`w-10 h-8 rounded border border-dashed border-primary/30 bg-yellow-50/60 flex items-center justify-center text-[10px] text-yellow-700 ${onPath ? 'bg-yellow-200/80 border-yellow-500/80' : ''}`}>
+                    {(isVirtualAisle || isColAisle || isRowAisle) && <span>走道</span>}
+                  </div>
+                );
+              }
+              return null;
             })
           )}
         </div>
