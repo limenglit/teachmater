@@ -147,6 +147,7 @@ export default function SeatCheckinDialog({
   const [sessionSeatData, setSessionSeatData] = useState<unknown | null>(null);
   const [historySessions, setHistorySessions] = useState<SeatCheckinSessionSummary[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(5);
+  const [unlimited, setUnlimited] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
@@ -180,7 +181,7 @@ export default function SeatCheckinDialog({
 
     let remaining = 0;
     if (currentSession.status === 'active') {
-      if (currentSession.duration_minutes === -1) {
+      if (currentSession.duration_minutes >= 99999) {
         remaining = -1; // 无限时长
       } else {
         remaining = Math.max(
@@ -232,7 +233,7 @@ export default function SeatCheckinDialog({
 
   useEffect(() => {
     if (!currentSession || currentSession.status !== 'active' || timeLeft === null) return;
-    if (currentSession.duration_minutes === -1) return; // 无限时长，不自动结束
+    if (currentSession.duration_minutes >= 99999) return; // 无限时长，不自动结束
     if (timeLeft <= 0) {
       void handleEndSession();
       return;
@@ -251,12 +252,13 @@ export default function SeatCheckinDialog({
 
     setLoading(true);
     try {
+      const minutes = unlimited ? 99999 : durationMinutes;
       const created = await createSeatCheckinSession({
         seatData,
         studentNames,
         sceneConfig,
         sceneType,
-        durationMinutes,
+        durationMinutes: minutes,
         className,
       });
       setCurrentSession(created.session);
@@ -378,20 +380,29 @@ export default function SeatCheckinDialog({
             </p>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">签到时长</span>
-              <Input
-                type="number"
-                min={-1}
-                max={120}
-                value={durationMinutes}
-                onChange={e => {
-                  let v = Number(e.target.value) || 1;
-                  if (v < -1) v = -1;
-                  if (v > 120) v = 120;
-                  setDurationMinutes(v);
-                }}
-                className="h-9 w-20 text-center"
-              />
-              <span className="text-sm text-muted-foreground">{durationMinutes === -1 ? '不限/需手动结束' : '分钟'}</span>
+              <label className="flex items-center gap-1 text-xs">
+                <input type="checkbox" checked={unlimited} onChange={e => setUnlimited(e.target.checked)} className="accent-primary" />
+                不限制时长
+              </label>
+              {!unlimited && (
+                <>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={durationMinutes}
+                    onChange={e => {
+                      let v = Number(e.target.value) || 1;
+                      if (v < 1) v = 1;
+                      if (v > 120) v = 120;
+                      setDurationMinutes(v);
+                    }}
+                    className="h-9 w-20 text-center"
+                  />
+                  <span className="text-sm text-muted-foreground">分钟</span>
+                </>
+              )}
+              {unlimited && <span className="text-sm text-muted-foreground">不限/需手动结束</span>}
             </div>
             <div className="text-xs text-muted-foreground pl-1 pb-1">输入 -1 表示签到不限时长，需手动结束</div>
 
