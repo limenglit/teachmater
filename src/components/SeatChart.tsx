@@ -1066,6 +1066,16 @@ export default function SeatChart() {
           <Button onClick={autoSeat} className="gap-2 ml-auto">
             <LayoutGrid className="w-4 h-4" /> {t('seat.autoSeat')}
           </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
+            }}
+            title="清空所有座位"
+          >
+            <X className="w-4 h-4" /> 清空座位
+          </Button>
         </div>
 
         {(colAisles.length > 0 || rowAisles.length > 0) && (
