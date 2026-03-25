@@ -25,6 +25,7 @@ interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
   frontDoorPosition?: 'top' | 'bottom' | 'left' | 'right';
   backDoorPosition?: 'top' | 'bottom' | 'left' | 'right';
+  entryDoorMode?: 'front' | 'back' | 'both';
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
@@ -46,7 +47,7 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
   };
 }
 
-export default function SmartClassroom({ students, frontDoorPosition = 'top', backDoorPosition = 'bottom' }: Props) {
+export default function SmartClassroom({ students, frontDoorPosition = 'top', backDoorPosition = 'bottom', entryDoorMode = 'front' }: Props) {
   const initialTableCount = Math.max(1, Math.ceil(students.length / 6));
   const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
@@ -974,11 +975,14 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
                 if (frontDoorPosition === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
                 if (frontDoorPosition === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 16) };
                 if (frontDoorPosition === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
+                // 高亮可入场门
+                const highlight = entryDoorMode === 'front' || entryDoorMode === 'both';
                 return (
                   <div
-                    className={refBadgeClass}
+                    className={refBadgeClass + (highlight ? ' ring-2 ring-green-500 ring-offset-2' : '')}
                     style={style}
                     onMouseDown={e => startRefDrag(e, 'frontDoor')}
+                    title={highlight ? '学生可从此门入场' : undefined}
                   >
                     <span className={refIconClass}>🚪</span>
                     <span className={refTextClass}>前门</span>
@@ -993,11 +997,14 @@ export default function SmartClassroom({ students, frontDoorPosition = 'top', ba
                 if (backDoorPosition === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
                 if (backDoorPosition === 'left') style = { left: 8, top: Math.round(roomHeight / 2 + 24) };
                 if (backDoorPosition === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 + 24) };
+                // 高亮可入场门
+                const highlight = entryDoorMode === 'back' || entryDoorMode === 'both';
                 return (
                   <div
-                    className={refBadgeClass}
+                    className={refBadgeClass + (highlight ? ' ring-2 ring-green-500 ring-offset-2' : '')}
                     style={style}
                     onMouseDown={e => startRefDrag(e, 'backDoor')}
+                    title={highlight ? '学生可从此门入场' : undefined}
                   >
                     <span className={refIconClass}>🚪</span>
                     <span className={refTextClass}>后门</span>
