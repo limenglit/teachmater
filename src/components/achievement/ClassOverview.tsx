@@ -57,7 +57,7 @@ export default function ClassOverview({ analyticsData, rules, getRawCount }: Pro
 
   const getDimIcon = (key: DimensionKey) => {
     const icons: Record<DimensionKey, string> = {
-      board_participate: '🎨', board_quality: '❤️', task_complete: '✅',
+      board_participate: '🎨', board_quality: '❤️', board_comment: '💭', task_complete: '✅',
       barrage_participate: '💬', quiz_participate: '📝', checkin: '📋',
     };
     return icons[key];

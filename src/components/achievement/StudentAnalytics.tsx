@@ -41,6 +41,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
   // Raw data
   const [boardCounts, setBoardCounts] = useState<Record<string, number>>({});
   const [boardLikes, setBoardLikes] = useState<Record<string, number>>({});
+  const [boardCommentCounts, setBoardCommentCounts] = useState<Record<string, number>>({});
   const [taskCounts, setTaskCounts] = useState<Record<string, number>>({});
   const [barrageCounts, setBarrageCounts] = useState<Record<string, number>>({});
   const [quizCounts, setQuizCounts] = useState<Record<string, number>>({});
@@ -66,8 +67,9 @@ export default function StudentAnalytics({ studentNames }: Props) {
 
     try {
       // Query all data sources in parallel
-      const [boardRes, taskRes, barrageRes, quizRes, checkinRes, seatCheckinRes] = await Promise.all([
+      const [boardRes, boardCommentRes, taskRes, barrageRes, quizRes, checkinRes, seatCheckinRes] = await Promise.all([
         supabase.from('board_cards').select('author_nickname, likes_count').gte('created_at', fromISO).lte('created_at', toISO).in('author_nickname', studentNames),
+        supabase.from('board_comments').select('author_nickname, created_at').gte('created_at', fromISO).lte('created_at', toISO).in('author_nickname', studentNames),
         supabase.from('task_completions').select('student_name').gte('completed_at', fromISO).lte('completed_at', toISO).in('student_name', studentNames),
         supabase.from('barrage_messages').select('nickname').gte('created_at', fromISO).lte('created_at', toISO).in('nickname', studentNames),
         supabase.from('quiz_answers').select('student_name, session_id').gte('created_at', fromISO).lte('created_at', toISO).in('student_name', studentNames),
@@ -84,6 +86,13 @@ export default function StudentAnalytics({ studentNames }: Props) {
       });
       setBoardCounts(bc);
       setBoardLikes(bl);
+
+      // Board comments
+      const bcc: Record<string, number> = {};
+      (boardCommentRes.data || []).forEach((row: any) => {
+        bcc[row.author_nickname] = (bcc[row.author_nickname] || 0) + 1;
+      });
+      setBoardCommentCounts(bcc);
 
       // Task completions
       const tc: Record<string, number> = {};
@@ -135,6 +144,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
       const dims: Record<DimensionKey, number> = {
         board_participate: (boardCounts[name] || 0) * (rules.board_participate.points_per || 0),
         board_quality: (boardLikes[name] || 0) * (rules.board_quality.points_per_like || 0),
+        board_comment: (boardCommentCounts[name] || 0) * (rules.board_comment.points_per || 0),
         task_complete: (taskCounts[name] || 0) * (rules.task_complete.points_per || 0),
         barrage_participate: (barrageCounts[name] || 0) * (rules.barrage_participate.points_per || 0),
         quiz_participate: (quizCounts[name] || 0) * (rules.quiz_participate.points_per || 0),
@@ -149,13 +159,14 @@ export default function StudentAnalytics({ studentNames }: Props) {
 
       return { name, ...dims, totalScore };
     }).sort((a, b) => b.totalScore - a.totalScore);
-  }, [studentNames, boardCounts, boardLikes, taskCounts, barrageCounts, quizCounts, checkinCounts, rules]);
+  }, [studentNames, boardCounts, boardLikes, boardCommentCounts, taskCounts, barrageCounts, quizCounts, checkinCounts, rules]);
 
   // Get raw counts for display
   const getRawCount = (name: string, dim: DimensionKey): number => {
     switch (dim) {
       case 'board_participate': return boardCounts[name] || 0;
       case 'board_quality': return boardLikes[name] || 0;
+      case 'board_comment': return boardCommentCounts[name] || 0;
       case 'task_complete': return taskCounts[name] || 0;
       case 'barrage_participate': return barrageCounts[name] || 0;
       case 'quiz_participate': return quizCounts[name] || 0;
@@ -190,7 +201,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
 
   const getDimIcon = (key: DimensionKey) => {
     const icons: Record<DimensionKey, string> = {
-      board_participate: '🎨', board_quality: '❤️', task_complete: '✅',
+      board_participate: '🎨', board_quality: '❤️', board_comment: '💭', task_complete: '✅',
       barrage_participate: '💬', quiz_participate: '📝', checkin: '📋',
     };
     return icons[key];
