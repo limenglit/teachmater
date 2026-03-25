@@ -329,18 +329,6 @@ export default function SmartClassroom({
     return Array.from({ length: tableCount }, (_, i) => i);
   };
 
-  const seatByLastGroups = () => {
-    const cachedGroups = loadLastGroups();
-    if (cachedGroups.length === 0) {
-      toast.error('暂无已保存分组');
-      return;
-    }
-    const ok = applyGroupsToSeat(cachedGroups);
-    if (ok) {
-      toast.success('已按分组一桌生成座位');
-    }
-  };
-
   const autoSeat = (shuffle = false) => {
     const names = shuffle
       ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5)
