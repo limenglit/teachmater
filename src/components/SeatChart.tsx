@@ -1,6 +1,3 @@
-  // 新增：学生入场门选择
-  type EntryDoorMode = 'front' | 'back' | 'both';
-  const [entryDoorMode, setEntryDoorMode] = useState<EntryDoorMode>('front');
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -30,6 +27,7 @@ import {
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
+type EntryDoorMode = 'front' | 'back' | 'both';
 type StartFrom = 'door' | 'window' | 'center';
 type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
 type GenderFirst = 'male' | 'female';
@@ -74,6 +72,7 @@ export default function SeatChart() {
     { id: 'exam', label: t('seatMode.exam'), icon: <BookOpen className="w-3.5 h-3.5" />, desc: t('seatMode.examDesc') },
   ];
 
+  const [entryDoorMode, setEntryDoorMode] = useState<EntryDoorMode>('front');
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [scene, setScene] = useState<SceneType>('classroom');
   const [rows, setRows] = useState(10);
