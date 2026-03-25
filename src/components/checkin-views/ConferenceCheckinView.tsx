@@ -83,12 +83,39 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
 
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
-  // 只显示签到成功提示
+  // 显示签到成功、座位位置和导航指示
+  const sideLabel = myPos.side === 'top' ? '上方' : myPos.side === 'bottom' ? '下方'
+    : myPos.side === 'head-left' ? '左侧主位' : '右侧主位';
   return (
-    <div className="flex flex-col items-center justify-center py-16">
-      <div className="text-3xl mb-4">✅</div>
-      <div className="text-xl font-bold text-primary mb-2">签到成功</div>
-      <div className="text-sm text-muted-foreground">欢迎参加会议，{studentName}！</div>
+    <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="text-3xl mb-2">✅</div>
+      <div className="text-xl font-bold text-primary">签到成功</div>
+      <div className="text-base text-foreground">{studentName}，你的座位在 <strong>{sideLabel}{myPos.side === 'top' || myPos.side === 'bottom' ? ` · 第${myPos.index + 1}位` : ''}</strong></div>
+      <div className="text-sm text-muted-foreground">请从门口进入，沿黄色路径找到你的座位</div>
+      <div className="mt-4 w-full max-w-md flex flex-col items-center">
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground mb-2">
+          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
+          {entryDoors.map((d, idx) => (
+            <span key={idx} className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-green-400/60 border border-green-600/30 inline-block" /> {d.label}</span>
+          ))}
+          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-sky-400/40 border border-sky-600/30 inline-block" /> {window.label}</span>
+          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-yellow-300/60 border border-yellow-600/30 inline-block" /> 导航路径</span>
+        </div>
+        {/* 简化版SVG导航示意图 */}
+        <svg width="320" height="100" viewBox="0 0 320 100" className="my-2">
+          {/* 门口 */}
+          <rect x="150" y="10" width="40" height="20" rx="6" className="fill-green-200/80 stroke-green-600/40" strokeWidth="2" />
+          <text x="170" y="25" textAnchor="middle" dominantBaseline="middle" className="fill-green-700 text-xs font-bold">门口</text>
+          {/* 路径高亮 */}
+          <polyline points="170,30 170,80" fill="none" stroke="#facc15" strokeWidth="5" strokeDasharray="8 6" opacity="0.85" />
+          {/* 会议桌 */}
+          <rect x="110" y="80" width="120" height="16" rx="8" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
+          <text x="170" y="88" textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-semibold">会议桌</text>
+          {/* 我的座位高亮 */}
+          <circle cx="170" cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
+          <text x="170" y="91" textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground text-xs font-bold">你</text>
+        </svg>
+      </div>
     </div>
   );
 }
