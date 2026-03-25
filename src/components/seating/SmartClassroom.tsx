@@ -56,11 +56,13 @@ export default function SmartClassroom({
 }: Props) {
   // 门窗位置状态
   const [frontDoor, setFrontDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(frontDoorPosition);
-  const [backDoor, setBackDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(backDoorPosition);
-  const [windowPos, setWindowPos] = useState<'left' | 'right'>('left');
+  // 保证后门与前门不重叠
+  const [backDoor, setBackDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(backDoorPosition === frontDoorPosition ? (backDoorPosition === 'right' ? 'left' : 'right') : backDoorPosition);
+  // 窗户自动避开门
+  const [windowPos, setWindowPos] = useState<'left' | 'right'>(frontDoorPosition === 'left' ? 'right' : 'left');
   const [entryDoor, setEntryDoor] = useState<'front' | 'back' | 'both'>(entryDoorMode);
-  // 默认讲台隐藏
-  const [showPodium, setShowPodium] = useState(false);
+  // 讲台彻底移除
+  // const [showPodium, setShowPodium] = useState(false);
   const initialTableCount = Math.max(1, Math.ceil(students.length / 6));
   const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
@@ -785,15 +787,22 @@ export default function SmartClassroom({
       }}
     >
       {/* 结构设置分区 */}
-      <div className="mb-4 p-4 rounded-xl border border-border/60 bg-muted/10">
-        <div className="font-semibold text-base mb-2">教室结构设置</div>
+      <div className="mb-4 p-4 rounded-2xl border border-border/60 bg-gradient-to-br from-blue-50 via-white to-emerald-50 shadow-sm">
+        <div className="font-semibold text-lg mb-3 tracking-wide text-primary">教室结构设置</div>
         <div className="flex flex-wrap gap-4 items-center mb-2">
-          <label className="flex items-center gap-1 text-sm">
-            前门位置：
+          <label className="flex items-center gap-1 text-base">
+            前门：
             <select
               value={frontDoor}
-              onChange={e => setFrontDoor(e.target.value as any)}
-              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              onChange={e => {
+                const val = e.target.value as any;
+                setFrontDoor(val);
+                // 自动避免后门重叠
+                if (val === backDoor) setBackDoor(val === 'right' ? 'left' : 'right');
+                // 窗户自动避开门
+                if (val === windowPos) setWindowPos(val === 'left' ? 'right' : 'left');
+              }}
+              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
             >
               <option value="top">上方</option>
               <option value="bottom">下方</option>
@@ -801,12 +810,17 @@ export default function SmartClassroom({
               <option value="right">右侧</option>
             </select>
           </label>
-          <label className="flex items-center gap-1 text-sm">
-            后门位置：
+          <label className="flex items-center gap-1 text-base">
+            后门：
             <select
               value={backDoor}
-              onChange={e => setBackDoor(e.target.value as any)}
-              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              onChange={e => {
+                const val = e.target.value as any;
+                setBackDoor(val);
+                if (val === frontDoor) setFrontDoor(val === 'right' ? 'left' : 'right');
+                if (val === windowPos) setWindowPos(val === 'left' ? 'right' : 'left');
+              }}
+              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
             >
               <option value="top">上方</option>
               <option value="bottom">下方</option>
@@ -814,37 +828,29 @@ export default function SmartClassroom({
               <option value="right">右侧</option>
             </select>
           </label>
-          <label className="flex items-center gap-1 text-sm">
-            学生入场门：
+          <label className="flex items-center gap-1 text-base">
+            入场门：
             <select
               value={entryDoor}
               onChange={e => setEntryDoor(e.target.value as any)}
-              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
             >
               <option value="front">仅前门</option>
               <option value="back">仅后门</option>
               <option value="both">前后门都可</option>
             </select>
           </label>
-          <label className="flex items-center gap-1 text-sm">
-            窗位置：
+          <label className="flex items-center gap-1 text-base">
+            窗户：
             <select
               value={windowPos}
               onChange={e => setWindowPos(e.target.value as any)}
-              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
             >
               <option value="left">左侧</option>
               <option value="right">右侧</option>
             </select>
           </label>
-          <button
-            className="p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            title="切换窗/门位置"
-            onClick={() => setWindowPos(p => (p === 'left' ? 'right' : 'left'))}
-            type="button"
-          >
-            <ArrowRightLeft className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -1034,35 +1040,26 @@ export default function SmartClassroom({
                 </div>
               )}
 
-              {showPodium && (
-                <div
-                  className={refBadgeClass}
-                  style={{ left: refPositions.podium.x, top: refPositions.podium.y }}
-                  onMouseDown={e => startRefDrag(e, 'podium')}
-                >
-                  <span className={refIconClass}>🏫</span>
-                  <span className={refTextClass}>讲台</span>
-                </div>
-              )}
+
 
               {/* 前门渲染 */}
               {refVisible.frontDoor && (() => {
                 let style: React.CSSProperties = {};
                 if (frontDoor === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
                 if (frontDoor === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
-                if (frontDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 16) };
-                if (frontDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
+                if (frontDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 - 48) };
+                if (frontDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 48) };
                 // 高亮可入场门
                 const highlight = entryDoor === 'front' || entryDoor === 'both';
                 return (
                   <div
-                    className={refBadgeClass + (highlight ? ' ring-2 ring-green-500 ring-offset-2' : '')}
-                    style={style}
+                    className={refBadgeClass + (highlight ? ' ring-4 ring-green-400/80 ring-offset-2 animate-pulse' : '')}
+                    style={{...style, zIndex: 10, background: 'linear-gradient(90deg,#e0ffe0 0%,#fff 100%)'}}
                     onMouseDown={e => startRefDrag(e, 'frontDoor')}
                     title={highlight ? '学生可从此门入场' : undefined}
                   >
-                    <span className={refIconClass}>🚪</span>
-                    <span className={refTextClass}>前门</span>
+                    <span className={refIconClass + ' text-green-700 bg-green-100'}>🚪</span>
+                    <span className={refTextClass + ' font-bold'}>前门</span>
                   </div>
                 );
               })()}
@@ -1072,19 +1069,19 @@ export default function SmartClassroom({
                 let style: React.CSSProperties = {};
                 if (backDoor === 'top') style = { left: Math.round(roomWidth / 2 - 47), top: 8 };
                 if (backDoor === 'bottom') style = { left: Math.round(roomWidth / 2 - 47), top: roomHeight - 32 };
-                if (backDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 + 24) };
-                if (backDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 + 24) };
+                if (backDoor === 'left') style = { left: 8, top: Math.round(roomHeight / 2 + 48) };
+                if (backDoor === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 + 48) };
                 // 高亮可入场门
                 const highlight = entryDoor === 'back' || entryDoor === 'both';
                 return (
                   <div
-                    className={refBadgeClass + (highlight ? ' ring-2 ring-green-500 ring-offset-2' : '')}
-                    style={style}
+                    className={refBadgeClass + (highlight ? ' ring-4 ring-green-400/80 ring-offset-2 animate-pulse' : '')}
+                    style={{...style, zIndex: 10, background: 'linear-gradient(90deg,#e0ffe0 0%,#fff 100%)'}}
                     onMouseDown={e => startRefDrag(e, 'backDoor')}
                     title={highlight ? '学生可从此门入场' : undefined}
                   >
-                    <span className={refIconClass}>🚪</span>
-                    <span className={refTextClass}>后门</span>
+                    <span className={refIconClass + ' text-green-700 bg-green-100'}>🚪</span>
+                    <span className={refTextClass + ' font-bold'}>后门</span>
                   </div>
                 );
               })()}
@@ -1095,12 +1092,12 @@ export default function SmartClassroom({
                 if (windowPos === 'right') style = { left: roomWidth - 94 - 8, top: Math.round(roomHeight / 2 - 16) };
                 return (
                   <div
-                    className={refBadgeClass}
-                    style={style}
+                    className={refBadgeClass + ' bg-blue-50/80'}
+                    style={{...style, zIndex: 9}}
                     onMouseDown={e => startRefDrag(e, 'window')}
                   >
-                    <span className={refIconClass}>🪟</span>
-                    <span className={refTextClass}>窗</span>
+                    <span className={refIconClass + ' text-blue-700 bg-blue-100'}>🪟</span>
+                    <span className={refTextClass + ' font-bold'}>窗</span>
                   </div>
                 );
               })()}
