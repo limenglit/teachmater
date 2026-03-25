@@ -19,10 +19,10 @@ interface ConferenceData {
 }
 
 export default function ConferenceCheckinView({ seatData, sceneConfig, studentName }: Props) {
-  // 健壮性校验
+  // 兼容 mainTop/mainBottom 字段
   const valid = seatData && typeof seatData === 'object'
-    && Array.isArray((seatData as any).top)
-    && Array.isArray((seatData as any).bottom)
+    && ((Array.isArray((seatData as any).top) && Array.isArray((seatData as any).bottom))
+      || (Array.isArray((seatData as any).mainTop) && Array.isArray((seatData as any).mainBottom)))
     && typeof (seatData as any).headLeft === 'string'
     && typeof (seatData as any).headRight === 'string';
   if (!valid) {
@@ -34,7 +34,13 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       </div>
     );
   }
-  const data = seatData as ConferenceData;
+  // 统一数据结构
+  const data = {
+    top: (seatData as any).top || (seatData as any).mainTop || [],
+    bottom: (seatData as any).bottom || (seatData as any).mainBottom || [],
+    headLeft: (seatData as any).headLeft,
+    headRight: (seatData as any).headRight,
+  };
   const seatsPerSide = (sceneConfig.seatsPerSide as number) || data.top.length;
 
   // 门窗布局，参考教室场景
