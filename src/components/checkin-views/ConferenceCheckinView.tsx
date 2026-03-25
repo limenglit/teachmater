@@ -70,28 +70,33 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
     return { side: 'right', label: '窗户' };
   }, [entryDoors]);
 
-  // 查找我的座位
+  // 查找我的座位，支持 mainTop/mainBottom，返回排、位、类型
   const myPos = useMemo(() => {
-    if (data.headLeft === studentName) return { side: 'head-left' as const, index: 0 };
-    if (data.headRight === studentName) return { side: 'head-right' as const, index: 0 };
+    if (data.headLeft === studentName) return { side: 'head-left' as const, index: 0, row: 0, label: '左侧主位' };
+    if (data.headRight === studentName) return { side: 'head-right' as const, index: 0, row: 0, label: '右侧主位' };
     const topIdx = data.top.indexOf(studentName);
-    if (topIdx >= 0) return { side: 'top' as const, index: topIdx };
+    if (topIdx >= 0) return { side: 'top' as const, index: topIdx, row: 1, label: '上方' };
     const bottomIdx = data.bottom.indexOf(studentName);
-    if (bottomIdx >= 0) return { side: 'bottom' as const, index: bottomIdx };
+    if (bottomIdx >= 0) return { side: 'bottom' as const, index: bottomIdx, row: 2, label: '下方' };
     return null;
   }, [data, studentName]);
 
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
-  // 显示签到成功、座位位置和导航指示
-  const sideLabel = myPos.side === 'top' ? '上方' : myPos.side === 'bottom' ? '下方'
-    : myPos.side === 'head-left' ? '左侧主位' : '右侧主位';
+  // 导航指示
+  let navText = '';
+  if (myPos.side === 'head-left' || myPos.side === 'head-right') {
+    navText = `请从门口进入，直接到${myPos.label}`;
+  } else {
+    navText = `请从门口进入，沿黄色路径到${myPos.label}第${myPos.index + 1}位`;
+  }
+
   return (
     <div className="flex flex-col items-center justify-center py-16 space-y-3">
       <div className="text-3xl mb-2">✅</div>
       <div className="text-xl font-bold text-primary">签到成功</div>
-      <div className="text-base text-foreground">{studentName}，你的座位在 <strong>{sideLabel}{myPos.side === 'top' || myPos.side === 'bottom' ? ` · 第${myPos.index + 1}位` : ''}</strong></div>
-      <div className="text-sm text-muted-foreground">请从门口进入，沿黄色路径找到你的座位</div>
+      <div className="text-base text-foreground">{studentName}，你的座位在 <strong>{myPos.label}{myPos.side === 'top' || myPos.side === 'bottom' ? ` · 第${myPos.index + 1}位` : ''}</strong></div>
+      <div className="text-sm text-muted-foreground">{navText}</div>
       <div className="mt-4 w-full max-w-md flex flex-col items-center">
         <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground mb-2">
           <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
@@ -101,7 +106,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
           <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-sky-400/40 border border-sky-600/30 inline-block" /> {window.label}</span>
           <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-yellow-300/60 border border-yellow-600/30 inline-block" /> 导航路径</span>
         </div>
-        {/* 简化版SVG导航示意图 */}
+        {/* 简化版SVG导航示意图，动态高亮目标座位 */}
         <svg width="320" height="100" viewBox="0 0 320 100" className="my-2">
           {/* 门口 */}
           <rect x="150" y="10" width="40" height="20" rx="6" className="fill-green-200/80 stroke-green-600/40" strokeWidth="2" />
@@ -111,9 +116,17 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
           {/* 会议桌 */}
           <rect x="110" y="80" width="120" height="16" rx="8" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
           <text x="170" y="88" textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-semibold">会议桌</text>
-          {/* 我的座位高亮 */}
-          <circle cx="170" cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
-          <text x="170" y="91" textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground text-xs font-bold">你</text>
+          {/* 我的座位高亮，左右主位特殊显示 */}
+          {myPos.side === 'head-left' && (
+            <circle cx="120" cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
+          )}
+          {myPos.side === 'head-right' && (
+            <circle cx="220" cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
+          )}
+          {(myPos.side === 'top' || myPos.side === 'bottom') && (
+            <circle cx={120 + 20 * myPos.index} cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
+          )}
+          <text x={myPos.side === 'head-left' ? 120 : myPos.side === 'head-right' ? 220 : 120 + 20 * myPos.index} y="91" textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground text-xs font-bold">你</text>
         </svg>
       </div>
     </div>
