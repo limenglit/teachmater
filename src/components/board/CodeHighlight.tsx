@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react';
 
 const EXT_TO_PRISM: Record<string, string> = {
   c: 'c',
@@ -212,7 +212,7 @@ export default function CodeHighlight({ code, ext, initialMaxHeight = 256 }: Pro
   );
 
   const onDragStart = useCallback(
-    (event: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    (event: ReactMouseEvent<HTMLDivElement> | ReactTouchEvent<HTMLDivElement>) => {
       const clientY = 'touches' in event ? event.touches[0]?.clientY : event.clientY;
       if (typeof clientY !== 'number') return;
 
