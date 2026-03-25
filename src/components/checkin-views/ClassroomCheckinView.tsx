@@ -13,6 +13,9 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const config = sceneConfig as {
     rows: number; cols: number; windowOnLeft: boolean;
     colAisles: number[]; rowAisles: number[];
+    entryDoorMode?: 'front' | 'back' | 'both';
+    frontDoorPosition?: 'top' | 'bottom' | 'left' | 'right';
+    backDoorPosition?: 'top' | 'bottom' | 'left' | 'right';
   };
 
   const myPosition = useMemo(() => {
@@ -28,55 +31,73 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const cols = config.cols || (seats[0]?.length ?? 8);
   const colAisles = config.colAisles || [];
   const rowAisles = config.rowAisles || [];
-  const doorCol = config.windowOnLeft ? cols - 1 : 0;
-  const doorRow = rows - 1;
+  // 支持 entryDoorMode: 'front' | 'back' | 'both'
+  // 默认前门在上方（row 0），后门在下方（row rows-1）
+  let entryDoors: Array<{ row: number; col: number; label: string }> = [];
+  const entryDoorMode = config.entryDoorMode || 'front';
+  // 仅支持左右门时 col，前后门时 row
+  if (entryDoorMode === 'front') {
+    entryDoors = [{ row: 0, col: config.windowOnLeft ? cols - 1 : 0, label: '前门' }];
+  } else if (entryDoorMode === 'back') {
+    entryDoors = [{ row: rows - 1, col: config.windowOnLeft ? cols - 1 : 0, label: '后门' }];
+  } else if (entryDoorMode === 'both') {
+    entryDoors = [
+      { row: 0, col: config.windowOnLeft ? cols - 1 : 0, label: '前门' },
+      { row: rows - 1, col: config.windowOnLeft ? cols - 1 : 0, label: '后门' },
+    ];
+  }
 
+  // 计算所有门到目标座位的最短路径，选择最近的门
   const pathCells = useMemo(() => {
-    if (!myPosition) return [];
-
+    if (!myPosition || entryDoors.length === 0) return [];
     const keyOf = (r: number, c: number) => `${r}-${c}`;
-    const visited = new Set<string>();
-    const prev = new Map<string, { r: number; c: number }>();
-    const queue: Array<{ r: number; c: number }> = [{ r: doorRow, c: doorCol }];
-    visited.add(keyOf(doorRow, doorCol));
-
     const directions = [
       { dr: -1, dc: 0 },
       { dr: 1, dc: 0 },
       { dr: 0, dc: -1 },
       { dr: 0, dc: 1 },
     ];
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      if (!current) break;
-      if (current.r === myPosition.r && current.c === myPosition.c) break;
-
-      for (const { dr, dc } of directions) {
-        const nr = current.r + dr;
-        const nc = current.c + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-        const key = keyOf(nr, nc);
-        if (visited.has(key)) continue;
-        visited.add(key);
-        prev.set(key, current);
-        queue.push({ r: nr, c: nc });
+    let shortestPath: Array<{ r: number; c: number }> = [];
+    let minLen = Infinity;
+    for (const door of entryDoors) {
+      const visited = new Set<string>();
+      const prev = new Map<string, { r: number; c: number }>();
+      const queue: Array<{ r: number; c: number }> = [{ r: door.row, c: door.col }];
+      visited.add(keyOf(door.row, door.col));
+      let found = false;
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (!current) break;
+        if (current.r === myPosition.r && current.c === myPosition.c) { found = true; break; }
+        for (const { dr, dc } of directions) {
+          const nr = current.r + dr;
+          const nc = current.c + dc;
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+          const key = keyOf(nr, nc);
+          if (visited.has(key)) continue;
+          visited.add(key);
+          prev.set(key, current);
+          queue.push({ r: nr, c: nc });
+        }
+      }
+      const endKey = keyOf(myPosition.r, myPosition.c);
+      if (!visited.has(endKey)) continue;
+      // 回溯路径
+      const path: Array<{ r: number; c: number }> = [];
+      let node: { r: number; c: number } | undefined = myPosition;
+      while (node) {
+        path.push(node);
+        const parent = prev.get(keyOf(node.r, node.c));
+        node = parent;
+      }
+      path.reverse();
+      if (path.length < minLen) {
+        minLen = path.length;
+        shortestPath = path;
       }
     }
-
-    const endKey = keyOf(myPosition.r, myPosition.c);
-    if (!visited.has(endKey)) return [myPosition];
-
-    const path: Array<{ r: number; c: number }> = [];
-    let node: { r: number; c: number } | undefined = myPosition;
-    while (node) {
-      path.push(node);
-      const parent = prev.get(keyOf(node.r, node.c));
-      node = parent;
-    }
-    path.reverse();
-    return path;
-  }, [cols, doorCol, doorRow, myPosition, rows]);
+    return shortestPath.length > 0 ? shortestPath : [myPosition];
+  }, [cols, rows, myPosition, entryDoors]);
 
   if (!myPosition) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
@@ -94,6 +115,8 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const isOnPath = (r: number, c: number) => pathCells.some(p => p.r === r && p.c === c);
   const isMyPos = (r: number, c: number) => myPosition.r === r && myPosition.c === c;
   const seatContainerRef = useAutoCenterMySeat([studentName, myPosition?.r, myPosition?.c]);
+  // 找到实际入口门
+  const entryDoor = pathCells.length > 0 ? entryDoors.find(d => d.row === pathCells[0].r && d.col === pathCells[0].c) : entryDoors[0];
 
   return (
     <>
@@ -122,7 +145,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
               const seatName = seats[ri]?.[ci] ?? null;
               const isMine = isMyPos(ri, ci);
               const onPath = isOnPath(ri, ci) && !isMine;
-              const isDoor = ri === doorRow && ci === doorCol;
+              const isDoor = entryDoors.some(d => d.row === ri && d.col === ci);
               return (
                 <div key={`${ri}-${ci}`} style={{
                   gridRow: getVisualRow(ri) + 1,
@@ -143,8 +166,29 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
         </div>
       </div>
       <div className="text-center text-xs text-muted-foreground">
-        <p>🚶 从{config.windowOnLeft ? '右侧' : '左侧'}门进入，沿高亮路径前行</p>
-        <p>向{myPosition.c > doorCol ? '左' : myPosition.c < doorCol ? '右' : '前'}走到第{myPosition.c + 1}列，再向前走到第{myPosition.r + 1}排</p>
+        <p>🚶 从{entryDoor ? entryDoor.label : '入口'}进入，沿高亮路径前行</p>
+        <p>
+          {(() => {
+            if (!entryDoor) return null;
+            // 只考虑前后门，左右门暂不支持
+            if (entryDoor.row === 0) {
+              // 前门
+              return <>
+                先沿第{myPosition.c + 1}列向前走到第{myPosition.r + 1}排
+              </>;
+            } else if (entryDoor.row === rows - 1) {
+              // 后门
+              return <>
+                先沿第{myPosition.c + 1}列向后走到第{myPosition.r + 1}排
+              </>;
+            } else {
+              // 其他门类型
+              return <>
+                走到第{myPosition.r + 1}排第{myPosition.c + 1}列
+              </>;
+            }
+          })()}
+        </p>
       </div>
     </>
   );

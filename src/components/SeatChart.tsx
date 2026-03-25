@@ -586,7 +586,7 @@ export default function SeatChart() {
   const needsGroupCount = ['groupCol', 'groupRow', 'smartCluster'].includes(mode);
   const isExamMode = mode === 'exam';
   const printRef = useRef<HTMLDivElement>(null);
-  const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles };
+  const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
     studentNames: students.map(s => s.name),
