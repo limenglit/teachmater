@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import { getPrismLanguage, loadPrismLanguage } from '@/lib/prism-loader';
+import '@/components/board/prism-theme.css';
 
 const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 800;
