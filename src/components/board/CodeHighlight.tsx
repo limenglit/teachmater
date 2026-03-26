@@ -251,7 +251,7 @@ export default function CodeHighlight({ code, ext, initialMaxHeight = 256 }: Pro
                   >
                     {index + 1}
                   </td>
-                  <td className="w-full whitespace-pre px-3 py-0 align-top text-foreground">
+                  <td className="w-full whitespace-pre px-3 py-0 align-top text-foreground text-left">
                     {lineHtml !== undefined ? (
                       <span
                         className={`language-${lang}`}
