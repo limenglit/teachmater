@@ -1,18 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { tFormat } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, X, Heart, ExternalLink, Download, Maximize2 } from 'lucide-react';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon } from '@/lib/board-file-utils';
-import CodeHighlight from '@/components/board/CodeHighlight';
 import { fetchCodePreviewText } from '@/lib/code-preview';
+import { lazyRetry } from '@/lib/lazy-retry';
 
 interface Props {
   cards: BoardCard[];
   onExit: () => void;
 }
 
+const CodeHighlight = lazyRetry(() => import('@/components/board/CodeHighlight'));
+
+export default function BoardPPTMode({ cards, onExit }: Props) {
   const [showCodePreview, setShowCodePreview] = useState(false);
   const [codeText, setCodeText] = useState('');
   const [codeExt, setCodeExt] = useState('');
@@ -59,10 +62,64 @@ interface Props {
     return () => document.removeEventListener('fullscreenchange', handler);
   }, [onExit]);
 
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') prev();
+      if (event.key === 'ArrowRight') next();
+      if (event.key === 'Escape') exitFullscreenAndClose();
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [exitFullscreenAndClose, next, prev]);
+
+  const safeIndex = cards.length === 0 ? 0 : Math.min(index, cards.length - 1);
+  const card = cards[safeIndex];
+  const mediaCategory = card?.media_url
+    ? (card.card_type === 'video' || card.card_type === 'document' || card.card_type === 'image' || card.card_type === 'audio' || card.card_type === 'code')
+      ? card.card_type
+      : getFileCategoryFromUrl(card.media_url)
+    : null;
+
+  useEffect(() => {
+    setShowImagePreview(false);
+    setShowCodePreview(false);
+  }, [safeIndex]);
+
+  useEffect(() => {
+    if (!card?.media_url || mediaCategory !== 'code') {
+      setCodeText('');
+      setCodeExt('');
+      setCodeLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const nextExt = getFileExtFromUrl(card.media_url);
+
+    setCodeExt(nextExt);
+    setCodeLoading(true);
+
+    fetchCodePreviewText(card.media_url)
+      .then((text) => {
+        if (!cancelled) setCodeText(text);
+      })
+      .catch(() => {
+        if (!cancelled) setCodeText('// Failed to load file');
+      })
+      .finally(() => {
+        if (!cancelled) setCodeLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [card?.media_url, mediaCategory]);
+
   if (cards.length === 0) {
     return (
-      <div ref={containerRef} className="fixed inset-0 z-[100] bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
+      <div ref={containerRef} className="fixed inset-0 z-[100] flex items-center justify-center bg-background">
+        <div className="space-y-4 text-center">
           <p className="text-muted-foreground">No cards to display</p>
           <Button onClick={exitFullscreenAndClose}>{t('board.pptExit')}</Button>
         </div>
@@ -70,27 +127,12 @@ interface Props {
     );
   }
 
-  const card = cards[index];
   const prev = () => setIndex(i => Math.max(0, i - 1));
   const next = () => setIndex(i => Math.min(cards.length - 1, i + 1));
 
-  useEffect(() => {
-    setShowImagePreview(false);
-  }, [index]);
-
-  // 代码全屏预览弹窗
-  const handleShowCodePreview = async () => {
-    if (!card.media_url) return;
-    setCodeLoading(true);
+  const handleShowCodePreview = () => {
+    if (!card?.media_url || mediaCategory !== 'code') return;
     setShowCodePreview(true);
-    setCodeExt(getFileExtFromUrl(card.media_url));
-    try {
-      const text = await fetchCodePreviewText(card.media_url);
-      setCodeText(text);
-    } catch {
-      setCodeText('加载失败');
-    }
-    setCodeLoading(false);
   };
 
   return (
@@ -98,25 +140,16 @@ interface Props {
       ref={containerRef}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-8"
       style={{ backgroundColor: card.color || 'hsl(var(--background))' }}
-      onKeyDown={e => {
-        if (e.key === 'ArrowLeft') prev();
-        if (e.key === 'ArrowRight') next();
-        if (e.key === 'Escape') exitFullscreenAndClose();
-      }}
       tabIndex={0}
-      autoFocus
     >
-      {/* Close button */}
       <button onClick={exitFullscreenAndClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-foreground/10 transition-colors">
         <X className="w-6 h-6 text-foreground" />
       </button>
 
-      {/* Slide counter */}
       <div className="absolute top-4 left-4 text-sm text-muted-foreground font-medium">
-        {tFormat(t('board.pptSlide'), index + 1, cards.length)}
+        {tFormat(t('board.pptSlide'), safeIndex + 1, cards.length)}
       </div>
 
-      {/* Card content */}
       <div className="max-w-3xl w-full text-center space-y-6">
         <p className="text-3xl sm:text-5xl font-bold text-foreground leading-tight whitespace-pre-wrap">
           {card.content}
@@ -172,8 +205,14 @@ interface Props {
                     </Button>
                   </div>
                 </div>
-                <div style={{ maxHeight: 400, overflowY: 'auto', borderRadius: 8, border: '1px solid #eee', background: '#18181b', padding: 8 }}>
-                  <CodeHighlight code={codeText} ext={getFileExtFromUrl(card.media_url)} initialMaxHeight={400} fontSize={codeFontSize} onFontSizeChange={setCodeFontSize} />
+                <div className="max-h-[400px] overflow-y-auto rounded-lg border border-border bg-card p-2 text-left">
+                  {codeLoading ? (
+                    <div className="py-12 text-center text-sm text-muted-foreground">代码加载中...</div>
+                  ) : (
+                    <Suspense fallback={<div className="py-12 text-center text-sm text-muted-foreground">代码高亮加载中...</div>}>
+                      <CodeHighlight code={codeText} ext={getFileExtFromUrl(card.media_url)} initialMaxHeight={400} fontSize={codeFontSize} onFontSizeChange={setCodeFontSize} />
+                    </Suspense>
+                  )}
                 </div>
               </div>
             );
@@ -197,29 +236,28 @@ interface Props {
           );
         })()}
 
-      {/* 代码全屏预览弹窗 */}
       {showCodePreview && (
-        <div className="fixed inset-0 z-[120] bg-black/95 flex flex-col items-center justify-center p-4" style={{overflowY:'auto'}}>
+        <div className="fixed inset-0 z-[120] flex flex-col items-center justify-center bg-background/95 p-4 backdrop-blur-sm" style={{ overflowY: 'auto' }}>
           <button
             type="button"
-            className="absolute top-4 right-4 p-2 rounded-md bg-black/40 text-white hover:bg-black/60 transition-colors"
+            className="absolute top-4 right-4 rounded-md bg-muted/80 p-2 text-foreground transition-colors hover:bg-muted"
             onClick={() => setShowCodePreview(false)}
             aria-label="关闭"
           >
             <X className="w-6 h-6" />
           </button>
-          <div className="w-full max-w-6xl mx-auto" style={{height:'80vh',overflowY:'auto',background:'#18181b',borderRadius:12,padding:16}}>
+          <div className="mx-auto h-[80vh] w-full max-w-6xl overflow-y-auto rounded-xl border border-border bg-card p-4 text-left shadow-lg">
             <div className="flex gap-2 items-center mb-2">
               <Button variant="outline" size="icon" onClick={() => setPreviewFontSize(f => Math.max(12, f - 2))} title="减小字号">-</Button>
               <span className="px-2 text-base select-none">{previewFontSize}px</span>
               <Button variant="outline" size="icon" onClick={() => setPreviewFontSize(f => Math.min(32, f + 2))} title="增大字号">+</Button>
             </div>
             {codeLoading ? (
-              <div className="text-white text-center py-12 text-lg">代码加载中...</div>
+              <div className="py-12 text-center text-lg text-muted-foreground">代码加载中...</div>
             ) : (
-              <pre style={{margin:0,overflow:'visible',width:'100%'}}>
+              <Suspense fallback={<div className="py-12 text-center text-lg text-muted-foreground">代码高亮加载中...</div>}>
                 <CodeHighlight code={codeText} ext={codeExt} initialMaxHeight={600} fontSize={previewFontSize} onFontSizeChange={setPreviewFontSize} />
-              </pre>
+              </Suspense>
             )}
           </div>
         </div>
@@ -238,12 +276,11 @@ interface Props {
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="absolute bottom-8 flex items-center gap-4">
-        <Button variant="outline" size="lg" onClick={prev} disabled={index === 0} className="gap-2">
+        <Button variant="outline" size="lg" onClick={prev} disabled={safeIndex === 0} className="gap-2">
           <ChevronLeft className="w-5 h-5" /> {t('board.pptPrev')}
         </Button>
-        <Button variant="outline" size="lg" onClick={next} disabled={index === cards.length - 1} className="gap-2">
+        <Button variant="outline" size="lg" onClick={next} disabled={safeIndex === cards.length - 1} className="gap-2">
           {t('board.pptNext')} <ChevronRight className="w-5 h-5" />
         </Button>
       </div>
