@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
 import { fetchCodePreviewText } from '@/lib/code-preview';
+import { lazyRetry } from '@/lib/lazy-retry';
 import '@/components/board/prism-theme.css';
 
-const CodeHighlight = lazy(() => import('@/components/board/CodeHighlight'));
+const CodeHighlight = lazyRetry(() => import('@/components/board/CodeHighlight'));
 
 interface Comment {
   id: string;
