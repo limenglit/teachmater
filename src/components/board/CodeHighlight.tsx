@@ -77,6 +77,8 @@ interface Props {
   code: string;
   ext: string;
   initialMaxHeight?: number;
+  fontSize?: number;
+  onFontSizeChange?: (size: number) => void;
 }
 
 export function getPrismLanguage(ext: string): string {
@@ -103,12 +105,18 @@ async function loadPrismLanguage(lang: string) {
   }
 }
 
-export default function CodeHighlight({ code, ext, initialMaxHeight = 256 }: Props) {
+
+export default function CodeHighlight({ code, ext, initialMaxHeight = 256, fontSize: fontSizeProp, onFontSizeChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ y: number; h: number } | null>(null);
   const lang = useMemo(() => getPrismLanguage(ext), [ext]);
 
-  const [fontSize, setFontSize] = useState(16);
+  const [internalFontSize, setInternalFontSize] = useState(16);
+  const fontSize = fontSizeProp !== undefined ? fontSizeProp : internalFontSize;
+  const setFontSize = (size: number) => {
+    if (onFontSizeChange) onFontSizeChange(size);
+    else setInternalFontSize(size);
+  };
   const [hoveredLine, setHoveredLine] = useState<number | null>(null);
   const [maxHeight, setMaxHeight] = useState(
     Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, initialMaxHeight)),
@@ -119,18 +127,20 @@ export default function CodeHighlight({ code, ext, initialMaxHeight = 256 }: Pro
     setMaxHeight(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, initialMaxHeight)));
   }, [initialMaxHeight]);
 
+  // 如果外部未传 fontSize，则根据宽度自适应字号
   useEffect(() => {
+    if (fontSizeProp !== undefined) return;
     const handleResize = () => {
       const width = containerRef.current?.offsetWidth ?? 0;
       if (!width) return;
       const nextSize = Math.max(12, Math.min(22, Math.floor(width / 48)));
-      setFontSize(nextSize);
+      setInternalFontSize(nextSize);
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [fontSizeProp]);
 
   useEffect(() => {
     let cancelled = false;
