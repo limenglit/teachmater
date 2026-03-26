@@ -26,6 +26,8 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
   const [codeFontSize, setCodeFontSize] = useState(16);
   const [previewFontSize, setPreviewFontSize] = useState(18);
   const containerRef = useRef<HTMLDivElement>(null);
+  const prev = () => setIndex(i => Math.max(0, i - 1));
+  const next = () => setIndex(i => Math.min(cards.length - 1, i + 1));
 
   const triggerDownload = useCallback((url: string, filename?: string) => {
     const link = document.createElement('a');
@@ -126,9 +128,6 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
       </div>
     );
   }
-
-  const prev = () => setIndex(i => Math.max(0, i - 1));
-  const next = () => setIndex(i => Math.min(cards.length - 1, i + 1));
 
   const handleShowCodePreview = () => {
     if (!card?.media_url || mediaCategory !== 'code') return;
