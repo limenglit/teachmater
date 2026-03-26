@@ -2,35 +2,11 @@ import { useState, useEffect, Suspense, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
-  // 全屏相关
-  const videoContainerRef = useRef<HTMLDivElement>(null);
-  const audioContainerRef = useRef<HTMLDivElement>(null);
-  const [isVideoFullscreen, setIsVideoFullscreen] = useState(false);
-  const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
-
-  // 监听全屏变化
-  useEffect(() => {
-    const handler = () => {
-      if (document.fullscreenElement === videoContainerRef.current) {
-        setIsVideoFullscreen(true);
-      } else {
-        setIsVideoFullscreen(false);
-      }
-      if (document.fullscreenElement === audioContainerRef.current) {
-        setIsAudioFullscreen(true);
-      } else {
-        setIsAudioFullscreen(false);
-      }
-    };
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
-  }, []);
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
 import { fetchCodePreviewText } from '@/lib/code-preview';
 import { lazyRetry } from '@/lib/lazy-retry';
-import '@/components/board/prism-theme.css';
 
 const CodeHighlight = lazyRetry(() => import('@/components/board/CodeHighlight'));
 
@@ -57,6 +33,20 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const audioContainerRef = useRef<HTMLDivElement>(null);
+  const [isVideoFullscreen, setIsVideoFullscreen] = useState(false);
+  const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      setIsVideoFullscreen(document.fullscreenElement === videoContainerRef.current);
+      setIsAudioFullscreen(document.fullscreenElement === audioContainerRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const triggerDownload = (url: string, filename?: string) => {
     const link = document.createElement('a');
