@@ -1,7 +1,30 @@
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
+  // 全屏相关
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const audioContainerRef = useRef<HTMLDivElement>(null);
+  const [isVideoFullscreen, setIsVideoFullscreen] = useState(false);
+  const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
+
+  // 监听全屏变化
+  useEffect(() => {
+    const handler = () => {
+      if (document.fullscreenElement === videoContainerRef.current) {
+        setIsVideoFullscreen(true);
+      } else {
+        setIsVideoFullscreen(false);
+      }
+      if (document.fullscreenElement === audioContainerRef.current) {
+        setIsAudioFullscreen(true);
+      } else {
+        setIsAudioFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
@@ -156,22 +179,60 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         </div>
       )}
 
+
+      {/* 视频全屏容器 */}
       {card.media_url && mediaCategory === 'video' && (
-        <video
-          src={card.media_url}
-          controls
-          className="rounded-lg w-full max-h-48 mb-2"
-          preload="metadata"
-        />
+        <div ref={videoContainerRef} className="relative mb-2 group/video">
+          <video
+            src={card.media_url}
+            controls
+            className={`rounded-lg w-full ${isVideoFullscreen ? 'max-h-[80vh]' : 'max-h-48'} mb-2 bg-black`}
+            preload="metadata"
+            style={{ background: '#000' }}
+          />
+          <button
+            type="button"
+            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
+            onClick={() => {
+              if (!isVideoFullscreen && videoContainerRef.current) {
+                videoContainerRef.current.requestFullscreen?.();
+              } else if (document.fullscreenElement) {
+                document.exitFullscreen();
+              }
+            }}
+            title={isVideoFullscreen ? t('board.exitFullscreen') : t('board.fullscreen')}
+            aria-label={isVideoFullscreen ? t('board.exitFullscreen') : t('board.fullscreen')}
+          >
+            {isVideoFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
       )}
 
+      {/* 音频全屏容器 */}
       {card.media_url && mediaCategory === 'audio' && (
-        <audio
-          src={card.media_url}
-          controls
-          className="w-full mb-2"
-          preload="metadata"
-        />
+        <div ref={audioContainerRef} className="relative mb-2 group/audio">
+          <audio
+            src={card.media_url}
+            controls
+            className={`w-full mb-2 ${isAudioFullscreen ? 'text-lg' : ''}`}
+            preload="metadata"
+          />
+          <button
+            type="button"
+            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
+            onClick={() => {
+              if (!isAudioFullscreen && audioContainerRef.current) {
+                audioContainerRef.current.requestFullscreen?.();
+              } else if (document.fullscreenElement) {
+                document.exitFullscreen();
+              }
+            }}
+            title={isAudioFullscreen ? t('board.exitFullscreen') : t('board.fullscreen')}
+            aria-label={isAudioFullscreen ? t('board.exitFullscreen') : t('board.fullscreen')}
+          >
+            {isAudioFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
       )}
 
       {card.media_url && mediaCategory === 'document' && (
