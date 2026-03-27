@@ -493,21 +493,9 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
             </h3>
             <div className="flex flex-wrap justify-end gap-1 shrink-0">
               <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleFileSelect} className="hidden" />
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={downloadTemplate} title="下载名单模板">
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={downloadTemplate} title={t('library.downloadTemplate')}>
                 <Download className="w-3 h-3 mr-0 sm:mr-1" />
-                <span className="hidden sm:inline">下载名单模板</span>
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={() => {
-                // 直接下载 public/名单模板示例.xlsx
-                const link = document.createElement('a');
-                link.href = '/名单模板示例.xlsx';
-                link.download = '名单模板示例.xlsx';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-              }} title="下载通用模板">
-                <Download className="w-3 h-3 mr-0 sm:mr-1" />
-                <span className="hidden sm:inline">下载通用模板</span>
+                <span className="hidden sm:inline">{t('library.downloadTemplate')}</span>
               </Button>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={() => fileRef.current?.click()} title={t('library.import')}>
                 <Upload className="w-3 h-3 mr-0 sm:mr-1" />
