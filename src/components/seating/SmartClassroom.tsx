@@ -37,12 +37,13 @@ type RefVisible = Record<RefKey, boolean>;
 function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
   const badgeW = 94;
   const centeredX = Math.round((roomWidth - badgeW) / 2);
-  const rightX = Math.max(24, roomWidth - badgeW - 24);
+  const leftX = 8;
   const centerY = Math.max(20, Math.round((roomHeight - 32) / 2));
+  const rightX = Math.max(24, roomWidth - badgeW - 24);
   return {
     screen: { x: centeredX, y: 22 },
     podium: { x: centeredX, y: 74 },
-    frontDoor: { x: rightX, y: 120 },
+    frontDoor: { x: leftX, y: centerY - 48 },
     backDoor: { x: rightX, y: Math.max(160, roomHeight - 56) },
     window: { x: 24, y: centerY },
   };
@@ -50,8 +51,8 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
 
 export default function SmartClassroom({
   students,
-  frontDoorPosition = 'right',
-  backDoorPosition = 'left',
+  frontDoorPosition = 'left',
+  backDoorPosition = 'right',
   entryDoorMode = 'front',
 }: Props) {
   // 门窗位置状态
