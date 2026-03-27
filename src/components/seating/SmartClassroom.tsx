@@ -51,8 +51,8 @@ function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPosit
 
 export default function SmartClassroom({
   students,
-  frontDoorPosition = 'left',
-  backDoorPosition = 'right',
+  frontDoorPosition = 'right',
+  backDoorPosition = 'left',
   entryDoorMode = 'front',
 }: Props) {
   // 门窗位置状态
