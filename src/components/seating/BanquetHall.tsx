@@ -1005,8 +1005,8 @@ export default function BanquetHall({ students }: Props) {
             <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
-                  <span className={refIconClass}>S</span>
-                  <span className={refTextClass}>屏幕</span>
+                  <span className={refIconClass}>🖥️</span>
+                  <span className={refTextClass}>幕布</span>
                 </div>
               )}
               {hasTStage && (
@@ -1039,19 +1039,19 @@ export default function BanquetHall({ students }: Props) {
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
-                  <span className={refIconClass}>W</span>
-                  <span className={refTextClass}>窗户</span>
+                  <span className={refIconClass}>🪟</span>
+                  <span className={refTextClass}>窗</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
-                  <span className={refIconClass}>F</span>
+                  <span className={refIconClass}>🚪</span>
                   <span className={refTextClass}>前门</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
-                  <span className={refIconClass}>B</span>
+                  <span className={refIconClass}>🚪</span>
                   <span className={refTextClass}>后门</span>
                 </div>
               )}
