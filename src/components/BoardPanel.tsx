@@ -628,6 +628,9 @@ export default function BoardPanel() {
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
                   <Download className="w-3 h-3" /> {t('board.exportCSV')}
                 </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={archiveZip} disabled={archiving}>
+                  {archiving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Archive className="w-3 h-3" />} {archiving ? t('board.archiving') : t('board.archiveZip')}
+                </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
                   onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
