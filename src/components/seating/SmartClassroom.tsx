@@ -798,71 +798,66 @@ export default function SmartClassroom({
       }}
     >
       {/* 结构设置分区 */}
-      <div className="mb-4 p-4 rounded-2xl border border-border/60 bg-gradient-to-br from-blue-50 via-white to-emerald-50 shadow-sm">
-        <div className="font-semibold text-lg mb-3 tracking-wide text-primary">教室结构设置</div>
-        <div className="flex flex-wrap gap-4 items-center mb-2">
-          <label className="flex items-center gap-1 text-base">
-            前门：
-            <select
-              value={frontDoor}
-              onChange={e => {
-                const val = e.target.value as any;
-                setFrontDoor(val);
-                // 自动避免后门重叠
-                if (val === backDoor) setBackDoor(val === 'right' ? 'left' : 'right');
-                // 窗户自动避开门
-                if (val === windowPos) setWindowPos(val === 'left' ? 'right' : 'left');
-              }}
-              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
-            >
-              <option value="top">上方</option>
-              <option value="bottom">下方</option>
-              <option value="left">左侧</option>
-              <option value="right">右侧</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-1 text-base">
-            后门：
-            <select
-              value={backDoor}
-              onChange={e => {
-                const val = e.target.value as any;
-                setBackDoor(val);
-                if (val === frontDoor) setFrontDoor(val === 'right' ? 'left' : 'right');
-                if (val === windowPos) setWindowPos(val === 'left' ? 'right' : 'left');
-              }}
-              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
-            >
-              <option value="top">上方</option>
-              <option value="bottom">下方</option>
-              <option value="left">左侧</option>
-              <option value="right">右侧</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-1 text-base">
-            入场门：
-            <select
-              value={entryDoor}
-              onChange={e => setEntryDoor(e.target.value as any)}
-              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
-            >
-              <option value="front">仅前门</option>
-              <option value="back">仅后门</option>
-              <option value="both">前后门都可</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-1 text-base">
-            窗户：
-            <select
-              value={windowPos}
-              onChange={e => setWindowPos(e.target.value as any)}
-              className="h-9 px-3 rounded-lg border border-input bg-background text-foreground text-base shadow-sm"
-            >
-              <option value="left">左侧</option>
-              <option value="right">右侧</option>
-            </select>
-          </label>
-        </div>
+      <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          前门
+          <select
+            value={frontDoor}
+            onChange={e => {
+              const val = e.target.value as any;
+              setFrontDoor(val);
+              if (val === backDoor) setBackDoor(val === 'right' ? 'left' : 'right');
+              if (val === windowPos) setWindowPos(val === 'left' ? 'right' : 'left');
+            }}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="top">上方</option>
+            <option value="bottom">下方</option>
+            <option value="left">左侧</option>
+            <option value="right">右侧</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          后门
+          <select
+            value={backDoor}
+            onChange={e => {
+              const val = e.target.value as any;
+              setBackDoor(val);
+              if (val === frontDoor) setFrontDoor(val === 'right' ? 'left' : 'right');
+              if (val === windowPos) setWindowPos(val === 'left' ? 'right' : 'left');
+            }}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="top">上方</option>
+            <option value="bottom">下方</option>
+            <option value="left">左侧</option>
+            <option value="right">右侧</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          入场门
+          <select
+            value={entryDoor}
+            onChange={e => setEntryDoor(e.target.value as any)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="front">仅前门</option>
+            <option value="back">仅后门</option>
+            <option value="both">前后门都可</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          窗户
+          <select
+            value={windowPos}
+            onChange={e => setWindowPos(e.target.value as any)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="left">左侧</option>
+            <option value="right">右侧</option>
+          </select>
+        </label>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/60 p-4">
