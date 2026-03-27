@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { Link as LinkIcon, Download, Copy, Search } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Link as LinkIcon, Download, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,66 +29,8 @@ import TaskChecklist from './toolkit/TaskChecklist';
 import ScreenCaptureTool from './toolkit/ScreenCaptureTool';
 import CodeVisualizerTool from './toolkit/CodeVisualizerTool';
 
-/* ── Category definitions ── */
-interface ToolCategory {
-  key: string;
-  labelKey: string;
-  tools: { key: string; label: string; component: React.ReactNode }[];
-}
 
-function useCategories() {
-  const { t } = useLanguage();
-  return useMemo<ToolCategory[]>(() => [
-    {
-      key: 'timing',
-      labelKey: 'toolkit.catTiming',
-      tools: [
-        { key: 'countdown', label: t('timer.title'), component: <CountdownTimer /> },
-        { key: 'stopwatch', label: t('stopwatch.title'), component: <Stopwatch /> },
-        { key: 'traffic', label: t('traffic.title'), component: <TrafficLight /> },
-      ],
-    },
-    {
-      key: 'interaction',
-      labelKey: 'toolkit.catInteraction',
-      tools: [
-        { key: 'barrage', label: t('barrage.title'), component: <BarrageDiscussion /> },
-        { key: 'poll', label: t('poll.title'), component: <PollManager /> },
-        { key: 'scoreboard', label: t('scoreboard.title'), component: <Scoreboard /> },
-      ],
-    },
-    {
-      key: 'teaching',
-      labelKey: 'toolkit.catTeaching',
-      tools: [
-        { key: 'random', label: t('assign.title'), component: <RandomAssigner /> },
-        { key: 'lottery', label: t('lottery.title'), component: <LotteryDrawer /> },
-        { key: 'task', label: t('task.title'), component: <TaskChecklist /> },
-        { key: 'noise', label: t('noise.title'), component: <NoiseDetector /> },
-      ],
-    },
-    {
-      key: 'media',
-      labelKey: 'toolkit.catMedia',
-      tools: [
-        { key: 'magnifier', label: t('magnifier.title'), component: <TextMagnifier /> },
-        { key: 'screen', label: t('screen.title'), component: <ScreenCaptureTool /> },
-        { key: 'breathing', label: t('breathing.title'), component: <BreathingExercise /> },
-      ],
-    },
-    {
-      key: 'other',
-      labelKey: 'toolkit.catOther',
-      tools: [
-        { key: 'code', label: '代码可视化', component: <CodeVisualizerTool /> },
-        { key: 'command', label: t('cmd.title'), component: <CommandCards /> },
-        { key: 'qr', label: t('qr.title'), component: <QRCodeGenerator /> },
-      ],
-    },
-  ], [t]);
-}
-
-/* ── Command card flash overlay ── */
+// Command card flash overlay
 function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: string; iconUrl?: string; onDone: () => void }) {
   const { t } = useLanguage();
   useEffect(() => {
@@ -136,75 +78,30 @@ function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: 
   );
 }
 
-/* ── Main panel ── */
 export default function ToolkitPanel() {
   const { t } = useLanguage();
-  const [search, setSearch] = useState('');
-  const categories = useCategories();
-
-  const filtered = useMemo(() => {
-    if (!search.trim()) return categories;
-    const q = search.trim().toLowerCase();
-    return categories
-      .map(cat => ({
-        ...cat,
-        tools: cat.tools.filter(tool => tool.label.toLowerCase().includes(q) || tool.key.includes(q)),
-      }))
-      .filter(cat => cat.tools.length > 0);
-  }, [categories, search]);
-
   return (
-    <div data-testid="toolkit-panel" className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 pr-2 sm:p-6 sm:pr-4">
-      <div className="max-w-6xl mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight">
-            {t('toolkit.title')}
-          </h2>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            <Input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder={t('toolkit.search')}
-              className="pl-9 h-9 bg-muted/50 border-border/60"
-            />
-          </div>
+    <div data-testid="toolkit-panel" className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 pr-2 sm:p-8 sm:pr-4">
+      <div className="max-w-5xl mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">{t('toolkit.title')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <BarrageDiscussion />
+          <CountdownTimer />
+          <NoiseDetector />
+          <Scoreboard />
+          <RandomAssigner />
+          <LotteryDrawer />
+          <PollManager />
+          <Stopwatch />
+          <TrafficLight />
+          <BreathingExercise />
+          <TextMagnifier />
+          <ScreenCaptureTool />
+          <TaskChecklist />
+          <CodeVisualizerTool />
+          <CommandCards />
+          <QRCodeGenerator />
         </div>
-
-        {/* Categories */}
-        <div className="space-y-8">
-          {filtered.map((cat, catIdx) => (
-            <motion.section
-              key={cat.key}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: catIdx * 0.05 }}
-            >
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
-                {t(cat.labelKey)}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {cat.tools.map(tool => (
-                  <motion.div
-                    key={tool.key}
-                    whileHover={{ y: -2 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                  >
-                    {tool.component}
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-16 text-muted-foreground">
-            <Search className="w-10 h-10 mx-auto mb-3 opacity-30" />
-            <p className="text-sm">没有找到匹配的工具</p>
-          </div>
-        )}
       </div>
     </div>
   );
