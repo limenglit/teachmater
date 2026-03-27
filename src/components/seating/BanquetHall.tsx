@@ -999,11 +999,6 @@ export default function BanquetHall({ students }: Props) {
       </div>
 
       <div ref={printRef}>
-        <div className="text-center mb-4">
-          <div className="inline-block bg-primary/10 text-primary px-6 py-2 rounded-lg text-sm font-medium border border-primary/20">
-            宴会厅
-          </div>
-        </div>
 
         {assignment.length > 0 ? (
           <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
