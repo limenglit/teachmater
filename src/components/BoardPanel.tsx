@@ -400,9 +400,9 @@ export default function BoardPanel() {
   const exportCSV = () => {
     const approvedCards = cards.filter(c => c.is_approved);
     const BOM = '\uFEFF';
-    const header = `${t('board.cardAuthor')},${t('board.cardContent')},${t('board.cardType')},URL,${t('board.cardColor')},${t('board.cardPinned')},${t('board.cardLikes')},${t('board.cardCreated')}\n`;
+    const header = 'Author,Content,Type,URL,Color,Pinned,Likes,Created\n';
     const rows = approvedCards.map(c =>
-      `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}","${c.color}",${c.is_pinned ? t('common.yes') : t('common.no')},${c.likes_count},"${new Date(c.created_at).toLocaleString()}"`
+      `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}","${c.color}",${c.is_pinned},${c.likes_count},"${new Date(c.created_at).toLocaleString()}"`
     ).join('\n');
     const blob = new Blob([BOM + header + rows], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
