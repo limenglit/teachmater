@@ -178,20 +178,40 @@ export default function SmartClassroom({
     return resolveOrgColor(org);
   };
 
+  /** Return distance of a table to the "front" side based on frontDoor direction */
+  const tableDistToFront = (tableIndex: number) => {
+    const row = Math.floor(tableIndex / tableCols);
+    const col = tableIndex % tableCols;
+    if (frontDoor === 'top') return row;           // row 0 nearest
+    if (frontDoor === 'bottom') return tableRows - 1 - row; // last row nearest
+    if (frontDoor === 'left') return col;           // col 0 nearest
+    /* right */ return tableCols - 1 - col;         // last col nearest
+  };
+
+  /** Return "lateral" position of a table (perpendicular to front direction) */
+  const tableLateral = (tableIndex: number) => {
+    const row = Math.floor(tableIndex / tableCols);
+    const col = tableIndex % tableCols;
+    // For top/bottom front, lateral = column; for left/right front, lateral = row
+    return (frontDoor === 'top' || frontDoor === 'bottom') ? col : row;
+  };
+
+  const lateralCount = (frontDoor === 'top' || frontDoor === 'bottom') ? tableCols : tableRows;
+
   const getPodiumPriorityTableOrder = () => {
-    const center = (tableCols - 1) / 2;
+    const center = (lateralCount - 1) / 2;
     return Array.from({ length: tableCount }, (_, i) => i)
       .filter(index => !reservedTables.has(index))
       .sort((a, b) => {
-        const rowA = Math.floor(a / tableCols);
-        const rowB = Math.floor(b / tableCols);
-        if (rowA !== rowB) return rowA - rowB;
-        const colA = a % tableCols;
-        const colB = b % tableCols;
-        const centerDistA = Math.abs(colA - center);
-        const centerDistB = Math.abs(colB - center);
+        const distA = tableDistToFront(a);
+        const distB = tableDistToFront(b);
+        if (distA !== distB) return distA - distB;
+        const latA = tableLateral(a);
+        const latB = tableLateral(b);
+        const centerDistA = Math.abs(latA - center);
+        const centerDistB = Math.abs(latB - center);
         if (centerDistA !== centerDistB) return centerDistA - centerDistB;
-        return colA - colB;
+        return latA - latB;
       });
   };
 
@@ -201,16 +221,20 @@ export default function SmartClassroom({
       .sort((a, b) => {
         const angleA = (2 * Math.PI * a) / seatsPerTable - Math.PI / 2;
         const angleB = (2 * Math.PI * b) / seatsPerTable - Math.PI / 2;
-        const yA = radius * Math.sin(angleA);
-        const yB = radius * Math.sin(angleB);
-        if (yA !== yB) return yA - yB;
+        // Determine which axis points toward the front
+        let valA: number, valB: number;
+        if (frontDoor === 'top') { valA = radius * Math.sin(angleA); valB = radius * Math.sin(angleB); } // top = smaller y
+        else if (frontDoor === 'bottom') { valA = -radius * Math.sin(angleA); valB = -radius * Math.sin(angleB); }
+        else if (frontDoor === 'left') { valA = radius * Math.cos(angleA); valB = radius * Math.cos(angleB); } // left = smaller x (cos < 0)
+        else { valA = -radius * Math.cos(angleA); valB = -radius * Math.cos(angleB); } // right
+        if (valA !== valB) return valA - valB;
         return Math.abs(Math.cos(angleA)) - Math.abs(Math.cos(angleB));
       });
   };
 
   const getColumnPriority = () => {
-    const center = (tableCols - 1) / 2;
-    return Array.from({ length: tableCols }, (_, col) => col)
+    const center = (lateralCount - 1) / 2;
+    return Array.from({ length: lateralCount }, (_, i) => i)
       .sort((a, b) => {
         const da = Math.abs(a - center);
         const db = Math.abs(b - center);
@@ -221,15 +245,11 @@ export default function SmartClassroom({
 
   const getColumnTablesNearPodium = () => {
     const map = new Map<number, number[]>();
-    for (let col = 0; col < tableCols; col++) {
-      const tables = Array.from({ length: tableRows }, (_, row) => row * tableCols + col)
-        .filter(index => index < tableCount && !reservedTables.has(index))
-        .sort((a, b) => {
-          const rowA = Math.floor(a / tableCols);
-          const rowB = Math.floor(b / tableCols);
-          return rowA - rowB;
-        });
-      map.set(col, tables);
+    for (let lat = 0; lat < lateralCount; lat++) {
+      const tablesInLane = Array.from({ length: tableCount }, (_, i) => i)
+        .filter(index => !reservedTables.has(index) && tableLateral(index) === lat)
+        .sort((a, b) => tableDistToFront(a) - tableDistToFront(b));
+      map.set(lat, tablesInLane);
     }
     return map;
   };
