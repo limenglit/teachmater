@@ -427,7 +427,7 @@ export default function BoardPanel() {
 
       // Add CSV summary
       const BOM = '\uFEFF';
-      const csvHeader = `${t('board.cardAuthor')},${t('board.cardContent')},${t('board.cardType')},URL,${t('board.cardLikes')},${t('board.cardCreated')}\n`;
+      const csvHeader = 'Author,Content,Type,URL,Likes,Created\n';
       const csvRows = approvedCards.map(c =>
         `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}",${c.likes_count},"${new Date(c.created_at).toLocaleString()}"`
       ).join('\n');
