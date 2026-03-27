@@ -21,7 +21,7 @@ const translations: Record<LangCode, Record<string, string>> = {
   zh: {
     // App header
     'app.title': '教创搭子',
-    'app.subtitle': 'TeachMate |--洛阳理工学院--| limeng@lit.edu.cn',
+    'app.subtitle': '--洛阳理工学院--| limeng@lit.edu.cn',
     // Tabs
     'tab.random': '随机选人',
     'tab.teamwork': '组队',

@@ -1,37 +1,12 @@
 import { useState, useEffect, Suspense, useRef } from 'react';
-import BoardPPTMode from './BoardPPTMode';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
-  // 全屏相关
-  const videoContainerRef = useRef<HTMLDivElement>(null);
-  const audioContainerRef = useRef<HTMLDivElement>(null);
-  const [isVideoFullscreen, setIsVideoFullscreen] = useState(false);
-  const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
-
-  // 监听全屏变化
-  useEffect(() => {
-    const handler = () => {
-      if (document.fullscreenElement === videoContainerRef.current) {
-        setIsVideoFullscreen(true);
-      } else {
-        setIsVideoFullscreen(false);
-      }
-      if (document.fullscreenElement === audioContainerRef.current) {
-        setIsAudioFullscreen(true);
-      } else {
-        setIsAudioFullscreen(false);
-      }
-    };
-    document.addEventListener('fullscreenchange', handler);
-    return () => document.removeEventListener('fullscreenchange', handler);
-  }, []);
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
 import { fetchCodePreviewText } from '@/lib/code-preview';
 import { lazyRetry } from '@/lib/lazy-retry';
-import '@/components/board/prism-theme.css';
 
 const CodeHighlight = lazyRetry(() => import('@/components/board/CodeHighlight'));
 
@@ -58,6 +33,20 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const audioContainerRef = useRef<HTMLDivElement>(null);
+  const [isVideoFullscreen, setIsVideoFullscreen] = useState(false);
+  const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      setIsVideoFullscreen(document.fullscreenElement === videoContainerRef.current);
+      setIsAudioFullscreen(document.fullscreenElement === audioContainerRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
 
   const triggerDownload = (url: string, filename?: string) => {
     const link = document.createElement('a');
@@ -237,33 +226,17 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
       )}
 
       {card.media_url && mediaCategory === 'document' && (
-        <div className="relative mb-2 group/doc">
-          <a
-            href={card.media_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 p-3 rounded-lg bg-muted/60 border border-border/50 hover:bg-muted transition-colors"
-          >
-            <span className="text-xl">{getDocIcon(getFileExtFromUrl(card.media_url))}</span>
-            <span className="flex-1 text-xs text-foreground truncate">{getFileNameFromUrl(card.media_url)}</span>
-            <Download className="w-3.5 h-3.5 text-muted-foreground group-hover/doc:text-primary transition-colors" />
-          </a>
-          <button
-            type="button"
-            className="absolute top-2 right-2 p-1.5 rounded-md bg-black/50 text-white hover:bg-black/70 transition-colors z-10"
-            onClick={() => setShowPPTFullscreen(true)}
-            title={t('board.fullscreen')}
-            aria-label={t('board.fullscreen')}
-          >
-            <Maximize2 className="w-4 h-4" />
-          </button>
-          {showPPTFullscreen && (
-            <BoardPPTMode cards={[card]} onExit={() => setShowPPTFullscreen(false)} />
-          )}
-        </div>
+        <a
+          href={card.media_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 p-3 rounded-lg bg-muted/60 border border-border/50 mb-2 hover:bg-muted transition-colors group/doc"
+        >
+          <span className="text-xl">{getDocIcon(getFileExtFromUrl(card.media_url))}</span>
+          <span className="flex-1 text-xs text-foreground truncate">{getFileNameFromUrl(card.media_url)}</span>
+          <Download className="w-3.5 h-3.5 text-muted-foreground group-hover/doc:text-primary transition-colors" />
+        </a>
       )}
-  // PPT全屏弹窗状态
-  const [showPPTFullscreen, setShowPPTFullscreen] = useState(false);
 
       {/* Code file rendering */}
       {card.media_url && mediaCategory === 'code' && (() => {
