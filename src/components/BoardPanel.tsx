@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard, Archive, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
 import BoardTimelineView from './board/BoardTimelineView';
@@ -399,15 +399,66 @@ export default function BoardPanel() {
 
   const exportCSV = () => {
     const approvedCards = cards.filter(c => c.is_approved);
-    const header = 'Nickname,Content,Type,URL,Color,Pinned,Likes,Created\n';
+    const BOM = '\uFEFF';
+    const header = 'Author,Content,Type,URL,Color,Pinned,Likes,Created\n';
     const rows = approvedCards.map(c =>
-      `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url}","${c.color}",${c.is_pinned},${c.likes_count},"${c.created_at}"`
+      `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}","${c.color}",${c.is_pinned},${c.likes_count},"${new Date(c.created_at).toLocaleString()}"`
     ).join('\n');
-    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const blob = new Blob([BOM + header + rows], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `board-${activeBoard?.title || 'export'}.csv`;
     a.click();
+  };
+
+  const [archiving, setArchiving] = useState(false);
+
+  const archiveZip = async () => {
+    const approvedCards = cards.filter(c => c.is_approved);
+    const fileCards = approvedCards.filter(c => c.media_url || (c.url && c.card_type !== 'text'));
+    if (fileCards.length === 0) {
+      toast({ title: t('board.archiveEmpty'), variant: 'destructive' });
+      return;
+    }
+    setArchiving(true);
+    try {
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Add CSV summary
+      const BOM = '\uFEFF';
+      const csvHeader = 'Author,Content,Type,URL,Likes,Created\n';
+      const csvRows = approvedCards.map(c =>
+        `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}",${c.likes_count},"${new Date(c.created_at).toLocaleString()}"`
+      ).join('\n');
+      zip.file('summary.csv', BOM + csvHeader + csvRows);
+
+      // Download and add files
+      let idx = 0;
+      for (const card of fileCards) {
+        const fileUrl = card.media_url || card.url;
+        if (!fileUrl) continue;
+        try {
+          const resp = await fetch(fileUrl);
+          if (!resp.ok) continue;
+          const blob = await resp.blob();
+          const ext = fileUrl.split('.').pop()?.split('?')[0] || 'bin';
+          const safeName = (card.author_nickname || 'anon').replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '_');
+          zip.file(`files/${safeName}_${++idx}.${ext}`, blob);
+        } catch { /* skip failed downloads */ }
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(content);
+      a.download = `board-${activeBoard?.title || 'archive'}.zip`;
+      a.click();
+      toast({ title: t('board.archiveDone') });
+    } catch (err) {
+      toast({ title: String(err), variant: 'destructive' });
+    } finally {
+      setArchiving(false);
+    }
   };
 
   // Realtime subscription for cloud boards
@@ -576,6 +627,9 @@ export default function BoardPanel() {
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
                   <Download className="w-3 h-3" /> {t('board.exportCSV')}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={archiveZip} disabled={archiving}>
+                  {archiving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Archive className="w-3 h-3" />} {archiving ? t('board.archiving') : t('board.archiveZip')}
                 </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
