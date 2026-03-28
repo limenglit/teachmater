@@ -1059,6 +1059,10 @@ export default function ScreenCaptureTool() {
     }
   };
 
+  // 新录屏主流程：
+  // 1. 屏幕流和音频流直接合成到MediaStream
+  // 2. 画中画摄像头通过Canvas合成，支持自定义位置/大小/圆形裁剪
+  // 3. 音频支持系统/麦克风/混合三选
   const startRecording = async () => {
     try {
       if (!stream) {
@@ -1066,36 +1070,23 @@ export default function ScreenCaptureTool() {
         return;
       }
 
+      // 获取主屏幕流
       const displayStream = stream;
-
-      const previewVideo = videoRef.current;
-      if (previewVideo) {
-        previewVideo.srcObject = displayStream;
-        void previewVideo.play().catch(() => undefined);
-      }
-
-      const refreshPreview = () => {
-        const activeVideo = videoRef.current;
-        if (!activeVideo) return;
-        activeVideo.srcObject = displayStream;
-        void activeVideo.play().catch(() => undefined);
-      };
-
       const [displayTrack] = displayStream.getVideoTracks();
-      displayTrack.onunmute = refreshPreview;
+      if (!displayTrack) throw new Error('no-video-track');
 
-      const mergedStream = new MediaStream();
-      const videoTrack = displayStream.getVideoTracks()[0];
-      if (!videoTrack) {
-        throw new Error('no-video-track');
+      // 获取摄像头流（如启用）
+      let cameraTrack: MediaStreamTrack | null = null;
+      if (cameraEnabled && cameraStream) {
+        const tracks = cameraStream.getVideoTracks();
+        if (tracks.length > 0) cameraTrack = tracks[0];
       }
-      mergedStream.addTrack(videoTrack);
 
+      // 音频轨道收集
       const audioTracks: MediaStreamTrack[] = [];
       if (recordAudioSource === 'system' || recordAudioSource === 'both') {
         audioTracks.push(...displayStream.getAudioTracks());
       }
-
       if (recordAudioSource === 'mic' || recordAudioSource === 'both') {
         let micStream = recordMicStreamRef.current;
         if (!micStream) {
@@ -1107,18 +1098,18 @@ export default function ScreenCaptureTool() {
             toast({ title: t('capture.permissionDenied'), variant: 'destructive' });
           }
         }
-
         if (micStream) {
           audioTracks.push(...micStream.getAudioTracks());
         }
       }
-
       if ((recordAudioSource === 'system' || recordAudioSource === 'both') && displayStream.getAudioTracks().length === 0) {
         toast({ title: t('capture.systemAudioNotCaptured') });
       }
 
+      // 音频混合（如有多轨）
+      let finalAudioTrack: MediaStreamTrack | null = null;
       if (audioTracks.length === 1) {
-        mergedStream.addTrack(audioTracks[0]);
+        finalAudioTrack = audioTracks[0];
       } else if (audioTracks.length > 1) {
         const audioContext = new AudioContext();
         recordAudioContextRef.current = audioContext;
@@ -1126,19 +1117,17 @@ export default function ScreenCaptureTool() {
           await audioContext.resume();
         }
         const destination = audioContext.createMediaStreamDestination();
-
         for (const track of audioTracks) {
           const srcStream = new MediaStream([track]);
           const src = audioContext.createMediaStreamSource(srcStream);
           src.connect(destination);
         }
-
         const [mixedTrack] = destination.stream.getAudioTracks();
-        if (mixedTrack) {
-          mergedStream.addTrack(mixedTrack);
-        }
+        if (mixedTrack) finalAudioTrack = mixedTrack;
       }
 
+      // 画中画摄像头合成（Canvas）
+      // 1. 创建Canvas，2. 每帧绘制屏幕+摄像头PIP，3. 用canvas.captureStream生成视频轨道
       const sourceVideo = document.createElement('video');
       sourceVideo.muted = true;
       sourceVideo.playsInline = true;
@@ -1157,12 +1146,10 @@ export default function ScreenCaptureTool() {
       }
       await sourceVideo.play().catch(() => undefined);
 
+      // 画面参数
       const sourceWidth = sourceVideo.videoWidth;
       const sourceHeight = sourceVideo.videoHeight;
-      if (!sourceWidth || !sourceHeight) {
-        throw new Error('preview-size-empty');
-      }
-
+      if (!sourceWidth || !sourceHeight) throw new Error('preview-size-empty');
       const cropX = Math.round(liveRegion.x * sourceWidth);
       const cropY = Math.round(liveRegion.y * sourceHeight);
       const cropW = Math.max(2, Math.round(liveRegion.w * sourceWidth));
@@ -1172,22 +1159,18 @@ export default function ScreenCaptureTool() {
       outputCanvas.width = cropW;
       outputCanvas.height = cropH;
       const outputCtx = outputCanvas.getContext('2d');
-      if (!outputCtx) {
-        throw new Error('output-context-missing');
-      }
+      if (!outputCtx) throw new Error('output-context-missing');
 
+      // 生成canvas视频轨道
       const canvasStream = outputCanvas.captureStream(30);
       const canvasVideoTrack = canvasStream.getVideoTracks()[0];
-      if (!canvasVideoTrack) {
-        throw new Error('canvas-video-track-missing');
-      }
+      if (!canvasVideoTrack) throw new Error('canvas-video-track-missing');
 
+      // 合成最终MediaStream
       const finalStream = new MediaStream([canvasVideoTrack]);
-      const mixedAudioTrack = mergedStream.getAudioTracks()[0];
-      if (mixedAudioTrack) {
-        finalStream.addTrack(mixedAudioTrack);
-      }
+      if (finalAudioTrack) finalStream.addTrack(finalAudioTrack);
 
+      // 录制器
       const preferredMimeType = getPreferredRecorderMimeType(!browserInfo.isSafari);
       const recorder = preferredMimeType
         ? new MediaRecorder(finalStream, { mimeType: preferredMimeType })
@@ -1239,6 +1222,7 @@ export default function ScreenCaptureTool() {
         }
       };
 
+      // 帧渲染：主屏幕+摄像头PIP（圆形/自定义位置大小）
       recordingActiveRef.current = true;
       const scheduleNextFrame = () => {
         if (!recordingActiveRef.current) return;
@@ -1257,35 +1241,31 @@ export default function ScreenCaptureTool() {
           scheduleNextFrame();
           return;
         }
+        // 主画面
         outputCtx.drawImage(sourceVideo, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
-
-        const camVideo = cameraSourceVideoRef.current;
-        if (cameraEnabled && camVideo) {
+        // 画中画摄像头
+        if (cameraEnabled && cameraTrack && cameraSourceVideoRef.current) {
+          const camVideo = cameraSourceVideoRef.current;
           const cameraXInSource = Math.round(cameraOverlay.x * sourceWidth);
           const cameraYInSource = Math.round(cameraOverlay.y * sourceHeight);
           const cameraSizeInSource = Math.max(2, Math.round(cameraOverlay.size * sourceWidth));
-
           const destX = cameraXInSource - cropX;
           const destY = cameraYInSource - cropY;
           const outerRadius = cameraSizeInSource / 2;
           const centerX = destX + outerRadius;
           const centerY = destY + outerRadius;
-
           outputCtx.save();
           outputCtx.beginPath();
           outputCtx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
           outputCtx.closePath();
           outputCtx.clip();
-
           if (camVideo.readyState >= 2 && camVideo.videoWidth > 0 && camVideo.videoHeight > 0) {
             outputCtx.drawImage(camVideo, destX, destY, cameraSizeInSource, cameraSizeInSource);
           } else if (cameraFrameCacheRef.current) {
             outputCtx.drawImage(cameraFrameCacheRef.current, destX, destY, cameraSizeInSource, cameraSizeInSource);
           }
-
           outputCtx.restore();
         }
-
         scheduleNextFrame();
       };
       renderFrame();
