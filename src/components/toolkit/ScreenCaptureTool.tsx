@@ -1246,21 +1246,11 @@ export default function ScreenCaptureTool() {
       };
 
       recordingActiveRef.current = true;
-      const scheduleNextFrame = () => {
-        if (!recordingActiveRef.current) return;
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-          recordVideoFrameCallbackRef.current = (sourceVideo as HTMLVideoElement & {
-            requestVideoFrameCallback: (callback: () => void) => number;
-          }).requestVideoFrameCallback(() => renderFrame());
-        } else {
-          recordFrameTimerRef.current = window.setTimeout(renderFrame, 33);
-        }
-      };
 
       const renderFrame = () => {
         if (!recordingActiveRef.current) return;
         if (recorderRef.current?.state === 'paused') {
-          scheduleNextFrame();
+          recordRafRef.current = requestAnimationFrame(renderFrame);
           return;
         }
         outputCtx.drawImage(sourceVideo, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
@@ -1292,9 +1282,9 @@ export default function ScreenCaptureTool() {
           outputCtx.restore();
         }
 
-        scheduleNextFrame();
+        recordRafRef.current = requestAnimationFrame(renderFrame);
       };
-      renderFrame();
+      recordRafRef.current = requestAnimationFrame(renderFrame);
 
       recorder.start(1000);
       setIsRecording(true);
