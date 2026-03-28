@@ -397,13 +397,30 @@ export default function BoardPanel() {
     if (!isCloud && activeBoard) saveLocalCards(activeBoard.id, cards.map(c => c.id === cardId ? { ...c, likes_count: c.likes_count + 1 } : c));
   };
 
-  const exportCSV = () => {
+  const exportCSV = async () => {
     const approvedCards = cards.filter(c => c.is_approved);
+    // Fetch comments for all approved cards
+    const cardIds = approvedCards.map(c => c.id);
+    let commentsMap: Record<string, string[]> = {};
+    if (cardIds.length > 0) {
+      const { data: comments } = await supabase
+        .from('board_comments')
+        .select('card_id, content, author_nickname')
+        .in('card_id', cardIds)
+        .order('created_at', { ascending: true });
+      if (comments) {
+        for (const cm of comments) {
+          if (!commentsMap[cm.card_id]) commentsMap[cm.card_id] = [];
+          commentsMap[cm.card_id].push(`${cm.author_nickname}: ${cm.content}`);
+        }
+      }
+    }
     const BOM = '\uFEFF';
-    const header = 'Author,Content,Type,URL,Color,Pinned,Likes,Created\n';
-    const rows = approvedCards.map(c =>
-      `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}","${c.color}",${c.is_pinned},${c.likes_count},"${new Date(c.created_at).toLocaleString()}"`
-    ).join('\n');
+    const header = 'Author,Content,Type,URL,Color,Pinned,Likes,Comments,Created\n';
+    const rows = approvedCards.map(c => {
+      const cmts = (commentsMap[c.id] || []).join(' | ').replace(/"/g, '""');
+      return `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}","${c.color}",${c.is_pinned},${c.likes_count},"${cmts}","${new Date(c.created_at).toLocaleString()}"`;
+    }).join('\n');
     const blob = new Blob([BOM + header + rows], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -425,12 +442,29 @@ export default function BoardPanel() {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
 
+      // Fetch comments for summary
+      const cardIds = approvedCards.map(c => c.id);
+      let commentsMap: Record<string, string[]> = {};
+      if (cardIds.length > 0) {
+        const { data: comments } = await supabase
+          .from('board_comments')
+          .select('card_id, content, author_nickname')
+          .in('card_id', cardIds)
+          .order('created_at', { ascending: true });
+        if (comments) {
+          for (const cm of comments) {
+            if (!commentsMap[cm.card_id]) commentsMap[cm.card_id] = [];
+            commentsMap[cm.card_id].push(`${cm.author_nickname}: ${cm.content}`);
+          }
+        }
+      }
       // Add CSV summary
       const BOM = '\uFEFF';
-      const csvHeader = 'Author,Content,Type,URL,Likes,Created\n';
-      const csvRows = approvedCards.map(c =>
-        `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}",${c.likes_count},"${new Date(c.created_at).toLocaleString()}"`
-      ).join('\n');
+      const csvHeader = 'Author,Content,Type,URL,Likes,Comments,Created\n';
+      const csvRows = approvedCards.map(c => {
+        const cmts = (commentsMap[c.id] || []).join(' | ').replace(/"/g, '""');
+        return `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}",${c.likes_count},"${cmts}","${new Date(c.created_at).toLocaleString()}"`;
+      }).join('\n');
       zip.file('summary.csv', BOM + csvHeader + csvRows);
 
       // Download and add files
