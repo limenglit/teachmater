@@ -26,11 +26,11 @@ const demoPosts = [
   // ...更多帖子
 ];
 
-export default function TeacherCommunity() {
+export default function Community() {
   const [posts, setPosts] = useState(demoPosts);
   const [filter, setFilter] = useState({ course: '', region: '', tag: '', keyword: '' });
   const [showUpload, setShowUpload] = useState(false);
-  const [newPost, setNewPost] = useState({ title: '', course: '', region: '', tags: '', knowledgePoints: '', method: '', content: '' });
+  const [newPost, setNewPost] = useState({ title: '', course: '', region: '', tags: '', knowledgePoints: '', method: '', content: '', file: null, url: '' });
   const [commentDraft, setCommentDraft] = useState({});
   const [inviteDraft, setInviteDraft] = useState({});
 
@@ -54,15 +54,14 @@ export default function TeacherCommunity() {
     setCommentDraft(d => ({ ...d, [id]: '' }));
   };
 
-  // 主题研究邀约
-  const handleInvite = (id, topic) => {
-    if (!topic) return;
-    setPosts(posts => posts.map(p => p.id === id ? { ...p, invites: [...(p.invites || []), { topic, initiator: '当前用户', time: new Date().toLocaleString() }] } : p));
-    setInviteDraft(d => ({ ...d, [id]: '' }));
-  };
-
   // 发帖
   const handleUpload = () => {
+    let fileUrl = '';
+    let fileName = '';
+    if (newPost.file) {
+      fileUrl = URL.createObjectURL(newPost.file);
+      fileName = newPost.file.name;
+    }
     setPosts([
       {
         ...newPost,
@@ -70,8 +69,17 @@ export default function TeacherCommunity() {
         author: '当前用户',
         tags: newPost.tags.split(','),
         knowledgePoints: newPost.knowledgePoints.split(','),
+        fileUrl,
+        fileName,
         likes: 0,
         comments: [],
+        invites: []
+      },
+      ...posts
+    ]);
+    setShowUpload(false);
+    setNewPost({ title: '', course: '', region: '', tags: '', knowledgePoints: '', method: '', content: '', file: null, url: '' });
+  };
         invites: []
       },
       ...posts
@@ -97,6 +105,27 @@ export default function TeacherCommunity() {
       <div className="grid gap-6">
         {filteredPosts.map(p => (
           <div key={p.id} className="border rounded-2xl p-6 bg-white shadow-sm hover:shadow-md transition-all">
+            {/* 附件与链接展示区 */}
+            {(p.fileUrl || p.url) && (
+              <div className="mt-3 flex flex-col gap-2">
+                {p.fileUrl && (
+                  <div className="text-sm text-gray-700 flex items-center gap-2">
+                    <span className="font-semibold">附件：</span>
+                    <a href={p.fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{p.fileName}</a>
+                    {p.fileUrl.match(/\.(pdf)$/i) && <iframe src={p.fileUrl} title="PDF预览" className="w-full h-40 border rounded mt-2" />}
+                    {p.fileUrl.match(/\.(mp4|mov|avi)$/i) && <video src={p.fileUrl} controls className="w-full h-40 rounded mt-2" />}
+                    {p.fileUrl.match(/\.(ppt|pptx)$/i) && <span className="text-xs text-gray-400">（PPT可下载，在线预览需集成第三方）</span>}
+                    {p.fileUrl.match(/\.(doc|docx)$/i) && <span className="text-xs text-gray-400">（DOC可下载，在线预览需集成第三方）</span>}
+                  </div>
+                )}
+                {p.url && (
+                  <div className="text-sm text-gray-700 flex items-center gap-2">
+                    <span className="font-semibold">链接：</span>
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" className="underline text-blue-600">{p.url}</a>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-700 shadow">{p.author[0]}</div>
@@ -149,6 +178,11 @@ export default function TeacherCommunity() {
             <Input className="mb-2 rounded" placeholder="知识点（逗号分隔）" value={newPost.knowledgePoints} onChange={e => setNewPost(n => ({ ...n, knowledgePoints: e.target.value }))} />
             <Input className="mb-2 rounded" placeholder="教学方法/策略" value={newPost.method} onChange={e => setNewPost(n => ({ ...n, method: e.target.value }))} />
             <Textarea className="mb-2 rounded" placeholder="主题内容/创新点描述" value={newPost.content} onChange={e => setNewPost(n => ({ ...n, content: e.target.value }))} />
+            <div className="mb-2">
+              <label className="block text-sm text-gray-600 mb-1">可选：上传文件（PPT、PDF、视频、DOC等）</label>
+              <input type="file" accept=".ppt,.pptx,.pdf,.mp4,.mov,.avi,.doc,.docx" onChange={e => setNewPost(n => ({ ...n, file: e.target.files[0] }))} />
+            </div>
+            <Input className="mb-2 rounded" placeholder="可选：相关链接（如B站、腾讯文档、网盘等）" value={newPost.url} onChange={e => setNewPost(n => ({ ...n, url: e.target.value }))} />
             <div className="flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => setShowUpload(false)}>取消</Button>
               <Button className="bg-black text-white font-bold" onClick={handleUpload}>提交</Button>

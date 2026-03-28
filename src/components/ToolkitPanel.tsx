@@ -7,7 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
-import TeacherCommunity from './TeacherCommunity';
+// import Community from './Community';
 import {
   type CommandItem,
   buildCustomCommand,
@@ -85,8 +85,7 @@ export default function ToolkitPanel() {
   return (
     <div data-testid="toolkit-panel" className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 pr-2 sm:p-8 sm:pr-4">
       <div className="max-w-5xl mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {/* 教师社区放在最前面 */}
-        <TeacherCommunity />
+        {/* 社区已移至主界面 */}
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">{t('toolkit.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <BarrageDiscussion />
