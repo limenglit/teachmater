@@ -80,13 +80,6 @@ export default function Community() {
     setShowUpload(false);
     setNewPost({ title: '', course: '', region: '', tags: '', knowledgePoints: '', method: '', content: '', file: null, url: '' });
   };
-        invites: []
-      },
-      ...posts
-    ]);
-    setShowUpload(false);
-    setNewPost({ title: '', course: '', region: '', tags: '', knowledgePoints: '', method: '', content: '' });
-  };
 
   return (
     <div className="teacher-community p-6 bg-white rounded-2xl shadow mb-10 border border-gray-100">
