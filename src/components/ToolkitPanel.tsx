@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import TeacherCommunity from './TeacherCommunity';
 import {
   type CommandItem,
   buildCustomCommand,
