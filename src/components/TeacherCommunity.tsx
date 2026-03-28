@@ -21,9 +21,11 @@ const demoPosts = [
     ],
     invites: [
       { topic: '跨学科主题研究', initiator: '王老师', time: '2026-03-28 09:00' }
-    ]
+    ],
+    fileUrl: '',
+    fileName: '',
+    url: ''
   },
-  // ...更多帖子
 ];
 
 export default function Community() {
@@ -45,6 +47,13 @@ export default function Community() {
   // 点赞
   const handleLike = id => {
     setPosts(posts => posts.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p));
+  };
+
+  // 邀约
+  const handleInvite = (id, text) => {
+    if (!text) return;
+    setPosts(posts => posts.map(p => p.id === id ? { ...p, invites: [...(p.invites || []), { initiator: '当前用户', topic: text, time: new Date().toLocaleString() }] } : p));
+    setInviteDraft(d => ({ ...d, [id]: '' }));
   };
 
   // 评论
@@ -79,13 +88,6 @@ export default function Community() {
     ]);
     setShowUpload(false);
     setNewPost({ title: '', course: '', region: '', tags: '', knowledgePoints: '', method: '', content: '', file: null, url: '' });
-  };
-        invites: []
-      },
-      ...posts
-    ]);
-    setShowUpload(false);
-    setNewPost({ title: '', course: '', region: '', tags: '', knowledgePoints: '', method: '', content: '' });
   };
 
   return (
