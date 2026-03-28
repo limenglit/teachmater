@@ -416,7 +416,7 @@ export default function BoardPanel() {
       }
     }
     const BOM = '\uFEFF';
-    const header = 'Author,Content,Type,URL,Color,Pinned,Likes,Comments,Created\n';
+    const header = '作者,内容,类型,链接,颜色,置顶,点赞数,评论,创建时间\n';
     const rows = approvedCards.map(c => {
       const cmts = (commentsMap[c.id] || []).join(' | ').replace(/"/g, '""');
       return `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}","${c.color}",${c.is_pinned},${c.likes_count},"${cmts}","${new Date(c.created_at).toLocaleString()}"`;
@@ -460,7 +460,7 @@ export default function BoardPanel() {
       }
       // Add CSV summary
       const BOM = '\uFEFF';
-      const csvHeader = 'Author,Content,Type,URL,Likes,Comments,Created\n';
+      const csvHeader = '作者,内容,类型,链接,点赞数,评论,创建时间\n';
       const csvRows = approvedCards.map(c => {
         const cmts = (commentsMap[c.id] || []).join(' | ').replace(/"/g, '""');
         return `"${c.author_nickname}","${c.content.replace(/"/g, '""')}","${c.card_type}","${c.url || c.media_url}",${c.likes_count},"${cmts}","${new Date(c.created_at).toLocaleString()}"`;
