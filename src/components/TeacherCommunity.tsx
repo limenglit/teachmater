@@ -49,6 +49,13 @@ export default function Community() {
     setPosts(posts => posts.map(p => p.id === id ? { ...p, likes: p.likes + 1 } : p));
   };
 
+  // 邀约
+  const handleInvite = (id, text) => {
+    if (!text) return;
+    setPosts(posts => posts.map(p => p.id === id ? { ...p, invites: [...(p.invites || []), { initiator: '当前用户', topic: text, time: new Date().toLocaleString() }] } : p));
+    setInviteDraft(d => ({ ...d, [id]: '' }));
+  };
+
   // 评论
   const handleComment = (id, text) => {
     if (!text) return;
