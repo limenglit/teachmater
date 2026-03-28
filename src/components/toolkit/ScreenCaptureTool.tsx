@@ -446,17 +446,17 @@ export default function ScreenCaptureTool() {
 
       const constraints: MediaStreamConstraints = {
         audio: false,
-        video: preferredDeviceId
+      video: preferredDeviceId
           ? {
               deviceId: { exact: preferredDeviceId },
-              width: { ideal: 960, max: 1280 },
-              height: { ideal: 540, max: 720 },
-              frameRate: { ideal: 20, max: 24 },
+              width: { ideal: 640, max: 1280 },
+              height: { ideal: 480, max: 720 },
+              frameRate: { ideal: 30, max: 30 },
             }
           : {
-              width: { ideal: 960, max: 1280 },
-              height: { ideal: 540, max: 720 },
-              frameRate: { ideal: 20, max: 24 },
+              width: { ideal: 640, max: 1280 },
+              height: { ideal: 480, max: 720 },
+              frameRate: { ideal: 30, max: 30 },
             },
       };
 
@@ -679,12 +679,40 @@ export default function ScreenCaptureTool() {
       return;
     }
 
-    cameraCacheTimerRef.current = window.setInterval(() => {
+    let rafId: number | null = null;
+    const renderLoop = () => {
       const sourceVideo = cameraSourceVideoRef.current;
       const previewCanvas = cameraPreviewCanvasRef.current;
-      const cache = cameraFrameCacheRef.current;
 
-      if (!sourceVideo || sourceVideo.readyState < 2 || sourceVideo.videoWidth <= 0 || sourceVideo.videoHeight <= 0) {
+      if (sourceVideo && sourceVideo.readyState >= 2 && sourceVideo.videoWidth > 0 && sourceVideo.videoHeight > 0) {
+        // Update cache for recording fallback
+        if (!cameraFrameCacheRef.current) {
+          cameraFrameCacheRef.current = document.createElement('canvas');
+        }
+        const nextCache = cameraFrameCacheRef.current;
+        if (nextCache.width !== sourceVideo.videoWidth || nextCache.height !== sourceVideo.videoHeight) {
+          nextCache.width = sourceVideo.videoWidth;
+          nextCache.height = sourceVideo.videoHeight;
+        }
+        const cacheCtx = nextCache.getContext('2d');
+        if (cacheCtx) {
+          cacheCtx.drawImage(sourceVideo, 0, 0, nextCache.width, nextCache.height);
+        }
+
+        // Draw directly from video to preview (no intermediate delay)
+        if (previewCanvas) {
+          if (previewCanvas.width !== sourceVideo.videoWidth || previewCanvas.height !== sourceVideo.videoHeight) {
+            previewCanvas.width = sourceVideo.videoWidth;
+            previewCanvas.height = sourceVideo.videoHeight;
+          }
+          const previewCtx = previewCanvas.getContext('2d');
+          if (previewCtx) {
+            previewCtx.drawImage(sourceVideo, 0, 0, previewCanvas.width, previewCanvas.height);
+          }
+        }
+      } else {
+        // Fallback: draw from cache
+        const cache = cameraFrameCacheRef.current;
         if (previewCanvas && cache && cache.width > 0 && cache.height > 0) {
           if (previewCanvas.width !== cache.width || previewCanvas.height !== cache.height) {
             previewCanvas.width = cache.width;
@@ -695,37 +723,15 @@ export default function ScreenCaptureTool() {
             previewCtx.drawImage(cache, 0, 0, previewCanvas.width, previewCanvas.height);
           }
         }
-        return;
       }
 
-      if (!cameraFrameCacheRef.current) {
-        cameraFrameCacheRef.current = document.createElement('canvas');
-      }
-
-      const nextCache = cameraFrameCacheRef.current;
-      nextCache.width = sourceVideo.videoWidth;
-      nextCache.height = sourceVideo.videoHeight;
-      const cacheCtx = nextCache.getContext('2d');
-      if (!cacheCtx) return;
-
-      cacheCtx.drawImage(sourceVideo, 0, 0, nextCache.width, nextCache.height);
-
-      if (previewCanvas) {
-        if (previewCanvas.width !== sourceVideo.videoWidth || previewCanvas.height !== sourceVideo.videoHeight) {
-          previewCanvas.width = sourceVideo.videoWidth;
-          previewCanvas.height = sourceVideo.videoHeight;
-        }
-        const previewCtx = previewCanvas.getContext('2d');
-        if (previewCtx) {
-          previewCtx.drawImage(nextCache, 0, 0, previewCanvas.width, previewCanvas.height);
-        }
-      }
-    }, 40);
+      rafId = requestAnimationFrame(renderLoop);
+    };
+    rafId = requestAnimationFrame(renderLoop);
 
     return () => {
-      if (cameraCacheTimerRef.current !== null) {
-        window.clearInterval(cameraCacheTimerRef.current);
-        cameraCacheTimerRef.current = null;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
       }
     };
   }, [cameraEnabled, cameraStream, workspaceMode, workspaceOpen]);
@@ -1224,21 +1230,11 @@ export default function ScreenCaptureTool() {
 
       // 帧渲染：主屏幕+摄像头PIP（圆形/自定义位置大小）
       recordingActiveRef.current = true;
-      const scheduleNextFrame = () => {
-        if (!recordingActiveRef.current) return;
-        if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-          recordVideoFrameCallbackRef.current = (sourceVideo as HTMLVideoElement & {
-            requestVideoFrameCallback: (callback: () => void) => number;
-          }).requestVideoFrameCallback(() => renderFrame());
-        } else {
-          recordFrameTimerRef.current = window.setTimeout(renderFrame, 33);
-        }
-      };
 
       const renderFrame = () => {
         if (!recordingActiveRef.current) return;
         if (recorderRef.current?.state === 'paused') {
-          scheduleNextFrame();
+          recordRafRef.current = requestAnimationFrame(renderFrame);
           return;
         }
         // 主画面
@@ -1266,9 +1262,9 @@ export default function ScreenCaptureTool() {
           }
           outputCtx.restore();
         }
-        scheduleNextFrame();
+        recordRafRef.current = requestAnimationFrame(renderFrame);
       };
-      renderFrame();
+      recordRafRef.current = requestAnimationFrame(renderFrame);
 
       recorder.start(1000);
       setIsRecording(true);
