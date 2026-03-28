@@ -1,10 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const ALLOWED_ORIGINS = [
+  'https://teachmater.lovable.app',
+  'https://id-preview--50abb99d-e699-4e11-920c-db8e0dcc3ffe.lovable.app',
+];
+
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') ?? '';
+  const allowedOrigin = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) ? origin : ALLOWED_ORIGINS[0];
   return {
-    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
   };
 }
@@ -14,7 +20,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    // Auth check – use getUser instead of non-existent getClaims
+    // Auth check – enforce authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -28,8 +34,9 @@ serve(async (req) => {
     );
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      // Allow anonymous/guest usage – skip auth requirement
-      console.log("No authenticated user, proceeding as guest");
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...cors, "Content-Type": "application/json" },
+      });
     }
 
     const { text, lang = "zh" } = await req.json();
