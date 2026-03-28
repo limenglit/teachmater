@@ -21,9 +21,11 @@ const demoPosts = [
     ],
     invites: [
       { topic: '跨学科主题研究', initiator: '王老师', time: '2026-03-28 09:00' }
-    ]
+    ],
+    fileUrl: '',
+    fileName: '',
+    url: ''
   },
-  // ...更多帖子
 ];
 
 export default function Community() {
