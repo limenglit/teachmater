@@ -36,6 +36,81 @@ interface CommunityComment {
   created_at: string;
 }
 
+function getFileExt(name: string): string {
+  return (name.split('.').pop() || '').toLowerCase();
+}
+
+function getPreviewType(fileName: string): 'audio' | 'pdf' | 'office' | 'none' {
+  const ext = getFileExt(fileName);
+  if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio';
+  if (ext === 'pdf') return 'pdf';
+  if (['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx'].includes(ext)) return 'office';
+  return 'none';
+}
+
+function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: string; fileName: string; linkUrl: string; postId: string }) {
+  const [previewing, setPreviewing] = useState(false);
+  const previewType = fileUrl ? getPreviewType(fileName || fileUrl) : 'none';
+
+  const officeViewerUrl = fileUrl
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`
+    : '';
+  const googleViewerUrl = fileUrl
+    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`
+    : '';
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      {fileUrl && (
+        <>
+          <div className="text-sm text-foreground flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">附件：</span>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary inline-flex items-center gap-1">
+              <Download className="w-3 h-3" /> {fileName || '下载'}
+            </a>
+            {previewType !== 'none' && (
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setPreviewing(!previewing)}>
+                {previewing ? <><EyeOff className="w-3 h-3 mr-1" />关闭预览</> : <><Eye className="w-3 h-3 mr-1" />在线预览</>}
+              </Button>
+            )}
+          </div>
+          {previewing && previewType === 'audio' && (
+            <audio src={fileUrl} controls className="w-full mt-1" preload="metadata" />
+          )}
+          {previewing && previewType === 'pdf' && (
+            <iframe
+              src={fileUrl}
+              className="w-full rounded-lg border border-border mt-1"
+              style={{ height: '500px' }}
+              title={`PDF preview - ${postId}`}
+            />
+          )}
+          {previewing && previewType === 'office' && (
+            <div className="mt-1 space-y-1">
+              <iframe
+                src={officeViewerUrl}
+                className="w-full rounded-lg border border-border"
+                style={{ height: '500px' }}
+                title={`Office preview - ${postId}`}
+                sandbox="allow-scripts allow-same-origin allow-popups"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                若预览失败，<a href={googleViewerUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">点此用 Google 文档查看</a>
+              </p>
+            </div>
+          )}
+        </>
+      )}
+      {linkUrl && (
+        <div className="text-sm text-foreground flex items-center gap-2">
+          <span className="font-semibold">链接：</span>
+          <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">{linkUrl}</a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TeacherCommunity() {
   const { user, isAdmin } = useAuth();
   const { t } = useLanguage();
