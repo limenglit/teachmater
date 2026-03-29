@@ -355,24 +355,9 @@ export default function TeacherCommunity() {
                     <div className="mt-2 text-xs text-muted-foreground">知识点：{kps.join('，')} | 方法：{p.method}</div>
                   )}
 
-                  {/* File & Link */}
+                  {/* File & Link with inline preview */}
                   {(p.file_url || p.url) && (
-                    <div className="mt-3 flex flex-col gap-2">
-                      {p.file_url && (
-                        <div className="text-sm text-foreground flex items-center gap-2">
-                          <span className="font-semibold">附件：</span>
-                          <a href={p.file_url} target="_blank" rel="noopener noreferrer" className="underline text-primary inline-flex items-center gap-1">
-                            <Download className="w-3 h-3" /> {p.file_name || '下载'}
-                          </a>
-                        </div>
-                      )}
-                      {p.url && (
-                        <div className="text-sm text-foreground flex items-center gap-2">
-                          <span className="font-semibold">链接：</span>
-                          <a href={p.url} target="_blank" rel="noopener noreferrer" className="underline text-primary">{p.url}</a>
-                        </div>
-                      )}
-                    </div>
+                    <FilePreviewSection fileUrl={p.file_url} fileName={p.file_name} linkUrl={p.url} postId={p.id} />
                   )}
 
                   {/* Like & stats */}
