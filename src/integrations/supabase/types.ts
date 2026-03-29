@@ -406,6 +406,127 @@ export type Database = {
         }
         Relationships: []
       }
+      community_comments: {
+        Row: {
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+        }
+        Insert: {
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          post_id: string
+        }
+        Update: {
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_likes: {
+        Row: {
+          created_at: string
+          id: string
+          liker_token: string
+          post_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          liker_token?: string
+          post_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          liker_token?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_posts: {
+        Row: {
+          approved_at: string | null
+          author_name: string
+          content: string
+          course: string
+          created_at: string
+          file_name: string
+          file_url: string
+          id: string
+          knowledge_points: Json
+          likes_count: number
+          method: string
+          region: string
+          status: string
+          tags: Json
+          title: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          author_name?: string
+          content?: string
+          course?: string
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          knowledge_points?: Json
+          likes_count?: number
+          method?: string
+          region?: string
+          status?: string
+          tags?: Json
+          title?: string
+          url?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          author_name?: string
+          content?: string
+          course?: string
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          knowledge_points?: Json
+          likes_count?: number
+          method?: string
+          region?: string
+          status?: string
+          tags?: Json
+          title?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       discussion_topics: {
         Row: {
           created_at: string
