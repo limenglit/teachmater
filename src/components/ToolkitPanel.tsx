@@ -29,6 +29,7 @@ import TextMagnifier from './toolkit/TextMagnifier';
 import TaskChecklist from './toolkit/TaskChecklist';
 import ScreenCaptureTool from './toolkit/ScreenCaptureTool';
 import CodeVisualizerTool from './toolkit/CodeVisualizerTool';
+import ImageEditorTool from './toolkit/ImageEditorTool';
 
 
 // Command card flash overlay
@@ -102,6 +103,7 @@ export default function ToolkitPanel() {
           <ScreenCaptureTool />
           <TaskChecklist />
           <CodeVisualizerTool />
+          <ImageEditorTool />
           <CommandCards />
           <QRCodeGenerator />
         </div>
