@@ -40,24 +40,32 @@ function getFileExt(name: string): string {
   return (name.split('.').pop() || '').toLowerCase();
 }
 
-function getPreviewType(fileName: string): 'audio' | 'pdf' | 'office' | 'none' {
+function getPreviewType(fileName: string): 'audio' | 'video' | 'image' | 'pdf' | 'document' | 'none' {
   const ext = getFileExt(fileName);
-  if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio';
+  if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'webm'].includes(ext)) return 'audio';
+  if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext)) return 'video';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) return 'image';
   if (ext === 'pdf') return 'pdf';
-  if (['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx'].includes(ext)) return 'office';
+  if (['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'rtf'].includes(ext)) return 'document';
   return 'none';
+}
+
+function getDocEmoji(ext: string): string {
+  const lower = ext.toLowerCase();
+  if (lower === 'pdf') return '📄';
+  if (['doc', 'docx', 'rtf'].includes(lower)) return '📝';
+  if (['xls', 'xlsx', 'csv'].includes(lower)) return '📊';
+  if (['ppt', 'pptx'].includes(lower)) return '📽️';
+  if (lower === 'txt') return '📃';
+  return '📎';
 }
 
 function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: string; fileName: string; linkUrl: string; postId: string }) {
   const [previewing, setPreviewing] = useState(false);
   const previewType = fileUrl ? getPreviewType(fileName || fileUrl) : 'none';
-
-  const officeViewerUrl = fileUrl
-    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`
-    : '';
-  const googleViewerUrl = fileUrl
-    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`
-    : '';
+  const displayName = fileName || '下载';
+  const ext = getFileExt(fileName || fileUrl);
+  const canPreviewInline = ['audio', 'video', 'image', 'pdf'].includes(previewType);
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -65,10 +73,11 @@ function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: s
         <>
           <div className="text-sm text-foreground flex items-center gap-2 flex-wrap">
             <span className="font-semibold">附件：</span>
+            <span className="text-lg">{getDocEmoji(ext)}</span>
             <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary inline-flex items-center gap-1">
-              <Download className="w-3 h-3" /> {fileName || '下载'}
+              <Download className="w-3 h-3" /> {displayName}
             </a>
-            {previewType !== 'none' && (
+            {canPreviewInline && (
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setPreviewing(!previewing)}>
                 {previewing ? <><EyeOff className="w-3 h-3 mr-1" />关闭预览</> : <><Eye className="w-3 h-3 mr-1" />在线预览</>}
               </Button>
@@ -77,6 +86,12 @@ function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: s
           {previewing && previewType === 'audio' && (
             <audio src={fileUrl} controls className="w-full mt-1" preload="metadata" />
           )}
+          {previewing && previewType === 'video' && (
+            <video src={fileUrl} controls className="w-full rounded-lg mt-1" style={{ maxHeight: '400px' }} preload="metadata" />
+          )}
+          {previewing && previewType === 'image' && (
+            <img src={fileUrl} alt={displayName} className="rounded-lg mt-1 max-h-[400px] object-contain" />
+          )}
           {previewing && previewType === 'pdf' && (
             <iframe
               src={fileUrl}
@@ -84,20 +99,6 @@ function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: s
               style={{ height: '500px' }}
               title={`PDF preview - ${postId}`}
             />
-          )}
-          {previewing && previewType === 'office' && (
-            <div className="mt-1 space-y-1">
-              <iframe
-                src={officeViewerUrl}
-                className="w-full rounded-lg border border-border"
-                style={{ height: '500px' }}
-                title={`Office preview - ${postId}`}
-                sandbox="allow-scripts allow-same-origin allow-popups"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                若预览失败，<a href={googleViewerUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">点此用 Google 文档查看</a>
-              </p>
-            </div>
           )}
         </>
       )}
