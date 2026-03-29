@@ -489,7 +489,7 @@ export default function TeacherCommunity() {
               <Textarea className="mb-2 rounded" placeholder="主题内容/创新点描述" value={newPost.content} onChange={e => setNewPost(n => ({ ...n, content: e.target.value }))} />
               <div className="mb-2">
                 <label className="block text-sm text-muted-foreground mb-1">可选：上传文件（PPT、PDF、视频、DOC等）</label>
-                <input type="file" accept=".ppt,.pptx,.pdf,.mp4,.mov,.avi,.doc,.docx" onChange={e => setNewPost(n => ({ ...n, file: e.target.files?.[0] || null }))} />
+                <input type="file" accept=".ppt,.pptx,.pdf,.mp4,.mov,.avi,.doc,.docx,.mp3,.wav,.ogg,.m4a,.xls,.xlsx" onChange={e => setNewPost(n => ({ ...n, file: e.target.files?.[0] || null }))} />
               </div>
               <Input className="mb-2 rounded" placeholder="可选：相关链接" value={newPost.url} onChange={e => setNewPost(n => ({ ...n, url: e.target.value }))} />
               <div className="flex gap-2 justify-end">
