@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, Eraser, Type, ArrowUpRight, Grid3X3, Pencil,
   Crop, RotateCcw, RotateCw, Undo2, Redo2, Download, ZoomIn, ZoomOut,
-  Palette, Loader2, Eye, Trash2, Move
+  Palette, Loader2, Eye, Trash2, Move, ImageIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
