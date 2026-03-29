@@ -12,7 +12,7 @@ import ToolkitPanel from '@/components/ToolkitPanel';
 import BoardPanel from '@/components/BoardPanel';
 import QuizPanel from '@/components/QuizPanel';
 import AchievementPanel from '@/components/AchievementPanel';
-import Community from '@/components/Community';
+import TeacherCommunity from '@/components/TeacherCommunity';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
@@ -96,6 +96,7 @@ const Index = () => {
       case 'ppt': return <PPTPanel />;
       case 'visual': return <VisualizationPanel />;
       case 'achieve': return <AchievementPanel />;
+      case 'community': return <TeacherCommunity />;
       case 'toolkit': return <ToolkitPanel />;
     }
   };
@@ -195,14 +196,7 @@ const Index = () => {
 
             <div className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
               {/* 积分面板后，工具箱前插入社区 */}
-              {activeTab === 'achieve' && <AchievementPanel />}
-              {activeTab !== 'achieve' && activeTab !== 'toolkit' && renderContent()}
-              {/* 社区 */}
-              <div className="max-w-5xl mx-auto my-8">
-                <h2 className="text-2xl font-bold mb-4">社区</h2>
-                <Community />
-              </div>
-              {activeTab === 'toolkit' && <ToolkitPanel />}
+              {renderContent()}
             </div>
           </div>
         </div>

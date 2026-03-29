@@ -1,8 +1,8 @@
-import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation, ImageIcon } from 'lucide-react';
+import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation, ImageIcon, MessagesSquare } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
 
-export type TabId = 'random' | 'teamwork' | 'seats' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'visual' | 'achieve' | 'toolkit';
+export type TabId = 'random' | 'teamwork' | 'seats' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'visual' | 'achieve' | 'community' | 'toolkit';
 
 interface TabItem {
   id: TabId;
@@ -29,6 +29,7 @@ const tabs: TabItem[] = [
   { id: 'ppt', labelKey: 'tab.ppt', emoji: '📊', icon: <Presentation className="w-4 h-4" /> },
   { id: 'visual', labelKey: 'tab.visual', emoji: '📐', icon: <ImageIcon className="w-4 h-4" /> },
   { id: 'achieve', labelKey: 'tab.achieve', emoji: '🏆', icon: <Dices className="w-4 h-4" /> },
+  { id: 'community', labelKey: 'tab.community', emoji: '👩‍🏫', icon: <MessagesSquare className="w-4 h-4" /> },
   { id: 'toolkit', labelKey: 'tab.toolkit', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
 ];
 
