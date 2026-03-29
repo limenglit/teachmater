@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle, XCircle, Clock, Download } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Download, Eye, EyeOff } from 'lucide-react';
 
 interface CommunityPost {
   id: string;
@@ -34,6 +34,81 @@ interface CommunityComment {
   author_name: string;
   content: string;
   created_at: string;
+}
+
+function getFileExt(name: string): string {
+  return (name.split('.').pop() || '').toLowerCase();
+}
+
+function getPreviewType(fileName: string): 'audio' | 'pdf' | 'office' | 'none' {
+  const ext = getFileExt(fileName);
+  if (['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'].includes(ext)) return 'audio';
+  if (ext === 'pdf') return 'pdf';
+  if (['ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx'].includes(ext)) return 'office';
+  return 'none';
+}
+
+function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: string; fileName: string; linkUrl: string; postId: string }) {
+  const [previewing, setPreviewing] = useState(false);
+  const previewType = fileUrl ? getPreviewType(fileName || fileUrl) : 'none';
+
+  const officeViewerUrl = fileUrl
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`
+    : '';
+  const googleViewerUrl = fileUrl
+    ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`
+    : '';
+
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      {fileUrl && (
+        <>
+          <div className="text-sm text-foreground flex items-center gap-2 flex-wrap">
+            <span className="font-semibold">附件：</span>
+            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary inline-flex items-center gap-1">
+              <Download className="w-3 h-3" /> {fileName || '下载'}
+            </a>
+            {previewType !== 'none' && (
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setPreviewing(!previewing)}>
+                {previewing ? <><EyeOff className="w-3 h-3 mr-1" />关闭预览</> : <><Eye className="w-3 h-3 mr-1" />在线预览</>}
+              </Button>
+            )}
+          </div>
+          {previewing && previewType === 'audio' && (
+            <audio src={fileUrl} controls className="w-full mt-1" preload="metadata" />
+          )}
+          {previewing && previewType === 'pdf' && (
+            <iframe
+              src={fileUrl}
+              className="w-full rounded-lg border border-border mt-1"
+              style={{ height: '500px' }}
+              title={`PDF preview - ${postId}`}
+            />
+          )}
+          {previewing && previewType === 'office' && (
+            <div className="mt-1 space-y-1">
+              <iframe
+                src={officeViewerUrl}
+                className="w-full rounded-lg border border-border"
+                style={{ height: '500px' }}
+                title={`Office preview - ${postId}`}
+                sandbox="allow-scripts allow-same-origin allow-popups"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                若预览失败，<a href={googleViewerUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">点此用 Google 文档查看</a>
+              </p>
+            </div>
+          )}
+        </>
+      )}
+      {linkUrl && (
+        <div className="text-sm text-foreground flex items-center gap-2">
+          <span className="font-semibold">链接：</span>
+          <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">{linkUrl}</a>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function TeacherCommunity() {
@@ -355,24 +430,9 @@ export default function TeacherCommunity() {
                     <div className="mt-2 text-xs text-muted-foreground">知识点：{kps.join('，')} | 方法：{p.method}</div>
                   )}
 
-                  {/* File & Link */}
+                  {/* File & Link with inline preview */}
                   {(p.file_url || p.url) && (
-                    <div className="mt-3 flex flex-col gap-2">
-                      {p.file_url && (
-                        <div className="text-sm text-foreground flex items-center gap-2">
-                          <span className="font-semibold">附件：</span>
-                          <a href={p.file_url} target="_blank" rel="noopener noreferrer" className="underline text-primary inline-flex items-center gap-1">
-                            <Download className="w-3 h-3" /> {p.file_name || '下载'}
-                          </a>
-                        </div>
-                      )}
-                      {p.url && (
-                        <div className="text-sm text-foreground flex items-center gap-2">
-                          <span className="font-semibold">链接：</span>
-                          <a href={p.url} target="_blank" rel="noopener noreferrer" className="underline text-primary">{p.url}</a>
-                        </div>
-                      )}
-                    </div>
+                    <FilePreviewSection fileUrl={p.file_url} fileName={p.file_name} linkUrl={p.url} postId={p.id} />
                   )}
 
                   {/* Like & stats */}
@@ -429,7 +489,7 @@ export default function TeacherCommunity() {
               <Textarea className="mb-2 rounded" placeholder="主题内容/创新点描述" value={newPost.content} onChange={e => setNewPost(n => ({ ...n, content: e.target.value }))} />
               <div className="mb-2">
                 <label className="block text-sm text-muted-foreground mb-1">可选：上传文件（PPT、PDF、视频、DOC等）</label>
-                <input type="file" accept=".ppt,.pptx,.pdf,.mp4,.mov,.avi,.doc,.docx" onChange={e => setNewPost(n => ({ ...n, file: e.target.files?.[0] || null }))} />
+                <input type="file" accept=".ppt,.pptx,.pdf,.mp4,.mov,.avi,.doc,.docx,.mp3,.wav,.ogg,.m4a,.xls,.xlsx" onChange={e => setNewPost(n => ({ ...n, file: e.target.files?.[0] || null }))} />
               </div>
               <Input className="mb-2 rounded" placeholder="可选：相关链接" value={newPost.url} onChange={e => setNewPost(n => ({ ...n, url: e.target.value }))} />
               <div className="flex gap-2 justify-end">
