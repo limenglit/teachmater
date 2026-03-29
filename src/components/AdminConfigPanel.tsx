@@ -19,18 +19,19 @@ const FEATURE_KEYS: { key: keyof Omit<FeatureFlags, 'ai_daily_limit'>; emoji: st
   { key: 'ppt', emoji: '📊', labelKey: 'tab.ppt' },
   { key: 'visual', emoji: '📐', labelKey: 'tab.visual' },
   { key: 'achieve', emoji: '🏆', labelKey: 'tab.achieve' },
+  { key: 'community', emoji: '👩‍🏫', labelKey: 'tab.community' },
   { key: 'toolkit', emoji: '🧰', labelKey: 'tab.toolkit' },
 ];
 
 const DEFAULT_CONFIG: SystemConfig = {
   guest: {
     random: true, teamwork: true, seats: true, board: true, quiz: true,
-    sketch: true, ppt: true, visual: true, achieve: true, toolkit: true,
+    sketch: true, ppt: true, visual: true, achieve: true, community: true, toolkit: true,
     ai_daily_limit: 5,
   },
   registered: {
     random: true, teamwork: true, seats: true, board: true, quiz: true,
-    sketch: true, ppt: true, visual: true, achieve: true, toolkit: true,
+    sketch: true, ppt: true, visual: true, achieve: true, community: true, toolkit: true,
     ai_daily_limit: -1,
   },
   checkinPolicy: {
