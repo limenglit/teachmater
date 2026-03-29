@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle, XCircle, Clock, Download } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Download, Eye, EyeOff } from 'lucide-react';
 
 interface CommunityPost {
   id: string;
