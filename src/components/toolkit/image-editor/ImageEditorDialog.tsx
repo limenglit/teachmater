@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Upload, Eraser, Type, ArrowUpRight, Grid3X3, Pencil,
   Crop, RotateCcw, RotateCw, Undo2, Redo2, Download, ZoomIn, ZoomOut,
-  Palette, Loader2, Eye, Trash2, Move, ImageIcon
+  Palette, Loader2, Eye, Trash2, Move, ImageIcon, Sparkles, Cpu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -150,72 +150,77 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   // Remove background with graceful degradation: AI → Canvas fallback
   const [removalMethod, setRemovalMethod] = useState<'ai' | 'local' | null>(null);
 
-  const removeBackground = useCallback(async () => {
+  const removeBackground = useCallback(async (mode: 'auto' | 'ai' | 'local' = 'auto') => {
     const src = image;
     if (!src) return;
     setIsRemoving(true);
     setRemovalMethod(null);
 
-    // Step 1: Try AI removal
-    try {
-      const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = src.width;
-      tempCanvas.height = src.height;
-      const ctx = tempCanvas.getContext('2d')!;
-      ctx.drawImage(src, 0, 0);
-      const base64 = tempCanvas.toDataURL('image/png');
+    const tryAI = async (): Promise<boolean> => {
+      try {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = src.width;
+        tempCanvas.height = src.height;
+        const ctx = tempCanvas.getContext('2d')!;
+        ctx.drawImage(src, 0, 0);
+        const base64 = tempCanvas.toDataURL('image/png');
 
-      const { data, error } = await supabase.functions.invoke('remove-background', {
-        body: { imageBase64: base64 },
-      });
+        const { data, error } = await supabase.functions.invoke('remove-background', {
+          body: { imageBase64: base64 },
+        });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
 
-      const resultImg = new Image();
-      resultImg.onload = () => {
+        const resultImg = new Image();
+        await new Promise<void>((resolve, reject) => {
+          resultImg.onload = () => resolve();
+          resultImg.onerror = () => reject(new Error('Image load failed'));
+          resultImg.src = data.image;
+        });
         setProcessedImage(resultImg);
         setBgTransparent(true);
         setRemovalMethod('ai');
         toast({ title: t('imgEdit.bgRemoved') });
-      };
-      resultImg.onerror = () => { throw new Error('Image load failed'); };
-      resultImg.src = data.image;
-      setIsRemoving(false);
-      return;
-    } catch (err: any) {
-      console.warn('AI removal failed, falling back to local:', err?.message);
-    }
+        return true;
+      } catch (err: any) {
+        console.warn('AI removal failed:', err?.message);
+        return false;
+      }
+    };
 
-    // Step 2: Fallback to Canvas-based local removal
-    try {
-      const localResult = removeBackgroundLocal(src);
-      if (localResult) {
-        // Wait for image to load
+    const tryLocal = async (): Promise<boolean> => {
+      try {
+        const localResult = removeBackgroundLocal(src);
+        if (!localResult) throw new Error('null');
         await new Promise<void>((resolve, reject) => {
-          if (localResult.complete && localResult.naturalWidth > 0) {
-            resolve();
-          } else {
-            localResult.onload = () => resolve();
-            localResult.onerror = () => reject(new Error('Local image load failed'));
-          }
+          if (localResult.complete && localResult.naturalWidth > 0) resolve();
+          else { localResult.onload = () => resolve(); localResult.onerror = () => reject(); }
         });
         setProcessedImage(localResult);
         setBgTransparent(true);
         setRemovalMethod('local');
-        toast({
-          title: t('imgEdit.bgRemovedLocal'),
-          description: t('imgEdit.bgRemovedLocalDesc'),
-        });
-      } else {
-        throw new Error('Local removal returned null');
+        toast({ title: t('imgEdit.bgRemovedLocal'), description: mode === 'auto' ? t('imgEdit.bgRemovedLocalDesc') : undefined });
+        return true;
+      } catch {
+        return false;
       }
-    } catch (err2: any) {
-      console.error('All removal methods failed:', err2);
-      toast({ title: t('imgEdit.bgRemoveFail'), variant: 'destructive' });
-    } finally {
-      setIsRemoving(false);
+    };
+
+    let success = false;
+    if (mode === 'ai') {
+      success = await tryAI();
+    } else if (mode === 'local') {
+      success = await tryLocal();
+    } else {
+      success = await tryAI();
+      if (!success) success = await tryLocal();
     }
+
+    if (!success) {
+      toast({ title: t('imgEdit.bgRemoveFail'), variant: 'destructive' });
+    }
+    setIsRemoving(false);
   }, [image, t, removeBackgroundLocal]);
 
   // Render canvas
