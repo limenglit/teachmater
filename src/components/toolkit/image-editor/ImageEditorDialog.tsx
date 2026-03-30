@@ -11,10 +11,10 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
-type Tool = 'move' | 'text' | 'arrow' | 'mosaic' | 'draw' | 'crop';
+type Tool = 'move' | 'text' | 'arrow' | 'mosaic' | 'draw' | 'crop' | 'eraser';
 
 interface DrawAction {
-  type: 'draw' | 'text' | 'arrow' | 'mosaic' | 'image';
+  type: 'draw' | 'text' | 'arrow' | 'mosaic' | 'image' | 'erase';
   data: any;
 }
 
@@ -276,6 +276,22 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         ctx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
         ctx.stroke();
+      } else if (action.type === 'erase') {
+        // 橡皮擦：将路径经过的像素 alpha 设为 0
+        const pts = action.data.points;
+        const size = action.data.size;
+        if (pts.length < 2) continue;
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.lineWidth = size;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+        ctx.restore();
       } else if (action.type === 'text') {
         ctx.fillStyle = action.data.color;
         ctx.font = `${action.data.fontSize}px sans-serif`;
@@ -320,7 +336,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   // Mouse/Touch handlers
   const handlePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const pos = getCanvasPos(e);
-    if (tool === 'draw') {
+    if (tool === 'draw' || tool === 'eraser') {
       setIsDrawing(true);
       setDrawPoints([pos]);
     } else if (tool === 'arrow') {
@@ -344,7 +360,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing && !arrowStart) return;
     const pos = getCanvasPos(e);
-    if (tool === 'draw' && isDrawing) {
+    if ((tool === 'draw' || tool === 'eraser') && isDrawing) {
       setDrawPoints(prev => [...prev, pos]);
       // Live preview
       const canvas = canvasRef.current;
@@ -352,13 +368,26 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         const ctx = canvas.getContext('2d');
         if (ctx && drawPoints.length > 0) {
           const last = drawPoints[drawPoints.length - 1];
-          ctx.strokeStyle = drawColor;
-          ctx.lineWidth = drawSize;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(last.x, last.y);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.stroke();
+          if (tool === 'draw') {
+            ctx.strokeStyle = drawColor;
+            ctx.lineWidth = drawSize;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+          } else if (tool === 'eraser') {
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.strokeStyle = 'rgba(0,0,0,1)';
+            ctx.lineWidth = drawSize;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(last.x, last.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
       }
     } else if (tool === 'mosaic' && isDrawing) {
@@ -383,10 +412,12 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   }, [isDrawing, arrowStart, tool, getCanvasPos, drawColor, drawSize, drawPoints]);
 
   const handlePointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (tool === 'draw' && isDrawing) {
+    if ((tool === 'draw' || tool === 'eraser') && isDrawing) {
       const action: DrawAction = {
-        type: 'draw',
-        data: { points: drawPoints, color: drawColor, size: drawSize },
+        type: tool === 'draw' ? 'draw' : 'erase',
+        data: tool === 'draw'
+          ? { points: drawPoints, color: drawColor, size: drawSize }
+          : { points: drawPoints, size: drawSize },
       };
       setActions(prev => [...prev, action]);
       setUndoneActions([]);
@@ -524,6 +555,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     { id: 'arrow', icon: ArrowUpRight, label: t('imgEdit.arrow') },
     { id: 'mosaic', icon: Grid3X3, label: t('imgEdit.mosaic') },
     { id: 'draw', icon: Pencil, label: t('imgEdit.draw') },
+    { id: 'eraser', icon: Eraser, label: t('imgEdit.eraser') },
     { id: 'crop', icon: Crop, label: t('imgEdit.crop') },
   ];
 
@@ -585,6 +617,13 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
           <>
             <input type="color" value={drawColor} onChange={e => setDrawColor(e.target.value)} className="w-7 h-7 rounded cursor-pointer border border-border" />
             <input type="range" min={1} max={20} value={drawSize} onChange={e => setDrawSize(Number(e.target.value))} className="w-16" />
+          </>
+        )}
+        {tool === 'eraser' && (
+          <>
+            <span className="text-xs text-muted-foreground ml-2">刷子大小</span>
+            <input type="range" min={5} max={60} value={drawSize} onChange={e => setDrawSize(Number(e.target.value))} className="w-16" />
+            <span className="text-xs text-foreground">{drawSize}px</span>
           </>
         )}
         {tool === 'text' && (
