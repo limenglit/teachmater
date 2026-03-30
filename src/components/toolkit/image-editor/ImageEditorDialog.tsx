@@ -644,6 +644,11 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
                 {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
                 {isRemoving ? t('imgEdit.removing') : t('imgEdit.removeBg')}
               </Button>
+              {removalMethod && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {removalMethod === 'ai' ? '✨ AI' : '🎨 Local'}
+                </p>
+              )}
             </div>
 
             {/* Background color/image */}
