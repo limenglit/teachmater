@@ -412,15 +412,42 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   }, [isDrawing, arrowStart, tool, getCanvasPos, drawColor, drawSize, drawPoints]);
 
   const handlePointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if ((tool === 'draw' || tool === 'eraser') && isDrawing) {
+    if (tool === 'draw' && isDrawing) {
       const action: DrawAction = {
-        type: tool === 'draw' ? 'draw' : 'erase',
-        data: tool === 'draw'
-          ? { points: drawPoints, color: drawColor, size: drawSize }
-          : { points: drawPoints, size: drawSize },
+        type: 'draw',
+        data: { points: drawPoints, color: drawColor, size: drawSize },
       };
       setActions(prev => [...prev, action]);
       setUndoneActions([]);
+    } else if (tool === 'eraser' && isDrawing) {
+      // 直接在 processedImage 上擦除
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasW;
+      canvas.height = canvasH;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // 先绘制当前 processedImage 或 image
+        const img = processedImage || image;
+        if (img) {
+          ctx.drawImage(img, 0, 0, canvasW, canvasH);
+        }
+        // 擦除路径
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)';
+        ctx.lineWidth = drawSize;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
+        for (let i = 1; i < drawPoints.length; i++) ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+        ctx.stroke();
+        ctx.restore();
+        // 更新 processedImage
+        const resultImg = new window.Image();
+        resultImg.onload = () => setProcessedImage(resultImg);
+        resultImg.src = canvas.toDataURL('image/png');
+      }
     } else if (tool === 'arrow' && arrowStart) {
       const pos = getCanvasPos(e);
       const action: DrawAction = {
@@ -440,7 +467,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     }
     setIsDrawing(false);
     setDrawPoints([]);
-  }, [tool, isDrawing, drawPoints, drawColor, drawSize, arrowStart, getCanvasPos]);
+  }, [tool, isDrawing, drawPoints, drawColor, drawSize, arrowStart, getCanvasPos, processedImage, image, canvasW, canvasH]);
 
   // Undo/Redo
   const undo = useCallback(() => {
