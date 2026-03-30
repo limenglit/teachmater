@@ -98,8 +98,11 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     if (file && file.type.startsWith('image/')) handleFile(file);
   }, [handleFile]);
 
+  // 容差 state
+  const [tolerance, setTolerance] = useState(50);
+
   // Canvas-based local background removal (fallback)
-  const removeBackgroundLocal = useCallback((src: HTMLImageElement): HTMLImageElement | null => {
+  const removeBackgroundLocal = useCallback((src: HTMLImageElement, tol?: number): HTMLImageElement | null => {
     try {
       const c = document.createElement('canvas');
       c.width = src.width;
@@ -125,16 +128,16 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       const bgG = Math.round(samples.reduce((s, p) => s + p[1], 0) / samples.length);
       const bgB = Math.round(samples.reduce((s, p) => s + p[2], 0) / samples.length);
 
-      const tolerance = 50; // color distance threshold
+      const toleranceValue = typeof tol === 'number' ? tol : tolerance;
       for (let i = 0; i < d.length; i += 4) {
         const dist = Math.sqrt(
           (d[i] - bgR) ** 2 + (d[i + 1] - bgG) ** 2 + (d[i + 2] - bgB) ** 2
         );
-        if (dist < tolerance) {
+        if (dist < toleranceValue) {
           d[i + 3] = 0; // fully transparent
-        } else if (dist < tolerance * 1.5) {
+        } else if (dist < toleranceValue * 1.5) {
           // Edge blending
-          d[i + 3] = Math.round(255 * ((dist - tolerance) / (tolerance * 0.5)));
+          d[i + 3] = Math.round(255 * ((dist - toleranceValue) / (toleranceValue * 0.5)));
         }
       }
       ctx.putImageData(imgData, 0, 0);
@@ -145,7 +148,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     } catch {
       return null;
     }
-  }, []);
+  }, [tolerance]);
 
   // Remove background with graceful degradation: AI → Canvas fallback
   const [removalMethod, setRemovalMethod] = useState<'ai' | 'local' | null>(null);
@@ -191,7 +194,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
     const tryLocal = async (): Promise<boolean> => {
       try {
-        const localResult = removeBackgroundLocal(src);
+        const localResult = removeBackgroundLocal(src, tolerance);
         if (!localResult) throw new Error('null');
         await new Promise<void>((resolve, reject) => {
           if (localResult.complete && localResult.naturalWidth > 0) resolve();
@@ -637,7 +640,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         {/* Right sidebar - Background & Export */}
         {image && (
           <div className="w-56 border-l border-border bg-card p-4 overflow-y-auto space-y-4 hidden md:block">
-            {/* AI Background Removal */}
+            {/* AI Background Removal + 容差滑块 */}
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.bgSection')}</h4>
               <Button
@@ -654,6 +657,22 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
                   {removalMethod === 'ai' ? '✨ AI' : '🎨 Local'}
                 </p>
               )}
+              {/* 容差滑块，仅本地抠图时可调 */}
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs">容差</span>
+                <input
+                  type="range"
+                  min={5}
+                  max={120}
+                  step={1}
+                  value={tolerance}
+                  onChange={e => setTolerance(Number(e.target.value))}
+                  className="w-24"
+                  disabled={isRemoving}
+                  title="调整颜色匹配灵敏度，适应不同背景"
+                />
+                <span className="text-xs w-6 text-right">{tolerance}</span>
+              </div>
             </div>
 
             {/* Background color/image */}
