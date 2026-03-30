@@ -98,13 +98,66 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     if (file && file.type.startsWith('image/')) handleFile(file);
   }, [handleFile]);
 
-  // Remove background via edge function
+  // Canvas-based local background removal (fallback)
+  const removeBackgroundLocal = useCallback((src: HTMLImageElement): HTMLImageElement | null => {
+    try {
+      const c = document.createElement('canvas');
+      c.width = src.width;
+      c.height = src.height;
+      const ctx = c.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(src, 0, 0);
+      const imgData = ctx.getImageData(0, 0, c.width, c.height);
+      const d = imgData.data;
+
+      // Sample corners to detect background color
+      const samples: number[][] = [];
+      const samplePositions = [
+        [0, 0], [c.width - 1, 0], [0, c.height - 1], [c.width - 1, c.height - 1],
+        [Math.floor(c.width / 2), 0], [0, Math.floor(c.height / 2)],
+      ];
+      for (const [sx, sy] of samplePositions) {
+        const idx = (sy * c.width + sx) * 4;
+        samples.push([d[idx], d[idx + 1], d[idx + 2]]);
+      }
+      // Average background color from corners
+      const bgR = Math.round(samples.reduce((s, p) => s + p[0], 0) / samples.length);
+      const bgG = Math.round(samples.reduce((s, p) => s + p[1], 0) / samples.length);
+      const bgB = Math.round(samples.reduce((s, p) => s + p[2], 0) / samples.length);
+
+      const tolerance = 50; // color distance threshold
+      for (let i = 0; i < d.length; i += 4) {
+        const dist = Math.sqrt(
+          (d[i] - bgR) ** 2 + (d[i + 1] - bgG) ** 2 + (d[i + 2] - bgB) ** 2
+        );
+        if (dist < tolerance) {
+          d[i + 3] = 0; // fully transparent
+        } else if (dist < tolerance * 1.5) {
+          // Edge blending
+          d[i + 3] = Math.round(255 * ((dist - tolerance) / (tolerance * 0.5)));
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      const resultImg = new Image();
+      resultImg.src = c.toDataURL('image/png');
+      return resultImg;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Remove background with graceful degradation: AI → Canvas fallback
+  const [removalMethod, setRemovalMethod] = useState<'ai' | 'local' | null>(null);
+
   const removeBackground = useCallback(async () => {
     const src = image;
     if (!src) return;
     setIsRemoving(true);
+    setRemovalMethod(null);
+
+    // Step 1: Try AI removal
     try {
-      // Convert image to base64
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = src.width;
       tempCanvas.height = src.height;
@@ -123,16 +176,47 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       resultImg.onload = () => {
         setProcessedImage(resultImg);
         setBgTransparent(true);
+        setRemovalMethod('ai');
         toast({ title: t('imgEdit.bgRemoved') });
       };
+      resultImg.onerror = () => { throw new Error('Image load failed'); };
       resultImg.src = data.image;
+      setIsRemoving(false);
+      return;
     } catch (err: any) {
-      console.error('Remove bg error:', err);
+      console.warn('AI removal failed, falling back to local:', err?.message);
+    }
+
+    // Step 2: Fallback to Canvas-based local removal
+    try {
+      const localResult = removeBackgroundLocal(src);
+      if (localResult) {
+        // Wait for image to load
+        await new Promise<void>((resolve, reject) => {
+          if (localResult.complete && localResult.naturalWidth > 0) {
+            resolve();
+          } else {
+            localResult.onload = () => resolve();
+            localResult.onerror = () => reject(new Error('Local image load failed'));
+          }
+        });
+        setProcessedImage(localResult);
+        setBgTransparent(true);
+        setRemovalMethod('local');
+        toast({
+          title: t('imgEdit.bgRemovedLocal'),
+          description: t('imgEdit.bgRemovedLocalDesc'),
+        });
+      } else {
+        throw new Error('Local removal returned null');
+      }
+    } catch (err2: any) {
+      console.error('All removal methods failed:', err2);
       toast({ title: t('imgEdit.bgRemoveFail'), variant: 'destructive' });
     } finally {
       setIsRemoving(false);
     }
-  }, [image, t]);
+  }, [image, t, removeBackgroundLocal]);
 
   // Render canvas
   const renderCanvas = useCallback(() => {
@@ -560,6 +644,11 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
                 {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
                 {isRemoving ? t('imgEdit.removing') : t('imgEdit.removeBg')}
               </Button>
+              {removalMethod && (
+                <p className="text-xs text-muted-foreground text-center">
+                  {removalMethod === 'ai' ? '✨ AI' : '🎨 Local'}
+                </p>
+              )}
             </div>
 
             {/* Background color/image */}
