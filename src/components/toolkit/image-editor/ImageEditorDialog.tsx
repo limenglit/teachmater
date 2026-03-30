@@ -641,7 +641,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.bgSection')}</h4>
               <Button
-                onClick={removeBackground}
+                onClick={() => removeBackground('auto')}
                 disabled={isRemoving}
                 className="w-full gap-2"
                 size="sm"
