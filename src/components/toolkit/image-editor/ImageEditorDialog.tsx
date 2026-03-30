@@ -752,7 +752,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       {/* Mobile bottom bar for export/bg */}
       {image && (
         <div className="md:hidden flex items-center gap-2 px-3 py-2 border-t border-border bg-card overflow-x-auto">
-          <Button onClick={removeBackground} disabled={isRemoving} size="sm" className="gap-1 text-xs h-8 shrink-0">
+          <Button onClick={() => removeBackground('auto')} disabled={isRemoving} size="sm" className="gap-1 text-xs h-8 shrink-0">
             {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eraser className="w-3.5 h-3.5" />}
             {t('imgEdit.removeBg')}
           </Button>
