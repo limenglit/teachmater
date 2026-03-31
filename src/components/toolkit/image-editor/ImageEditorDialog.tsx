@@ -4,15 +4,17 @@ import {
   X, Upload, Eraser, Type, ArrowUpRight, Grid3X3, Pencil,
   Crop, RotateCcw, RotateCw, Undo2, Redo2, Download, ZoomIn, ZoomOut,
   Palette, Loader2, Eye, Trash2, Move, ImageIcon, Sparkles, Cpu,
-  Square, Circle, Heart, Lasso, MousePointer2, Check, XCircle
+  Square, Circle, Heart, MousePointer2, Check, XCircle, Wand2, Paintbrush, EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { inpaintTelea, magicErase, inpaintLama, loadLamaModel, getLamaStatus } from './inpaint';
 
 type Tool = 'move' | 'text' | 'arrow' | 'mosaic' | 'draw' | 'crop' | 'eraser';
+type EraserMode = 'transparent' | 'inpaint' | 'magic';
 type CropMode = 'rect' | 'circle' | 'ellipse' | 'heart' | 'lasso';
 
 interface DrawAction {
@@ -25,8 +27,7 @@ interface Props {
   onClose: () => void;
 }
 
-// Heart shape path helper
-function heartPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number) {
+function heartPath(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, cx: number, cy: number, w: number, h: number) {
   const topY = cy - h * 0.35;
   ctx.beginPath();
   ctx.moveTo(cx, cy + h * 0.5);
@@ -59,20 +60,17 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const [textInput, setTextInput] = useState('');
   const [fontSize, setFontSize] = useState(24);
 
-  // Undo/Redo
   const [actions, setActions] = useState<DrawAction[]>([]);
   const [undoneActions, setUndoneActions] = useState<DrawAction[]>([]);
-
-  // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawPoints, setDrawPoints] = useState<{ x: number; y: number }[]>([]);
   const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
 
-  // Move tool state
+  // Move tool
   const [movingActionIndex, setMovingActionIndex] = useState<number | null>(null);
   const [moveOffset, setMoveOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Crop state
+  // Crop
   const [cropMode, setCropMode] = useState<CropMode>('rect');
   const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
   const [cropEnd, setCropEnd] = useState<{ x: number; y: number } | null>(null);
@@ -80,9 +78,20 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const [isCropping, setIsCropping] = useState(false);
   const [cropPending, setCropPending] = useState(false);
 
+  // Eraser
+  const [eraserMode, setEraserMode] = useState<EraserMode>('transparent');
+  const [eraserSize, setEraserSize] = useState(20);
+  const [eraserHardness, setEraserHardness] = useState(0.7);
+  const [magicTolerance, setMagicTolerance] = useState(30);
+  const [isInpainting, setIsInpainting] = useState(false);
+  const [lamaProgress, setLamaProgress] = useState<number | null>(null);
+
   // Canvas dimensions
   const [canvasW, setCanvasW] = useState(800);
   const [canvasH, setCanvasH] = useState(600);
+
+  // Cursor position for eraser preview
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const getCanvasPos = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
@@ -96,7 +105,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     };
   }, []);
 
-  // Load image
   const handleFile = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -128,25 +136,19 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     if (file && file.type.startsWith('image/')) handleFile(file);
   }, [handleFile]);
 
-  // 容差 state
   const [tolerance, setTolerance] = useState(50);
 
-  // Canvas-based local background removal (fallback)
   const removeBackgroundLocal = useCallback((src: HTMLImageElement, tol?: number): HTMLImageElement | null => {
     try {
       const c = document.createElement('canvas');
-      c.width = src.width;
-      c.height = src.height;
+      c.width = src.width; c.height = src.height;
       const ctx = c.getContext('2d');
       if (!ctx) return null;
       ctx.drawImage(src, 0, 0);
       const imgData = ctx.getImageData(0, 0, c.width, c.height);
       const d = imgData.data;
       const samples: number[][] = [];
-      const samplePositions = [
-        [0, 0], [c.width - 1, 0], [0, c.height - 1], [c.width - 1, c.height - 1],
-        [Math.floor(c.width / 2), 0], [0, Math.floor(c.height / 2)],
-      ];
+      const samplePositions = [[0, 0], [c.width - 1, 0], [0, c.height - 1], [c.width - 1, c.height - 1], [Math.floor(c.width / 2), 0], [0, Math.floor(c.height / 2)]];
       for (const [sx, sy] of samplePositions) {
         const idx = (sy * c.width + sx) * 4;
         samples.push([d[idx], d[idx + 1], d[idx + 2]]);
@@ -157,19 +159,14 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       const toleranceValue = typeof tol === 'number' ? tol : tolerance;
       for (let i = 0; i < d.length; i += 4) {
         const dist = Math.sqrt((d[i] - bgR) ** 2 + (d[i + 1] - bgG) ** 2 + (d[i + 2] - bgB) ** 2);
-        if (dist < toleranceValue) {
-          d[i + 3] = 0;
-        } else if (dist < toleranceValue * 1.5) {
-          d[i + 3] = Math.round(255 * ((dist - toleranceValue) / (toleranceValue * 0.5)));
-        }
+        if (dist < toleranceValue) d[i + 3] = 0;
+        else if (dist < toleranceValue * 1.5) d[i + 3] = Math.round(255 * ((dist - toleranceValue) / (toleranceValue * 0.5)));
       }
       ctx.putImageData(imgData, 0, 0);
       const resultImg = new Image();
       resultImg.src = c.toDataURL('image/png');
       return resultImg;
-    } catch {
-      return null;
-    }
+    } catch { return null; }
   }, [tolerance]);
 
   const [removalMethod, setRemovalMethod] = useState<'ai' | 'local' | null>(null);
@@ -182,8 +179,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     const tryAI = async (): Promise<boolean> => {
       try {
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = src.width;
-        tempCanvas.height = src.height;
+        tempCanvas.width = src.width; tempCanvas.height = src.height;
         const ctx = tempCanvas.getContext('2d')!;
         ctx.drawImage(src, 0, 0);
         const base64 = tempCanvas.toDataURL('image/png');
@@ -193,7 +189,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         const resultImg = new Image();
         await new Promise<void>((resolve, reject) => {
           resultImg.onload = () => resolve();
-          resultImg.onerror = () => reject(new Error('Image load failed'));
+          resultImg.onerror = () => reject(new Error('fail'));
           resultImg.src = data.image;
         });
         setProcessedImage(resultImg);
@@ -219,9 +215,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         setRemovalMethod('local');
         toast({ title: t('imgEdit.bgRemovedLocal'), description: mode === 'auto' ? t('imgEdit.bgRemovedLocalDesc') : undefined });
         return true;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     };
     let success = false;
     if (mode === 'ai') success = await tryAI();
@@ -233,27 +227,21 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
   // Hit-test for move tool
   const hitTestAction = useCallback((pos: { x: number; y: number }): number | null => {
-    // Iterate in reverse to find the topmost element
     for (let i = actions.length - 1; i >= 0; i--) {
       const action = actions[i];
       if (action.type === 'text') {
         const { x, y, text, fontSize: fs } = action.data;
         const approxW = (fs || 24) * text.length * 0.6;
         const approxH = (fs || 24) * 1.2;
-        if (pos.x >= x - 5 && pos.x <= x + approxW + 5 && pos.y >= y - approxH && pos.y <= y + 10) {
-          return i;
-        }
+        if (pos.x >= x - 5 && pos.x <= x + approxW + 5 && pos.y >= y - approxH && pos.y <= y + 10) return i;
       } else if (action.type === 'arrow') {
         const { from, to } = action.data;
-        // Distance from point to line segment
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
+        const dx = to.x - from.x, dy = to.y - from.y;
         const lenSq = dx * dx + dy * dy;
         if (lenSq === 0) continue;
         let t0 = ((pos.x - from.x) * dx + (pos.y - from.y) * dy) / lenSq;
         t0 = Math.max(0, Math.min(1, t0));
-        const projX = from.x + t0 * dx;
-        const projY = from.y + t0 * dy;
+        const projX = from.x + t0 * dx, projY = from.y + t0 * dy;
         const dist = Math.sqrt((pos.x - projX) ** 2 + (pos.y - projY) ** 2);
         if (dist < 15) return i;
       }
@@ -261,28 +249,74 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     return null;
   }, [actions]);
 
+  // Get current canvas snapshot as ImageData (without overlays)
+  const getCanvasSnapshot = useCallback((): ImageData | null => {
+    const c = document.createElement('canvas');
+    c.width = canvasW; c.height = canvasH;
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+
+    if (bgImage) ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
+    else if (!bgTransparent) { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvasW, canvasH); }
+
+    const img = processedImage || image;
+    if (img) {
+      ctx.save();
+      ctx.translate(canvasW / 2, canvasH / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.scale(zoom, zoom);
+      ctx.drawImage(img, -canvasW / 2, -canvasH / 2, canvasW, canvasH);
+      ctx.restore();
+    }
+
+    for (const action of actions) {
+      if (action.type === 'draw') {
+        const pts = action.data.points;
+        if (pts.length < 2) continue;
+        ctx.strokeStyle = action.data.color;
+        ctx.lineWidth = action.data.size;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      } else if (action.type === 'text') {
+        ctx.fillStyle = action.data.color;
+        ctx.font = `${action.data.fontSize}px sans-serif`;
+        ctx.fillText(action.data.text, action.data.x, action.data.y);
+      } else if (action.type === 'arrow') {
+        const { from, to, color, size } = action.data;
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        const headLen = size * 5;
+        ctx.beginPath();
+        ctx.moveTo(to.x, to.y);
+        ctx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
+        ctx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
+        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+      }
+    }
+    return ctx.getImageData(0, 0, canvasW, canvasH);
+  }, [canvasW, canvasH, bgImage, bgTransparent, bgColor, processedImage, image, rotation, zoom, actions]);
+
   // Render canvas
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (bgImage) {
-      ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-    } else if (!bgTransparent) {
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else {
+    if (bgImage) ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+    else if (!bgTransparent) { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+    else {
       const sz = 16;
-      for (let y = 0; y < canvas.height; y += sz) {
+      for (let y = 0; y < canvas.height; y += sz)
         for (let x = 0; x < canvas.width; x += sz) {
           ctx.fillStyle = ((x / sz + y / sz) % 2 === 0) ? '#e5e5e5' : '#ffffff';
           ctx.fillRect(x, y, sz, sz);
         }
-      }
     }
 
     const img = processedImage || image;
@@ -301,8 +335,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         if (pts.length < 2) continue;
         ctx.strokeStyle = action.data.color;
         ctx.lineWidth = action.data.size;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
@@ -315,8 +348,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         ctx.globalCompositeOperation = 'destination-out';
         ctx.strokeStyle = 'rgba(0,0,0,1)';
         ctx.lineWidth = size;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
@@ -328,121 +360,70 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         ctx.fillText(action.data.text, action.data.x, action.data.y);
       } else if (action.type === 'arrow') {
         const { from, to, color, size } = action.data;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = size;
-        ctx.beginPath();
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
-        ctx.stroke();
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         const headLen = size * 5;
         ctx.beginPath();
         ctx.moveTo(to.x, to.y);
         ctx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
         ctx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
+        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
       } else if (action.type === 'mosaic') {
         const { points, blockSize } = action.data;
         for (const pt of points) {
-          const imgData = ctx.getImageData(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2);
+          const imgData2 = ctx.getImageData(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2);
           let r = 0, g = 0, b = 0, count = 0;
-          for (let i = 0; i < imgData.data.length; i += 4) {
-            r += imgData.data[i]; g += imgData.data[i + 1]; b += imgData.data[i + 2]; count++;
-          }
-          if (count > 0) {
-            ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`;
-            ctx.fillRect(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2);
-          }
+          for (let i = 0; i < imgData2.data.length; i += 4) { r += imgData2.data[i]; g += imgData2.data[i + 1]; b += imgData2.data[i + 2]; count++; }
+          if (count > 0) { ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`; ctx.fillRect(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2); }
         }
       }
     }
 
-    // Draw crop overlay
+    // Crop overlay
     if (tool === 'crop' && cropPending) {
       ctx.save();
       if (cropMode === 'lasso' && cropLassoPoints.length > 2) {
-        // Dim outside lasso
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalCompositeOperation = 'destination-out';
         ctx.beginPath();
         ctx.moveTo(cropLassoPoints[0].x, cropLassoPoints[0].y);
         for (let i = 1; i < cropLassoPoints.length; i++) ctx.lineTo(cropLassoPoints[i].x, cropLassoPoints[i].y);
-        ctx.closePath();
-        ctx.fill();
+        ctx.closePath(); ctx.fill();
         ctx.globalCompositeOperation = 'source-over';
-        // Draw border
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 3]);
+        ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
         ctx.beginPath();
         ctx.moveTo(cropLassoPoints[0].x, cropLassoPoints[0].y);
         for (let i = 1; i < cropLassoPoints.length; i++) ctx.lineTo(cropLassoPoints[i].x, cropLassoPoints[i].y);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.setLineDash([]);
+        ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
       } else if (cropStart && cropEnd) {
-        const x1 = Math.min(cropStart.x, cropEnd.x);
-        const y1 = Math.min(cropStart.y, cropEnd.y);
-        const w = Math.abs(cropEnd.x - cropStart.x);
-        const h = Math.abs(cropEnd.y - cropStart.y);
-        const cx = x1 + w / 2;
-        const cy = y1 + h / 2;
-
-        // Dim everything
+        const x1 = Math.min(cropStart.x, cropEnd.x), y1 = Math.min(cropStart.y, cropEnd.y);
+        const w = Math.abs(cropEnd.x - cropStart.x), h = Math.abs(cropEnd.y - cropStart.y);
+        const cx = x1 + w / 2, cy = y1 + h / 2;
         ctx.fillStyle = 'rgba(0,0,0,0.45)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // Cut out crop region
         ctx.globalCompositeOperation = 'destination-out';
-        if (cropMode === 'rect') {
-          ctx.fillRect(x1, y1, w, h);
-        } else if (cropMode === 'circle') {
-          const r = Math.min(w, h) / 2;
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (cropMode === 'ellipse') {
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (cropMode === 'heart') {
-          heartPath(ctx, cx, cy, w, h);
-          ctx.fill();
-        }
+        if (cropMode === 'rect') ctx.fillRect(x1, y1, w, h);
+        else if (cropMode === 'circle') { const r = Math.min(w, h) / 2; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill(); }
+        else if (cropMode === 'ellipse') { ctx.beginPath(); ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); }
+        else if (cropMode === 'heart') { heartPath(ctx, cx, cy, w, h); ctx.fill(); }
         ctx.globalCompositeOperation = 'source-over';
-        // Draw border
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 3]);
-        if (cropMode === 'rect') {
-          ctx.strokeRect(x1, y1, w, h);
-        } else if (cropMode === 'circle') {
-          const r = Math.min(w, h) / 2;
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (cropMode === 'ellipse') {
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (cropMode === 'heart') {
-          heartPath(ctx, cx, cy, w, h);
-          ctx.stroke();
-        }
+        ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
+        if (cropMode === 'rect') ctx.strokeRect(x1, y1, w, h);
+        else if (cropMode === 'circle') { const r = Math.min(w, h) / 2; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke(); }
+        else if (cropMode === 'ellipse') { ctx.beginPath(); ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.stroke(); }
+        else if (cropMode === 'heart') { heartPath(ctx, cx, cy, w, h); ctx.stroke(); }
         ctx.setLineDash([]);
       }
       ctx.restore();
     }
 
-    // Highlight selected action for move tool
+    // Move highlight
     if (tool === 'move' && movingActionIndex !== null && movingActionIndex < actions.length) {
       const action = actions[movingActionIndex];
       ctx.save();
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([4, 3]);
+      ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
       if (action.type === 'text') {
         const { x, y, text, fontSize: fs } = action.data;
         const approxW = (fs || 24) * text.length * 0.6;
@@ -450,38 +431,40 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       } else if (action.type === 'arrow') {
         const { from, to } = action.data;
         const pad = 10;
-        const minX = Math.min(from.x, to.x) - pad;
-        const minY = Math.min(from.y, to.y) - pad;
-        const maxX = Math.max(from.x, to.x) + pad;
-        const maxY = Math.max(from.y, to.y) + pad;
-        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+        ctx.strokeRect(Math.min(from.x, to.x) - pad, Math.min(from.y, to.y) - pad, Math.abs(to.x - from.x) + pad * 2, Math.abs(to.y - from.y) + pad * 2);
       }
-      ctx.setLineDash([]);
-      ctx.restore();
+      ctx.setLineDash([]); ctx.restore();
     }
-  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions, tool, cropMode, cropStart, cropEnd, cropLassoPoints, cropPending, movingActionIndex]);
+
+    // Eraser cursor preview
+    if (tool === 'eraser' && cursorPos && (eraserMode === 'transparent' || eraserMode === 'inpaint')) {
+      ctx.save();
+      ctx.strokeStyle = eraserMode === 'inpaint' ? '#f59e0b' : '#3b82f6';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(cursorPos.x, cursorPos.y, eraserSize, 0, Math.PI * 2);
+      ctx.stroke();
+      // Inner circle for hardness
+      if (eraserMode === 'transparent') {
+        ctx.beginPath();
+        ctx.arc(cursorPos.x, cursorPos.y, eraserSize * eraserHardness, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]); ctx.restore();
+    }
+  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions, tool, cropMode, cropStart, cropEnd, cropLassoPoints, cropPending, movingActionIndex, cursorPos, eraserMode, eraserSize, eraserHardness]);
 
   useEffect(() => { renderCanvas(); }, [renderCanvas]);
 
   // Apply crop
   const applyCrop = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // First render clean canvas without crop overlay
     const srcCanvas = document.createElement('canvas');
-    srcCanvas.width = canvasW;
-    srcCanvas.height = canvasH;
+    srcCanvas.width = canvasW; srcCanvas.height = canvasH;
     const srcCtx = srcCanvas.getContext('2d')!;
 
-    // Copy current rendered canvas before overlay
-    // Re-render without crop overlay
-    if (bgImage) {
-      srcCtx.drawImage(bgImage, 0, 0, canvasW, canvasH);
-    } else if (!bgTransparent) {
-      srcCtx.fillStyle = bgColor;
-      srcCtx.fillRect(0, 0, canvasW, canvasH);
-    }
+    if (bgImage) srcCtx.drawImage(bgImage, 0, 0, canvasW, canvasH);
+    else if (!bgTransparent) { srcCtx.fillStyle = bgColor; srcCtx.fillRect(0, 0, canvasW, canvasH); }
     const img = processedImage || image;
     if (img) {
       srcCtx.save();
@@ -491,17 +474,13 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       srcCtx.drawImage(img, -canvasW / 2, -canvasH / 2, canvasW, canvasH);
       srcCtx.restore();
     }
-    // Replay actions
     for (const action of actions) {
       if (action.type === 'draw') {
         const pts = action.data.points;
         if (pts.length < 2) continue;
-        srcCtx.strokeStyle = action.data.color;
-        srcCtx.lineWidth = action.data.size;
-        srcCtx.lineCap = 'round';
-        srcCtx.lineJoin = 'round';
-        srcCtx.beginPath();
-        srcCtx.moveTo(pts[0].x, pts[0].y);
+        srcCtx.strokeStyle = action.data.color; srcCtx.lineWidth = action.data.size;
+        srcCtx.lineCap = 'round'; srcCtx.lineJoin = 'round';
+        srcCtx.beginPath(); srcCtx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) srcCtx.lineTo(pts[i].x, pts[i].y);
         srcCtx.stroke();
       } else if (action.type === 'text') {
@@ -510,112 +489,201 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         srcCtx.fillText(action.data.text, action.data.x, action.data.y);
       } else if (action.type === 'arrow') {
         const { from, to, color, size } = action.data;
-        srcCtx.strokeStyle = color;
-        srcCtx.lineWidth = size;
-        srcCtx.beginPath();
-        srcCtx.moveTo(from.x, from.y);
-        srcCtx.lineTo(to.x, to.y);
-        srcCtx.stroke();
+        srcCtx.strokeStyle = color; srcCtx.lineWidth = size;
+        srcCtx.beginPath(); srcCtx.moveTo(from.x, from.y); srcCtx.lineTo(to.x, to.y); srcCtx.stroke();
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         const headLen = size * 5;
-        srcCtx.beginPath();
-        srcCtx.moveTo(to.x, to.y);
+        srcCtx.beginPath(); srcCtx.moveTo(to.x, to.y);
         srcCtx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
         srcCtx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
-        srcCtx.closePath();
-        srcCtx.fillStyle = color;
-        srcCtx.fill();
+        srcCtx.closePath(); srcCtx.fillStyle = color; srcCtx.fill();
       }
     }
 
     let resultCanvas: HTMLCanvasElement;
 
     if (cropMode === 'lasso' && cropLassoPoints.length > 2) {
-      // Bounding box of lasso
-      const xs = cropLassoPoints.map(p => p.x);
-      const ys = cropLassoPoints.map(p => p.y);
+      const xs = cropLassoPoints.map(p => p.x), ys = cropLassoPoints.map(p => p.y);
       const bx = Math.max(0, Math.floor(Math.min(...xs)));
       const by = Math.max(0, Math.floor(Math.min(...ys)));
       const bw = Math.min(canvasW - bx, Math.ceil(Math.max(...xs) - bx));
       const bh = Math.min(canvasH - by, Math.ceil(Math.max(...ys) - by));
-
       resultCanvas = document.createElement('canvas');
-      resultCanvas.width = bw;
-      resultCanvas.height = bh;
+      resultCanvas.width = bw; resultCanvas.height = bh;
       const rCtx = resultCanvas.getContext('2d')!;
-      // Clip to lasso shape
       rCtx.beginPath();
       rCtx.moveTo(cropLassoPoints[0].x - bx, cropLassoPoints[0].y - by);
       for (let i = 1; i < cropLassoPoints.length; i++) rCtx.lineTo(cropLassoPoints[i].x - bx, cropLassoPoints[i].y - by);
-      rCtx.closePath();
-      rCtx.clip();
+      rCtx.closePath(); rCtx.clip();
       rCtx.drawImage(srcCanvas, bx, by, bw, bh, 0, 0, bw, bh);
     } else if (cropStart && cropEnd) {
       const x1 = Math.max(0, Math.min(cropStart.x, cropEnd.x));
       const y1 = Math.max(0, Math.min(cropStart.y, cropEnd.y));
       const w = Math.min(canvasW - x1, Math.abs(cropEnd.x - cropStart.x));
       const h = Math.min(canvasH - y1, Math.abs(cropEnd.y - cropStart.y));
-      const cx = x1 + w / 2;
-      const cy = y1 + h / 2;
-
       if (cropMode === 'rect') {
         resultCanvas = document.createElement('canvas');
-        resultCanvas.width = Math.round(w);
-        resultCanvas.height = Math.round(h);
-        const rCtx = resultCanvas.getContext('2d')!;
-        rCtx.drawImage(srcCanvas, x1, y1, w, h, 0, 0, w, h);
+        resultCanvas.width = Math.round(w); resultCanvas.height = Math.round(h);
+        resultCanvas.getContext('2d')!.drawImage(srcCanvas, x1, y1, w, h, 0, 0, w, h);
       } else {
-        // Circle, ellipse, heart — need transparent outside
         resultCanvas = document.createElement('canvas');
-        resultCanvas.width = Math.round(w);
-        resultCanvas.height = Math.round(h);
+        resultCanvas.width = Math.round(w); resultCanvas.height = Math.round(h);
         const rCtx = resultCanvas.getContext('2d')!;
         rCtx.beginPath();
-        if (cropMode === 'circle') {
-          const r = Math.min(w, h) / 2;
-          rCtx.arc(w / 2, h / 2, r, 0, Math.PI * 2);
-        } else if (cropMode === 'ellipse') {
-          rCtx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
-        } else if (cropMode === 'heart') {
-          heartPath(rCtx, w / 2, h / 2, w, h);
-        }
-        rCtx.closePath();
-        rCtx.clip();
+        if (cropMode === 'circle') { const r = Math.min(w, h) / 2; rCtx.arc(w / 2, h / 2, r, 0, Math.PI * 2); }
+        else if (cropMode === 'ellipse') rCtx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+        else if (cropMode === 'heart') heartPath(rCtx, w / 2, h / 2, w, h);
+        rCtx.closePath(); rCtx.clip();
         rCtx.drawImage(srcCanvas, x1, y1, w, h, 0, 0, w, h);
       }
-    } else {
-      return; // No valid crop
-    }
+    } else return;
 
-    // Apply result
     const newImg = new window.Image();
     newImg.onload = () => {
       setProcessedImage(newImg);
-      setCanvasW(resultCanvas!.width);
-      setCanvasH(resultCanvas!.height);
-      setImage(null); // Clear original, processedImage is now the source
-      setActions([]);
-      setUndoneActions([]);
-      setRotation(0);
-      setZoom(1);
+      setCanvasW(resultCanvas!.width); setCanvasH(resultCanvas!.height);
+      setImage(null);
+      setActions([]); setUndoneActions([]);
+      setRotation(0); setZoom(1);
       setBgTransparent(cropMode !== 'rect');
-      setCropPending(false);
-      setCropStart(null);
-      setCropEnd(null);
-      setCropLassoPoints([]);
-      toast({ title: t('imgEdit.cropApplied') || '裁剪已应用' });
+      setCropPending(false); setCropStart(null); setCropEnd(null); setCropLassoPoints([]);
+      toast({ title: '裁剪已应用' });
     };
     newImg.src = resultCanvas!.toDataURL('image/png');
-  }, [cropMode, cropStart, cropEnd, cropLassoPoints, canvasW, canvasH, bgImage, bgTransparent, bgColor, processedImage, image, rotation, zoom, actions, t]);
+  }, [cropMode, cropStart, cropEnd, cropLassoPoints, canvasW, canvasH, bgImage, bgTransparent, bgColor, processedImage, image, rotation, zoom, actions]);
 
   const cancelCrop = useCallback(() => {
-    setCropPending(false);
-    setCropStart(null);
-    setCropEnd(null);
-    setCropLassoPoints([]);
+    setCropPending(false); setCropStart(null); setCropEnd(null); setCropLassoPoints([]);
   }, []);
 
-  // Mouse/Touch handlers
+  // Apply soft eraser stroke to processedImage
+  const applySoftErase = useCallback((points: { x: number; y: number }[]) => {
+    if (points.length < 1) return;
+    const c = document.createElement('canvas');
+    c.width = canvasW; c.height = canvasH;
+    const ctx = c.getContext('2d');
+    if (!ctx) return;
+
+    const img = processedImage || image;
+    if (img) ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+    // Apply soft erase with hardness
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+
+    // Create radial gradient brush
+    for (const pt of points) {
+      const gradient = ctx.createRadialGradient(pt.x, pt.y, eraserSize * eraserHardness, pt.x, pt.y, eraserSize);
+      gradient.addColorStop(0, 'rgba(0,0,0,1)');
+      gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, eraserSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    const resultImg = new window.Image();
+    resultImg.onload = () => setProcessedImage(resultImg);
+    resultImg.src = c.toDataURL('image/png');
+  }, [canvasW, canvasH, processedImage, image, eraserSize, eraserHardness]);
+
+  // Apply inpainting erase
+  const applyInpaintErase = useCallback(async (points: { x: number; y: number }[]) => {
+    if (points.length < 1) return;
+    setIsInpainting(true);
+
+    const snapshot = getCanvasSnapshot();
+    if (!snapshot) { setIsInpainting(false); return; }
+
+    // Build mask from eraser stroke
+    const maskData = new Uint8Array(canvasW * canvasH);
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = canvasW; maskCanvas.height = canvasH;
+    const mCtx = maskCanvas.getContext('2d')!;
+    mCtx.fillStyle = 'black';
+    mCtx.fillRect(0, 0, canvasW, canvasH);
+    mCtx.fillStyle = 'white';
+    mCtx.strokeStyle = 'white';
+    mCtx.lineWidth = eraserSize * 2;
+    mCtx.lineCap = 'round'; mCtx.lineJoin = 'round';
+    if (points.length === 1) {
+      mCtx.beginPath();
+      mCtx.arc(points[0].x, points[0].y, eraserSize, 0, Math.PI * 2);
+      mCtx.fill();
+    } else {
+      mCtx.beginPath();
+      mCtx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) mCtx.lineTo(points[i].x, points[i].y);
+      mCtx.stroke();
+    }
+    const mImgData = mCtx.getImageData(0, 0, canvasW, canvasH);
+    for (let i = 0; i < maskData.length; i++) {
+      maskData[i] = mImgData.data[i * 4] > 128 ? 1 : 0;
+    }
+
+    // Try LaMa first, fallback to Telea
+    let result: ImageData | null = null;
+    const lamaStatus = getLamaStatus();
+
+    if (lamaStatus.loaded) {
+      result = await inpaintLama(snapshot, maskData);
+    }
+
+    if (!result) {
+      // Use Telea algorithm
+      result = inpaintTelea(snapshot, maskData, Math.max(5, Math.round(eraserSize * 0.8)));
+    }
+
+    if (result) {
+      const c = document.createElement('canvas');
+      c.width = canvasW; c.height = canvasH;
+      c.getContext('2d')!.putImageData(result, 0, 0);
+      const newImg = new window.Image();
+      newImg.onload = () => {
+        setProcessedImage(newImg);
+        setImage(null);
+        setActions([]);
+        setUndoneActions([]);
+        toast({ title: '内容感知填充完成' });
+      };
+      newImg.src = c.toDataURL('image/png');
+    }
+    setIsInpainting(false);
+  }, [canvasW, canvasH, getCanvasSnapshot, eraserSize]);
+
+  // Apply magic eraser
+  const applyMagicErase = useCallback((pos: { x: number; y: number }) => {
+    const snapshot = getCanvasSnapshot();
+    if (!snapshot) return;
+
+    const result = magicErase(snapshot, pos.x, pos.y, magicTolerance, 3);
+    const c = document.createElement('canvas');
+    c.width = canvasW; c.height = canvasH;
+    c.getContext('2d')!.putImageData(result, 0, 0);
+
+    const newImg = new window.Image();
+    newImg.onload = () => {
+      setProcessedImage(newImg);
+      setImage(null);
+      setActions([]);
+      setUndoneActions([]);
+      setBgTransparent(true);
+      toast({ title: '魔术擦除完成' });
+    };
+    newImg.src = c.toDataURL('image/png');
+  }, [canvasW, canvasH, getCanvasSnapshot, magicTolerance]);
+
+  // Load LaMa model in background
+  const handleLoadLama = useCallback(async () => {
+    setLamaProgress(0);
+    const ok = await loadLamaModel((pct) => setLamaProgress(pct));
+    setLamaProgress(null);
+    if (ok) toast({ title: 'LaMa 模型加载成功', description: '内容感知填充已升级为 AI 驱动' });
+    else toast({ title: 'LaMa 模型加载失败', description: '将使用经典算法进行内容填充', variant: 'destructive' });
+  }, []);
+
+  // Pointer handlers
   const handlePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const pos = getCanvasPos(e);
 
@@ -624,38 +692,28 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       if (idx !== null) {
         setMovingActionIndex(idx);
         const action = actions[idx];
-        if (action.type === 'text') {
-          setMoveOffset({ x: pos.x - action.data.x, y: pos.y - action.data.y });
-        } else if (action.type === 'arrow') {
-          setMoveOffset({ x: pos.x - action.data.from.x, y: pos.y - action.data.from.y });
-        }
+        if (action.type === 'text') setMoveOffset({ x: pos.x - action.data.x, y: pos.y - action.data.y });
+        else if (action.type === 'arrow') setMoveOffset({ x: pos.x - action.data.from.x, y: pos.y - action.data.from.y });
         setIsDrawing(true);
-      } else {
-        setMovingActionIndex(null);
-      }
+      } else setMovingActionIndex(null);
     } else if (tool === 'crop') {
-      if (cropMode === 'lasso') {
-        setCropLassoPoints([pos]);
-        setIsCropping(true);
-        setCropPending(false);
+      if (cropMode === 'lasso') { setCropLassoPoints([pos]); setIsCropping(true); setCropPending(false); }
+      else { setCropStart(pos); setCropEnd(pos); setIsCropping(true); setCropPending(false); }
+    } else if (tool === 'eraser') {
+      if (eraserMode === 'magic') {
+        applyMagicErase(pos);
       } else {
-        setCropStart(pos);
-        setCropEnd(pos);
-        setIsCropping(true);
-        setCropPending(false);
+        setIsDrawing(true);
+        setDrawPoints([pos]);
       }
-    } else if (tool === 'draw' || tool === 'eraser') {
+    } else if (tool === 'draw') {
       setIsDrawing(true);
       setDrawPoints([pos]);
     } else if (tool === 'arrow') {
       setArrowStart(pos);
     } else if (tool === 'text') {
       if (textInput.trim()) {
-        const action: DrawAction = {
-          type: 'text',
-          data: { text: textInput, x: pos.x, y: pos.y, color: drawColor, fontSize },
-        };
-        setActions(prev => [...prev, action]);
+        setActions(prev => [...prev, { type: 'text', data: { text: textInput, x: pos.x, y: pos.y, color: drawColor, fontSize } }]);
         setUndoneActions([]);
         setTextInput('');
       }
@@ -663,10 +721,14 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       setIsDrawing(true);
       setDrawPoints([pos]);
     }
-  }, [tool, getCanvasPos, textInput, drawColor, fontSize, hitTestAction, actions, cropMode]);
+  }, [tool, getCanvasPos, textInput, drawColor, fontSize, hitTestAction, actions, cropMode, eraserMode, applyMagicErase]);
 
   const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const pos = getCanvasPos(e);
+
+    // Update cursor position for eraser preview
+    if (tool === 'eraser') setCursorPos(pos);
+    else setCursorPos(null);
 
     if (tool === 'move' && isDrawing && movingActionIndex !== null) {
       setActions(prev => {
@@ -678,11 +740,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         } else if (action.type === 'arrow') {
           const dx = pos.x - moveOffset.x - action.data.from.x;
           const dy = pos.y - moveOffset.y - action.data.from.y;
-          action.data = {
-            ...action.data,
-            from: { x: action.data.from.x + dx, y: action.data.from.y + dy },
-            to: { x: action.data.to.x + dx, y: action.data.to.y + dy },
-          };
+          action.data = { ...action.data, from: { x: action.data.from.x + dx, y: action.data.from.y + dy }, to: { x: action.data.to.x + dx, y: action.data.to.y + dy } };
           setMoveOffset({ x: pos.x - action.data.from.x, y: pos.y - action.data.from.y });
         }
         updated[movingActionIndex] = action;
@@ -692,43 +750,60 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     }
 
     if (tool === 'crop' && isCropping) {
-      if (cropMode === 'lasso') {
-        setCropLassoPoints(prev => [...prev, pos]);
-      } else {
-        setCropEnd(pos);
-      }
+      if (cropMode === 'lasso') setCropLassoPoints(prev => [...prev, pos]);
+      else setCropEnd(pos);
       return;
     }
 
     if (!isDrawing && !arrowStart) return;
 
-    if ((tool === 'draw' || tool === 'eraser') && isDrawing) {
+    if (tool === 'eraser' && isDrawing && eraserMode !== 'magic') {
       setDrawPoints(prev => [...prev, pos]);
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        if (ctx && drawPoints.length > 0) {
-          const last = drawPoints[drawPoints.length - 1];
-          if (tool === 'draw') {
-            ctx.strokeStyle = drawColor;
-            ctx.lineWidth = drawSize;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(last.x, last.y);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-          } else if (tool === 'eraser') {
+      // Live preview for transparent eraser
+      if (eraserMode === 'transparent') {
+        const canvas = canvasRef.current;
+        if (canvas && drawPoints.length > 0) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            const last = drawPoints[drawPoints.length - 1];
             ctx.save();
             ctx.globalCompositeOperation = 'destination-out';
-            ctx.strokeStyle = 'rgba(0,0,0,1)';
-            ctx.lineWidth = drawSize;
-            ctx.lineCap = 'round';
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, eraserSize * eraserHardness, pos.x, pos.y, eraserSize);
+            gradient.addColorStop(0, 'rgba(0,0,0,1)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = gradient;
             ctx.beginPath();
-            ctx.moveTo(last.x, last.y);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
+            ctx.arc(pos.x, pos.y, eraserSize, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
           }
+        }
+      } else if (eraserMode === 'inpaint') {
+        // For inpaint, draw a highlight on the mask area
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, eraserSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+      }
+    } else if (tool === 'draw' && isDrawing) {
+      setDrawPoints(prev => [...prev, pos]);
+      const canvas = canvasRef.current;
+      if (canvas && drawPoints.length > 0) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const last = drawPoints[drawPoints.length - 1];
+          ctx.strokeStyle = drawColor;
+          ctx.lineWidth = drawSize;
+          ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(pos.x, pos.y); ctx.stroke();
         }
       }
     } else if (tool === 'mosaic' && isDrawing) {
@@ -738,87 +813,46 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           const blockSize = 8;
-          const imgData = ctx.getImageData(pos.x - blockSize, pos.y - blockSize, blockSize * 2, blockSize * 2);
+          const imgData2 = ctx.getImageData(pos.x - blockSize, pos.y - blockSize, blockSize * 2, blockSize * 2);
           let r = 0, g = 0, b = 0, count = 0;
-          for (let i = 0; i < imgData.data.length; i += 4) {
-            r += imgData.data[i]; g += imgData.data[i + 1]; b += imgData.data[i + 2]; count++;
-          }
-          if (count > 0) {
-            ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`;
-            ctx.fillRect(pos.x - blockSize, pos.y - blockSize, blockSize * 2, blockSize * 2);
-          }
+          for (let i = 0; i < imgData2.data.length; i += 4) { r += imgData2.data[i]; g += imgData2.data[i + 1]; b += imgData2.data[i + 2]; count++; }
+          if (count > 0) { ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`; ctx.fillRect(pos.x - blockSize, pos.y - blockSize, blockSize * 2, blockSize * 2); }
         }
       }
     }
-  }, [tool, isDrawing, arrowStart, getCanvasPos, drawColor, drawSize, drawPoints, movingActionIndex, moveOffset, isCropping, cropMode]);
+  }, [tool, isDrawing, arrowStart, getCanvasPos, drawColor, drawSize, drawPoints, movingActionIndex, moveOffset, isCropping, cropMode, eraserMode, eraserSize, eraserHardness]);
 
   const handlePointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (tool === 'move' && isDrawing) {
-      setIsDrawing(false);
-      setMovingActionIndex(null);
-      return;
+      setIsDrawing(false); setMovingActionIndex(null); return;
     }
-
     if (tool === 'crop' && isCropping) {
-      setIsCropping(false);
-      setCropPending(true);
-      return;
+      setIsCropping(false); setCropPending(true); return;
     }
-
-    if (tool === 'draw' && isDrawing) {
-      const action: DrawAction = {
-        type: 'draw',
-        data: { points: drawPoints, color: drawColor, size: drawSize },
-      };
-      setActions(prev => [...prev, action]);
-      setUndoneActions([]);
-    } else if (tool === 'eraser' && isDrawing) {
-      const canvas = document.createElement('canvas');
-      canvas.width = canvasW;
-      canvas.height = canvasH;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        const img = processedImage || image;
-        if (img) ctx.drawImage(img, 0, 0, canvasW, canvasH);
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.strokeStyle = 'rgba(0,0,0,1)';
-        ctx.lineWidth = drawSize;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        if (drawPoints.length > 0) {
-          ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
-          for (let i = 1; i < drawPoints.length; i++) ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
-        }
-        ctx.stroke();
-        ctx.restore();
-        const resultImg = new window.Image();
-        resultImg.onload = () => setProcessedImage(resultImg);
-        resultImg.src = canvas.toDataURL('image/png');
+    if (tool === 'eraser' && isDrawing) {
+      if (eraserMode === 'transparent') {
+        applySoftErase(drawPoints);
+      } else if (eraserMode === 'inpaint') {
+        applyInpaintErase(drawPoints);
       }
+      setIsDrawing(false); setDrawPoints([]); return;
+    }
+    if (tool === 'draw' && isDrawing) {
+      setActions(prev => [...prev, { type: 'draw', data: { points: drawPoints, color: drawColor, size: drawSize } }]);
+      setUndoneActions([]);
     } else if (tool === 'arrow' && arrowStart) {
       const pos = getCanvasPos(e);
-      const action: DrawAction = {
-        type: 'arrow',
-        data: { from: arrowStart, to: pos, color: drawColor, size: drawSize },
-      };
-      setActions(prev => [...prev, action]);
+      setActions(prev => [...prev, { type: 'arrow', data: { from: arrowStart, to: pos, color: drawColor, size: drawSize } }]);
       setUndoneActions([]);
       setArrowStart(null);
     } else if (tool === 'mosaic' && isDrawing) {
-      const action: DrawAction = {
-        type: 'mosaic',
-        data: { points: drawPoints, blockSize: 8 },
-      };
-      setActions(prev => [...prev, action]);
+      setActions(prev => [...prev, { type: 'mosaic', data: { points: drawPoints, blockSize: 8 } }]);
       setUndoneActions([]);
     }
     setIsDrawing(false);
     setDrawPoints([]);
-  }, [tool, isDrawing, drawPoints, drawColor, drawSize, arrowStart, getCanvasPos, processedImage, image, canvasW, canvasH, isCropping]);
+  }, [tool, isDrawing, drawPoints, drawColor, drawSize, arrowStart, getCanvasPos, isCropping, eraserMode, applySoftErase, applyInpaintErase]);
 
-  // Undo/Redo
   const undo = useCallback(() => {
     setActions(prev => {
       if (prev.length === 0) return prev;
@@ -837,21 +871,14 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     });
   }, []);
 
-  // Export
   const handleExport = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = Math.round(canvasW * exportScale);
     exportCanvas.height = Math.round(canvasH * exportScale);
     const ctx = exportCanvas.getContext('2d')!;
     ctx.scale(exportScale, exportScale);
-    if (bgImage) {
-      ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
-    } else if (!bgTransparent || exportFormat !== 'png') {
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(0, 0, canvasW, canvasH);
-    }
+    if (bgImage) ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
+    else if (!bgTransparent || exportFormat !== 'png') { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvasW, canvasH); }
     const img = processedImage || image;
     if (img) {
       ctx.save();
@@ -865,12 +892,9 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       if (action.type === 'draw') {
         const pts = action.data.points;
         if (pts.length < 2) continue;
-        ctx.strokeStyle = action.data.color;
-        ctx.lineWidth = action.data.size;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.strokeStyle = action.data.color; ctx.lineWidth = action.data.size;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
         ctx.stroke();
       } else if (action.type === 'text') {
@@ -879,41 +903,29 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         ctx.fillText(action.data.text, action.data.x, action.data.y);
       } else if (action.type === 'arrow') {
         const { from, to, color, size } = action.data;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = size;
-        ctx.beginPath();
-        ctx.moveTo(from.x, from.y);
-        ctx.lineTo(to.x, to.y);
-        ctx.stroke();
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         const headLen = size * 5;
-        ctx.beginPath();
-        ctx.moveTo(to.x, to.y);
+        ctx.beginPath(); ctx.moveTo(to.x, to.y);
         ctx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
         ctx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
-        ctx.closePath();
-        ctx.fillStyle = color;
-        ctx.fill();
+        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
       }
     }
     const mimeMap = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' } as const;
-    const dataUrl = exportCanvas.toDataURL(mimeMap[exportFormat], 0.92);
     const link = document.createElement('a');
     link.download = `edited-image.${exportFormat}`;
-    link.href = dataUrl;
+    link.href = exportCanvas.toDataURL(mimeMap[exportFormat], 0.92);
     link.click();
     toast({ title: t('imgEdit.exported') });
   }, [canvasW, canvasH, exportScale, bgImage, bgTransparent, bgColor, processedImage, image, rotation, zoom, actions, exportFormat, t]);
 
-  // Background image upload
   const handleBgImage = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
-      img.onload = () => {
-        setBgImage(img);
-        setBgTransparent(false);
-      };
+      img.onload = () => { setBgImage(img); setBgTransparent(false); };
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
@@ -936,6 +948,14 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     { id: 'heart', icon: Heart, label: '心形' },
     { id: 'lasso', icon: MousePointer2, label: '套索' },
   ];
+
+  const eraserModes: { id: EraserMode; icon: any; label: string; desc: string }[] = [
+    { id: 'transparent', icon: EyeOff, label: '透明擦除', desc: '柔边擦除为透明' },
+    { id: 'inpaint', icon: Paintbrush, label: '内容填充', desc: 'AI智能填充擦除区域' },
+    { id: 'magic', icon: Wand2, label: '魔术擦除', desc: '点击擦除相似颜色区域' },
+  ];
+
+  const lamaStatus = getLamaStatus();
 
   if (!open) return null;
 
@@ -991,17 +1011,12 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
           <ZoomOut className="w-4 h-4" />
         </Button>
         <div className="w-px h-6 bg-border mx-1" />
+
+        {/* Tool-specific options */}
         {(tool === 'draw' || tool === 'arrow' || tool === 'text') && (
           <>
             <input type="color" value={drawColor} onChange={e => setDrawColor(e.target.value)} className="w-7 h-7 rounded cursor-pointer border border-border" />
             <input type="range" min={1} max={20} value={drawSize} onChange={e => setDrawSize(Number(e.target.value))} className="w-16" />
-          </>
-        )}
-        {tool === 'eraser' && (
-          <>
-            <span className="text-xs text-muted-foreground ml-2">刷子大小</span>
-            <input type="range" min={5} max={60} value={drawSize} onChange={e => setDrawSize(Number(e.target.value))} className="w-16" />
-            <span className="text-xs text-foreground">{drawSize}px</span>
           </>
         )}
         {tool === 'text' && (
@@ -1010,17 +1025,70 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
             <input type="range" min={12} max={72} value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-16" title={t('imgEdit.fontSize')} />
           </>
         )}
+
+        {/* Eraser sub-toolbar */}
+        {tool === 'eraser' && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {eraserModes.map(em => (
+              <Button
+                key={em.id}
+                variant={eraserMode === em.id ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 px-2 text-xs gap-1"
+                onClick={() => setEraserMode(em.id)}
+                title={em.desc}
+              >
+                <em.icon className="w-3.5 h-3.5" /> <span className="hidden lg:inline">{em.label}</span>
+              </Button>
+            ))}
+            <div className="w-px h-5 bg-border mx-1" />
+            {(eraserMode === 'transparent' || eraserMode === 'inpaint') && (
+              <>
+                <span className="text-xs text-muted-foreground">大小</span>
+                <input type="range" min={5} max={80} value={eraserSize} onChange={e => setEraserSize(Number(e.target.value))} className="w-16" />
+                <span className="text-xs text-foreground w-6">{eraserSize}</span>
+              </>
+            )}
+            {eraserMode === 'transparent' && (
+              <>
+                <span className="text-xs text-muted-foreground ml-1">硬度</span>
+                <input type="range" min={0} max={100} value={Math.round(eraserHardness * 100)} onChange={e => setEraserHardness(Number(e.target.value) / 100)} className="w-14" />
+                <span className="text-xs text-foreground w-8">{Math.round(eraserHardness * 100)}%</span>
+              </>
+            )}
+            {eraserMode === 'magic' && (
+              <>
+                <span className="text-xs text-muted-foreground">容差</span>
+                <input type="range" min={5} max={100} value={magicTolerance} onChange={e => setMagicTolerance(Number(e.target.value))} className="w-16" />
+                <span className="text-xs text-foreground w-6">{magicTolerance}</span>
+              </>
+            )}
+            {eraserMode === 'inpaint' && (
+              <Button
+                variant={lamaStatus.loaded ? 'ghost' : 'outline'}
+                size="sm"
+                className="h-7 px-2 text-xs gap-1 ml-1"
+                onClick={handleLoadLama}
+                disabled={lamaStatus.loading}
+                title={lamaStatus.loaded ? 'LaMa AI 已就绪' : '加载 LaMa AI 模型以获得更佳效果'}
+              >
+                {lamaStatus.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                {lamaStatus.loaded ? 'AI ✓' : lamaProgress !== null ? `${lamaProgress}%` : 'Load AI'}
+              </Button>
+            )}
+            {isInpainting && (
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> 填充中...
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Crop sub-toolbar */}
         {tool === 'crop' && (
           <div className="flex items-center gap-1">
             {cropModes.map(cm => (
-              <Button
-                key={cm.id}
-                variant={cropMode === cm.id ? 'secondary' : 'ghost'}
-                size="sm"
-                className="h-7 px-2 text-xs gap-1"
-                onClick={() => { setCropMode(cm.id); cancelCrop(); }}
-                title={cm.label}
-              >
+              <Button key={cm.id} variant={cropMode === cm.id ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2 text-xs gap-1" onClick={() => { setCropMode(cm.id); cancelCrop(); }} title={cm.label}>
                 <cm.icon className="w-3.5 h-3.5" /> <span className="hidden lg:inline">{cm.label}</span>
               </Button>
             ))}
@@ -1037,6 +1105,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
             )}
           </div>
         )}
+
         {tool === 'move' && (
           <span className="text-xs text-muted-foreground ml-2">点击拖拽文字或箭头进行移动</span>
         )}
@@ -1044,7 +1113,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
       {/* Main area */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Canvas area */}
         <div className="flex-1 flex items-center justify-center p-4 overflow-auto bg-muted/30">
           {!image && !processedImage ? (
             <div
@@ -1056,16 +1124,8 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               <Upload className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-foreground font-medium mb-1">{t('imgEdit.uploadTitle')}</p>
               <p className="text-sm text-muted-foreground">{t('imgEdit.uploadHint')}</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/bmp,image/gif"
-                className="hidden"
-                onChange={e => {
-                  const f = e.target.files?.[0];
-                  if (f) handleFile(f);
-                }}
-              />
+              <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
           ) : (
             <canvas
@@ -1075,13 +1135,14 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               className="border border-border rounded-lg shadow-sm max-w-full max-h-full"
               style={{
                 cursor: tool === 'move' ? (movingActionIndex !== null ? 'grabbing' : 'grab')
+                  : tool === 'eraser' ? 'none'
                   : tool === 'text' ? 'text'
-                  : tool === 'crop' ? 'crosshair'
                   : 'crosshair'
               }}
               onMouseDown={handlePointerDown}
               onMouseMove={handlePointerMove}
               onMouseUp={handlePointerUp}
+              onMouseLeave={() => setCursorPos(null)}
               onTouchStart={handlePointerDown}
               onTouchMove={handlePointerMove}
               onTouchEnd={handlePointerUp}
@@ -1089,29 +1150,23 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
           )}
         </div>
 
-        {/* Right sidebar - Background & Export */}
+        {/* Right sidebar */}
         {(image || processedImage) && (
           <div className="w-56 border-l border-border bg-card p-4 overflow-y-auto space-y-4 hidden md:block">
-            {/* AI Background Removal */}
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.bgSection')}</h4>
               <Button onClick={() => removeBackground('auto')} disabled={isRemoving} className="w-full gap-2" size="sm">
                 {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
                 {isRemoving ? t('imgEdit.removing') : t('imgEdit.removeBg')}
               </Button>
-              {removalMethod && (
-                <p className="text-xs text-muted-foreground text-center">
-                  {removalMethod === 'ai' ? '✨ AI' : '🎨 Local'}
-                </p>
-              )}
+              {removalMethod && <p className="text-xs text-muted-foreground text-center">{removalMethod === 'ai' ? '✨ AI' : '🎨 Local'}</p>}
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-xs">容差</span>
-                <input type="range" min={5} max={120} step={1} value={tolerance} onChange={e => setTolerance(Number(e.target.value))} className="w-24" disabled={isRemoving} title="调整颜色匹配灵敏度" />
+                <input type="range" min={5} max={120} step={1} value={tolerance} onChange={e => setTolerance(Number(e.target.value))} className="w-24" disabled={isRemoving} />
                 <span className="text-xs w-6 text-right">{tolerance}</span>
               </div>
             </div>
 
-            {/* Background color/image */}
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.bgCustom')}</h4>
               <div className="flex items-center gap-2">
@@ -1131,7 +1186,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               <input ref={bgFileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleBgImage(f); }} />
             </div>
 
-            {/* Export */}
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.exportSection')}</h4>
               <div className="flex gap-1">
@@ -1149,27 +1203,17 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
                   <option value={2}>2x</option>
                   <option value={3}>3x</option>
                 </select>
-                <span className="text-muted-foreground">{Math.round(canvasW * exportScale)}×{Math.round(canvasH * exportScale)}</span>
+                <span>{Math.round(canvasW * exportScale)}×{Math.round(canvasH * exportScale)}</span>
               </div>
               <Button onClick={handleExport} className="w-full gap-2" size="sm">
                 <Download className="w-4 h-4" /> {t('imgEdit.download')}
               </Button>
             </div>
 
-            {/* Reset */}
             <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
-              setImage(null);
-              setProcessedImage(null);
-              setActions([]);
-              setUndoneActions([]);
-              setRotation(0);
-              setZoom(1);
-              setBgTransparent(false);
-              setBgImage(null);
-              setCropPending(false);
-              setCropStart(null);
-              setCropEnd(null);
-              setCropLassoPoints([]);
+              setImage(null); setProcessedImage(null); setActions([]); setUndoneActions([]);
+              setRotation(0); setZoom(1); setBgTransparent(false); setBgImage(null);
+              setCropPending(false); setCropStart(null); setCropEnd(null); setCropLassoPoints([]);
             }}>
               <Trash2 className="w-3.5 h-3.5" /> {t('imgEdit.reset')}
             </Button>
