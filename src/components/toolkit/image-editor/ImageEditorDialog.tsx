@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   X, Upload, Eraser, Type, ArrowUpRight, Grid3X3, Pencil,
   Crop, RotateCcw, RotateCw, Undo2, Redo2, Download, ZoomIn, ZoomOut,
-  Palette, Loader2, Eye, Trash2, Move, ImageIcon, Sparkles, Cpu
+  Palette, Loader2, Eye, Trash2, Move, ImageIcon, Sparkles, Cpu,
+  Square, Circle, Heart, Lasso, MousePointer2, Check, XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 type Tool = 'move' | 'text' | 'arrow' | 'mosaic' | 'draw' | 'crop' | 'eraser';
+type CropMode = 'rect' | 'circle' | 'ellipse' | 'heart' | 'lasso';
 
 interface DrawAction {
   type: 'draw' | 'text' | 'arrow' | 'mosaic' | 'image' | 'erase';
@@ -21,6 +23,18 @@ interface DrawAction {
 interface Props {
   open: boolean;
   onClose: () => void;
+}
+
+// Heart shape path helper
+function heartPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, w: number, h: number) {
+  const topY = cy - h * 0.35;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + h * 0.5);
+  ctx.bezierCurveTo(cx - w * 0.55, cy + h * 0.1, cx - w * 0.55, topY - h * 0.1, cx - w * 0.2, topY);
+  ctx.bezierCurveTo(cx, topY - h * 0.25, cx, cy - h * 0.05, cx, cy - h * 0.05);
+  ctx.bezierCurveTo(cx, cy - h * 0.05, cx, topY - h * 0.25, cx + w * 0.2, topY);
+  ctx.bezierCurveTo(cx + w * 0.55, topY - h * 0.1, cx + w * 0.55, cy + h * 0.1, cx, cy + h * 0.5);
+  ctx.closePath();
 }
 
 export default function ImageEditorDialog({ open, onClose }: Props) {
@@ -54,6 +68,18 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const [drawPoints, setDrawPoints] = useState<{ x: number; y: number }[]>([]);
   const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
 
+  // Move tool state
+  const [movingActionIndex, setMovingActionIndex] = useState<number | null>(null);
+  const [moveOffset, setMoveOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Crop state
+  const [cropMode, setCropMode] = useState<CropMode>('rect');
+  const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null);
+  const [cropEnd, setCropEnd] = useState<{ x: number; y: number } | null>(null);
+  const [cropLassoPoints, setCropLassoPoints] = useState<{ x: number; y: number }[]>([]);
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropPending, setCropPending] = useState(false);
+
   // Canvas dimensions
   const [canvasW, setCanvasW] = useState(800);
   const [canvasH, setCanvasH] = useState(600);
@@ -82,6 +108,10 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         setUndoneActions([]);
         setRotation(0);
         setZoom(1);
+        setCropPending(false);
+        setCropStart(null);
+        setCropEnd(null);
+        setCropLassoPoints([]);
         const maxW = 1200;
         const scale = img.width > maxW ? maxW / img.width : 1;
         setCanvasW(Math.round(img.width * scale));
@@ -112,8 +142,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       ctx.drawImage(src, 0, 0);
       const imgData = ctx.getImageData(0, 0, c.width, c.height);
       const d = imgData.data;
-
-      // Sample corners to detect background color
       const samples: number[][] = [];
       const samplePositions = [
         [0, 0], [c.width - 1, 0], [0, c.height - 1], [c.width - 1, c.height - 1],
@@ -123,25 +151,19 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         const idx = (sy * c.width + sx) * 4;
         samples.push([d[idx], d[idx + 1], d[idx + 2]]);
       }
-      // Average background color from corners
       const bgR = Math.round(samples.reduce((s, p) => s + p[0], 0) / samples.length);
       const bgG = Math.round(samples.reduce((s, p) => s + p[1], 0) / samples.length);
       const bgB = Math.round(samples.reduce((s, p) => s + p[2], 0) / samples.length);
-
       const toleranceValue = typeof tol === 'number' ? tol : tolerance;
       for (let i = 0; i < d.length; i += 4) {
-        const dist = Math.sqrt(
-          (d[i] - bgR) ** 2 + (d[i + 1] - bgG) ** 2 + (d[i + 2] - bgB) ** 2
-        );
+        const dist = Math.sqrt((d[i] - bgR) ** 2 + (d[i + 1] - bgG) ** 2 + (d[i + 2] - bgB) ** 2);
         if (dist < toleranceValue) {
-          d[i + 3] = 0; // fully transparent
+          d[i + 3] = 0;
         } else if (dist < toleranceValue * 1.5) {
-          // Edge blending
           d[i + 3] = Math.round(255 * ((dist - toleranceValue) / (toleranceValue * 0.5)));
         }
       }
       ctx.putImageData(imgData, 0, 0);
-
       const resultImg = new Image();
       resultImg.src = c.toDataURL('image/png');
       return resultImg;
@@ -150,7 +172,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     }
   }, [tolerance]);
 
-  // Remove background with graceful degradation: AI → Canvas fallback
   const [removalMethod, setRemovalMethod] = useState<'ai' | 'local' | null>(null);
 
   const removeBackground = useCallback(async (mode: 'auto' | 'ai' | 'local' = 'auto') => {
@@ -158,7 +179,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     if (!src) return;
     setIsRemoving(true);
     setRemovalMethod(null);
-
     const tryAI = async (): Promise<boolean> => {
       try {
         const tempCanvas = document.createElement('canvas');
@@ -167,14 +187,9 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         const ctx = tempCanvas.getContext('2d')!;
         ctx.drawImage(src, 0, 0);
         const base64 = tempCanvas.toDataURL('image/png');
-
-        const { data, error } = await supabase.functions.invoke('remove-background', {
-          body: { imageBase64: base64 },
-        });
-
+        const { data, error } = await supabase.functions.invoke('remove-background', { body: { imageBase64: base64 } });
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
-
         const resultImg = new Image();
         await new Promise<void>((resolve, reject) => {
           resultImg.onload = () => resolve();
@@ -191,7 +206,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         return false;
       }
     };
-
     const tryLocal = async (): Promise<boolean> => {
       try {
         const localResult = removeBackgroundLocal(src, tolerance);
@@ -209,22 +223,43 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         return false;
       }
     };
-
     let success = false;
-    if (mode === 'ai') {
-      success = await tryAI();
-    } else if (mode === 'local') {
-      success = await tryLocal();
-    } else {
-      success = await tryAI();
-      if (!success) success = await tryLocal();
-    }
-
-    if (!success) {
-      toast({ title: t('imgEdit.bgRemoveFail'), variant: 'destructive' });
-    }
+    if (mode === 'ai') success = await tryAI();
+    else if (mode === 'local') success = await tryLocal();
+    else { success = await tryAI(); if (!success) success = await tryLocal(); }
+    if (!success) toast({ title: t('imgEdit.bgRemoveFail'), variant: 'destructive' });
     setIsRemoving(false);
-  }, [image, t, removeBackgroundLocal]);
+  }, [image, t, removeBackgroundLocal, tolerance]);
+
+  // Hit-test for move tool
+  const hitTestAction = useCallback((pos: { x: number; y: number }): number | null => {
+    // Iterate in reverse to find the topmost element
+    for (let i = actions.length - 1; i >= 0; i--) {
+      const action = actions[i];
+      if (action.type === 'text') {
+        const { x, y, text, fontSize: fs } = action.data;
+        const approxW = (fs || 24) * text.length * 0.6;
+        const approxH = (fs || 24) * 1.2;
+        if (pos.x >= x - 5 && pos.x <= x + approxW + 5 && pos.y >= y - approxH && pos.y <= y + 10) {
+          return i;
+        }
+      } else if (action.type === 'arrow') {
+        const { from, to } = action.data;
+        // Distance from point to line segment
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) continue;
+        let t0 = ((pos.x - from.x) * dx + (pos.y - from.y) * dy) / lenSq;
+        t0 = Math.max(0, Math.min(1, t0));
+        const projX = from.x + t0 * dx;
+        const projY = from.y + t0 * dy;
+        const dist = Math.sqrt((pos.x - projX) ** 2 + (pos.y - projY) ** 2);
+        if (dist < 15) return i;
+      }
+    }
+    return null;
+  }, [actions]);
 
   // Render canvas
   const renderCanvas = useCallback(() => {
@@ -235,14 +270,12 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw background
     if (bgImage) {
       ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     } else if (!bgTransparent) {
       ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else {
-      // Checkerboard for transparent
       const sz = 16;
       for (let y = 0; y < canvas.height; y += sz) {
         for (let x = 0; x < canvas.width; x += sz) {
@@ -252,7 +285,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       }
     }
 
-    // Draw main image
     const img = processedImage || image;
     if (img) {
       ctx.save();
@@ -263,7 +295,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       ctx.restore();
     }
 
-    // Replay actions
     for (const action of actions) {
       if (action.type === 'draw') {
         const pts = action.data.points;
@@ -277,7 +308,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
         ctx.stroke();
       } else if (action.type === 'erase') {
-        // 橡皮擦：将路径经过的像素 alpha 设为 0
         const pts = action.data.points;
         const size = action.data.size;
         if (pts.length < 2) continue;
@@ -304,7 +334,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         ctx.moveTo(from.x, from.y);
         ctx.lineTo(to.x, to.y);
         ctx.stroke();
-        // Arrowhead
         const angle = Math.atan2(to.y - from.y, to.x - from.x);
         const headLen = size * 5;
         ctx.beginPath();
@@ -329,14 +358,293 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         }
       }
     }
-  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions]);
+
+    // Draw crop overlay
+    if (tool === 'crop' && cropPending) {
+      ctx.save();
+      if (cropMode === 'lasso' && cropLassoPoints.length > 2) {
+        // Dim outside lasso
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.moveTo(cropLassoPoints[0].x, cropLassoPoints[0].y);
+        for (let i = 1; i < cropLassoPoints.length; i++) ctx.lineTo(cropLassoPoints[i].x, cropLassoPoints[i].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        // Draw border
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 3]);
+        ctx.beginPath();
+        ctx.moveTo(cropLassoPoints[0].x, cropLassoPoints[0].y);
+        for (let i = 1; i < cropLassoPoints.length; i++) ctx.lineTo(cropLassoPoints[i].x, cropLassoPoints[i].y);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (cropStart && cropEnd) {
+        const x1 = Math.min(cropStart.x, cropEnd.x);
+        const y1 = Math.min(cropStart.y, cropEnd.y);
+        const w = Math.abs(cropEnd.x - cropStart.x);
+        const h = Math.abs(cropEnd.y - cropStart.y);
+        const cx = x1 + w / 2;
+        const cy = y1 + h / 2;
+
+        // Dim everything
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Cut out crop region
+        ctx.globalCompositeOperation = 'destination-out';
+        if (cropMode === 'rect') {
+          ctx.fillRect(x1, y1, w, h);
+        } else if (cropMode === 'circle') {
+          const r = Math.min(w, h) / 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (cropMode === 'ellipse') {
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (cropMode === 'heart') {
+          heartPath(ctx, cx, cy, w, h);
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        // Draw border
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 3]);
+        if (cropMode === 'rect') {
+          ctx.strokeRect(x1, y1, w, h);
+        } else if (cropMode === 'circle') {
+          const r = Math.min(w, h) / 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (cropMode === 'ellipse') {
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (cropMode === 'heart') {
+          heartPath(ctx, cx, cy, w, h);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+      ctx.restore();
+    }
+
+    // Highlight selected action for move tool
+    if (tool === 'move' && movingActionIndex !== null && movingActionIndex < actions.length) {
+      const action = actions[movingActionIndex];
+      ctx.save();
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+      if (action.type === 'text') {
+        const { x, y, text, fontSize: fs } = action.data;
+        const approxW = (fs || 24) * text.length * 0.6;
+        ctx.strokeRect(x - 4, y - (fs || 24), approxW + 8, (fs || 24) * 1.3);
+      } else if (action.type === 'arrow') {
+        const { from, to } = action.data;
+        const pad = 10;
+        const minX = Math.min(from.x, to.x) - pad;
+        const minY = Math.min(from.y, to.y) - pad;
+        const maxX = Math.max(from.x, to.x) + pad;
+        const maxY = Math.max(from.y, to.y) + pad;
+        ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions, tool, cropMode, cropStart, cropEnd, cropLassoPoints, cropPending, movingActionIndex]);
 
   useEffect(() => { renderCanvas(); }, [renderCanvas]);
+
+  // Apply crop
+  const applyCrop = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // First render clean canvas without crop overlay
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = canvasW;
+    srcCanvas.height = canvasH;
+    const srcCtx = srcCanvas.getContext('2d')!;
+
+    // Copy current rendered canvas before overlay
+    // Re-render without crop overlay
+    if (bgImage) {
+      srcCtx.drawImage(bgImage, 0, 0, canvasW, canvasH);
+    } else if (!bgTransparent) {
+      srcCtx.fillStyle = bgColor;
+      srcCtx.fillRect(0, 0, canvasW, canvasH);
+    }
+    const img = processedImage || image;
+    if (img) {
+      srcCtx.save();
+      srcCtx.translate(canvasW / 2, canvasH / 2);
+      srcCtx.rotate((rotation * Math.PI) / 180);
+      srcCtx.scale(zoom, zoom);
+      srcCtx.drawImage(img, -canvasW / 2, -canvasH / 2, canvasW, canvasH);
+      srcCtx.restore();
+    }
+    // Replay actions
+    for (const action of actions) {
+      if (action.type === 'draw') {
+        const pts = action.data.points;
+        if (pts.length < 2) continue;
+        srcCtx.strokeStyle = action.data.color;
+        srcCtx.lineWidth = action.data.size;
+        srcCtx.lineCap = 'round';
+        srcCtx.lineJoin = 'round';
+        srcCtx.beginPath();
+        srcCtx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) srcCtx.lineTo(pts[i].x, pts[i].y);
+        srcCtx.stroke();
+      } else if (action.type === 'text') {
+        srcCtx.fillStyle = action.data.color;
+        srcCtx.font = `${action.data.fontSize}px sans-serif`;
+        srcCtx.fillText(action.data.text, action.data.x, action.data.y);
+      } else if (action.type === 'arrow') {
+        const { from, to, color, size } = action.data;
+        srcCtx.strokeStyle = color;
+        srcCtx.lineWidth = size;
+        srcCtx.beginPath();
+        srcCtx.moveTo(from.x, from.y);
+        srcCtx.lineTo(to.x, to.y);
+        srcCtx.stroke();
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        const headLen = size * 5;
+        srcCtx.beginPath();
+        srcCtx.moveTo(to.x, to.y);
+        srcCtx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
+        srcCtx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
+        srcCtx.closePath();
+        srcCtx.fillStyle = color;
+        srcCtx.fill();
+      }
+    }
+
+    let resultCanvas: HTMLCanvasElement;
+
+    if (cropMode === 'lasso' && cropLassoPoints.length > 2) {
+      // Bounding box of lasso
+      const xs = cropLassoPoints.map(p => p.x);
+      const ys = cropLassoPoints.map(p => p.y);
+      const bx = Math.max(0, Math.floor(Math.min(...xs)));
+      const by = Math.max(0, Math.floor(Math.min(...ys)));
+      const bw = Math.min(canvasW - bx, Math.ceil(Math.max(...xs) - bx));
+      const bh = Math.min(canvasH - by, Math.ceil(Math.max(...ys) - by));
+
+      resultCanvas = document.createElement('canvas');
+      resultCanvas.width = bw;
+      resultCanvas.height = bh;
+      const rCtx = resultCanvas.getContext('2d')!;
+      // Clip to lasso shape
+      rCtx.beginPath();
+      rCtx.moveTo(cropLassoPoints[0].x - bx, cropLassoPoints[0].y - by);
+      for (let i = 1; i < cropLassoPoints.length; i++) rCtx.lineTo(cropLassoPoints[i].x - bx, cropLassoPoints[i].y - by);
+      rCtx.closePath();
+      rCtx.clip();
+      rCtx.drawImage(srcCanvas, bx, by, bw, bh, 0, 0, bw, bh);
+    } else if (cropStart && cropEnd) {
+      const x1 = Math.max(0, Math.min(cropStart.x, cropEnd.x));
+      const y1 = Math.max(0, Math.min(cropStart.y, cropEnd.y));
+      const w = Math.min(canvasW - x1, Math.abs(cropEnd.x - cropStart.x));
+      const h = Math.min(canvasH - y1, Math.abs(cropEnd.y - cropStart.y));
+      const cx = x1 + w / 2;
+      const cy = y1 + h / 2;
+
+      if (cropMode === 'rect') {
+        resultCanvas = document.createElement('canvas');
+        resultCanvas.width = Math.round(w);
+        resultCanvas.height = Math.round(h);
+        const rCtx = resultCanvas.getContext('2d')!;
+        rCtx.drawImage(srcCanvas, x1, y1, w, h, 0, 0, w, h);
+      } else {
+        // Circle, ellipse, heart — need transparent outside
+        resultCanvas = document.createElement('canvas');
+        resultCanvas.width = Math.round(w);
+        resultCanvas.height = Math.round(h);
+        const rCtx = resultCanvas.getContext('2d')!;
+        rCtx.beginPath();
+        if (cropMode === 'circle') {
+          const r = Math.min(w, h) / 2;
+          rCtx.arc(w / 2, h / 2, r, 0, Math.PI * 2);
+        } else if (cropMode === 'ellipse') {
+          rCtx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+        } else if (cropMode === 'heart') {
+          heartPath(rCtx, w / 2, h / 2, w, h);
+        }
+        rCtx.closePath();
+        rCtx.clip();
+        rCtx.drawImage(srcCanvas, x1, y1, w, h, 0, 0, w, h);
+      }
+    } else {
+      return; // No valid crop
+    }
+
+    // Apply result
+    const newImg = new window.Image();
+    newImg.onload = () => {
+      setProcessedImage(newImg);
+      setCanvasW(resultCanvas!.width);
+      setCanvasH(resultCanvas!.height);
+      setImage(null); // Clear original, processedImage is now the source
+      setActions([]);
+      setUndoneActions([]);
+      setRotation(0);
+      setZoom(1);
+      setBgTransparent(cropMode !== 'rect');
+      setCropPending(false);
+      setCropStart(null);
+      setCropEnd(null);
+      setCropLassoPoints([]);
+      toast({ title: t('imgEdit.cropApplied') || '裁剪已应用' });
+    };
+    newImg.src = resultCanvas!.toDataURL('image/png');
+  }, [cropMode, cropStart, cropEnd, cropLassoPoints, canvasW, canvasH, bgImage, bgTransparent, bgColor, processedImage, image, rotation, zoom, actions, t]);
+
+  const cancelCrop = useCallback(() => {
+    setCropPending(false);
+    setCropStart(null);
+    setCropEnd(null);
+    setCropLassoPoints([]);
+  }, []);
 
   // Mouse/Touch handlers
   const handlePointerDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const pos = getCanvasPos(e);
-    if (tool === 'draw' || tool === 'eraser') {
+
+    if (tool === 'move') {
+      const idx = hitTestAction(pos);
+      if (idx !== null) {
+        setMovingActionIndex(idx);
+        const action = actions[idx];
+        if (action.type === 'text') {
+          setMoveOffset({ x: pos.x - action.data.x, y: pos.y - action.data.y });
+        } else if (action.type === 'arrow') {
+          setMoveOffset({ x: pos.x - action.data.from.x, y: pos.y - action.data.from.y });
+        }
+        setIsDrawing(true);
+      } else {
+        setMovingActionIndex(null);
+      }
+    } else if (tool === 'crop') {
+      if (cropMode === 'lasso') {
+        setCropLassoPoints([pos]);
+        setIsCropping(true);
+        setCropPending(false);
+      } else {
+        setCropStart(pos);
+        setCropEnd(pos);
+        setIsCropping(true);
+        setCropPending(false);
+      }
+    } else if (tool === 'draw' || tool === 'eraser') {
       setIsDrawing(true);
       setDrawPoints([pos]);
     } else if (tool === 'arrow') {
@@ -355,14 +663,47 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       setIsDrawing(true);
       setDrawPoints([pos]);
     }
-  }, [tool, getCanvasPos, textInput, drawColor, fontSize]);
+  }, [tool, getCanvasPos, textInput, drawColor, fontSize, hitTestAction, actions, cropMode]);
 
   const handlePointerMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing && !arrowStart) return;
     const pos = getCanvasPos(e);
+
+    if (tool === 'move' && isDrawing && movingActionIndex !== null) {
+      setActions(prev => {
+        const updated = [...prev];
+        const action = { ...updated[movingActionIndex], data: { ...updated[movingActionIndex].data } };
+        if (action.type === 'text') {
+          action.data.x = pos.x - moveOffset.x;
+          action.data.y = pos.y - moveOffset.y;
+        } else if (action.type === 'arrow') {
+          const dx = pos.x - moveOffset.x - action.data.from.x;
+          const dy = pos.y - moveOffset.y - action.data.from.y;
+          action.data = {
+            ...action.data,
+            from: { x: action.data.from.x + dx, y: action.data.from.y + dy },
+            to: { x: action.data.to.x + dx, y: action.data.to.y + dy },
+          };
+          setMoveOffset({ x: pos.x - action.data.from.x, y: pos.y - action.data.from.y });
+        }
+        updated[movingActionIndex] = action;
+        return updated;
+      });
+      return;
+    }
+
+    if (tool === 'crop' && isCropping) {
+      if (cropMode === 'lasso') {
+        setCropLassoPoints(prev => [...prev, pos]);
+      } else {
+        setCropEnd(pos);
+      }
+      return;
+    }
+
+    if (!isDrawing && !arrowStart) return;
+
     if ((tool === 'draw' || tool === 'eraser') && isDrawing) {
       setDrawPoints(prev => [...prev, pos]);
-      // Live preview
       const canvas = canvasRef.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -409,9 +750,21 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         }
       }
     }
-  }, [isDrawing, arrowStart, tool, getCanvasPos, drawColor, drawSize, drawPoints]);
+  }, [tool, isDrawing, arrowStart, getCanvasPos, drawColor, drawSize, drawPoints, movingActionIndex, moveOffset, isCropping, cropMode]);
 
   const handlePointerUp = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    if (tool === 'move' && isDrawing) {
+      setIsDrawing(false);
+      setMovingActionIndex(null);
+      return;
+    }
+
+    if (tool === 'crop' && isCropping) {
+      setIsCropping(false);
+      setCropPending(true);
+      return;
+    }
+
     if (tool === 'draw' && isDrawing) {
       const action: DrawAction = {
         type: 'draw',
@@ -420,18 +773,13 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       setActions(prev => [...prev, action]);
       setUndoneActions([]);
     } else if (tool === 'eraser' && isDrawing) {
-      // 直接在 processedImage 上擦除
       const canvas = document.createElement('canvas');
       canvas.width = canvasW;
       canvas.height = canvasH;
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        // 先绘制当前 processedImage 或 image
         const img = processedImage || image;
-        if (img) {
-          ctx.drawImage(img, 0, 0, canvasW, canvasH);
-        }
-        // 擦除路径
+        if (img) ctx.drawImage(img, 0, 0, canvasW, canvasH);
         ctx.save();
         ctx.globalCompositeOperation = 'destination-out';
         ctx.strokeStyle = 'rgba(0,0,0,1)';
@@ -439,11 +787,12 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
-        ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
-        for (let i = 1; i < drawPoints.length; i++) ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+        if (drawPoints.length > 0) {
+          ctx.moveTo(drawPoints[0].x, drawPoints[0].y);
+          for (let i = 1; i < drawPoints.length; i++) ctx.lineTo(drawPoints[i].x, drawPoints[i].y);
+        }
         ctx.stroke();
         ctx.restore();
-        // 更新 processedImage
         const resultImg = new window.Image();
         resultImg.onload = () => setProcessedImage(resultImg);
         resultImg.src = canvas.toDataURL('image/png');
@@ -467,7 +816,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     }
     setIsDrawing(false);
     setDrawPoints([]);
-  }, [tool, isDrawing, drawPoints, drawColor, drawSize, arrowStart, getCanvasPos, processedImage, image, canvasW, canvasH]);
+  }, [tool, isDrawing, drawPoints, drawColor, drawSize, arrowStart, getCanvasPos, processedImage, image, canvasW, canvasH, isCropping]);
 
   // Undo/Redo
   const undo = useCallback(() => {
@@ -492,21 +841,17 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const handleExport = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = Math.round(canvasW * exportScale);
     exportCanvas.height = Math.round(canvasH * exportScale);
     const ctx = exportCanvas.getContext('2d')!;
     ctx.scale(exportScale, exportScale);
-
-    // Re-render at export scale
     if (bgImage) {
       ctx.drawImage(bgImage, 0, 0, canvasW, canvasH);
     } else if (!bgTransparent || exportFormat !== 'png') {
       ctx.fillStyle = bgColor;
       ctx.fillRect(0, 0, canvasW, canvasH);
     }
-
     const img = processedImage || image;
     if (img) {
       ctx.save();
@@ -516,7 +861,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       ctx.drawImage(img, -canvasW / 2, -canvasH / 2, canvasW, canvasH);
       ctx.restore();
     }
-
     for (const action of actions) {
       if (action.type === 'draw') {
         const pts = action.data.points;
@@ -552,7 +896,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         ctx.fill();
       }
     }
-
     const mimeMap = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' } as const;
     const dataUrl = exportCanvas.toDataURL(mimeMap[exportFormat], 0.92);
     const link = document.createElement('a');
@@ -586,6 +929,14 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     { id: 'crop', icon: Crop, label: t('imgEdit.crop') },
   ];
 
+  const cropModes: { id: CropMode; icon: any; label: string }[] = [
+    { id: 'rect', icon: Square, label: '矩形' },
+    { id: 'circle', icon: Circle, label: '圆形' },
+    { id: 'ellipse', icon: () => <Circle className="w-4 h-4 scale-x-75" />, label: '椭圆' },
+    { id: 'heart', icon: Heart, label: '心形' },
+    { id: 'lasso', icon: MousePointer2, label: '套索' },
+  ];
+
   if (!open) return null;
 
   return (
@@ -612,7 +963,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
             key={tb.id}
             variant={tool === tb.id ? 'default' : 'ghost'}
             size="sm"
-            onClick={() => setTool(tb.id)}
+            onClick={() => { setTool(tb.id); if (tb.id !== 'crop') cancelCrop(); }}
             title={tb.label}
             className="gap-1 text-xs h-8"
           >
@@ -659,13 +1010,43 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
             <input type="range" min={12} max={72} value={fontSize} onChange={e => setFontSize(Number(e.target.value))} className="w-16" title={t('imgEdit.fontSize')} />
           </>
         )}
+        {tool === 'crop' && (
+          <div className="flex items-center gap-1">
+            {cropModes.map(cm => (
+              <Button
+                key={cm.id}
+                variant={cropMode === cm.id ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-7 px-2 text-xs gap-1"
+                onClick={() => { setCropMode(cm.id); cancelCrop(); }}
+                title={cm.label}
+              >
+                <cm.icon className="w-3.5 h-3.5" /> <span className="hidden lg:inline">{cm.label}</span>
+              </Button>
+            ))}
+            {cropPending && (
+              <>
+                <div className="w-px h-5 bg-border mx-1" />
+                <Button size="sm" className="h-7 px-2 text-xs gap-1" onClick={applyCrop}>
+                  <Check className="w-3.5 h-3.5" /> 应用
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={cancelCrop}>
+                  <XCircle className="w-3.5 h-3.5" /> 取消
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+        {tool === 'move' && (
+          <span className="text-xs text-muted-foreground ml-2">点击拖拽文字或箭头进行移动</span>
+        )}
       </div>
 
       {/* Main area */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Canvas area */}
         <div className="flex-1 flex items-center justify-center p-4 overflow-auto bg-muted/30">
-          {!image ? (
+          {!image && !processedImage ? (
             <div
               className="border-2 border-dashed border-border rounded-2xl p-12 text-center cursor-pointer hover:border-primary/50 transition-colors max-w-lg w-full"
               onClick={() => fileInputRef.current?.click()}
@@ -692,7 +1073,12 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               width={canvasW}
               height={canvasH}
               className="border border-border rounded-lg shadow-sm max-w-full max-h-full"
-              style={{ cursor: tool === 'move' ? 'grab' : tool === 'text' ? 'text' : 'crosshair' }}
+              style={{
+                cursor: tool === 'move' ? (movingActionIndex !== null ? 'grabbing' : 'grab')
+                  : tool === 'text' ? 'text'
+                  : tool === 'crop' ? 'crosshair'
+                  : 'crosshair'
+              }}
               onMouseDown={handlePointerDown}
               onMouseMove={handlePointerMove}
               onMouseUp={handlePointerUp}
@@ -704,17 +1090,12 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         </div>
 
         {/* Right sidebar - Background & Export */}
-        {image && (
+        {(image || processedImage) && (
           <div className="w-56 border-l border-border bg-card p-4 overflow-y-auto space-y-4 hidden md:block">
-            {/* AI Background Removal + 容差滑块 */}
+            {/* AI Background Removal */}
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.bgSection')}</h4>
-              <Button
-                onClick={() => removeBackground('auto')}
-                disabled={isRemoving}
-                className="w-full gap-2"
-                size="sm"
-              >
+              <Button onClick={() => removeBackground('auto')} disabled={isRemoving} className="w-full gap-2" size="sm">
                 {isRemoving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eraser className="w-4 h-4" />}
                 {isRemoving ? t('imgEdit.removing') : t('imgEdit.removeBg')}
               </Button>
@@ -723,20 +1104,9 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
                   {removalMethod === 'ai' ? '✨ AI' : '🎨 Local'}
                 </p>
               )}
-              {/* 容差滑块，仅本地抠图时可调 */}
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-xs">容差</span>
-                <input
-                  type="range"
-                  min={5}
-                  max={120}
-                  step={1}
-                  value={tolerance}
-                  onChange={e => setTolerance(Number(e.target.value))}
-                  className="w-24"
-                  disabled={isRemoving}
-                  title="调整颜色匹配灵敏度，适应不同背景"
-                />
+                <input type="range" min={5} max={120} step={1} value={tolerance} onChange={e => setTolerance(Number(e.target.value))} className="w-24" disabled={isRemoving} title="调整颜色匹配灵敏度" />
                 <span className="text-xs w-6 text-right">{tolerance}</span>
               </div>
             </div>
@@ -752,27 +1122,13 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               </div>
               <div className="grid grid-cols-4 gap-1">
                 {['#ffffff', '#000000', '#f43f5e', '#3b82f6', '#22c55e', '#eab308', '#8b5cf6', '#f97316'].map(c => (
-                  <button
-                    key={c}
-                    className="w-full aspect-square rounded border border-border hover:ring-2 ring-primary/50 transition-all"
-                    style={{ backgroundColor: c }}
-                    onClick={() => { setBgColor(c); setBgTransparent(false); setBgImage(null); }}
-                  />
+                  <button key={c} className="w-full aspect-square rounded border border-border hover:ring-2 ring-primary/50 transition-all" style={{ backgroundColor: c }} onClick={() => { setBgColor(c); setBgTransparent(false); setBgImage(null); }} />
                 ))}
               </div>
               <Button variant="outline" size="sm" className="w-full text-xs h-8" onClick={() => bgFileInputRef.current?.click()}>
                 <Palette className="w-3.5 h-3.5 mr-1" /> {t('imgEdit.bgImage')}
               </Button>
-              <input
-                ref={bgFileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={e => {
-                  const f = e.target.files?.[0];
-                  if (f) handleBgImage(f);
-                }}
-              />
+              <input ref={bgFileInputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleBgImage(f); }} />
             </div>
 
             {/* Export */}
@@ -780,32 +1136,20 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.exportSection')}</h4>
               <div className="flex gap-1">
                 {(['png', 'jpg', 'webp'] as const).map(fmt => (
-                  <Button
-                    key={fmt}
-                    variant={exportFormat === fmt ? 'default' : 'outline'}
-                    size="sm"
-                    className="text-xs h-7 flex-1"
-                    onClick={() => setExportFormat(fmt)}
-                  >
+                  <Button key={fmt} variant={exportFormat === fmt ? 'default' : 'outline'} size="sm" className="text-xs h-7 flex-1" onClick={() => setExportFormat(fmt)}>
                     {fmt.toUpperCase()}
                   </Button>
                 ))}
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{t('imgEdit.scale')}</span>
-                <select
-                  value={exportScale}
-                  onChange={e => setExportScale(Number(e.target.value))}
-                  className="bg-background border border-border rounded px-1.5 py-0.5 text-xs text-foreground"
-                >
+                <select value={exportScale} onChange={e => setExportScale(Number(e.target.value))} className="bg-background border border-border rounded px-1.5 py-0.5 text-xs text-foreground">
                   <option value={0.5}>0.5x</option>
                   <option value={1}>1x</option>
                   <option value={2}>2x</option>
                   <option value={3}>3x</option>
                 </select>
-                <span className="text-muted-foreground">
-                  {Math.round(canvasW * exportScale)}×{Math.round(canvasH * exportScale)}
-                </span>
+                <span className="text-muted-foreground">{Math.round(canvasW * exportScale)}×{Math.round(canvasH * exportScale)}</span>
               </div>
               <Button onClick={handleExport} className="w-full gap-2" size="sm">
                 <Download className="w-4 h-4" /> {t('imgEdit.download')}
@@ -813,29 +1157,28 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
             </div>
 
             {/* Reset */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-xs gap-1"
-              onClick={() => {
-                setImage(null);
-                setProcessedImage(null);
-                setActions([]);
-                setUndoneActions([]);
-                setRotation(0);
-                setZoom(1);
-                setBgTransparent(false);
-                setBgImage(null);
-              }}
-            >
+            <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
+              setImage(null);
+              setProcessedImage(null);
+              setActions([]);
+              setUndoneActions([]);
+              setRotation(0);
+              setZoom(1);
+              setBgTransparent(false);
+              setBgImage(null);
+              setCropPending(false);
+              setCropStart(null);
+              setCropEnd(null);
+              setCropLassoPoints([]);
+            }}>
               <Trash2 className="w-3.5 h-3.5" /> {t('imgEdit.reset')}
             </Button>
           </div>
         )}
       </div>
 
-      {/* Mobile bottom bar for export/bg */}
-      {image && (
+      {/* Mobile bottom bar */}
+      {(image || processedImage) && (
         <div className="md:hidden flex items-center gap-2 px-3 py-2 border-t border-border bg-card overflow-x-auto">
           <Button onClick={() => removeBackground('auto')} disabled={isRemoving} size="sm" className="gap-1 text-xs h-8 shrink-0">
             {isRemoving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eraser className="w-3.5 h-3.5" />}
