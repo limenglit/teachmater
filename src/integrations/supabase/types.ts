@@ -1108,6 +1108,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ai_limits: {
+        Row: {
+          daily_limit: number
+          id: string
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          daily_limit?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          daily_limit?: number
+          id?: string
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1131,6 +1155,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_users_with_limits: {
+        Args: never
+        Returns: {
+          daily_limit: number
+          email: string
+          nickname: string
+          status: string
+          user_id: string
+        }[]
+      }
+      admin_set_ai_limits: {
+        Args: { p_daily_limit: number; p_user_ids: string[] }
+        Returns: undefined
+      }
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
       delete_badge: {
         Args: { p_badge_id: string; p_token: string }
