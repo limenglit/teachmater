@@ -255,10 +255,20 @@ export default function AdminPage() {
           >
             <Settings2 className="w-3.5 h-3.5" /> {t('admin.tabConfig')}
           </Button>
+          <Button
+            size="sm"
+            variant={adminTab === 'ai' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('ai')}
+          >
+            <Cpu className="w-3.5 h-3.5" /> {t('admin.tabAIQuota')}
+          </Button>
         </div>
 
         {adminTab === 'config' ? (
           <AdminConfigPanel />
+        ) : adminTab === 'ai' ? (
+          <AdminAIQuotaPanel />
         ) : (
         <>
         <div className="flex flex-col sm:flex-row gap-2">
