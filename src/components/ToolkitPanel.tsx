@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
 import { toast } from '@/hooks/use-toast';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
