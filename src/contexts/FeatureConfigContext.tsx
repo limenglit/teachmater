@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TabId } from '@/components/TabNavigation';
 import { setSystemRequireSeatAssignmentBeforeCheckin } from '@/lib/seat-checkin-policy';
+import type { ToolkitToolFlags, ToolkitToolId } from '@/components/AdminToolkitConfigPanel';
+import { DEFAULT_TOOLKIT_TOOLS } from '@/components/AdminToolkitConfigPanel';
 
 export interface FeatureFlags {
   random: boolean;
@@ -25,6 +27,10 @@ export interface SystemConfig {
   checkinPolicy: {
     require_seat_assignment_before_checkin: boolean;
   };
+  toolkitTools: {
+    guest: ToolkitToolFlags;
+    registered: ToolkitToolFlags;
+  };
 }
 
 const DEFAULT_CONFIG: SystemConfig = {
@@ -41,6 +47,10 @@ const DEFAULT_CONFIG: SystemConfig = {
   checkinPolicy: {
     require_seat_assignment_before_checkin: true,
   },
+  toolkitTools: {
+    guest: { ...DEFAULT_TOOLKIT_TOOLS },
+    registered: { ...DEFAULT_TOOLKIT_TOOLS },
+  },
 };
 
 interface FeatureConfigContextType {
@@ -48,6 +58,7 @@ interface FeatureConfigContextType {
   loading: boolean;
   isFeatureVisible: (tabId: TabId) => boolean;
   getAIDailyLimit: () => number;
+  isToolkitToolVisible: (toolId: ToolkitToolId) => boolean;
   reloadConfig: () => Promise<void>;
 }
 
@@ -56,6 +67,7 @@ const FeatureConfigContext = createContext<FeatureConfigContextType>({
   loading: true,
   isFeatureVisible: () => true,
   getAIDailyLimit: () => 5,
+  isToolkitToolVisible: () => true,
   reloadConfig: async () => {},
 });
 
@@ -74,12 +86,16 @@ export function FeatureConfigProvider({ children }: { children: ReactNode }) {
       if (!error && data) {
         const raw = (data as any).config;
         if (raw && typeof raw === 'object' && raw.guest && raw.registered) {
-          const nextConfig = {
+          const nextConfig: SystemConfig = {
             guest: { ...DEFAULT_CONFIG.guest, ...raw.guest },
             registered: { ...DEFAULT_CONFIG.registered, ...raw.registered },
             checkinPolicy: {
               ...DEFAULT_CONFIG.checkinPolicy,
               ...((raw as any).checkinPolicy || {}),
+            },
+            toolkitTools: {
+              guest: { ...DEFAULT_TOOLKIT_TOOLS, ...((raw as any).toolkitTools?.guest || {}) },
+              registered: { ...DEFAULT_TOOLKIT_TOOLS, ...((raw as any).toolkitTools?.registered || {}) },
             },
           };
 
@@ -112,8 +128,12 @@ export function FeatureConfigProvider({ children }: { children: ReactNode }) {
     return config[userType].ai_daily_limit;
   };
 
+  const isToolkitToolVisible = (toolId: ToolkitToolId): boolean => {
+    return config.toolkitTools[userType][toolId] !== false;
+  };
+
   return (
-    <FeatureConfigContext.Provider value={{ config, loading, isFeatureVisible, getAIDailyLimit, reloadConfig: loadConfig }}>
+    <FeatureConfigContext.Provider value={{ config, loading, isFeatureVisible, getAIDailyLimit, isToolkitToolVisible, reloadConfig: loadConfig }}>
       {children}
     </FeatureConfigContext.Provider>
   );

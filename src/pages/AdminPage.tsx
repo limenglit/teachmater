@@ -30,7 +30,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchActing, setBatchActing] = useState(false);
-  const [adminTab, setAdminTab] = useState<'users' | 'config'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai'>('users');
 
   useEffect(() => {
     if (!user) {
