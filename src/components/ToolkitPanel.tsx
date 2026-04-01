@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
 import { toast } from '@/hooks/use-toast';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
@@ -82,30 +83,30 @@ function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: 
 
 export default function ToolkitPanel() {
   const { t } = useLanguage();
-  // 案例分享区已通过顶部 import 引入
+  const { isToolkitToolVisible } = useFeatureConfig();
+
   return (
     <div data-testid="toolkit-panel" className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 pr-2 sm:p-8 sm:pr-4">
       <div className="max-w-5xl mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {/* 社区已移至主界面 */}
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">{t('toolkit.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <BarrageDiscussion />
-          <CountdownTimer />
-          <NoiseDetector />
-          <Scoreboard />
-          <RandomAssigner />
-          <LotteryDrawer />
-          <PollManager />
-          <Stopwatch />
-          <TrafficLight />
-          <BreathingExercise />
-          <TextMagnifier />
-          <ScreenCaptureTool />
-          <TaskChecklist />
-          <CodeVisualizerTool />
-          <ImageEditorTool />
-          <CommandCards />
-          <QRCodeGenerator />
+          {isToolkitToolVisible('barrage') && <BarrageDiscussion />}
+          {isToolkitToolVisible('countdown') && <CountdownTimer />}
+          {isToolkitToolVisible('noise') && <NoiseDetector />}
+          {isToolkitToolVisible('scoreboard') && <Scoreboard />}
+          {isToolkitToolVisible('randomAssigner') && <RandomAssigner />}
+          {isToolkitToolVisible('lottery') && <LotteryDrawer />}
+          {isToolkitToolVisible('poll') && <PollManager />}
+          {isToolkitToolVisible('stopwatch') && <Stopwatch />}
+          {isToolkitToolVisible('trafficLight') && <TrafficLight />}
+          {isToolkitToolVisible('breathing') && <BreathingExercise />}
+          {isToolkitToolVisible('textMagnifier') && <TextMagnifier />}
+          {isToolkitToolVisible('screenCapture') && <ScreenCaptureTool />}
+          {isToolkitToolVisible('taskChecklist') && <TaskChecklist />}
+          {isToolkitToolVisible('codeVisualizer') && <CodeVisualizerTool />}
+          {isToolkitToolVisible('imageEditor') && <ImageEditorTool />}
+          {isToolkitToolVisible('commandCards') && <CommandCards />}
+          {isToolkitToolVisible('qrCode') && <QRCodeGenerator />}
         </div>
       </div>
     </div>

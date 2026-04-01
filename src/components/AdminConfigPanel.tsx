@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { Loader2, Save, Settings2 } from 'lucide-react';
 import type { SystemConfig, FeatureFlags } from '@/contexts/FeatureConfigContext';
 import { setSystemRequireSeatAssignmentBeforeCheckin } from '@/lib/seat-checkin-policy';
+import AdminToolkitConfigPanel, { DEFAULT_TOOLKIT_TOOLS, type ToolkitToolFlags, type ToolkitToolId } from './AdminToolkitConfigPanel';
 
 const FEATURE_KEYS: { key: keyof Omit<FeatureFlags, 'ai_daily_limit'>; emoji: string; labelKey: string }[] = [
   { key: 'random', emoji: '🎲', labelKey: 'tab.random' },
@@ -36,6 +37,10 @@ const DEFAULT_CONFIG: SystemConfig = {
   },
   checkinPolicy: {
     require_seat_assignment_before_checkin: true,
+  },
+  toolkitTools: {
+    guest: { ...DEFAULT_TOOLKIT_TOOLS },
+    registered: { ...DEFAULT_TOOLKIT_TOOLS },
   },
 };
 
@@ -67,6 +72,10 @@ export default function AdminConfigPanel() {
           checkinPolicy: {
             ...DEFAULT_CONFIG.checkinPolicy,
             ...((d.config as any).checkinPolicy || {}),
+          },
+          toolkitTools: {
+            guest: { ...DEFAULT_TOOLKIT_TOOLS, ...((d.config as any).toolkitTools?.guest || {}) },
+            registered: { ...DEFAULT_TOOLKIT_TOOLS, ...((d.config as any).toolkitTools?.registered || {}) },
           },
         });
       }
@@ -111,6 +120,19 @@ export default function AdminConfigPanel() {
     setConfig(prev => ({
       ...prev,
       [userType]: { ...prev[userType], ai_daily_limit: value },
+    }));
+  };
+
+  const toggleToolkitTool = (userType: 'guest' | 'registered', key: ToolkitToolId) => {
+    setConfig(prev => ({
+      ...prev,
+      toolkitTools: {
+        ...prev.toolkitTools,
+        [userType]: {
+          ...prev.toolkitTools[userType],
+          [key]: !prev.toolkitTools[userType][key],
+        },
+      },
     }));
   };
 
@@ -187,6 +209,22 @@ export default function AdminConfigPanel() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {renderUserTypeSection('guest', t('sysconfig.guest'))}
         {renderUserTypeSection('registered', t('sysconfig.registered'))}
+      </div>
+
+      {/* Toolkit sub-tool visibility */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <AdminToolkitConfigPanel
+          userType="guest"
+          label={t('sysconfig.guest')}
+          tools={config.toolkitTools.guest}
+          onToggle={toggleToolkitTool}
+        />
+        <AdminToolkitConfigPanel
+          userType="registered"
+          label={t('sysconfig.registered')}
+          tools={config.toolkitTools.registered}
+          onToggle={toggleToolkitTool}
+        />
       </div>
 
       <div className="bg-card rounded-xl border border-border p-4 space-y-2">
