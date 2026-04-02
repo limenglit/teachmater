@@ -333,7 +333,53 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     return ctx.getImageData(0, 0, canvasW, canvasH);
   }, [canvasW, canvasH, bgImage, bgTransparent, bgColor, processedImage, image, rotation, zoom, actions]);
 
-  // Render canvas
+  // Helper: render actions list onto a context
+  const renderActionsOnCtx = useCallback((ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, actionsList: DrawAction[]) => {
+    for (const action of actionsList) {
+      if (action.type === 'draw') {
+        const pts = action.data.points;
+        if (pts.length < 2) continue;
+        ctx.strokeStyle = action.data.color; ctx.lineWidth = action.data.size;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      } else if (action.type === 'erase') {
+        const pts = action.data.points; const size = action.data.size;
+        if (pts.length < 2) continue;
+        ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.lineWidth = size;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke(); ctx.restore();
+      } else if (action.type === 'text') {
+        ctx.fillStyle = action.data.color;
+        ctx.font = `${action.data.fontSize}px sans-serif`;
+        ctx.fillText(action.data.text, action.data.x, action.data.y);
+      } else if (action.type === 'arrow') {
+        const { from, to, color, size } = action.data;
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        const headLen = size * 5;
+        ctx.beginPath(); ctx.moveTo(to.x, to.y);
+        ctx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
+        ctx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
+        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+      } else if (action.type === 'mosaic') {
+        const { points, blockSize } = action.data;
+        for (const pt of points) {
+          const imgData2 = (ctx as CanvasRenderingContext2D).getImageData(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2);
+          let r = 0, g = 0, b = 0, count = 0;
+          for (let i = 0; i < imgData2.data.length; i += 4) { r += imgData2.data[i]; g += imgData2.data[i + 1]; b += imgData2.data[i + 2]; count++; }
+          if (count > 0) { ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`; ctx.fillRect(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2); }
+        }
+      }
+    }
+  }, []);
+
+  // Render canvas (multi-layer)
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -341,6 +387,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Background
     if (bgImage) ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     else if (!bgTransparent) { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
     else {
@@ -352,64 +399,38 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         }
     }
 
-    const img = processedImage || image;
-    if (img) {
-      ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((rotation * Math.PI) / 180);
-      ctx.scale(zoom, zoom);
-      ctx.drawImage(img, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
-      ctx.restore();
-    }
+    // Render each layer (bottom to top = reversed array, layers[0] is topmost)
+    const renderOrder = [...layers].reverse();
+    for (const layer of renderOrder) {
+      if (!layer.visible) continue;
+      const lActions = layerActions[layer.id] ?? [];
 
-    for (const action of actions) {
-      if (action.type === 'draw') {
-        const pts = action.data.points;
-        if (pts.length < 2) continue;
-        ctx.strokeStyle = action.data.color;
-        ctx.lineWidth = action.data.size;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.stroke();
-      } else if (action.type === 'erase') {
-        const pts = action.data.points;
-        const size = action.data.size;
-        if (pts.length < 2) continue;
+      if (layer.id === 'base') {
+        // Base layer: image + its actions
         ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.strokeStyle = 'rgba(0,0,0,1)';
-        ctx.lineWidth = size;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.stroke();
-        ctx.restore();
-      } else if (action.type === 'text') {
-        ctx.fillStyle = action.data.color;
-        ctx.font = `${action.data.fontSize}px sans-serif`;
-        ctx.fillText(action.data.text, action.data.x, action.data.y);
-      } else if (action.type === 'arrow') {
-        const { from, to, color, size } = action.data;
-        ctx.strokeStyle = color; ctx.lineWidth = size;
-        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
-        const angle = Math.atan2(to.y - from.y, to.x - from.x);
-        const headLen = size * 5;
-        ctx.beginPath();
-        ctx.moveTo(to.x, to.y);
-        ctx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
-        ctx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
-        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
-      } else if (action.type === 'mosaic') {
-        const { points, blockSize } = action.data;
-        for (const pt of points) {
-          const imgData2 = ctx.getImageData(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2);
-          let r = 0, g = 0, b = 0, count = 0;
-          for (let i = 0; i < imgData2.data.length; i += 4) { r += imgData2.data[i]; g += imgData2.data[i + 1]; b += imgData2.data[i + 2]; count++; }
-          if (count > 0) { ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`; ctx.fillRect(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2); }
+        ctx.globalAlpha = layer.opacity;
+        const img = processedImage || image;
+        if (img) {
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((rotation * Math.PI) / 180);
+          ctx.scale(zoom, zoom);
+          ctx.drawImage(img, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+          ctx.restore();
         }
+        renderActionsOnCtx(ctx, lActions);
+        ctx.restore();
+      } else {
+        // Overlay layers: render actions onto offscreen then composite with opacity
+        if (lActions.length === 0) continue;
+        const offscreen = document.createElement('canvas');
+        offscreen.width = canvas.width; offscreen.height = canvas.height;
+        const oCtx = offscreen.getContext('2d')!;
+        renderActionsOnCtx(oCtx, lActions);
+        ctx.save();
+        ctx.globalAlpha = layer.opacity;
+        ctx.drawImage(offscreen, 0, 0);
+        ctx.restore();
       }
     }
 
@@ -478,7 +499,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       ctx.beginPath();
       ctx.arc(cursorPos.x, cursorPos.y, eraserSize, 0, Math.PI * 2);
       ctx.stroke();
-      // Inner circle for hardness
       if (eraserMode === 'transparent') {
         ctx.beginPath();
         ctx.arc(cursorPos.x, cursorPos.y, eraserSize * eraserHardness, 0, Math.PI * 2);
@@ -486,7 +506,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       }
       ctx.setLineDash([]); ctx.restore();
     }
-  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions, tool, cropMode, cropStart, cropEnd, cropLassoPoints, cropPending, movingActionIndex, cursorPos, eraserMode, eraserSize, eraserHardness]);
+  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions, layers, layerActions, tool, cropMode, cropStart, cropEnd, cropLassoPoints, cropPending, movingActionIndex, cursorPos, eraserMode, eraserSize, eraserHardness, renderActionsOnCtx]);
 
   useEffect(() => { renderCanvas(); }, [renderCanvas]);
 
