@@ -1334,7 +1334,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
         {/* Right sidebar */}
         {(image || processedImage) && (
-          <div className="w-56 border-l border-border bg-card p-4 overflow-y-auto space-y-4 hidden md:block">
+          <div className="w-64 border-l border-border bg-card p-3 overflow-y-auto space-y-4 hidden md:block">
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.bgSection')}</h4>
               <Button onClick={() => removeBackground('auto')} disabled={isRemoving} className="w-full gap-2" size="sm">
