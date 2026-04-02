@@ -510,6 +510,133 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
   useEffect(() => { renderCanvas(); }, [renderCanvas]);
 
+  // Capture history snapshot
+  const captureHistory = useCallback((label: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    // Create thumbnail
+    const thumbSize = 60;
+    const thumbCanvas = document.createElement('canvas');
+    const ratio = canvas.width / canvas.height;
+    thumbCanvas.width = ratio >= 1 ? thumbSize : Math.round(thumbSize * ratio);
+    thumbCanvas.height = ratio >= 1 ? Math.round(thumbSize / ratio) : thumbSize;
+    thumbCanvas.getContext('2d')!.drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
+    const thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.5);
+
+    const id = historyIdCounter.current++;
+    const entry: HistoryEntry = { id, label, thumbnail, timestamp: Date.now() };
+
+    // Deep clone current state
+    const snapshot = {
+      actions: JSON.parse(JSON.stringify(layerActions)),
+      layers: JSON.parse(JSON.stringify(layers)),
+    };
+
+    setHistoryEntries(prev => {
+      const trimmed = prev.slice(0, historyIndex + 1);
+      return [...trimmed, entry];
+    });
+    historySnapshots.current = historySnapshots.current.slice(0, historyIndex + 1);
+    historySnapshots.current.push(snapshot);
+    setHistoryIndex(prev => prev + 1);
+  }, [layerActions, layers, historyIndex]);
+
+  // Jump to history
+  const jumpToHistory = useCallback((idx: number) => {
+    if (idx < 0 || idx >= historySnapshots.current.length) return;
+    const snapshot = historySnapshots.current[idx];
+    setLayerActions(JSON.parse(JSON.stringify(snapshot.actions)));
+    setLayers(JSON.parse(JSON.stringify(snapshot.layers)));
+    setHistoryIndex(idx);
+  }, []);
+
+  // Layer handlers
+  const handleAddLayer = useCallback(() => {
+    const id = `layer-${layerCounter.current++}`;
+    const name = `${t('imgEdit.newLayer')} ${layerCounter.current}`;
+    setLayers(prev => [{ id, name, visible: true, opacity: 1, locked: false }, ...prev]);
+    setLayerActions(prev => ({ ...prev, [id]: [] }));
+    setLayerUndone(prev => ({ ...prev, [id]: [] }));
+    setActiveLayerId(id);
+  }, [t]);
+
+  const handleDeleteLayer = useCallback((id: string) => {
+    if (id === 'base') return;
+    setLayers(prev => prev.filter(l => l.id !== id));
+    setLayerActions(prev => { const n = { ...prev }; delete n[id]; return n; });
+    setLayerUndone(prev => { const n = { ...prev }; delete n[id]; return n; });
+    if (activeLayerId === id) setActiveLayerId('base');
+  }, [activeLayerId]);
+
+  const handleMoveLayerUp = useCallback((id: string) => {
+    setLayers(prev => {
+      const idx = prev.findIndex(l => l.id === id);
+      if (idx <= 0) return prev;
+      const n = [...prev];
+      [n[idx - 1], n[idx]] = [n[idx], n[idx - 1]];
+      return n;
+    });
+  }, []);
+
+  const handleMoveLayerDown = useCallback((id: string) => {
+    setLayers(prev => {
+      const idx = prev.findIndex(l => l.id === id);
+      if (idx < 0 || idx >= prev.length - 1) return prev;
+      const n = [...prev];
+      [n[idx], n[idx + 1]] = [n[idx + 1], n[idx]];
+      return n;
+    });
+  }, []);
+
+  const handleToggleLayerVisibility = useCallback((id: string) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
+  }, []);
+
+  const handleLayerOpacity = useCallback((id: string, opacity: number) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, opacity } : l));
+  }, []);
+
+  const handleRenameLayer = useCallback((id: string, name: string) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, name } : l));
+  }, []);
+
+  // Auto-capture history when actions change meaningfully
+  const prevActionsRef = useRef<string>('');
+  useEffect(() => {
+    const key = JSON.stringify(layerActions);
+    if (key !== prevActionsRef.current && (image || processedImage)) {
+      prevActionsRef.current = key;
+      // Debounce: only capture after render
+      const timer = setTimeout(() => {
+        const allActions = Object.values(layerActions).flat();
+        if (allActions.length === 0 && historyEntries.length === 0) {
+          captureHistory(t('imgEdit.historyInit'));
+        } else if (allActions.length > 0) {
+          const lastAction = allActions[allActions.length - 1];
+          const labelMap: Record<string, string> = {
+            draw: t('imgEdit.historyDraw'),
+            text: t('imgEdit.historyText'),
+            arrow: t('imgEdit.historyArrow'),
+            mosaic: t('imgEdit.historyMosaic'),
+            erase: t('imgEdit.historyErase'),
+            image: t('imgEdit.historyBgRemove'),
+          };
+          captureHistory(labelMap[lastAction.type] || lastAction.type);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [layerActions, image, processedImage, captureHistory, t, historyEntries.length]);
+
+  // Capture initial state when image loads
+  const prevImageRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if ((image || processedImage) && image !== prevImageRef.current) {
+      prevImageRef.current = image;
+      setTimeout(() => captureHistory(t('imgEdit.historyInit')), 200);
+    }
+  }, [image, processedImage, captureHistory, t]);
+
   // Apply crop
   const applyCrop = useCallback(() => {
     const srcCanvas = document.createElement('canvas');
