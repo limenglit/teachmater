@@ -145,14 +145,16 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       img.onload = () => {
         setImage(img);
         setProcessedImage(null);
-        setActions([]);
-        setUndoneActions([]);
+        setLayerActions({ base: [] }); setLayerUndone({ base: [] });
+        setLayers([{ id: 'base', name: '', visible: true, opacity: 1, locked: true }]);
+        setActiveLayerId('base'); layerCounter.current = 1;
         setRotation(0);
         setZoom(1);
         setCropPending(false);
         setCropStart(null);
         setCropEnd(null);
         setCropLassoPoints([]);
+        setHistoryEntries([]); historySnapshots.current = []; setHistoryIndex(-1); historyIdCounter.current = 0;
         const maxW = 1200;
         const scale = img.width > maxW ? maxW / img.width : 1;
         setCanvasW(Math.round(img.width * scale));
