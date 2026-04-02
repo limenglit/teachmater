@@ -62,7 +62,22 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const [textInput, setTextInput] = useState('');
   const [fontSize, setFontSize] = useState(24);
 
-  // actions is now derived from the active layer
+  // Layers (must be before actions derivation)
+  const [layers, setLayers] = useState<EditorLayer[]>([
+    { id: 'base', name: '', visible: true, opacity: 1, locked: true },
+  ]);
+  const [activeLayerId, setActiveLayerId] = useState('base');
+  const [layerActions, setLayerActions] = useState<Record<string, DrawAction[]>>({ base: [] });
+  const [layerUndone, setLayerUndone] = useState<Record<string, DrawAction[]>>({ base: [] });
+  const layerCounter = useRef(1);
+
+  // History
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const historyIdCounter = useRef(0);
+  const historySnapshots = useRef<{ actions: Record<string, DrawAction[]>; layers: EditorLayer[] }[]>([]);
+
+  // actions is derived from the active layer
   const actions = layerActions[activeLayerId] ?? [];
   const setActions = useCallback((updater: DrawAction[] | ((prev: DrawAction[]) => DrawAction[])) => {
     setLayerActions(prev => {
@@ -79,6 +94,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       return { ...prev, [activeLayerId]: next };
     });
   }, [activeLayerId]);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawPoints, setDrawPoints] = useState<{ x: number; y: number }[]>([]);
   const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
@@ -109,23 +125,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
   // Cursor position for eraser preview
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
-
-  // Layers
-  const [layers, setLayers] = useState<EditorLayer[]>([
-    { id: 'base', name: '', visible: true, opacity: 1, locked: true },
-  ]);
-  const [activeLayerId, setActiveLayerId] = useState('base');
-  // Per-layer actions: layerId -> DrawAction[]
-  const [layerActions, setLayerActions] = useState<Record<string, DrawAction[]>>({ base: [] });
-  const [layerUndone, setLayerUndone] = useState<Record<string, DrawAction[]>>({ base: [] });
-  const layerCounter = useRef(1);
-
-  // History
-  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
-  const [historyIndex, setHistoryIndex] = useState(-1);
-  const historyIdCounter = useRef(0);
-  // Store full snapshots for history jumps
-  const historySnapshots = useRef<{ actions: Record<string, DrawAction[]>; layers: EditorLayer[] }[]>([]);
 
   const getCanvasPos = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
