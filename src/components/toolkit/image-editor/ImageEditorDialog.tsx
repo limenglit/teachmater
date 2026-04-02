@@ -1390,10 +1390,41 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               </Button>
             </div>
 
+            {/* Layer Panel */}
+            <LayerPanel
+              layers={layers.map(l => ({ ...l, name: l.name || (l.id === 'base' ? t('imgEdit.baseLayer') : l.name) }))}
+              activeLayerId={activeLayerId}
+              onSelect={setActiveLayerId}
+              onToggleVisibility={handleToggleLayerVisibility}
+              onOpacityChange={handleLayerOpacity}
+              onMoveUp={handleMoveLayerUp}
+              onMoveDown={handleMoveLayerDown}
+              onAdd={handleAddLayer}
+              onDelete={handleDeleteLayer}
+              onRename={handleRenameLayer}
+            />
+
+            {/* History Panel */}
+            <HistoryPanel
+              entries={historyEntries}
+              currentIndex={historyIndex}
+              onJump={jumpToHistory}
+              onClear={() => {
+                setHistoryEntries([]);
+                historySnapshots.current = [];
+                setHistoryIndex(-1);
+                historyIdCounter.current = 0;
+              }}
+            />
+
             <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
-              setImage(null); setProcessedImage(null); setActions([]); setUndoneActions([]);
+              setImage(null); setProcessedImage(null);
+              setLayerActions({ base: [] }); setLayerUndone({ base: [] });
+              setLayers([{ id: 'base', name: '', visible: true, opacity: 1, locked: true }]);
+              setActiveLayerId('base'); layerCounter.current = 1;
               setRotation(0); setZoom(1); setBgTransparent(false); setBgImage(null);
               setCropPending(false); setCropStart(null); setCropEnd(null); setCropLassoPoints([]);
+              setHistoryEntries([]); historySnapshots.current = []; setHistoryIndex(-1); historyIdCounter.current = 0;
             }}>
               <Trash2 className="w-3.5 h-3.5" /> {t('imgEdit.reset')}
             </Button>
