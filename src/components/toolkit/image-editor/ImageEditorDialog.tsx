@@ -12,6 +12,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { inpaintTelea, magicErase, inpaintLama, loadLamaModel, getLamaStatus } from './inpaint';
+import HistoryPanel, { HistoryEntry } from './HistoryPanel';
+import LayerPanel, { EditorLayer } from './LayerPanel';
 
 type Tool = 'move' | 'text' | 'arrow' | 'mosaic' | 'draw' | 'crop' | 'eraser';
 type EraserMode = 'transparent' | 'inpaint' | 'magic';
