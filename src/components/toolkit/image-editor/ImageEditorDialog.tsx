@@ -62,8 +62,23 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const [textInput, setTextInput] = useState('');
   const [fontSize, setFontSize] = useState(24);
 
-  const [actions, setActions] = useState<DrawAction[]>([]);
-  const [undoneActions, setUndoneActions] = useState<DrawAction[]>([]);
+  // actions is now derived from the active layer
+  const actions = layerActions[activeLayerId] ?? [];
+  const setActions = useCallback((updater: DrawAction[] | ((prev: DrawAction[]) => DrawAction[])) => {
+    setLayerActions(prev => {
+      const current = prev[activeLayerId] ?? [];
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return { ...prev, [activeLayerId]: next };
+    });
+  }, [activeLayerId]);
+  const undoneActions = layerUndone[activeLayerId] ?? [];
+  const setUndoneActions = useCallback((updater: DrawAction[] | ((prev: DrawAction[]) => DrawAction[])) => {
+    setLayerUndone(prev => {
+      const current = prev[activeLayerId] ?? [];
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return { ...prev, [activeLayerId]: next };
+    });
+  }, [activeLayerId]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawPoints, setDrawPoints] = useState<{ x: number; y: number }[]>([]);
   const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
