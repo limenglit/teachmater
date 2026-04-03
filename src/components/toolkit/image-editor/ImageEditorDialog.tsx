@@ -1450,6 +1450,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               onAdd={handleAddLayer}
               onDelete={handleDeleteLayer}
               onRename={handleRenameLayer}
+              onMerge={handleMergeLayers}
             />
 
             {/* History Panel */}
