@@ -68,18 +68,6 @@ serve(async (req) => {
       return errorResponse(req, 'Total content too large', 400);
     }
 
-    const { data: quotaData, error: quotaError } = await supabase.rpc('consume_ai_quota' as any, {
-      p_feature: 'analyze_board',
-    } as any);
-    if (quotaError) {
-      console.error('Failed to consume AI quota:', quotaError);
-      return errorResponse(req, 'AI quota check failed', 500);
-    }
-    const quotaResult = Array.isArray(quotaData) ? quotaData[0] : quotaData;
-    if (!quotaResult?.allowed) {
-      return errorResponse(req, 'AI 额度不足', 402);
-    }
-
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
