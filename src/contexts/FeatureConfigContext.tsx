@@ -125,6 +125,7 @@ export function FeatureConfigProvider({ children }: { children: ReactNode }) {
   };
 
   const getAIDailyLimit = (): number => {
+    if (isAdmin) return -1; // admins are never rate-limited
     return config[userType].ai_daily_limit;
   };
 
