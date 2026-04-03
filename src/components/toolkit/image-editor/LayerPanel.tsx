@@ -106,10 +106,18 @@ export default function LayerPanel({
                 layer.id === activeLayerId
                   ? 'border-primary/50 bg-primary/5'
                   : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => onSelect(layer.id)}
+              } ${mergeMode && selectedIds.has(layer.id) ? 'ring-1 ring-primary' : ''}`}
+              onClick={() => mergeMode ? toggleSelected(layer.id) : onSelect(layer.id)}
             >
               <div className="flex items-center gap-1.5">
+                {mergeMode && (
+                  <Checkbox
+                    checked={selectedIds.has(layer.id)}
+                    onCheckedChange={() => toggleSelected(layer.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-3.5 w-3.5"
+                  />
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleVisibility(layer.id); }}
                   className="shrink-0 text-muted-foreground hover:text-foreground"
