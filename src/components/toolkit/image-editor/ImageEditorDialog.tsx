@@ -126,6 +126,110 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
   // Cursor position for eraser preview
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  // Draft storage key
+  const DRAFT_KEY = 'img-editor-draft';
+
+  // Check for existing draft on mount
+  useEffect(() => {
+    try { setHasDraft(!!localStorage.getItem(DRAFT_KEY)); } catch {}
+  }, [open]);
+
+  const saveDraft = useCallback(() => {
+    try {
+      const canvas = canvasRef.current;
+      // Save image as dataURL
+      let imageDataUrl: string | null = null;
+      let processedDataUrl: string | null = null;
+      let bgImageDataUrl: string | null = null;
+      if (image) {
+        const c = document.createElement('canvas');
+        c.width = image.naturalWidth; c.height = image.naturalHeight;
+        c.getContext('2d')!.drawImage(image, 0, 0);
+        imageDataUrl = c.toDataURL('image/png');
+      }
+      if (processedImage) {
+        const c = document.createElement('canvas');
+        c.width = processedImage.naturalWidth; c.height = processedImage.naturalHeight;
+        c.getContext('2d')!.drawImage(processedImage, 0, 0);
+        processedDataUrl = c.toDataURL('image/png');
+      }
+      if (bgImage) {
+        const c = document.createElement('canvas');
+        c.width = bgImage.naturalWidth; c.height = bgImage.naturalHeight;
+        c.getContext('2d')!.drawImage(bgImage, 0, 0);
+        bgImageDataUrl = c.toDataURL('image/png');
+      }
+      const draft = {
+        imageDataUrl,
+        processedDataUrl,
+        bgImageDataUrl,
+        bgColor, bgTransparent, zoom, rotation, drawColor, drawSize, fontSize,
+        exportFormat, exportScale,
+        layers, activeLayerId, layerActions, layerCounter: layerCounter.current,
+        canvasW, canvasH,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      setHasDraft(true);
+      toast({ title: t('imgEdit.draftSaved') });
+    } catch (e: any) {
+      toast({ title: t('imgEdit.draftSaveFailed'), variant: 'destructive' });
+    }
+  }, [image, processedImage, bgImage, bgColor, bgTransparent, zoom, rotation, drawColor, drawSize, fontSize, exportFormat, exportScale, layers, activeLayerId, layerActions, canvasW, canvasH, t]);
+
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      const loadImg = (url: string | null): Promise<HTMLImageElement | null> => {
+        if (!url) return Promise.resolve(null);
+        return new Promise(res => {
+          const img = new Image();
+          img.onload = () => res(img);
+          img.onerror = () => res(null);
+          img.src = url;
+        });
+      };
+      Promise.all([
+        loadImg(draft.imageDataUrl),
+        loadImg(draft.processedDataUrl),
+        loadImg(draft.bgImageDataUrl),
+      ]).then(([img, processed, bgImg]) => {
+        setImage(img);
+        setProcessedImage(processed);
+        setBgImage(bgImg);
+        setBgColor(draft.bgColor ?? '#ffffff');
+        setBgTransparent(draft.bgTransparent ?? false);
+        setZoom(draft.zoom ?? 1);
+        setRotation(draft.rotation ?? 0);
+        setDrawColor(draft.drawColor ?? '#ff0000');
+        setDrawSize(draft.drawSize ?? 3);
+        setFontSize(draft.fontSize ?? 24);
+        setExportFormat(draft.exportFormat ?? 'png');
+        setExportScale(draft.exportScale ?? 1);
+        setLayers(draft.layers ?? [{ id: 'base', name: '', visible: true, opacity: 1, locked: true }]);
+        setActiveLayerId(draft.activeLayerId ?? 'base');
+        setLayerActions(draft.layerActions ?? { base: [] });
+        setLayerUndone({ base: [] });
+        layerCounter.current = draft.layerCounter ?? 1;
+        setCanvasW(draft.canvasW ?? 800);
+        setCanvasH(draft.canvasH ?? 600);
+        setCropPending(false); setCropStart(null); setCropEnd(null); setCropLassoPoints([]);
+        setHistoryEntries([]); historySnapshots.current = []; setHistoryIndex(-1); historyIdCounter.current = 0;
+        toast({ title: t('imgEdit.draftRestored') });
+      });
+    } catch {
+      toast({ title: t('imgEdit.draftRestoreFailed'), variant: 'destructive' });
+    }
+  }, [t]);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setHasDraft(false);
+  }, []);
 
   const getCanvasPos = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
