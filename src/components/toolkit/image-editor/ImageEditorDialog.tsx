@@ -1587,6 +1587,9 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
             }}>
               <Trash2 className="w-3.5 h-3.5" /> {t('imgEdit.reset')}
             </Button>
+            <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={saveDraft} disabled={!image && !processedImage}>
+              <Save className="w-3.5 h-3.5" /> {t('imgEdit.saveDraft')}
+            </Button>
           </div>
         )}
       </div>
