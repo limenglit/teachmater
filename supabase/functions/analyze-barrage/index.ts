@@ -25,6 +25,32 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: getCorsHeaders(req) });
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const authClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const token = authHeader.replace('Bearer ', '');
+      const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return errorResponse(req, 'Unauthorized', 401);
+      }
+
+      const { data: quotaData, error: quotaError } = await authClient.rpc('consume_ai_quota' as any, {
+        p_feature: 'analyze_barrage',
+      } as any);
+      if (quotaError) {
+        console.error('Failed to consume AI quota:', quotaError);
+        return errorResponse(req, 'AI quota check failed', 500);
+      }
+      const quotaResult = Array.isArray(quotaData) ? quotaData[0] : quotaData;
+      if (!quotaResult?.allowed) {
+        return errorResponse(req, 'AI 额度不足，请充值', 402);
+      }
+    }
+
     const body = await req.json();
     const { messages, type, topic_id, creator_token } = body;
 

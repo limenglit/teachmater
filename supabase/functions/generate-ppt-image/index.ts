@@ -51,6 +51,24 @@ serve(async (req) => {
       );
     }
 
+    const { data: quotaData, error: quotaError } = await authClient.rpc('consume_ai_quota' as any, {
+      p_feature: 'ppt_image',
+    } as any);
+    if (quotaError) {
+      console.error('Failed to consume AI quota:', quotaError);
+      return new Response(
+        JSON.stringify({ error: 'AI quota check failed' }),
+        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      );
+    }
+    const quotaResult = Array.isArray(quotaData) ? quotaData[0] : quotaData;
+    if (!quotaResult?.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'AI quota exceeded' }),
+        { status: 402, headers: { ...cors, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY not configured");
