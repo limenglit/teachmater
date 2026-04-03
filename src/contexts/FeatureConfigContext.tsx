@@ -72,7 +72,7 @@ const FeatureConfigContext = createContext<FeatureConfigContextType>({
 });
 
 export function FeatureConfigProvider({ children }: { children: ReactNode }) {
-  const { user, approvalStatus } = useAuth();
+  const { user, approvalStatus, isAdmin } = useAuth();
   const [config, setConfig] = useState<SystemConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
 
