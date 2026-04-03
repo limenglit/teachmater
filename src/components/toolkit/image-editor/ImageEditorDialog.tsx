@@ -4,7 +4,8 @@ import {
   X, Upload, Eraser, Type, ArrowUpRight, Grid3X3, Pencil,
   Crop, RotateCcw, RotateCw, Undo2, Redo2, Download, ZoomIn, ZoomOut,
   Palette, Loader2, Eye, Trash2, Move, ImageIcon, Sparkles, Cpu,
-  Square, Circle, Heart, MousePointer2, Check, XCircle, Wand2, Paintbrush, EyeOff
+  Square, Circle, Heart, MousePointer2, Check, XCircle, Wand2, Paintbrush, EyeOff,
+  Save, FolderOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
