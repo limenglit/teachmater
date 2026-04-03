@@ -4,7 +4,8 @@ import {
   X, Upload, Eraser, Type, ArrowUpRight, Grid3X3, Pencil,
   Crop, RotateCcw, RotateCw, Undo2, Redo2, Download, ZoomIn, ZoomOut,
   Palette, Loader2, Eye, Trash2, Move, ImageIcon, Sparkles, Cpu,
-  Square, Circle, Heart, MousePointer2, Check, XCircle, Wand2, Paintbrush, EyeOff
+  Square, Circle, Heart, MousePointer2, Check, XCircle, Wand2, Paintbrush, EyeOff,
+  Save, FolderOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { inpaintTelea, magicErase, inpaintLama, loadLamaModel, getLamaStatus } from './inpaint';
+import HistoryPanel, { HistoryEntry } from './HistoryPanel';
+import LayerPanel, { EditorLayer } from './LayerPanel';
 
 type Tool = 'move' | 'text' | 'arrow' | 'mosaic' | 'draw' | 'crop' | 'eraser';
 type EraserMode = 'transparent' | 'inpaint' | 'magic';
@@ -60,8 +63,39 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
   const [textInput, setTextInput] = useState('');
   const [fontSize, setFontSize] = useState(24);
 
-  const [actions, setActions] = useState<DrawAction[]>([]);
-  const [undoneActions, setUndoneActions] = useState<DrawAction[]>([]);
+  // Layers (must be before actions derivation)
+  const [layers, setLayers] = useState<EditorLayer[]>([
+    { id: 'base', name: '', visible: true, opacity: 1, locked: true },
+  ]);
+  const [activeLayerId, setActiveLayerId] = useState('base');
+  const [layerActions, setLayerActions] = useState<Record<string, DrawAction[]>>({ base: [] });
+  const [layerUndone, setLayerUndone] = useState<Record<string, DrawAction[]>>({ base: [] });
+  const layerCounter = useRef(1);
+
+  // History
+  const [historyEntries, setHistoryEntries] = useState<HistoryEntry[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const historyIdCounter = useRef(0);
+  const historySnapshots = useRef<{ actions: Record<string, DrawAction[]>; layers: EditorLayer[] }[]>([]);
+
+  // actions is derived from the active layer
+  const actions = layerActions[activeLayerId] ?? [];
+  const setActions = useCallback((updater: DrawAction[] | ((prev: DrawAction[]) => DrawAction[])) => {
+    setLayerActions(prev => {
+      const current = prev[activeLayerId] ?? [];
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return { ...prev, [activeLayerId]: next };
+    });
+  }, [activeLayerId]);
+  const undoneActions = layerUndone[activeLayerId] ?? [];
+  const setUndoneActions = useCallback((updater: DrawAction[] | ((prev: DrawAction[]) => DrawAction[])) => {
+    setLayerUndone(prev => {
+      const current = prev[activeLayerId] ?? [];
+      const next = typeof updater === 'function' ? updater(current) : updater;
+      return { ...prev, [activeLayerId]: next };
+    });
+  }, [activeLayerId]);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawPoints, setDrawPoints] = useState<{ x: number; y: number }[]>([]);
   const [arrowStart, setArrowStart] = useState<{ x: number; y: number } | null>(null);
@@ -92,6 +126,110 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
   // Cursor position for eraser preview
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  // Draft storage key
+  const DRAFT_KEY = 'img-editor-draft';
+
+  // Check for existing draft on mount
+  useEffect(() => {
+    try { setHasDraft(!!localStorage.getItem(DRAFT_KEY)); } catch {}
+  }, [open]);
+
+  const saveDraft = useCallback(() => {
+    try {
+      const canvas = canvasRef.current;
+      // Save image as dataURL
+      let imageDataUrl: string | null = null;
+      let processedDataUrl: string | null = null;
+      let bgImageDataUrl: string | null = null;
+      if (image) {
+        const c = document.createElement('canvas');
+        c.width = image.naturalWidth; c.height = image.naturalHeight;
+        c.getContext('2d')!.drawImage(image, 0, 0);
+        imageDataUrl = c.toDataURL('image/png');
+      }
+      if (processedImage) {
+        const c = document.createElement('canvas');
+        c.width = processedImage.naturalWidth; c.height = processedImage.naturalHeight;
+        c.getContext('2d')!.drawImage(processedImage, 0, 0);
+        processedDataUrl = c.toDataURL('image/png');
+      }
+      if (bgImage) {
+        const c = document.createElement('canvas');
+        c.width = bgImage.naturalWidth; c.height = bgImage.naturalHeight;
+        c.getContext('2d')!.drawImage(bgImage, 0, 0);
+        bgImageDataUrl = c.toDataURL('image/png');
+      }
+      const draft = {
+        imageDataUrl,
+        processedDataUrl,
+        bgImageDataUrl,
+        bgColor, bgTransparent, zoom, rotation, drawColor, drawSize, fontSize,
+        exportFormat, exportScale,
+        layers, activeLayerId, layerActions, layerCounter: layerCounter.current,
+        canvasW, canvasH,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      setHasDraft(true);
+      toast({ title: t('imgEdit.draftSaved') });
+    } catch (e: any) {
+      toast({ title: t('imgEdit.draftSaveFailed'), variant: 'destructive' });
+    }
+  }, [image, processedImage, bgImage, bgColor, bgTransparent, zoom, rotation, drawColor, drawSize, fontSize, exportFormat, exportScale, layers, activeLayerId, layerActions, canvasW, canvasH, t]);
+
+  const loadDraft = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      const loadImg = (url: string | null): Promise<HTMLImageElement | null> => {
+        if (!url) return Promise.resolve(null);
+        return new Promise(res => {
+          const img = new Image();
+          img.onload = () => res(img);
+          img.onerror = () => res(null);
+          img.src = url;
+        });
+      };
+      Promise.all([
+        loadImg(draft.imageDataUrl),
+        loadImg(draft.processedDataUrl),
+        loadImg(draft.bgImageDataUrl),
+      ]).then(([img, processed, bgImg]) => {
+        setImage(img);
+        setProcessedImage(processed);
+        setBgImage(bgImg);
+        setBgColor(draft.bgColor ?? '#ffffff');
+        setBgTransparent(draft.bgTransparent ?? false);
+        setZoom(draft.zoom ?? 1);
+        setRotation(draft.rotation ?? 0);
+        setDrawColor(draft.drawColor ?? '#ff0000');
+        setDrawSize(draft.drawSize ?? 3);
+        setFontSize(draft.fontSize ?? 24);
+        setExportFormat(draft.exportFormat ?? 'png');
+        setExportScale(draft.exportScale ?? 1);
+        setLayers(draft.layers ?? [{ id: 'base', name: '', visible: true, opacity: 1, locked: true }]);
+        setActiveLayerId(draft.activeLayerId ?? 'base');
+        setLayerActions(draft.layerActions ?? { base: [] });
+        setLayerUndone({ base: [] });
+        layerCounter.current = draft.layerCounter ?? 1;
+        setCanvasW(draft.canvasW ?? 800);
+        setCanvasH(draft.canvasH ?? 600);
+        setCropPending(false); setCropStart(null); setCropEnd(null); setCropLassoPoints([]);
+        setHistoryEntries([]); historySnapshots.current = []; setHistoryIndex(-1); historyIdCounter.current = 0;
+        toast({ title: t('imgEdit.draftRestored') });
+      });
+    } catch {
+      toast({ title: t('imgEdit.draftRestoreFailed'), variant: 'destructive' });
+    }
+  }, [t]);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    setHasDraft(false);
+  }, []);
 
   const getCanvasPos = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
@@ -112,14 +250,16 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       img.onload = () => {
         setImage(img);
         setProcessedImage(null);
-        setActions([]);
-        setUndoneActions([]);
+        setLayerActions({ base: [] }); setLayerUndone({ base: [] });
+        setLayers([{ id: 'base', name: '', visible: true, opacity: 1, locked: true }]);
+        setActiveLayerId('base'); layerCounter.current = 1;
         setRotation(0);
         setZoom(1);
         setCropPending(false);
         setCropStart(null);
         setCropEnd(null);
         setCropLassoPoints([]);
+        setHistoryEntries([]); historySnapshots.current = []; setHistoryIndex(-1); historyIdCounter.current = 0;
         const maxW = 1200;
         const scale = img.width > maxW ? maxW / img.width : 1;
         setCanvasW(Math.round(img.width * scale));
@@ -300,7 +440,53 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     return ctx.getImageData(0, 0, canvasW, canvasH);
   }, [canvasW, canvasH, bgImage, bgTransparent, bgColor, processedImage, image, rotation, zoom, actions]);
 
-  // Render canvas
+  // Helper: render actions list onto a context
+  const renderActionsOnCtx = useCallback((ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, actionsList: DrawAction[]) => {
+    for (const action of actionsList) {
+      if (action.type === 'draw') {
+        const pts = action.data.points;
+        if (pts.length < 2) continue;
+        ctx.strokeStyle = action.data.color; ctx.lineWidth = action.data.size;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke();
+      } else if (action.type === 'erase') {
+        const pts = action.data.points; const size = action.data.size;
+        if (pts.length < 2) continue;
+        ctx.save(); ctx.globalCompositeOperation = 'destination-out';
+        ctx.strokeStyle = 'rgba(0,0,0,1)'; ctx.lineWidth = size;
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.stroke(); ctx.restore();
+      } else if (action.type === 'text') {
+        ctx.fillStyle = action.data.color;
+        ctx.font = `${action.data.fontSize}px sans-serif`;
+        ctx.fillText(action.data.text, action.data.x, action.data.y);
+      } else if (action.type === 'arrow') {
+        const { from, to, color, size } = action.data;
+        ctx.strokeStyle = color; ctx.lineWidth = size;
+        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+        const angle = Math.atan2(to.y - from.y, to.x - from.x);
+        const headLen = size * 5;
+        ctx.beginPath(); ctx.moveTo(to.x, to.y);
+        ctx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
+        ctx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
+        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+      } else if (action.type === 'mosaic') {
+        const { points, blockSize } = action.data;
+        for (const pt of points) {
+          const imgData2 = (ctx as CanvasRenderingContext2D).getImageData(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2);
+          let r = 0, g = 0, b = 0, count = 0;
+          for (let i = 0; i < imgData2.data.length; i += 4) { r += imgData2.data[i]; g += imgData2.data[i + 1]; b += imgData2.data[i + 2]; count++; }
+          if (count > 0) { ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`; ctx.fillRect(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2); }
+        }
+      }
+    }
+  }, []);
+
+  // Render canvas (multi-layer)
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -308,6 +494,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Background
     if (bgImage) ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     else if (!bgTransparent) { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height); }
     else {
@@ -319,64 +506,38 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
         }
     }
 
-    const img = processedImage || image;
-    if (img) {
-      ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((rotation * Math.PI) / 180);
-      ctx.scale(zoom, zoom);
-      ctx.drawImage(img, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
-      ctx.restore();
-    }
+    // Render each layer (bottom to top = reversed array, layers[0] is topmost)
+    const renderOrder = [...layers].reverse();
+    for (const layer of renderOrder) {
+      if (!layer.visible) continue;
+      const lActions = layerActions[layer.id] ?? [];
 
-    for (const action of actions) {
-      if (action.type === 'draw') {
-        const pts = action.data.points;
-        if (pts.length < 2) continue;
-        ctx.strokeStyle = action.data.color;
-        ctx.lineWidth = action.data.size;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.stroke();
-      } else if (action.type === 'erase') {
-        const pts = action.data.points;
-        const size = action.data.size;
-        if (pts.length < 2) continue;
+      if (layer.id === 'base') {
+        // Base layer: image + its actions
         ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.strokeStyle = 'rgba(0,0,0,1)';
-        ctx.lineWidth = size;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.stroke();
-        ctx.restore();
-      } else if (action.type === 'text') {
-        ctx.fillStyle = action.data.color;
-        ctx.font = `${action.data.fontSize}px sans-serif`;
-        ctx.fillText(action.data.text, action.data.x, action.data.y);
-      } else if (action.type === 'arrow') {
-        const { from, to, color, size } = action.data;
-        ctx.strokeStyle = color; ctx.lineWidth = size;
-        ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
-        const angle = Math.atan2(to.y - from.y, to.x - from.x);
-        const headLen = size * 5;
-        ctx.beginPath();
-        ctx.moveTo(to.x, to.y);
-        ctx.lineTo(to.x - headLen * Math.cos(angle - 0.5), to.y - headLen * Math.sin(angle - 0.5));
-        ctx.lineTo(to.x - headLen * Math.cos(angle + 0.5), to.y - headLen * Math.sin(angle + 0.5));
-        ctx.closePath(); ctx.fillStyle = color; ctx.fill();
-      } else if (action.type === 'mosaic') {
-        const { points, blockSize } = action.data;
-        for (const pt of points) {
-          const imgData2 = ctx.getImageData(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2);
-          let r = 0, g = 0, b = 0, count = 0;
-          for (let i = 0; i < imgData2.data.length; i += 4) { r += imgData2.data[i]; g += imgData2.data[i + 1]; b += imgData2.data[i + 2]; count++; }
-          if (count > 0) { ctx.fillStyle = `rgb(${Math.round(r / count)},${Math.round(g / count)},${Math.round(b / count)})`; ctx.fillRect(pt.x - blockSize, pt.y - blockSize, blockSize * 2, blockSize * 2); }
+        ctx.globalAlpha = layer.opacity;
+        const img = processedImage || image;
+        if (img) {
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate((rotation * Math.PI) / 180);
+          ctx.scale(zoom, zoom);
+          ctx.drawImage(img, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+          ctx.restore();
         }
+        renderActionsOnCtx(ctx, lActions);
+        ctx.restore();
+      } else {
+        // Overlay layers: render actions onto offscreen then composite with opacity
+        if (lActions.length === 0) continue;
+        const offscreen = document.createElement('canvas');
+        offscreen.width = canvas.width; offscreen.height = canvas.height;
+        const oCtx = offscreen.getContext('2d')!;
+        renderActionsOnCtx(oCtx, lActions);
+        ctx.save();
+        ctx.globalAlpha = layer.opacity;
+        ctx.drawImage(offscreen, 0, 0);
+        ctx.restore();
       }
     }
 
@@ -445,7 +606,6 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       ctx.beginPath();
       ctx.arc(cursorPos.x, cursorPos.y, eraserSize, 0, Math.PI * 2);
       ctx.stroke();
-      // Inner circle for hardness
       if (eraserMode === 'transparent') {
         ctx.beginPath();
         ctx.arc(cursorPos.x, cursorPos.y, eraserSize * eraserHardness, 0, Math.PI * 2);
@@ -453,9 +613,182 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
       }
       ctx.setLineDash([]); ctx.restore();
     }
-  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions, tool, cropMode, cropStart, cropEnd, cropLassoPoints, cropPending, movingActionIndex, cursorPos, eraserMode, eraserSize, eraserHardness]);
+  }, [image, processedImage, bgColor, bgImage, bgTransparent, rotation, zoom, actions, layers, layerActions, tool, cropMode, cropStart, cropEnd, cropLassoPoints, cropPending, movingActionIndex, cursorPos, eraserMode, eraserSize, eraserHardness, renderActionsOnCtx]);
 
   useEffect(() => { renderCanvas(); }, [renderCanvas]);
+
+  // Capture history snapshot
+  const captureHistory = useCallback((label: string) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    // Create thumbnail
+    const thumbSize = 60;
+    const thumbCanvas = document.createElement('canvas');
+    const ratio = canvas.width / canvas.height;
+    thumbCanvas.width = ratio >= 1 ? thumbSize : Math.round(thumbSize * ratio);
+    thumbCanvas.height = ratio >= 1 ? Math.round(thumbSize / ratio) : thumbSize;
+    thumbCanvas.getContext('2d')!.drawImage(canvas, 0, 0, thumbCanvas.width, thumbCanvas.height);
+    const thumbnail = thumbCanvas.toDataURL('image/jpeg', 0.5);
+
+    const id = historyIdCounter.current++;
+    const entry: HistoryEntry = { id, label, thumbnail, timestamp: Date.now() };
+
+    // Deep clone current state
+    const snapshot = {
+      actions: JSON.parse(JSON.stringify(layerActions)),
+      layers: JSON.parse(JSON.stringify(layers)),
+    };
+
+    setHistoryEntries(prev => {
+      const trimmed = prev.slice(0, historyIndex + 1);
+      return [...trimmed, entry];
+    });
+    historySnapshots.current = historySnapshots.current.slice(0, historyIndex + 1);
+    historySnapshots.current.push(snapshot);
+    setHistoryIndex(prev => prev + 1);
+  }, [layerActions, layers, historyIndex]);
+
+  // Jump to history
+  const jumpToHistory = useCallback((idx: number) => {
+    if (idx < 0 || idx >= historySnapshots.current.length) return;
+    const snapshot = historySnapshots.current[idx];
+    setLayerActions(JSON.parse(JSON.stringify(snapshot.actions)));
+    setLayers(JSON.parse(JSON.stringify(snapshot.layers)));
+    setHistoryIndex(idx);
+  }, []);
+
+  // Layer handlers
+  const handleAddLayer = useCallback(() => {
+    const id = `layer-${layerCounter.current++}`;
+    const name = `${t('imgEdit.newLayer')} ${layerCounter.current}`;
+    setLayers(prev => [{ id, name, visible: true, opacity: 1, locked: false }, ...prev]);
+    setLayerActions(prev => ({ ...prev, [id]: [] }));
+    setLayerUndone(prev => ({ ...prev, [id]: [] }));
+    setActiveLayerId(id);
+  }, [t]);
+
+  const handleDeleteLayer = useCallback((id: string) => {
+    if (id === 'base') return;
+    setLayers(prev => prev.filter(l => l.id !== id));
+    setLayerActions(prev => { const n = { ...prev }; delete n[id]; return n; });
+    setLayerUndone(prev => { const n = { ...prev }; delete n[id]; return n; });
+    if (activeLayerId === id) setActiveLayerId('base');
+  }, [activeLayerId]);
+
+  const handleMoveLayerUp = useCallback((id: string) => {
+    setLayers(prev => {
+      const idx = prev.findIndex(l => l.id === id);
+      if (idx <= 0) return prev;
+      const n = [...prev];
+      [n[idx - 1], n[idx]] = [n[idx], n[idx - 1]];
+      return n;
+    });
+  }, []);
+
+  const handleMoveLayerDown = useCallback((id: string) => {
+    setLayers(prev => {
+      const idx = prev.findIndex(l => l.id === id);
+      if (idx < 0 || idx >= prev.length - 1) return prev;
+      const n = [...prev];
+      [n[idx], n[idx + 1]] = [n[idx + 1], n[idx]];
+      return n;
+    });
+  }, []);
+
+  const handleToggleLayerVisibility = useCallback((id: string) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, visible: !l.visible } : l));
+  }, []);
+
+  const handleLayerOpacity = useCallback((id: string, opacity: number) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, opacity } : l));
+  }, []);
+
+  const handleRenameLayer = useCallback((id: string, name: string) => {
+    setLayers(prev => prev.map(l => l.id === id ? { ...l, name } : l));
+  }, []);
+
+  const handleMergeLayers = useCallback((ids: string[]) => {
+    if (ids.length < 2) return;
+    // Find the topmost layer among selected (lowest index = topmost)
+    const sortedIndices = ids
+      .map(id => ({ id, idx: layers.findIndex(l => l.id === id) }))
+      .filter(x => x.idx >= 0)
+      .sort((a, b) => a.idx - b.idx);
+    if (sortedIndices.length < 2) return;
+
+    const targetId = sortedIndices[0].id;
+    const targetLayer = layers.find(l => l.id === targetId)!;
+
+    // Merge actions: collect from bottom to top (reverse order) so bottom layers render first
+    const mergedActions: DrawAction[] = [];
+    for (let i = sortedIndices.length - 1; i >= 0; i--) {
+      const lid = sortedIndices[i].id;
+      const la = layerActions[lid] ?? [];
+      mergedActions.push(...la);
+    }
+
+    // Build merged name
+    const mergedName = sortedIndices.map(s => {
+      const l = layers.find(ll => ll.id === s.id);
+      return l?.name || s.id;
+    }).join(' + ');
+
+    // Remove other layers, keep target with merged actions
+    const removedIds = new Set(ids.filter(id => id !== targetId));
+    setLayers(prev => prev
+      .filter(l => !removedIds.has(l.id))
+      .map(l => l.id === targetId ? { ...l, name: mergedName, opacity: targetLayer.opacity } : l)
+    );
+    setLayerActions(prev => {
+      const next = { ...prev, [targetId]: mergedActions };
+      for (const rid of removedIds) delete next[rid];
+      return next;
+    });
+    setLayerUndone(prev => {
+      const next = { ...prev };
+      for (const rid of removedIds) delete next[rid];
+      return next;
+    });
+    setActiveLayerId(targetId);
+    toast({ title: t('imgEdit.layersMerged') });
+  }, [layers, layerActions, t]);
+
+  // Auto-capture history when actions change meaningfully
+  const prevActionsRef = useRef<string>('');
+  useEffect(() => {
+    const key = JSON.stringify(layerActions);
+    if (key !== prevActionsRef.current && (image || processedImage)) {
+      prevActionsRef.current = key;
+      // Debounce: only capture after render
+      const timer = setTimeout(() => {
+        const allActions = Object.values(layerActions).flat();
+        if (allActions.length === 0 && historyEntries.length === 0) {
+          captureHistory(t('imgEdit.historyInit'));
+        } else if (allActions.length > 0) {
+          const lastAction = allActions[allActions.length - 1];
+          const labelMap: Record<string, string> = {
+            draw: t('imgEdit.historyDraw'),
+            text: t('imgEdit.historyText'),
+            arrow: t('imgEdit.historyArrow'),
+            mosaic: t('imgEdit.historyMosaic'),
+            erase: t('imgEdit.historyErase'),
+            image: t('imgEdit.historyBgRemove'),
+          };
+          captureHistory(labelMap[lastAction.type] || lastAction.type);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [layerActions, image, processedImage, captureHistory, t, historyEntries.length]);
+
+  // Capture initial state when image loads
+  const prevImageRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if ((image || processedImage) && image !== prevImageRef.current) {
+      prevImageRef.current = image;
+      setTimeout(() => captureHistory(t('imgEdit.historyInit')), 200);
+    }
+  }, [image, processedImage, captureHistory, t]);
 
   // Apply crop
   const applyCrop = useCallback(() => {
@@ -1126,6 +1459,11 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               <p className="text-sm text-muted-foreground">{t('imgEdit.uploadHint')}</p>
               <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              {hasDraft && (
+                <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={(e) => { e.stopPropagation(); loadDraft(); }}>
+                  <FolderOpen className="w-4 h-4" /> {t('imgEdit.restoreDraft')}
+                </Button>
+              )}
             </div>
           ) : (
             <canvas
@@ -1152,7 +1490,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
 
         {/* Right sidebar */}
         {(image || processedImage) && (
-          <div className="w-56 border-l border-border bg-card p-4 overflow-y-auto space-y-4 hidden md:block">
+          <div className="w-64 border-l border-border bg-card p-3 overflow-y-auto space-y-4 hidden md:block">
             <div className="space-y-2">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase">{t('imgEdit.bgSection')}</h4>
               <Button onClick={() => removeBackground('auto')} disabled={isRemoving} className="w-full gap-2" size="sm">
@@ -1210,12 +1548,47 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               </Button>
             </div>
 
+            {/* Layer Panel */}
+            <LayerPanel
+              layers={layers.map(l => ({ ...l, name: l.name || (l.id === 'base' ? t('imgEdit.baseLayer') : l.name) }))}
+              activeLayerId={activeLayerId}
+              onSelect={setActiveLayerId}
+              onToggleVisibility={handleToggleLayerVisibility}
+              onOpacityChange={handleLayerOpacity}
+              onMoveUp={handleMoveLayerUp}
+              onMoveDown={handleMoveLayerDown}
+              onAdd={handleAddLayer}
+              onDelete={handleDeleteLayer}
+              onRename={handleRenameLayer}
+              onMerge={handleMergeLayers}
+            />
+
+            {/* History Panel */}
+            <HistoryPanel
+              entries={historyEntries}
+              currentIndex={historyIndex}
+              onJump={jumpToHistory}
+              onClear={() => {
+                setHistoryEntries([]);
+                historySnapshots.current = [];
+                setHistoryIndex(-1);
+                historyIdCounter.current = 0;
+              }}
+            />
+
             <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={() => {
-              setImage(null); setProcessedImage(null); setActions([]); setUndoneActions([]);
+              setImage(null); setProcessedImage(null);
+              setLayerActions({ base: [] }); setLayerUndone({ base: [] });
+              setLayers([{ id: 'base', name: '', visible: true, opacity: 1, locked: true }]);
+              setActiveLayerId('base'); layerCounter.current = 1;
               setRotation(0); setZoom(1); setBgTransparent(false); setBgImage(null);
               setCropPending(false); setCropStart(null); setCropEnd(null); setCropLassoPoints([]);
+              setHistoryEntries([]); historySnapshots.current = []; setHistoryIndex(-1); historyIdCounter.current = 0;
             }}>
               <Trash2 className="w-3.5 h-3.5" /> {t('imgEdit.reset')}
+            </Button>
+            <Button variant="outline" size="sm" className="w-full text-xs gap-1" onClick={saveDraft} disabled={!image && !processedImage}>
+              <Save className="w-3.5 h-3.5" /> {t('imgEdit.saveDraft')}
             </Button>
           </div>
         )}
