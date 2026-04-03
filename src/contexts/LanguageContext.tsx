@@ -2087,6 +2087,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'imgEdit.showLayer': 'Show Layer',
     'imgEdit.baseLayer': 'Base Layer',
     'imgEdit.newLayer': 'Layer',
+    'imgEdit.mergeLayers': 'Merge Layers',
+    'imgEdit.layersMerged': 'Layers merged',
     'imgEdit.historyInit': 'Initial',
     'imgEdit.historyDraw': 'Draw',
     'imgEdit.historyText': 'Add Text',
