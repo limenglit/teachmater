@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Eye, EyeOff, ChevronUp, ChevronDown, Plus, Trash2, Layers
+  Eye, EyeOff, ChevronUp, ChevronDown, Plus, Trash2, Layers, Merge
 } from 'lucide-react';
 
 export interface EditorLayer {
@@ -24,6 +26,7 @@ interface Props {
   onAdd: () => void;
   onDelete: (id: string) => void;
   onRename: (id: string, name: string) => void;
+  onMerge: (ids: string[]) => void;
 }
 
 export default function LayerPanel({
@@ -37,8 +40,26 @@ export default function LayerPanel({
   onAdd,
   onDelete,
   onRename,
+  onMerge,
 }: Props) {
   const { t } = useLanguage();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [mergeMode, setMergeMode] = useState(false);
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleMerge = () => {
+    if (selectedIds.size < 2) return;
+    onMerge(Array.from(selectedIds));
+    setSelectedIds(new Set());
+    setMergeMode(false);
+  };
 
   return (
     <div className="space-y-2">
@@ -47,9 +68,34 @@ export default function LayerPanel({
           <Layers className="w-3.5 h-3.5" />
           {t('imgEdit.layers')}
         </div>
-        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onAdd} title={t('imgEdit.addLayer')}>
-          <Plus className="w-3 h-3" />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          {mergeMode ? (
+            <>
+              <Button
+                variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]"
+                disabled={selectedIds.size < 2}
+                onClick={handleMerge}
+              >
+                <Merge className="w-3 h-3 mr-0.5" />
+                {t('imgEdit.mergeLayers')} ({selectedIds.size})
+              </Button>
+              <Button variant="ghost" size="sm" className="h-6 px-1 text-[10px] text-muted-foreground" onClick={() => { setMergeMode(false); setSelectedIds(new Set()); }}>
+                ✕
+              </Button>
+            </>
+          ) : (
+            <>
+              {layers.length > 1 && (
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setMergeMode(true)} title={t('imgEdit.mergeLayers')}>
+                  <Merge className="w-3 h-3" />
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onAdd} title={t('imgEdit.addLayer')}>
+                <Plus className="w-3 h-3" />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
       <ScrollArea className="h-44">
         <div className="space-y-1 pr-2">
@@ -60,10 +106,18 @@ export default function LayerPanel({
                 layer.id === activeLayerId
                   ? 'border-primary/50 bg-primary/5'
                   : 'border-border hover:bg-muted/50'
-              }`}
-              onClick={() => onSelect(layer.id)}
+              } ${mergeMode && selectedIds.has(layer.id) ? 'ring-1 ring-primary' : ''}`}
+              onClick={() => mergeMode ? toggleSelected(layer.id) : onSelect(layer.id)}
             >
               <div className="flex items-center gap-1.5">
+                {mergeMode && (
+                  <Checkbox
+                    checked={selectedIds.has(layer.id)}
+                    onCheckedChange={() => toggleSelected(layer.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-3.5 w-3.5"
+                  />
+                )}
                 <button
                   onClick={(e) => { e.stopPropagation(); onToggleVisibility(layer.id); }}
                   className="shrink-0 text-muted-foreground hover:text-foreground"
