@@ -602,6 +602,52 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
     setLayers(prev => prev.map(l => l.id === id ? { ...l, name } : l));
   }, []);
 
+  const handleMergeLayers = useCallback((ids: string[]) => {
+    if (ids.length < 2) return;
+    // Find the topmost layer among selected (lowest index = topmost)
+    const sortedIndices = ids
+      .map(id => ({ id, idx: layers.findIndex(l => l.id === id) }))
+      .filter(x => x.idx >= 0)
+      .sort((a, b) => a.idx - b.idx);
+    if (sortedIndices.length < 2) return;
+
+    const targetId = sortedIndices[0].id;
+    const targetLayer = layers.find(l => l.id === targetId)!;
+
+    // Merge actions: collect from bottom to top (reverse order) so bottom layers render first
+    const mergedActions: DrawAction[] = [];
+    for (let i = sortedIndices.length - 1; i >= 0; i--) {
+      const lid = sortedIndices[i].id;
+      const la = layerActions[lid] ?? [];
+      mergedActions.push(...la);
+    }
+
+    // Build merged name
+    const mergedName = sortedIndices.map(s => {
+      const l = layers.find(ll => ll.id === s.id);
+      return l?.name || s.id;
+    }).join(' + ');
+
+    // Remove other layers, keep target with merged actions
+    const removedIds = new Set(ids.filter(id => id !== targetId));
+    setLayers(prev => prev
+      .filter(l => !removedIds.has(l.id))
+      .map(l => l.id === targetId ? { ...l, name: mergedName, opacity: targetLayer.opacity } : l)
+    );
+    setLayerActions(prev => {
+      const next = { ...prev, [targetId]: mergedActions };
+      for (const rid of removedIds) delete next[rid];
+      return next;
+    });
+    setLayerUndone(prev => {
+      const next = { ...prev };
+      for (const rid of removedIds) delete next[rid];
+      return next;
+    });
+    setActiveLayerId(targetId);
+    toast({ title: t('imgEdit.layersMerged') });
+  }, [layers, layerActions, t]);
+
   // Auto-capture history when actions change meaningfully
   const prevActionsRef = useRef<string>('');
   useEffect(() => {
