@@ -1459,6 +1459,11 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               <p className="text-sm text-muted-foreground">{t('imgEdit.uploadHint')}</p>
               <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/gif" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              {hasDraft && (
+                <Button variant="outline" size="sm" className="mt-4 gap-1.5" onClick={(e) => { e.stopPropagation(); loadDraft(); }}>
+                  <FolderOpen className="w-4 h-4" /> {t('imgEdit.restoreDraft')}
+                </Button>
+              )}
             </div>
           ) : (
             <canvas
