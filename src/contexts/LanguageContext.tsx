@@ -534,6 +534,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'imgEdit.showLayer': '显示图层',
     'imgEdit.baseLayer': '基础图层',
     'imgEdit.newLayer': '图层',
+    'imgEdit.mergeLayers': '合并图层',
+    'imgEdit.layersMerged': '图层已合并',
     'imgEdit.historyInit': '初始状态',
     'imgEdit.historyDraw': '涂鸦',
     'imgEdit.historyText': '添加文字',
