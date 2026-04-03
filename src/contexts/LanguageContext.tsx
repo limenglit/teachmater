@@ -3415,6 +3415,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'imgEdit.showLayer': 'Показать',
     'imgEdit.baseLayer': 'Базовый слой',
     'imgEdit.newLayer': 'Слой',
+    'imgEdit.mergeLayers': 'Объединить слои',
+    'imgEdit.layersMerged': 'Слои объединены',
     'imgEdit.historyInit': 'Начало',
     'imgEdit.historyDraw': 'Рисование',
     'imgEdit.historyText': 'Текст',
