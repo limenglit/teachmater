@@ -39,7 +39,7 @@ async function callAIWithFallback(body: Record<string, unknown>): Promise<Respon
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: getCorsHeaders(req) });
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const body = await req.json();
