@@ -45,15 +45,16 @@ export default function StoryboardPanel() {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
   };
 
+  const aiQuota = useAIQuota();
+
   const handleGenerate = async () => {
     if (!params.theme.trim()) {
       toast.error(t('storyboard.themeRequired'));
       return;
     }
 
-    // Check guest limit
-    const remaining = getGuestAIRemaining(!!user);
-    if (remaining === 0) {
+    // Check AI limit
+    if (aiQuota.remaining === 0) {
       toast.error(t('storyboard.guestLimitReached'));
       return;
     }
