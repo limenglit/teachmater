@@ -28,6 +28,7 @@ function saveHistory(items: VisualHistoryItem[]) {
 export default function VisualizationPanel() {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
+  const aiQuota = useAIQuota();
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [colorScheme, setColorScheme] = useState('ocean');
