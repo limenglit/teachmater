@@ -21,6 +21,32 @@ function errorResponse(req: Request, message: string, status: number) {
   });
 }
 
+/* ── AI call with DeepSeek fallback on 402 ────────────────────── */
+async function callAIWithFallback(body: Record<string, unknown>): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+  const primary = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (primary.status !== 402) return primary;
+
+  // Lovable credits exhausted → try DeepSeek
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) return primary; // no fallback key, propagate 402
+
+  console.log("Lovable AI 402 → falling back to DeepSeek");
+  const fallbackBody = { ...body, model: "deepseek-chat" };
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(fallbackBody),
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: getCorsHeaders(req) });
 
@@ -28,22 +54,15 @@ serve(async (req) => {
     const body = await req.json();
     const { messages, type, topic_id, creator_token } = body;
 
-    // Validate type
     if (!type || !['report', 'wordcloud'].includes(type)) {
       return errorResponse(req, 'Invalid type. Must be "report" or "wordcloud"', 400);
     }
-
-    // Validate topic_id
     if (!topic_id || typeof topic_id !== 'string') {
       return errorResponse(req, 'topic_id is required', 400);
     }
-
-    // Validate creator_token
     if (!creator_token || typeof creator_token !== 'string') {
       return errorResponse(req, 'creator_token is required', 403);
     }
-
-    // Validate messages array
     if (!Array.isArray(messages) || messages.length === 0) {
       return errorResponse(req, 'Messages must be a non-empty array', 400);
     }
@@ -53,54 +72,24 @@ serve(async (req) => {
     if (messages.length > 1000) {
       return errorResponse(req, 'Too many messages (max 1000)', 400);
     }
-
-    // Validate each message
     for (let i = 0; i < messages.length; i++) {
-      if (typeof messages[i] !== 'string') {
-        return errorResponse(req, `Message at index ${i} must be a string`, 400);
-      }
-      if (messages[i].length > 500) {
-        return errorResponse(req, `Message at index ${i} exceeds max length`, 400);
-      }
+      if (typeof messages[i] !== 'string') return errorResponse(req, `Message at index ${i} must be a string`, 400);
+      if (messages[i].length > 500) return errorResponse(req, `Message at index ${i} exceeds max length`, 400);
     }
 
-    // Verify topic exists and creator_token matches.
-    // Use service role here so topic validation is not blocked by table RLS.
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error('Supabase service credentials are not configured');
-    }
+    if (!supabaseUrl || !serviceRoleKey) throw new Error('Supabase service credentials are not configured');
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
-
     const { data: topic, error: topicError } = await supabaseClient
-      .from('discussion_topics')
-      .select('id, creator_token')
-      .eq('id', topic_id)
-      .maybeSingle();
-
-    if (topicError) {
-      console.error('Failed to load discussion topic:', topicError);
-      return errorResponse(req, 'Topic lookup failed', 500);
-    }
-
-    if (!topic) {
-      return errorResponse(req, 'Topic not found', 404);
-    }
-
-    if (topic.creator_token !== creator_token) {
-      return errorResponse(req, 'Unauthorized', 403);
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+      .from('discussion_topics').select('id, creator_token').eq('id', topic_id).maybeSingle();
+    if (topicError) { console.error('Failed to load discussion topic:', topicError); return errorResponse(req, 'Topic lookup failed', 500); }
+    if (!topic) return errorResponse(req, 'Topic not found', 404);
+    if (topic.creator_token !== creator_token) return errorResponse(req, 'Unauthorized', 403);
 
     const allText = messages.join('\n');
-    if (allText.length > 50000) {
-      return errorResponse(req, 'Total message content too large', 400);
-    }
+    if (allText.length > 50000) return errorResponse(req, 'Total message content too large', 400);
 
     let systemPrompt = '';
     if (type === 'report') {
@@ -126,31 +115,20 @@ ${allText}`;
 ${allText}`;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "请分析以上弹幕内容。" },
-        ],
-      }),
+    const response = await callAIWithFallback({
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: "请分析以上弹幕内容。" },
+      ],
     });
 
     if (!response.ok) {
       const status = response.status;
-      if (status === 429) {
-        return errorResponse(req, "请求过于频繁，请稍后再试", 429);
-      }
-      if (status === 402) {
-        return errorResponse(req, "AI 额度不足，请充值", 402);
-      }
+      if (status === 429) return errorResponse(req, "请求过于频繁，请稍后再试", 429);
+      if (status === 402) return errorResponse(req, "AI 额度不足", 402);
       const t = await response.text();
-      console.error("AI gateway error:", status, t);
+      console.error("AI error:", status, t);
       return errorResponse(req, "AI 分析失败", 500);
     }
 

@@ -36,14 +36,12 @@ function buildPrompt(params: StoryboardParams): string {
     'teacher': 'teachers',
     'general': 'general audience',
   };
-
   const toneMap: Record<string, string> = {
     'educational': 'educational, easy to understand',
     'serious': 'serious, professional',
     'encouraging': 'encouraging, positive',
     'critical': 'critical thinking',
   };
-
   const colorMap: Record<string, string> = {
     'soft': 'soft pastel educational colors (light blue, mint green, warm yellow, soft pink)',
     'high-contrast': 'high contrast classroom colors (bright blue, orange, green, red)',
@@ -66,10 +64,10 @@ function buildPrompt(params: StoryboardParams): string {
     ? `EMBEDDED TEXT MODE:
 - DO include text labels directly embedded INTO visual elements within the image
 - Write text ON banners, ribbons, signposts, road signs, speech bubbles, flags, badges, stamps, chalkboards, sticky notes, book covers, screens, and other visual containers
-- Text should feel like a natural part of the illustration - painted on walls, written on scrolls, displayed on screens, carved into signs
+- Text should feel like a natural part of the illustration
 - Use ${params.language === 'zh' ? 'Chinese' : 'English'} text on these visual elements
 - Each key concept should have its label integrated into a fitting visual object
-- Make text legible but artistically integrated - it should enhance the hand-drawn aesthetic
+- Make text legible but artistically integrated
 - DO NOT leave blank spaces for overlay - all text is part of the artwork`
     : `NO TEXT POLICY:
 - DO NOT include ANY text, labels, titles, numbers, letters, or written words in the image
@@ -94,7 +92,7 @@ ${layoutInstructions}
 - Each concept should have a distinct visual element representing it
 - Educational poster/infographic layout with clear visual hierarchy
 - Aspect ratio: ${params.aspectRatio}
-${isUnified ? '- Include connecting elements: arrows (→ ↗ ↘), curved paths, dotted lines, numbered stepping stones, flowing ribbons linking concepts' : ''}
+${isUnified ? '- Include connecting elements: arrows, curved paths, dotted lines, numbered stepping stones, flowing ribbons linking concepts' : ''}
 
 DO NOT include:
 ${isEmbedded ? '- Text outside of visual containers (no floating text)' : '- ANY text, labels, titles, numbers, or letters (CRITICAL!)'}
@@ -106,14 +104,23 @@ ${isEmbedded ? '- Text outside of visual containers (no floating text)' : '- ANY
 The final image should be a ${isEmbedded ? 'complete illustrated infographic with text naturally embedded in visual elements' : 'clean visual template ready for text overlay, with clear blank spaces where titles and labels would go'}.`;
 }
 
+/* ── AI image call — no DeepSeek fallback for image generation ── */
+async function callImageAI(body: Record<string, unknown>): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+  return fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 serve(async (req) => {
   const cors = getCorsHeaders(req);
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: cors });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    // Auth check
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -134,59 +141,35 @@ serve(async (req) => {
     }
 
     const { params } = await req.json() as { params: StoryboardParams };
-    
     if (!params?.theme?.trim()) {
-      return new Response(
-        JSON.stringify({ error: "Theme is required" }),
-        { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
-      );
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY is not configured");
-      return new Response(
-        JSON.stringify({ error: "API key not configured" }),
-        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      return new Response(JSON.stringify({ error: "Theme is required" }), {
+        status: 400, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
     const prompt = buildPrompt(params);
-    console.log("Generated prompt:", prompt.substring(0, 200) + "...");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: prompt }],
-        modalities: ["image", "text"],
-      }),
+    const response = await callImageAI({
+      model: "google/gemini-2.5-flash-image",
+      messages: [{ role: "user", content: prompt }],
+      modalities: ["image", "text"],
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded" }),
-          { status: 429, headers: { ...cors, "Content-Type": "application/json" } }
+        return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+          status: 429, headers: { ...cors, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required" }),
-          { status: 402, headers: { ...cors, "Content-Type": "application/json" } }
+        return new Response(JSON.stringify({ error: "AI 算力额度不足，图片生成暂不支持降级，请稍后再试" }), {
+          status: 402, headers: { ...cors, "Content-Type": "application/json" } }
         );
       }
-      
-      return new Response(
-        JSON.stringify({ error: "AI generation failed" }),
-        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      return new Response(JSON.stringify({ error: "AI generation failed" }), {
+        status: 500, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
@@ -195,15 +178,13 @@ serve(async (req) => {
 
     if (!imageUrl) {
       console.error("No image returned from AI:", JSON.stringify(data).substring(0, 500));
-      return new Response(
-        JSON.stringify({ error: "No image generated" }),
-        { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+      return new Response(JSON.stringify({ error: "No image generated" }), {
+        status: 500, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
 
-    return new Response(
-      JSON.stringify({ imageUrl, prompt }),
-      { headers: { ...cors, "Content-Type": "application/json" } }
+    return new Response(JSON.stringify({ imageUrl, prompt }), {
+      headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Generate storyboard error:", error);

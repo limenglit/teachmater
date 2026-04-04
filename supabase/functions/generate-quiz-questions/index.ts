@@ -7,18 +7,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-function getCorsHeaders() {
-  return CORS_HEADERS;
-}
-
 type QuizQuestionType = 'single' | 'multi' | 'tf' | 'short';
-
-type Counts = {
-  single?: number;
-  multi?: number;
-  tf?: number;
-  short?: number;
-};
+type Counts = { single?: number; multi?: number; tf?: number; short?: number };
 
 interface GenerateRequestBody {
   courseName: string;
@@ -43,113 +33,100 @@ function clampCount(value: number | undefined): number {
 
 function sanitizeQuestions(rawList: any[], fallbackTag: string): GeneratedQuestion[] {
   const result: GeneratedQuestion[] = [];
-
   for (const raw of rawList) {
     const type = raw?.type as QuizQuestionType;
     const content = typeof raw?.content === 'string' ? raw.content.trim() : '';
     const tags = typeof raw?.tags === 'string' && raw.tags.trim() ? raw.tags.trim() : fallbackTag;
-
     if (!content || !['single', 'multi', 'tf', 'short'].includes(type)) continue;
 
     if (type === 'single') {
       const options = Array.isArray(raw?.options) ? raw.options.map((o: any) => String(o).trim()).filter(Boolean) : [];
       const answer = typeof raw?.correct_answer === 'string' ? raw.correct_answer.trim().toUpperCase() : 'A';
       if (options.length < 2) continue;
-      result.push({
-        type,
-        content,
-        options,
-        correct_answer: /^[A-F]$/.test(answer) ? answer : 'A',
-        tags,
-      });
+      result.push({ type, content, options, correct_answer: /^[A-F]$/.test(answer) ? answer : 'A', tags });
       continue;
     }
-
     if (type === 'multi') {
       const options = Array.isArray(raw?.options) ? raw.options.map((o: any) => String(o).trim()).filter(Boolean) : [];
       const answers: string[] = Array.isArray(raw?.correct_answer)
         ? Array.from(new Set(raw.correct_answer.map((a: any) => String(a).trim().toUpperCase()).filter((a: string) => /^[A-F]$/.test(a)))) as string[]
         : [];
       if (options.length < 2) continue;
-      result.push({
-        type,
-        content,
-        options,
-        correct_answer: answers.length > 0 ? answers : ['A'],
-        tags,
-      });
+      result.push({ type, content, options, correct_answer: answers.length > 0 ? answers : ['A'], tags });
       continue;
     }
-
     if (type === 'tf') {
       const answer = typeof raw?.correct_answer === 'string' ? raw.correct_answer.trim().toUpperCase() : 'A';
-      result.push({
-        type,
-        content,
-        options: ['正确', '错误'],
-        correct_answer: answer === 'B' ? 'B' : 'A',
-        tags,
-      });
+      result.push({ type, content, options: ['正确', '错误'], correct_answer: answer === 'B' ? 'B' : 'A', tags });
       continue;
     }
-
-    result.push({
-      type: 'short',
-      content,
-      options: [],
-      correct_answer: typeof raw?.correct_answer === 'string' ? raw.correct_answer.trim() : '',
-      tags,
-    });
+    result.push({ type: 'short', content, options: [], correct_answer: typeof raw?.correct_answer === 'string' ? raw.correct_answer.trim() : '', tags });
   }
-
   return result;
 }
 
+/* ── AI call with DeepSeek fallback on 402 ────────────────────── */
+async function callAIWithFallback(body: Record<string, unknown>): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+
+  const primary = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (primary.status !== 402) return primary;
+
+  const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY');
+  if (!DEEPSEEK_API_KEY) return primary;
+
+  console.log('Lovable AI 402 → falling back to DeepSeek');
+  const fallbackBody = { ...body, model: 'deepseek-chat' };
+  return fetch('https://api.deepseek.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(fallbackBody),
+  });
+}
+
 serve(async (req) => {
-  const cors = getCorsHeaders();
+  const cors = CORS_HEADERS;
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
 
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } },
     );
-
     const token = authHeader.replace('Bearer ', '');
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
     const body = await req.json() as GenerateRequestBody;
     const courseName = body?.courseName?.trim();
     const knowledgePoints = Array.isArray(body?.knowledgePoints)
-      ? body.knowledgePoints.map((p) => String(p).trim()).filter(Boolean)
-      : [];
+      ? body.knowledgePoints.map((p) => String(p).trim()).filter(Boolean) : [];
 
     if (!courseName) {
       return new Response(JSON.stringify({ error: 'Course name required' }), {
-        status: 400,
-        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
-
     if (knowledgePoints.length === 0) {
       return new Response(JSON.stringify({ error: 'Knowledge points required' }), {
-        status: 400,
-        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
@@ -162,14 +139,8 @@ serve(async (req) => {
     const total = counts.single + counts.multi + counts.tf + counts.short;
     if (total <= 0) {
       return new Response(JSON.stringify({ error: 'Question count must be greater than 0' }), {
-        status: 400,
-        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
       });
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const languageHint = body?.lang === 'en' ? 'English' : 'Chinese';
@@ -192,7 +163,7 @@ Constraints:
 
 Quality rules:
 - Questions must align with listed knowledge points and avoid repetition.
-- IMPORTANT: Ensure EVERY knowledge point is covered by at least one question. Distribute questions evenly across all knowledge points.
+- IMPORTANT: Ensure EVERY knowledge point is covered by at least one question.
 - Each question's tags field MUST include the specific knowledge point it covers.
 - single: exactly one correct option, 4 options preferred.
 - multi: at least two correct options, 4-5 options preferred.
@@ -203,74 +174,60 @@ Quality rules:
 - tags should include course name and one key knowledge point.
 - Return exactly the requested quantity.`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Generate quiz questions now.' },
-        ],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'generate_quiz_questions',
-            description: 'Generate quiz questions for classroom assessment',
-            parameters: {
-              type: 'object',
-              properties: {
-                questions: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      type: { type: 'string', enum: ['single', 'multi', 'tf', 'short'] },
-                      content: { type: 'string' },
-                      options: { type: 'array', items: { type: 'string' } },
-                      correct_answer: {
-                        oneOf: [
-                          { type: 'string' },
-                          { type: 'array', items: { type: 'string' } },
-                        ],
-                      },
-                      tags: { type: 'string' },
-                    },
-                    required: ['type', 'content', 'options', 'correct_answer', 'tags'],
-                  },
+    const toolDef = {
+      type: 'function',
+      function: {
+        name: 'generate_quiz_questions',
+        description: 'Generate quiz questions for classroom assessment',
+        parameters: {
+          type: 'object',
+          properties: {
+            questions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  type: { type: 'string', enum: ['single', 'multi', 'tf', 'short'] },
+                  content: { type: 'string' },
+                  options: { type: 'array', items: { type: 'string' } },
+                  correct_answer: { oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
+                  tags: { type: 'string' },
                 },
+                required: ['type', 'content', 'options', 'correct_answer', 'tags'],
               },
-              required: ['questions'],
-              additionalProperties: false,
             },
           },
-        }],
-        tool_choice: { type: 'function', function: { name: 'generate_quiz_questions' } },
-      }),
+          required: ['questions'],
+          additionalProperties: false,
+        },
+      },
+    };
+
+    const response = await callAIWithFallback({
+      model: 'google/gemini-3-flash-preview',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: 'Generate quiz questions now.' },
+      ],
+      tools: [toolDef],
+      tool_choice: { type: 'function', function: { name: 'generate_quiz_questions' } },
     });
 
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limited' }), {
-          status: 429,
-          headers: { ...cors, 'Content-Type': 'application/json' },
+          status: 429, headers: { ...cors, 'Content-Type': 'application/json' },
         });
       }
       if (response.status === 402) {
         return new Response(JSON.stringify({ error: 'Payment required' }), {
-          status: 402,
-          headers: { ...cors, 'Content-Type': 'application/json' },
+          status: 402, headers: { ...cors, 'Content-Type': 'application/json' },
         });
       }
-
       const text = await response.text();
-      console.error('generate-quiz-questions AI error:', response.status, text);
+      console.error('AI error:', response.status, text);
       return new Response(JSON.stringify({ error: 'AI generation failed' }), {
-        status: 500,
-        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
@@ -278,8 +235,7 @@ Quality rules:
     const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) {
       return new Response(JSON.stringify({ error: 'No generation result' }), {
-        status: 500,
-        headers: { ...cors, 'Content-Type': 'application/json' },
+        status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
@@ -297,8 +253,7 @@ Quality rules:
   } catch (error) {
     console.error('generate-quiz-questions error:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
-      status: 500,
-      headers: { ...cors, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
     });
   }
 });

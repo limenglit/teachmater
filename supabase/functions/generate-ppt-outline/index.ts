@@ -15,14 +15,36 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+/* ── AI call with DeepSeek fallback on 402 ────────────────────── */
+async function callAIWithFallback(body: Record<string, unknown>): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+  const primary = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (primary.status !== 402) return primary;
+
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) return primary;
+
+  console.log("Lovable AI 402 → falling back to DeepSeek");
+  const fallbackBody = { ...body, model: "deepseek-chat" };
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(fallbackBody),
+  });
+}
+
 serve(async (req) => {
   const cors = getCorsHeaders(req);
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: cors });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
 
   try {
-    // Auth check
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -43,17 +65,10 @@ serve(async (req) => {
     }
 
     const { content, audience } = await req.json();
-    
     if (!content || content.trim().length < 10) {
-      return new Response(
-        JSON.stringify({ error: "Content too short" }),
-        { status: 400, headers: { ...cors, "Content-Type": "application/json" } }
+      return new Response(JSON.stringify({ error: "Content too short" }), {
+        status: 400, headers: { ...cors, "Content-Type": "application/json" } }
       );
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
     }
 
     const audienceMap: Record<string, string> = {
@@ -106,54 +121,39 @@ serve(async (req) => {
 
 请根据内容的特点，合理选择不同的幻灯片类型，使演示更加生动有层次。`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `请根据以下内容生成PPT大纲：\n\n${content.slice(0, 8000)}` },
-        ],
-        temperature: 0.7,
-      }),
+    const response = await callAIWithFallback({
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: `请根据以下内容生成PPT大纲：\n\n${content.slice(0, 8000)}` },
+      ],
+      temperature: 0.7,
     });
 
     if (response.status === 429) {
-      return new Response(
-        JSON.stringify({ error: "Rate limited" }),
-        { status: 429, headers: { ...cors, "Content-Type": "application/json" } }
+      return new Response(JSON.stringify({ error: "Rate limited" }), {
+        status: 429, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
     if (response.status === 402) {
-      return new Response(
-        JSON.stringify({ error: "Payment required" }),
-        { status: 402, headers: { ...cors, "Content-Type": "application/json" } }
+      return new Response(JSON.stringify({ error: "Payment required" }), {
+        status: 402, headers: { ...cors, "Content-Type": "application/json" } }
       );
     }
     if (!response.ok) {
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
-      throw new Error("AI gateway error");
+      console.error("AI error:", response.status, errText);
+      throw new Error("AI error");
     }
 
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content || "";
-    
-    // Extract JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No valid JSON in response");
-    }
+    if (!jsonMatch) throw new Error("No valid JSON in response");
 
     const outline = JSON.parse(jsonMatch[0]);
-    
-    return new Response(
-      JSON.stringify({ outline }),
-      { headers: { ...cors, "Content-Type": "application/json" } }
+    return new Response(JSON.stringify({ outline }), {
+      headers: { ...cors, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("generate-ppt-outline error:", error);
