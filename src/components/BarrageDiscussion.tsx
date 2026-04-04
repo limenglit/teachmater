@@ -151,6 +151,14 @@ export default function BarrageDiscussion() {
 
   const discussUrl = topicId ? `${window.location.origin}/discuss/${topicId}` : '';
 
+  useEffect(() => {
+    if (!topicId || creatorToken) return;
+    const storedToken = sessionStorage.getItem(`topic_token_${topicId}`);
+    if (storedToken) {
+      setCreatorToken(storedToken);
+    }
+  }, [topicId, creatorToken]);
+
   const handleCreateTopic = async () => {
     if (!topicTitle.trim()) return;
 
@@ -255,8 +263,13 @@ export default function BarrageDiscussion() {
   const aiQuota = useAIQuota();
 
   const handleReport = async () => {
+    const resolvedCreatorToken = creatorToken ?? (topicId ? sessionStorage.getItem(`topic_token_${topicId}`) : null);
     if (messages.length < 3) {
       toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成报告', variant: 'destructive' });
+      return;
+    }
+    if (!topicId || !resolvedCreatorToken) {
+      toast({ title: t('barrage.analyzeFailed'), description: '未找到当前讨论的管理令牌，请在当前浏览器重新创建讨论后再试。', variant: 'destructive' });
       return;
     }
     if (!aiQuota.consume()) {
@@ -267,7 +280,7 @@ export default function BarrageDiscussion() {
     setView('report');
     try {
       const res = await supabase.functions.invoke('analyze-barrage', {
-        body: { messages: messages.map(m => m.content), type: 'report', topic_id: topicId, creator_token: creatorToken },
+        body: { messages: messages.map(m => m.content), type: 'report', topic_id: topicId, creator_token: resolvedCreatorToken },
       });
       if (res.error) throw res.error;
       setReportContent(res.data.result);
@@ -279,8 +292,13 @@ export default function BarrageDiscussion() {
   };
 
   const handleWordCloud = async () => {
+    const resolvedCreatorToken = creatorToken ?? (topicId ? sessionStorage.getItem(`topic_token_${topicId}`) : null);
     if (messages.length < 3) {
       toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成词云', variant: 'destructive' });
+      return;
+    }
+    if (!topicId || !resolvedCreatorToken) {
+      toast({ title: t('barrage.analyzeFailed'), description: '未找到当前讨论的管理令牌，请在当前浏览器重新创建讨论后再试。', variant: 'destructive' });
       return;
     }
     if (!aiQuota.consume()) {
@@ -291,7 +309,7 @@ export default function BarrageDiscussion() {
     setView('wordcloud');
     try {
       const res = await supabase.functions.invoke('analyze-barrage', {
-        body: { messages: messages.map(m => m.content), type: 'wordcloud', topic_id: topicId, creator_token: creatorToken },
+        body: { messages: messages.map(m => m.content), type: 'wordcloud', topic_id: topicId, creator_token: resolvedCreatorToken },
       });
       if (res.error) throw res.error;
       const text = res.data.result;
