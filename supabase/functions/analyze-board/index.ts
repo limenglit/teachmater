@@ -1,23 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ALLOWED_ORIGINS = [
-  'https://teachmater.lovable.app',
-  'https://id-preview--50abb99d-e699-4e11-920c-db8e0dcc3ffe.lovable.app',
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') ?? '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 function errorResponse(req: Request, message: string, status: number) {
   return new Response(JSON.stringify({ error: message }), {
-    status, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
@@ -47,11 +38,11 @@ async function callAIWithFallback(body: Record<string, unknown>): Promise<Respon
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: getCorsHeaders(req) });
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) return errorResponse(req, 'Unauthorized', 401);
+    if (!authHeader?.startsWith('Bearer ')) return errorResponse('Unauthorized', 401);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -59,13 +50,13 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (userError || !user) return errorResponse(req, 'Unauthorized', 401);
+    if (userError || !user) return errorResponse('Unauthorized', 401);
 
     const body = await req.json();
     const { cards } = body;
 
-    if (!Array.isArray(cards) || cards.length === 0) return errorResponse(req, 'Cards must be a non-empty array', 400);
-    if (cards.length > 500) return errorResponse(req, 'Too many cards (max 500)', 400);
+    if (!Array.isArray(cards) || cards.length === 0) return errorResponse('Cards must be a non-empty array', 400);
+    if (cards.length > 500) return errorResponse('Too many cards (max 500)', 400);
 
     const lines: string[] = [];
     for (const card of cards) {
@@ -74,10 +65,10 @@ serve(async (req) => {
         lines.push(`[${author}]: ${card.content.slice(0, 500)}`);
       }
     }
-    if (lines.length === 0) return errorResponse(req, 'No valid card content', 400);
+    if (lines.length === 0) return errorResponse('No valid card content', 400);
 
     const allText = lines.join('\n');
-    if (allText.length > 80000) return errorResponse(req, 'Total content too large', 400);
+    if (allText.length > 80000) return errorResponse('Total content too large', 400);
 
     const totalCards = cards.length;
     const uniqueAuthors = new Set(cards.map((c: any) => c.author_nickname || '匿名')).size;
@@ -120,20 +111,20 @@ ${allText}`;
 
     if (!response.ok) {
       const status = response.status;
-      if (status === 429) return errorResponse(req, "请求过于频繁，请稍后再试", 429);
-      if (status === 402) return errorResponse(req, "AI 额度不足", 402);
+      if (status === 429) return errorResponse("请求过于频繁，请稍后再试", 429);
+      if (status === 402) return errorResponse("AI 额度不足", 402);
       const t = await response.text();
       console.error("AI error:", status, t);
-      return errorResponse(req, "AI 分析失败", 500);
+      return errorResponse("AI 分析失败", 500);
     }
 
     return new Response(response.body, {
-      headers: { ...getCorsHeaders(req), "Content-Type": "text/event-stream" },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
     console.error("analyze-board error:", e);
     return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
