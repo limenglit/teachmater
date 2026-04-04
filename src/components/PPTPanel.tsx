@@ -102,11 +102,7 @@ export default function PPTPanel() {
       toast.error(t('ppt.contentRequired'));
       return;
     }
-    if (!isLoggedIn && guestRemaining <= 0) {
-      toast.error(t('ppt.guestLimitReached'));
-      return;
-    }
-    if (!isLoggedIn && !recordGuestAIUsage(false)) {
+    if (!aiQuota.consume()) {
       toast.error(t('ppt.guestLimitReached'));
       return;
     }
