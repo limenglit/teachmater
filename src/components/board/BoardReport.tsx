@@ -21,6 +21,7 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const isLoggedIn = !!user;
+  const aiQuota = useAIQuota();
   const [report, setReport] = useState('');
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
