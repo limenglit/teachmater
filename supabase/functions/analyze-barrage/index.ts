@@ -1,23 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const ALLOWED_ORIGINS = [
-  'https://teachmater.lovable.app',
-  'https://id-preview--50abb99d-e699-4e11-920c-db8e0dcc3ffe.lovable.app',
-];
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') ?? '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  };
-}
-
-function errorResponse(req: Request, message: string, status: number) {
+function errorResponse(message: string, status: number) {
   return new Response(JSON.stringify({ error: message }), {
-    status, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    status, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
@@ -48,33 +39,33 @@ async function callAIWithFallback(body: Record<string, unknown>): Promise<Respon
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: getCorsHeaders(req) });
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
     const body = await req.json();
     const { messages, type, topic_id, creator_token } = body;
 
     if (!type || !['report', 'wordcloud'].includes(type)) {
-      return errorResponse(req, 'Invalid type. Must be "report" or "wordcloud"', 400);
+      return errorResponse('Invalid type. Must be "report" or "wordcloud"', 400);
     }
     if (!topic_id || typeof topic_id !== 'string') {
-      return errorResponse(req, 'topic_id is required', 400);
+      return errorResponse('topic_id is required', 400);
     }
     if (!creator_token || typeof creator_token !== 'string') {
-      return errorResponse(req, 'creator_token is required', 403);
+      return errorResponse('creator_token is required', 403);
     }
     if (!Array.isArray(messages) || messages.length === 0) {
-      return errorResponse(req, 'Messages must be a non-empty array', 400);
+      return errorResponse('Messages must be a non-empty array', 400);
     }
     if (messages.length < 3) {
-      return errorResponse(req, '消息太少，至少需要3条弹幕才能分析', 400);
+      return errorResponse('消息太少，至少需要3条弹幕才能分析', 400);
     }
     if (messages.length > 1000) {
-      return errorResponse(req, 'Too many messages (max 1000)', 400);
+      return errorResponse('Too many messages (max 1000)', 400);
     }
     for (let i = 0; i < messages.length; i++) {
-      if (typeof messages[i] !== 'string') return errorResponse(req, `Message at index ${i} must be a string`, 400);
-      if (messages[i].length > 500) return errorResponse(req, `Message at index ${i} exceeds max length`, 400);
+      if (typeof messages[i] !== 'string') return errorResponse(`Message at index ${i} must be a string`, 400);
+      if (messages[i].length > 500) return errorResponse(`Message at index ${i} exceeds max length`, 400);
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
@@ -84,12 +75,12 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
     const { data: topic, error: topicError } = await supabaseClient
       .from('discussion_topics').select('id, creator_token').eq('id', topic_id).maybeSingle();
-    if (topicError) { console.error('Failed to load discussion topic:', topicError); return errorResponse(req, 'Topic lookup failed', 500); }
-    if (!topic) return errorResponse(req, 'Topic not found', 404);
-    if (topic.creator_token !== creator_token) return errorResponse(req, 'Unauthorized', 403);
+    if (topicError) { console.error('Failed to load discussion topic:', topicError); return errorResponse('Topic lookup failed', 500); }
+    if (!topic) return errorResponse('Topic not found', 404);
+    if (topic.creator_token !== creator_token) return errorResponse('Unauthorized', 403);
 
     const allText = messages.join('\n');
-    if (allText.length > 50000) return errorResponse(req, 'Total message content too large', 400);
+    if (allText.length > 50000) return errorResponse('Total message content too large', 400);
 
     let systemPrompt = '';
     if (type === 'report') {
@@ -125,23 +116,23 @@ ${allText}`;
 
     if (!response.ok) {
       const status = response.status;
-      if (status === 429) return errorResponse(req, "请求过于频繁，请稍后再试", 429);
-      if (status === 402) return errorResponse(req, "AI 额度不足", 402);
+      if (status === 429) return errorResponse("请求过于频繁，请稍后再试", 429);
+      if (status === 402) return errorResponse("AI 额度不足", 402);
       const t = await response.text();
       console.error("AI error:", status, t);
-      return errorResponse(req, "AI 分析失败", 500);
+      return errorResponse("AI 分析失败", 500);
     }
 
     const data = await response.json();
     const result = data.choices?.[0]?.message?.content || '';
 
     return new Response(JSON.stringify({ result }), {
-      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("analyze-barrage error:", e);
     return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 500, headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
