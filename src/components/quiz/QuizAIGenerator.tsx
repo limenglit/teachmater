@@ -200,12 +200,19 @@ export default function QuizAIGenerator({
     }));
   };
 
+  const aiQuota = useAIQuota();
+
   const handleGenerate = async () => {
     const trimmedCourse = courseName.trim();
     const points = normalizeKnowledgePoints(knowledgeInput);
 
     if (isGuest || !userId) {
       toast({ title: t('quiz.ai.loginRequired'), variant: 'destructive' });
+      return;
+    }
+
+    if (!aiQuota.consume()) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }
 
