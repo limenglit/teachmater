@@ -51,7 +51,8 @@ export default function PPTPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const slidePreviewRef = useRef<HTMLDivElement>(null);
 
-  const guestRemaining = getGuestAIRemaining(isLoggedIn);
+  const aiQuota = useAIQuota();
+  const guestRemaining = aiQuota.remaining;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
