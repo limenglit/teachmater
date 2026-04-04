@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Sparkles, Plus, CheckCircle2, ListChecks, ToggleLeft, FileText, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { useAIQuota } from '@/hooks/useAIQuota';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
