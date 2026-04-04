@@ -21,15 +21,38 @@ function errorResponse(req: Request, message: string, status: number) {
   });
 }
 
+/* ── AI call with DeepSeek fallback on 402 ────────────────────── */
+async function callAIWithFallback(body: Record<string, unknown>): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+  const primary = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (primary.status !== 402) return primary;
+
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) return primary;
+
+  console.log("Lovable AI 402 → falling back to DeepSeek");
+  const fallbackBody = { ...body, model: "deepseek-chat" };
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify(fallbackBody),
+  });
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: getCorsHeaders(req) });
 
   try {
-    // Auth check - require valid user JWT
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return errorResponse(req, 'Unauthorized', 401);
-    }
+    if (!authHeader?.startsWith('Bearer ')) return errorResponse(req, 'Unauthorized', 401);
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -37,19 +60,13 @@ serve(async (req) => {
     );
     const token = authHeader.replace('Bearer ', '');
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return errorResponse(req, 'Unauthorized', 401);
-    }
+    if (claimsError || !claimsData?.claims) return errorResponse(req, 'Unauthorized', 401);
 
     const body = await req.json();
     const { cards } = body;
 
-    if (!Array.isArray(cards) || cards.length === 0) {
-      return errorResponse(req, 'Cards must be a non-empty array', 400);
-    }
-    if (cards.length > 500) {
-      return errorResponse(req, 'Too many cards (max 500)', 400);
-    }
+    if (!Array.isArray(cards) || cards.length === 0) return errorResponse(req, 'Cards must be a non-empty array', 400);
+    if (cards.length > 500) return errorResponse(req, 'Too many cards (max 500)', 400);
 
     const lines: string[] = [];
     for (const card of cards) {
@@ -58,18 +75,10 @@ serve(async (req) => {
         lines.push(`[${author}]: ${card.content.slice(0, 500)}`);
       }
     }
-
-    if (lines.length === 0) {
-      return errorResponse(req, 'No valid card content', 400);
-    }
+    if (lines.length === 0) return errorResponse(req, 'No valid card content', 400);
 
     const allText = lines.join('\n');
-    if (allText.length > 80000) {
-      return errorResponse(req, 'Total content too large', 400);
-    }
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (allText.length > 80000) return errorResponse(req, 'Total content too large', 400);
 
     const totalCards = cards.length;
     const uniqueAuthors = new Set(cards.map((c: any) => c.author_nickname || '匿名')).size;
@@ -101,20 +110,13 @@ serve(async (req) => {
 白板卡片内容：
 ${allText}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "请分析以上白板卡片内容，生成智能报告。" },
-        ],
-        stream: true,
-      }),
+    const response = await callAIWithFallback({
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: "请分析以上白板卡片内容，生成智能报告。" },
+      ],
+      stream: true,
     });
 
     if (!response.ok) {
@@ -122,11 +124,10 @@ ${allText}`;
       if (status === 429) return errorResponse(req, "请求过于频繁，请稍后再试", 429);
       if (status === 402) return errorResponse(req, "AI 额度不足", 402);
       const t = await response.text();
-      console.error("AI gateway error:", status, t);
+      console.error("AI error:", status, t);
       return errorResponse(req, "AI 分析失败", 500);
     }
 
-    // Pass through the SSE stream directly
     return new Response(response.body, {
       headers: { ...getCorsHeaders(req), "Content-Type": "text/event-stream" },
     });
