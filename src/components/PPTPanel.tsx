@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -102,6 +103,10 @@ export default function PPTPanel() {
       toast.error(t('ppt.contentRequired'));
       return;
     }
+    if (!isLoggedIn) {
+      toast.error('请先登录后再生成 PPT 大纲');
+      return;
+    }
     if (!aiQuota.consume()) {
       toast.error(t('ppt.guestLimitReached'));
       return;
@@ -109,30 +114,27 @@ export default function PPTPanel() {
 
     setLoading(true);
     try {
-      const { data: { session } } = await (await import('@/integrations/supabase/client')).supabase.auth.getSession();
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-ppt-outline`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          },
-          body: JSON.stringify({ content, audience }),
+      const { data, error } = await supabase.functions.invoke('generate-ppt-outline', {
+        body: { content, audience },
+      });
+
+      if (error) {
+        const message = error.message || '';
+        if (message.includes('401') || message.toLowerCase().includes('unauthorized')) {
+          toast.error('登录状态无效，请重新登录后再试');
+          return;
         }
-      );
-
-      if (response.status === 429) {
-        toast.error(t('ppt.rateLimited'));
-        return;
+        if (message.includes('402')) {
+          toast.error(t('ppt.paymentRequired'));
+          return;
+        }
+        if (message.includes('429')) {
+          toast.error(t('ppt.rateLimited'));
+          return;
+        }
+        throw error;
       }
-      if (response.status === 402) {
-        toast.error(t('ppt.paymentRequired'));
-        return;
-      }
-      if (!response.ok) throw new Error('Failed to generate');
 
-      const data = await response.json();
       if (data.outline) {
         setOutline(data.outline);
         setStep('design');
