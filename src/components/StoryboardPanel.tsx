@@ -132,7 +132,7 @@ export default function StoryboardPanel() {
     }
   };
 
-  const guestRemaining = getGuestAIRemaining(!!user);
+  const guestRemaining = aiQuota.remaining;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-3 sm:gap-4 p-3 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))] overflow-y-auto overflow-x-hidden">

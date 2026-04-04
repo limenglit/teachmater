@@ -273,9 +273,9 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
             <FileText className="w-16 h-16 mb-4 opacity-30" />
             <p className="text-lg mb-2">{t('board.reportPrompt')}</p>
             <p className="text-sm">{t('board.reportPromptSub').replace('{0}', String(cards.length))}</p>
-            {!isLoggedIn && (
+            {aiQuota.remaining >= 0 && (
               <p className="text-xs text-muted-foreground mt-3">
-                {t('ai.guestRemaining').replace('{0}', String(getGuestAIRemaining(false))).replace('{1}', String(GUEST_AI_DAILY_MAX))}
+                {t('ai.guestRemaining').replace('{0}', String(aiQuota.remaining)).replace('{1}', String(aiQuota.limit))}
               </p>
             )}
           </div>

@@ -215,9 +215,9 @@ export default function PPTPanel() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {!isLoggedIn && (
+          {aiQuota.remaining >= 0 && (
             <span className="text-xs text-muted-foreground">
-              {t('ppt.guestRemaining')}: {guestRemaining}/{GUEST_AI_DAILY_MAX}
+              {t('ppt.guestRemaining')}: {aiQuota.remaining}/{aiQuota.limit}
             </span>
           )}
           <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>

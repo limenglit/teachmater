@@ -283,7 +283,7 @@ export default function BarrageDiscussion() {
       toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成词云', variant: 'destructive' });
       return;
     }
-    if (!recordGuestAIUsage(isLoggedIn)) {
+    if (!aiQuota.consume()) {
       toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }
