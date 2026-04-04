@@ -22,7 +22,7 @@ import PPTImageManager from './ppt/PPTImageManager';
 import PPTDraggableImage from './ppt/PPTDraggableImage';
 import PPTEditableText from './ppt/PPTEditableText';
 import PPTPresenter from './ppt/PPTPresenter';
-import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
+import { useAIQuota } from '@/hooks/useAIQuota';
 
 type Step = 'input' | 'design' | 'preview';
 

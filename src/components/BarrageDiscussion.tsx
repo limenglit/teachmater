@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
-import { recordGuestAIUsage } from '@/lib/guest-ai-limit';
+import { useAIQuota } from '@/hooks/useAIQuota';
 import RosterQuickBind from '@/components/RosterQuickBind';
 import ClassRosterPicker from './ClassRosterPicker';
 import { downloadSvgAsPng } from '@/lib/qr-download';

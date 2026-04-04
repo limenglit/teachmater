@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { X, Download, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from '@/hooks/use-toast';
-import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
+import { useAIQuota } from '@/hooks/useAIQuota';
 import type { BoardCard } from '@/components/BoardPanel';
 
 interface Props {
