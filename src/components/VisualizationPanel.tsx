@@ -11,7 +11,7 @@ import InfographicRenderer from './visual/InfographicRenderer';
 import DataChartRenderer from './visual/DataChartRenderer';
 import ExportButtons from './ExportButtons';
 import { type AnalysisResult, type TemplateStyle, type ChartType, type StructureType, type VisualHistoryItem, type VisualSettings, DEFAULT_VISUAL_SETTINGS } from './visual/visualTypes';
-import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
+import { useAIQuota } from '@/hooks/useAIQuota';
 
 const HISTORY_KEY = 'visual_history';
 
@@ -28,6 +28,7 @@ function saveHistory(items: VisualHistoryItem[]) {
 export default function VisualizationPanel() {
   const { t, lang } = useLanguage();
   const { user } = useAuth();
+  const aiQuota = useAIQuota();
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [colorScheme, setColorScheme] = useState('ocean');
@@ -41,12 +42,9 @@ export default function VisualizationPanel() {
   const exportRef = useRef<HTMLDivElement>(null);
 
   const handleAnalyze = useCallback(async (text: string) => {
-    if (!user) {
-      const remaining = getGuestAIRemaining(false);
-      if (remaining <= 0) {
-        toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
-        return;
-      }
+    if (aiQuota.remaining === 0) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
+      return;
     }
     setLoading(true);
     setInputText(text);
@@ -78,7 +76,7 @@ export default function VisualizationPanel() {
       setStructureType(result.structure_type);
       setChartType(result.suggested_chart === 'none' ? 'bar' : result.suggested_chart);
 
-      if (!user) recordGuestAIUsage(false);
+      aiQuota.consume();
 
       // Save to history
       const item: VisualHistoryItem = {

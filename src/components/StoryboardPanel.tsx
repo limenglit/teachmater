@@ -9,7 +9,7 @@ import StoryboardPreview from './storyboard/StoryboardPreview';
 import StoryboardTemplates from './storyboard/StoryboardTemplates';
 import StoryboardHistory from './storyboard/StoryboardHistory';
 import { StoryboardParams, StoryboardResult, DEFAULT_PARAMS, TextOverlay, TEMPLATES } from './storyboard/types';
-import { getGuestAIRemaining, recordGuestAIUsage } from '@/lib/guest-ai-limit';
+import { useAIQuota } from '@/hooks/useAIQuota';
 import { safeUUID } from './storyboard/TextOverlayEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { Pencil } from 'lucide-react';
@@ -45,15 +45,16 @@ export default function StoryboardPanel() {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(newHistory));
   };
 
+  const aiQuota = useAIQuota();
+
   const handleGenerate = async () => {
     if (!params.theme.trim()) {
       toast.error(t('storyboard.themeRequired'));
       return;
     }
 
-    // Check guest limit
-    const remaining = getGuestAIRemaining(!!user);
-    if (remaining === 0) {
+    // Check AI limit
+    if (aiQuota.remaining === 0) {
       toast.error(t('storyboard.guestLimitReached'));
       return;
     }
@@ -84,7 +85,7 @@ export default function StoryboardPanel() {
         setPrompt(data.prompt || '');
 
         // Record guest usage
-        recordGuestAIUsage(!!user);
+        aiQuota.consume();
 
         // Add to history
         const newResult: StoryboardResult = {
@@ -131,7 +132,7 @@ export default function StoryboardPanel() {
     }
   };
 
-  const guestRemaining = getGuestAIRemaining(!!user);
+  const guestRemaining = aiQuota.remaining;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col xl:flex-row gap-3 sm:gap-4 p-3 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))] overflow-y-auto overflow-x-hidden">

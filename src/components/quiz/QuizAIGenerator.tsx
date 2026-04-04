@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { Sparkles, Plus, CheckCircle2, ListChecks, ToggleLeft, FileText, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { useAIQuota } from '@/hooks/useAIQuota';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -199,12 +200,19 @@ export default function QuizAIGenerator({
     }));
   };
 
+  const aiQuota = useAIQuota();
+
   const handleGenerate = async () => {
     const trimmedCourse = courseName.trim();
     const points = normalizeKnowledgePoints(knowledgeInput);
 
     if (isGuest || !userId) {
       toast({ title: t('quiz.ai.loginRequired'), variant: 'destructive' });
+      return;
+    }
+
+    if (!aiQuota.consume()) {
+      toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }
 

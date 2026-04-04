@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
-import { recordGuestAIUsage } from '@/lib/guest-ai-limit';
+import { useAIQuota } from '@/hooks/useAIQuota';
 import RosterQuickBind from '@/components/RosterQuickBind';
 import ClassRosterPicker from './ClassRosterPicker';
 import { downloadSvgAsPng } from '@/lib/qr-download';
@@ -252,12 +252,14 @@ export default function BarrageDiscussion() {
     setVisibleMessages(latest);
   }, [messages, isPlaying]);
 
+  const aiQuota = useAIQuota();
+
   const handleReport = async () => {
     if (messages.length < 3) {
       toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成报告', variant: 'destructive' });
       return;
     }
-    if (!recordGuestAIUsage(isLoggedIn)) {
+    if (!aiQuota.consume()) {
       toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }
@@ -281,7 +283,7 @@ export default function BarrageDiscussion() {
       toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成词云', variant: 'destructive' });
       return;
     }
-    if (!recordGuestAIUsage(isLoggedIn)) {
+    if (!aiQuota.consume()) {
       toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }

@@ -22,7 +22,7 @@ import PPTImageManager from './ppt/PPTImageManager';
 import PPTDraggableImage from './ppt/PPTDraggableImage';
 import PPTEditableText from './ppt/PPTEditableText';
 import PPTPresenter from './ppt/PPTPresenter';
-import { getGuestAIRemaining, recordGuestAIUsage, GUEST_AI_DAILY_MAX } from '@/lib/guest-ai-limit';
+import { useAIQuota } from '@/hooks/useAIQuota';
 
 type Step = 'input' | 'design' | 'preview';
 
@@ -51,7 +51,8 @@ export default function PPTPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const slidePreviewRef = useRef<HTMLDivElement>(null);
 
-  const guestRemaining = getGuestAIRemaining(isLoggedIn);
+  const aiQuota = useAIQuota();
+  const guestRemaining = aiQuota.remaining;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,11 +102,7 @@ export default function PPTPanel() {
       toast.error(t('ppt.contentRequired'));
       return;
     }
-    if (!isLoggedIn && guestRemaining <= 0) {
-      toast.error(t('ppt.guestLimitReached'));
-      return;
-    }
-    if (!isLoggedIn && !recordGuestAIUsage(false)) {
+    if (!aiQuota.consume()) {
       toast.error(t('ppt.guestLimitReached'));
       return;
     }
@@ -218,9 +215,9 @@ export default function PPTPanel() {
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {!isLoggedIn && (
+          {aiQuota.remaining >= 0 && (
             <span className="text-xs text-muted-foreground">
-              {t('ppt.guestRemaining')}: {guestRemaining}/{GUEST_AI_DAILY_MAX}
+              {t('ppt.guestRemaining')}: {aiQuota.remaining}/{aiQuota.limit}
             </span>
           )}
           <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)}>
