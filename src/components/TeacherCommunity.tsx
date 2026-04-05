@@ -62,8 +62,8 @@ function getDocEmoji(ext: string): string {
 
 function openFilePreview(fileUrl: string, previewType: string) {
   if (previewType === 'document') {
-    // Use Google Docs Viewer for Office files (PPT, DOC, XLS etc.)
-    const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=false`;
+    // Use Microsoft Office Online Viewer — works in mainland China (Google is blocked)
+    const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
     window.open(viewerUrl, '_blank', 'noopener,noreferrer');
   } else {
     // For PDF, images, audio, video — open directly in new tab (browser handles natively)
@@ -126,7 +126,7 @@ function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: s
           )}
           {previewing && previewType === 'document' && (
             <iframe
-              src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+              src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`}
               className="w-full rounded-lg border border-border mt-1"
               style={{ height: '500px' }}
               title={`Document preview - ${postId}`}
