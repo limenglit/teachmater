@@ -648,7 +648,7 @@ export default function BoardPanel() {
         <Dialog open={showQR} onOpenChange={setShowQR}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>{t('board.qrcode')}</DialogTitle></DialogHeader>
-            <QRActionPanel url={submitUrl} title={activeBoard.title} qrPreviewRef={qrPreviewRef} />
+            <QRActionPanel url={submitUrl} qrPreviewRef={qrPreviewRef} />
           </DialogContent>
         </Dialog>
 
@@ -658,7 +658,7 @@ export default function BoardPanel() {
             <DialogHeader><DialogTitle>{t('board.selectClass')}</DialogTitle></DialogHeader>
             <div className="space-y-2">
               {sidebarStudents.length > 0 && (
-                <button onClick={() => handleSelectClass(sidebarStudents)} className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors">
+                <button onClick={() => handleSelectClass(sidebarStudents.map(s => typeof s === 'string' ? s : s.name))} className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4 text-primary" />
