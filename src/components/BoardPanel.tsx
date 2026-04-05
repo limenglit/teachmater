@@ -1036,14 +1036,15 @@ export default function BoardPanel() {
               >
                 <div className="min-w-0 mb-3">
                   <div className="text-sm font-medium text-foreground truncate mb-1">{board.title}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                     {new Date(board.created_at).toLocaleDateString()}
-                    {board.is_locked && <span className="ml-2">🔒</span>}
+                    {board.is_collaborative && <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px]">🎨 协同</span>}
+                    {board.is_locked && <span className="ml-1">🔒</span>}
                     {board.moderation_enabled && <span className="ml-1">👁</span>}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground capitalize">{board.view_mode}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize">{board.is_collaborative ? '协同画布' : board.view_mode}</span>
                   <Button
                     variant="ghost"
                     size="sm"
