@@ -648,7 +648,7 @@ export default function BoardPanel() {
         <Dialog open={showQR} onOpenChange={setShowQR}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>{t('board.qrcode')}</DialogTitle></DialogHeader>
-            <QRActionPanel url={submitUrl} qrPreviewRef={qrPreviewRef} />
+            <QRActionPanel url={submitUrl} qrContainerRef={qrPreviewRef} />
           </DialogContent>
         </Dialog>
 
