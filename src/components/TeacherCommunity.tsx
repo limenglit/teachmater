@@ -60,12 +60,24 @@ function getDocEmoji(ext: string): string {
   return '📎';
 }
 
+function openFilePreview(fileUrl: string, previewType: string) {
+  if (previewType === 'document') {
+    // Use Google Docs Viewer for Office files (PPT, DOC, XLS etc.)
+    const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=false`;
+    window.open(viewerUrl, '_blank', 'noopener,noreferrer');
+  } else {
+    // For PDF, images, audio, video — open directly in new tab (browser handles natively)
+    window.open(fileUrl, '_blank', 'noopener,noreferrer');
+  }
+}
+
 function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: string; fileName: string; linkUrl: string; postId: string }) {
   const [previewing, setPreviewing] = useState(false);
   const previewType = fileUrl ? getPreviewType(fileName || fileUrl) : 'none';
   const displayName = fileName || '下载';
   const ext = getFileExt(fileName || fileUrl);
   const canPreviewInline = ['audio', 'video', 'image', 'pdf'].includes(previewType);
+  const canOpen = previewType !== 'none';
 
   return (
     <div className="mt-3 flex flex-col gap-2">
@@ -74,14 +86,26 @@ function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: s
           <div className="text-sm text-foreground flex items-center gap-2 flex-wrap">
             <span className="font-semibold">附件：</span>
             <span className="text-lg">{getDocEmoji(ext)}</span>
-            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary inline-flex items-center gap-1">
-              <Download className="w-3 h-3" /> {displayName}
-            </a>
-            {canPreviewInline && (
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setPreviewing(!previewing)}>
-                {previewing ? <><EyeOff className="w-3 h-3 mr-1" />关闭预览</> : <><Eye className="w-3 h-3 mr-1" />在线预览</>}
+            <span className="text-foreground">{displayName}</span>
+            {canOpen && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-primary"
+                onClick={() => openFilePreview(fileUrl, previewType)}
+              >
+                <Eye className="w-3 h-3 mr-1" />
+                {previewType === 'video' || previewType === 'audio' ? '播放' : '预览'}
               </Button>
             )}
+            {canPreviewInline && (
+              <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setPreviewing(!previewing)}>
+                {previewing ? <><EyeOff className="w-3 h-3 mr-1" />收起</> : <><Eye className="w-3 h-3 mr-1" />展开预览</>}
+              </Button>
+            )}
+            <a href={fileUrl} download className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1">
+              <Download className="w-3 h-3" /> 下载
+            </a>
           </div>
           {previewing && previewType === 'audio' && (
             <audio src={fileUrl} controls className="w-full mt-1" preload="metadata" />
@@ -98,6 +122,14 @@ function FilePreviewSection({ fileUrl, fileName, linkUrl, postId }: { fileUrl: s
               className="w-full rounded-lg border border-border mt-1"
               style={{ height: '500px' }}
               title={`PDF preview - ${postId}`}
+            />
+          )}
+          {previewing && previewType === 'document' && (
+            <iframe
+              src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+              className="w-full rounded-lg border border-border mt-1"
+              style={{ height: '500px' }}
+              title={`Document preview - ${postId}`}
             />
           )}
         </>
