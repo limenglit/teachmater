@@ -33,6 +33,7 @@ export interface Board {
   banned_words: string;
   created_at: string;
   student_names: string[];
+  is_collaborative?: boolean;
 }
 
 export interface BoardCard {
@@ -117,6 +118,7 @@ export default function BoardPanel() {
   const [showRoster, setShowRoster] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
   const [newTitle, setNewTitle] = useState('');
+  const [newCollaborative, setNewCollaborative] = useState(false);
   const [storyCount, setStoryCount] = useState(4);
   const [storyThemes, setStoryThemes] = useState('');
   const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
@@ -166,7 +168,7 @@ export default function BoardPanel() {
   const createBoard = async () => {
     const title = newTitle.trim() || t('board.title');
     if (isCloud) {
-      const insertData: any = { title };
+      const insertData: any = { title, is_collaborative: newCollaborative };
       if (user) insertData.user_id = user.id;
       const { data, error } = await supabase.from('boards').insert(insertData).select().single();
       if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
@@ -174,6 +176,7 @@ export default function BoardPanel() {
       saveCreatorToken(board.id, board.creator_token);
       setBoards(prev => [board, ...prev]);
       setNewTitle('');
+      setNewCollaborative(false);
     } else {
       const board: Board = {
         id: crypto.randomUUID(),
@@ -188,6 +191,7 @@ export default function BoardPanel() {
         banned_words: '',
         created_at: new Date().toISOString(),
         student_names: [],
+        is_collaborative: false,
       };
       const updated = [board, ...boards];
       saveLocalBoards(updated);
