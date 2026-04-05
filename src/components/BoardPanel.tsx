@@ -592,6 +592,100 @@ export default function BoardPanel() {
     return <BoardPPTMode cards={sortedCards} onExit={() => setShowPPT(false)} />;
   }
 
+  // Collaborative board view
+  if (activeBoard && activeBoard.is_collaborative) {
+    const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab`;
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    return (
+      <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
+          <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
+            <ArrowLeft className="w-4 h-4" /> {t('board.back')}
+          </Button>
+          <h2 className="font-semibold text-foreground text-sm truncate">{activeBoard.title}</h2>
+          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Palette className="w-3 h-3" /> 在线协同
+          </span>
+          {activeBoard.is_locked && (
+            <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Lock className="w-3 h-3" /> {t('board.locked')}
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
+            {isCreator && (
+              <>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowQR(true)}>
+                  <QrCode className="w-3 h-3" /> {t('board.qrcode')}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={() => { loadClassesForSelect(); setShowRoster(true); }}
+                >
+                  <Users className="w-3 h-3" />
+                  {activeBoard.student_names?.length > 0
+                    ? tFormat(t('board.studentCount'), activeBoard.student_names.length)
+                    : t('board.selectClass')}
+                </Button>
+                <Button
+                  variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
+                >
+                  {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                  {activeBoard.is_locked ? t('board.unlock') : t('board.lock')}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        <CollaborativeCanvas
+          boardId={activeBoard.id}
+          nickname={user?.email?.split('@')[0] || '教师'}
+          isCreator={isCreator}
+          isLocked={activeBoard.is_locked}
+          creatorToken={getCreatorToken(activeBoard.id)}
+        />
+
+        {/* QR dialog */}
+        <Dialog open={showQR} onOpenChange={setShowQR}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>{t('board.qrcode')}</DialogTitle></DialogHeader>
+            <QRActionPanel url={submitUrl} title={activeBoard.title} qrPreviewRef={qrPreviewRef} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Roster dialog */}
+        <Dialog open={showRoster} onOpenChange={setShowRoster}>
+          <DialogContent className="max-w-md max-h-[70vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{t('board.selectClass')}</DialogTitle></DialogHeader>
+            <div className="space-y-2">
+              {sidebarStudents.length > 0 && (
+                <button onClick={() => handleSelectClass(sidebarStudents)} className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">{t('board.useSidebarList')}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{sidebarStudents.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              )}
+              {classesForSelect.map(cls => (
+                <button key={cls.id} onClick={() => handleSelectClass(cls.students)} className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors" disabled={cls.students.length === 0}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{cls.name}</span>
+                      {cls.collegeName && <span className="text-xs text-muted-foreground ml-2">{cls.collegeName}</span>}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{cls.students.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
   // Board detail view
   if (activeBoard) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/submit`;
