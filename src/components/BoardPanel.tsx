@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard, Archive, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard, Archive, Loader2, Palette } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
 import BoardTimelineView from './board/BoardTimelineView';
@@ -16,6 +16,7 @@ import BoardPPTMode from './board/BoardPPTMode';
 import BoardCardForm from './board/BoardCardForm';
 import BoardWordCloud from './board/BoardWordCloud';
 import BoardReport from './board/BoardReport';
+import CollaborativeCanvas from './board/CollaborativeCanvas';
 import { tFormat } from '@/contexts/LanguageContext';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
@@ -33,6 +34,7 @@ export interface Board {
   banned_words: string;
   created_at: string;
   student_names: string[];
+  is_collaborative?: boolean;
 }
 
 export interface BoardCard {
@@ -117,6 +119,7 @@ export default function BoardPanel() {
   const [showRoster, setShowRoster] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
   const [newTitle, setNewTitle] = useState('');
+  const [newCollaborative, setNewCollaborative] = useState(false);
   const [storyCount, setStoryCount] = useState(4);
   const [storyThemes, setStoryThemes] = useState('');
   const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
@@ -166,7 +169,7 @@ export default function BoardPanel() {
   const createBoard = async () => {
     const title = newTitle.trim() || t('board.title');
     if (isCloud) {
-      const insertData: any = { title };
+      const insertData: any = { title, is_collaborative: newCollaborative };
       if (user) insertData.user_id = user.id;
       const { data, error } = await supabase.from('boards').insert(insertData).select().single();
       if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
@@ -174,6 +177,7 @@ export default function BoardPanel() {
       saveCreatorToken(board.id, board.creator_token);
       setBoards(prev => [board, ...prev]);
       setNewTitle('');
+      setNewCollaborative(false);
     } else {
       const board: Board = {
         id: crypto.randomUUID(),
@@ -188,6 +192,7 @@ export default function BoardPanel() {
         banned_words: '',
         created_at: new Date().toISOString(),
         student_names: [],
+        is_collaborative: false,
       };
       const updated = [board, ...boards];
       saveLocalBoards(updated);
@@ -587,6 +592,100 @@ export default function BoardPanel() {
     return <BoardPPTMode cards={sortedCards} onExit={() => setShowPPT(false)} />;
   }
 
+  // Collaborative board view
+  if (activeBoard && activeBoard.is_collaborative) {
+    const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab`;
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    return (
+      <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
+          <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
+            <ArrowLeft className="w-4 h-4" /> {t('board.back')}
+          </Button>
+          <h2 className="font-semibold text-foreground text-sm truncate">{activeBoard.title}</h2>
+          <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Palette className="w-3 h-3" /> 在线协同
+          </span>
+          {activeBoard.is_locked && (
+            <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Lock className="w-3 h-3" /> {t('board.locked')}
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-1 flex-wrap justify-end">
+            {isCreator && (
+              <>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowQR(true)}>
+                  <QrCode className="w-3 h-3" /> {t('board.qrcode')}
+                </Button>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={() => { loadClassesForSelect(); setShowRoster(true); }}
+                >
+                  <Users className="w-3 h-3" />
+                  {activeBoard.student_names?.length > 0
+                    ? tFormat(t('board.studentCount'), activeBoard.student_names.length)
+                    : t('board.selectClass')}
+                </Button>
+                <Button
+                  variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
+                >
+                  {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                  {activeBoard.is_locked ? t('board.unlock') : t('board.lock')}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+        <CollaborativeCanvas
+          boardId={activeBoard.id}
+          nickname={user?.email?.split('@')[0] || '教师'}
+          isCreator={isCreator}
+          isLocked={activeBoard.is_locked}
+          creatorToken={getCreatorToken(activeBoard.id)}
+        />
+
+        {/* QR dialog */}
+        <Dialog open={showQR} onOpenChange={setShowQR}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>{t('board.qrcode')}</DialogTitle></DialogHeader>
+            <QRActionPanel url={submitUrl} qrContainerRef={qrPreviewRef} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Roster dialog */}
+        <Dialog open={showRoster} onOpenChange={setShowRoster}>
+          <DialogContent className="max-w-md max-h-[70vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{t('board.selectClass')}</DialogTitle></DialogHeader>
+            <div className="space-y-2">
+              {sidebarStudents.length > 0 && (
+                <button onClick={() => handleSelectClass(sidebarStudents.map(s => typeof s === 'string' ? s : s.name))} className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">{t('board.useSidebarList')}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{sidebarStudents.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              )}
+              {classesForSelect.map(cls => (
+                <button key={cls.id} onClick={() => handleSelectClass(cls.students)} className="w-full text-left p-3 rounded-lg border border-border hover:bg-muted transition-colors" disabled={cls.students.length === 0}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-sm font-medium text-foreground">{cls.name}</span>
+                      {cls.collegeName && <span className="text-xs text-muted-foreground ml-2">{cls.collegeName}</span>}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{cls.students.length} {t('sidebar.persons')}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
   // Board detail view
   if (activeBoard) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/submit`;
@@ -875,17 +974,29 @@ export default function BoardPanel() {
         </h3>
 
         {/* Create new board */}
-        <div className="flex gap-3 mb-4">
-          <Input
-            value={newTitle}
-            onChange={e => setNewTitle(e.target.value)}
-            placeholder={t('board.boardTitle')}
-            className="h-10"
-            onKeyDown={e => e.key === 'Enter' && createBoard()}
-          />
-          <Button onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
-            <Plus className="w-4 h-4" /> {t('board.create')}
-          </Button>
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex gap-3">
+            <Input
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder={t('board.boardTitle')}
+              className="h-10"
+              onKeyDown={e => e.key === 'Enter' && createBoard()}
+            />
+            <Button onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
+              <Plus className="w-4 h-4" /> {t('board.create')}
+            </Button>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={newCollaborative}
+              onChange={e => setNewCollaborative(e.target.checked)}
+              className="w-4 h-4 rounded border-primary accent-primary"
+            />
+            <span className="text-sm text-foreground">🎨 在线协同白板</span>
+            <span className="text-xs text-muted-foreground">（支持多人实时绘图协作）</span>
+          </label>
         </div>
 
         {!isCloud && (
@@ -925,14 +1036,15 @@ export default function BoardPanel() {
               >
                 <div className="min-w-0 mb-3">
                   <div className="text-sm font-medium text-foreground truncate mb-1">{board.title}</div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                     {new Date(board.created_at).toLocaleDateString()}
-                    {board.is_locked && <span className="ml-2">🔒</span>}
+                    {board.is_collaborative && <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px]">🎨 协同</span>}
+                    {board.is_locked && <span className="ml-1">🔒</span>}
                     {board.moderation_enabled && <span className="ml-1">👁</span>}
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground capitalize">{board.view_mode}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize">{board.is_collaborative ? '协同画布' : board.view_mode}</span>
                   <Button
                     variant="ghost"
                     size="sm"

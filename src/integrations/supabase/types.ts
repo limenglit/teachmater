@@ -208,6 +208,47 @@ export type Database = {
           },
         ]
       }
+      board_strokes: {
+        Row: {
+          board_id: string
+          color: string
+          created_at: string
+          id: string
+          stroke_data: Json
+          stroke_width: number
+          tool: string
+          user_nickname: string
+        }
+        Insert: {
+          board_id: string
+          color?: string
+          created_at?: string
+          id?: string
+          stroke_data?: Json
+          stroke_width?: number
+          tool?: string
+          user_nickname?: string
+        }
+        Update: {
+          board_id?: string
+          color?: string
+          created_at?: string
+          id?: string
+          stroke_data?: Json
+          stroke_width?: number
+          tool?: string
+          user_nickname?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_strokes_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       boards: {
         Row: {
           background_color: string
@@ -217,6 +258,7 @@ export type Database = {
           creator_token: string
           description: string
           id: string
+          is_collaborative: boolean
           is_locked: boolean
           moderation_enabled: boolean
           student_names: Json | null
@@ -232,6 +274,7 @@ export type Database = {
           creator_token?: string
           description?: string
           id?: string
+          is_collaborative?: boolean
           is_locked?: boolean
           moderation_enabled?: boolean
           student_names?: Json | null
@@ -247,6 +290,7 @@ export type Database = {
           creator_token?: string
           description?: string
           id?: string
+          is_collaborative?: boolean
           is_locked?: boolean
           moderation_enabled?: boolean
           student_names?: Json | null
@@ -1170,12 +1214,20 @@ export type Database = {
         Returns: undefined
       }
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
+      clear_board_strokes: {
+        Args: { p_board_id: string; p_token: string }
+        Returns: undefined
+      }
       delete_badge: {
         Args: { p_badge_id: string; p_token: string }
         Returns: undefined
       }
       delete_board: {
         Args: { p_board_id: string; p_token: string }
+        Returns: undefined
+      }
+      delete_board_stroke: {
+        Args: { p_board_id: string; p_stroke_id: string; p_token: string }
         Returns: undefined
       }
       delete_poll: {
