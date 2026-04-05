@@ -879,17 +879,29 @@ export default function BoardPanel() {
         </h3>
 
         {/* Create new board */}
-        <div className="flex gap-3 mb-4">
-          <Input
-            value={newTitle}
-            onChange={e => setNewTitle(e.target.value)}
-            placeholder={t('board.boardTitle')}
-            className="h-10"
-            onKeyDown={e => e.key === 'Enter' && createBoard()}
-          />
-          <Button onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
-            <Plus className="w-4 h-4" /> {t('board.create')}
-          </Button>
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex gap-3">
+            <Input
+              value={newTitle}
+              onChange={e => setNewTitle(e.target.value)}
+              placeholder={t('board.boardTitle')}
+              className="h-10"
+              onKeyDown={e => e.key === 'Enter' && createBoard()}
+            />
+            <Button onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
+              <Plus className="w-4 h-4" /> {t('board.create')}
+            </Button>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={newCollaborative}
+              onChange={e => setNewCollaborative(e.target.checked)}
+              className="w-4 h-4 rounded border-primary accent-primary"
+            />
+            <span className="text-sm text-foreground">🎨 在线协同白板</span>
+            <span className="text-xs text-muted-foreground">（支持多人实时绘图协作）</span>
+          </label>
         </div>
 
         {!isCloud && (
