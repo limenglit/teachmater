@@ -23,6 +23,7 @@ const BoardSubmitPage = lazyRetry(() => import("./pages/BoardSubmitPage"));
 const QuizSubmitPage = lazyRetry(() => import("./pages/QuizSubmitPage"));
 const PollVotePage = lazyRetry(() => import("./pages/PollVotePage"));
 const TaskSubmitPage = lazyRetry(() => import("./pages/TaskSubmitPage"));
+const CollabBoardPage = lazyRetry(() => import("./pages/CollabBoardPage"));
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/seat-checkin/:sessionId" element={<Suspense fallback={<Loading />}><SeatCheckinPage /></Suspense>} />
                 <Route path="/board/:boardId" element={<Suspense fallback={<Loading />}><BoardPage /></Suspense>} />
                 <Route path="/board/:boardId/submit" element={<Suspense fallback={<Loading />}><BoardSubmitPage /></Suspense>} />
+                <Route path="/board/:boardId/collab" element={<Suspense fallback={<Loading />}><CollabBoardPage /></Suspense>} />
                 <Route path="/quiz/:sessionId" element={<Suspense fallback={<Loading />}><QuizSubmitPage /></Suspense>} />
                 <Route path="/poll/:pollId" element={<Suspense fallback={<Loading />}><PollVotePage /></Suspense>} />
                 <Route path="/task/:sessionId" element={<Suspense fallback={<Loading />}><TaskSubmitPage /></Suspense>} />
