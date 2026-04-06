@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import {
-  Pen, Eraser, Square, Circle, ArrowRight, Type, Undo2, Redo2,
-  Trash2, MousePointer, Minus, Download, Users, ZoomIn, ZoomOut,
+  Pen, Eraser, Square, Circle, ArrowRight, Type, Undo2,
+  Trash2, MousePointer, Minus, Download, Users, ZoomIn, ZoomOut, ImagePlus,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-type Tool = 'select' | 'pen' | 'eraser' | 'rect' | 'circle' | 'arrow' | 'line' | 'text';
+type Tool = 'select' | 'pen' | 'eraser' | 'rect' | 'circle' | 'arrow' | 'line' | 'text' | 'image';
 
 interface StrokeData {
   tool: Tool;
@@ -19,6 +19,7 @@ interface StrokeData {
   x1?: number; y1?: number; x2?: number; y2?: number;
   text?: string;
   fontSize?: number;
+  imageUrl?: string;
 }
 
 interface Stroke {
@@ -49,6 +50,7 @@ interface Props {
 export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLocked, creatorToken }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState('#000000');
@@ -66,6 +68,15 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
+
+  // Image cache for rendering
+  const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
+  // Image drag state
+  const [draggingImage, setDraggingImage] = useState<{ strokeId: string; offsetX: number; offsetY: number } | null>(null);
+  // Image resize state
+  const [resizingImage, setResizingImage] = useState<{ strokeId: string; corner: string; origX: number; origY: number; origW: number; origH: number; startX: number; startY: number } | null>(null);
+  // Uploading state
+  const [uploading, setUploading] = useState(false);
 
   // Load existing strokes
   useEffect(() => {
@@ -105,6 +116,15 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         const oldId = (payload.old as any).id;
         setStrokes(prev => prev.filter(s => s.id !== oldId));
       })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'board_strokes',
+        filter: `board_id=eq.${boardId}`,
+      }, (payload) => {
+        const updated = payload.new as unknown as Stroke;
+        setStrokes(prev => prev.map(s => s.id === updated.id ? updated : s));
+      })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = Object.values(state).flat().map((p: any) => p.nickname as string);
@@ -119,6 +139,29 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     return () => { supabase.removeChannel(channel); };
   }, [boardId, nickname]);
 
+  // Preload images into cache
+  const loadImage = useCallback((url: string): Promise<HTMLImageElement> => {
+    const cached = imageCache.current.get(url);
+    if (cached && cached.complete) return Promise.resolve(cached);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => { imageCache.current.set(url, img); resolve(img); };
+      img.onerror = () => resolve(img);
+      img.src = url;
+      imageCache.current.set(url, img);
+    });
+  }, []);
+
+  // Preload all image strokes
+  useEffect(() => {
+    strokes.forEach(s => {
+      if (s.tool === 'image' && (s.stroke_data as StrokeData).imageUrl) {
+        loadImage((s.stroke_data as StrokeData).imageUrl!);
+      }
+    });
+  }, [strokes, loadImage]);
+
   // Render canvas
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -132,7 +175,6 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
-    // Clear
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
@@ -252,6 +294,44 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     } else if (stroke.tool === 'text' && d.text) {
       ctx.font = `${d.fontSize || 16}px sans-serif`;
       ctx.fillText(d.text, d.x!, d.y!);
+    } else if (stroke.tool === 'image' && d.imageUrl) {
+      const img = imageCache.current.get(d.imageUrl);
+      if (img && img.complete && img.naturalWidth > 0) {
+        const ix = d.x ?? 0;
+        const iy = d.y ?? 0;
+        const iw = d.w ?? 200;
+        const ih = d.h ?? 150;
+        ctx.drawImage(img, ix, iy, iw, ih);
+        // Draw border & resize handles when select tool is active
+        if (tool === 'select' || tool === 'image') {
+          ctx.save();
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 1.5 / zoom;
+          ctx.setLineDash([4 / zoom, 4 / zoom]);
+          ctx.strokeRect(ix, iy, iw, ih);
+          ctx.setLineDash([]);
+          // Corner handles
+          const hs = 6 / zoom;
+          ctx.fillStyle = '#3b82f6';
+          for (const [cx, cy] of [[ix, iy], [ix + iw, iy], [ix, iy + ih], [ix + iw, iy + ih]]) {
+            ctx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs);
+          }
+          ctx.restore();
+        }
+      } else {
+        // Draw placeholder while loading
+        ctx.save();
+        ctx.strokeStyle = '#d1d5db';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(d.x ?? 0, d.y ?? 0, d.w ?? 200, d.h ?? 150);
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('加载中...', (d.x ?? 0) + (d.w ?? 200) / 2, (d.y ?? 0) + (d.h ?? 150) / 2);
+        ctx.restore();
+      }
     }
   }
 
@@ -290,7 +370,6 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     if (error) {
       console.error('Save stroke error:', error);
     } else if (data) {
-      // Local insert handled by realtime, but add immediately for snappiness
       setStrokes(prev => {
         if (prev.find(s => s.id === (data as any).id)) return prev;
         return [...prev, data as unknown as Stroke];
@@ -298,22 +377,148 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
   }
 
+  // Find image stroke at a given canvas coordinate
+  function findImageAt(x: number, y: number): Stroke | null {
+    // Search in reverse (top-most first)
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      const s = strokes[i];
+      if (s.tool !== 'image') continue;
+      const d = s.stroke_data as StrokeData;
+      const ix = d.x ?? 0, iy = d.y ?? 0, iw = d.w ?? 200, ih = d.h ?? 150;
+      if (x >= ix && x <= ix + iw && y >= iy && y <= iy + ih) return s;
+    }
+    return null;
+  }
+
+  // Check if clicking a resize handle
+  function findResizeHandle(x: number, y: number): { stroke: Stroke; corner: string } | null {
+    const hs = 10 / zoom;
+    for (let i = strokes.length - 1; i >= 0; i--) {
+      const s = strokes[i];
+      if (s.tool !== 'image') continue;
+      const d = s.stroke_data as StrokeData;
+      const ix = d.x ?? 0, iy = d.y ?? 0, iw = d.w ?? 200, ih = d.h ?? 150;
+      const corners: [number, number, string][] = [
+        [ix, iy, 'tl'], [ix + iw, iy, 'tr'],
+        [ix, iy + ih, 'bl'], [ix + iw, iy + ih, 'br'],
+      ];
+      for (const [cx, cy, corner] of corners) {
+        if (Math.abs(x - cx) < hs && Math.abs(y - cy) < hs) {
+          return { stroke: s, corner };
+        }
+      }
+    }
+    return null;
+  }
+
+  // Upload image file
+  async function handleImageUpload(file: File) {
+    if (!file.type.startsWith('image/')) {
+      toast({ title: '仅支持图片文件', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: '图片不能超过10MB', variant: 'destructive' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `collab/${boardId}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('board-media')
+        .upload(path, file, { upsert: false });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(path);
+      const imageUrl = urlData.publicUrl;
+
+      // Get image natural dimensions to set aspect ratio
+      const img = await loadImage(imageUrl);
+      let w = img.naturalWidth || 300;
+      let h = img.naturalHeight || 200;
+      // Scale down to fit
+      const maxDim = 400;
+      if (w > maxDim || h > maxDim) {
+        const ratio = Math.min(maxDim / w, maxDim / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+
+      // Place at center of current view
+      const canvas = canvasRef.current;
+      const rect = canvas?.getBoundingClientRect();
+      const cx = rect ? ((rect.width / 2) - pan.x) / zoom - w / 2 : 100;
+      const cy = rect ? ((rect.height / 2) - pan.y) / zoom - h / 2 : 100;
+
+      await saveStroke({ tool: 'image', imageUrl, x: cx, y: cy, w, h });
+      toast({ title: '图片已添加到画布' });
+    } catch (err: any) {
+      console.error('Image upload error:', err);
+      toast({ title: '上传失败: ' + (err.message || '未知错误'), variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  // Update image position/size in DB
+  async function updateImageStroke(strokeId: string, updates: Partial<StrokeData>) {
+    const stroke = strokes.find(s => s.id === strokeId);
+    if (!stroke) return;
+    const newData = { ...(stroke.stroke_data as StrokeData), ...updates };
+    // Optimistic update
+    setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: newData } : s));
+    await supabase.from('board_strokes').update({ stroke_data: newData as any } as any).eq('id', strokeId);
+  }
+
   function handlePointerDown(e: React.MouseEvent) {
     if (isLocked && !isCreator) return;
+
+    const coords = getCanvasCoords(e);
+
+    // Check resize handles first (when select or image tool)
+    if (tool === 'select' || tool === 'image') {
+      const handle = findResizeHandle(coords.x, coords.y);
+      if (handle) {
+        const d = handle.stroke.stroke_data as StrokeData;
+        setResizingImage({
+          strokeId: handle.stroke.id,
+          corner: handle.corner,
+          origX: d.x ?? 0, origY: d.y ?? 0,
+          origW: d.w ?? 200, origH: d.h ?? 150,
+          startX: coords.x, startY: coords.y,
+        });
+        return;
+      }
+
+      // Check image drag
+      const imgStroke = findImageAt(coords.x, coords.y);
+      if (imgStroke) {
+        const d = imgStroke.stroke_data as StrokeData;
+        setDraggingImage({
+          strokeId: imgStroke.id,
+          offsetX: coords.x - (d.x ?? 0),
+          offsetY: coords.y - (d.y ?? 0),
+        });
+        return;
+      }
+    }
+
     if (tool === 'select') {
       isPanning.current = true;
       panStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       return;
     }
+    if (tool === 'image') return; // clicking empty area with image tool does nothing
     if (tool === 'text') {
-      const coords = getCanvasCoords(e);
       setTextPos(coords);
       return;
     }
 
     setDrawing(true);
-    const coords = getCanvasCoords(e);
-
     if (tool === 'pen' || tool === 'eraser') {
       setCurrentPoints([coords.x, coords.y]);
     } else {
@@ -323,12 +528,42 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   function handlePointerMove(e: React.MouseEvent) {
+    const coords = getCanvasCoords(e);
+
+    // Handle image resize
+    if (resizingImage) {
+      const { strokeId, corner, origX, origY, origW, origH, startX, startY } = resizingImage;
+      const dx = coords.x - startX;
+      const dy = coords.y - startY;
+      let nx = origX, ny = origY, nw = origW, nh = origH;
+
+      if (corner === 'br') { nw = Math.max(40, origW + dx); nh = Math.max(30, origH + dy); }
+      else if (corner === 'bl') { nx = origX + dx; nw = Math.max(40, origW - dx); nh = Math.max(30, origH + dy); }
+      else if (corner === 'tr') { ny = origY + dy; nw = Math.max(40, origW + dx); nh = Math.max(30, origH - dy); }
+      else if (corner === 'tl') { nx = origX + dx; ny = origY + dy; nw = Math.max(40, origW - dx); nh = Math.max(30, origH - dy); }
+
+      setStrokes(prev => prev.map(s => s.id === strokeId
+        ? { ...s, stroke_data: { ...(s.stroke_data as StrokeData), x: nx, y: ny, w: nw, h: nh } }
+        : s
+      ));
+      return;
+    }
+
+    // Handle image drag
+    if (draggingImage) {
+      const { strokeId, offsetX, offsetY } = draggingImage;
+      setStrokes(prev => prev.map(s => s.id === strokeId
+        ? { ...s, stroke_data: { ...(s.stroke_data as StrokeData), x: coords.x - offsetX, y: coords.y - offsetY } }
+        : s
+      ));
+      return;
+    }
+
     if (isPanning.current) {
       setPan({ x: e.clientX - panStart.current.x, y: e.clientY - panStart.current.y });
       return;
     }
     if (!drawing) return;
-    const coords = getCanvasCoords(e);
 
     if (tool === 'pen' || tool === 'eraser') {
       setCurrentPoints(prev => [...prev, coords.x, coords.y]);
@@ -338,6 +573,28 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   function handlePointerUp() {
+    // Finish image resize
+    if (resizingImage) {
+      const stroke = strokes.find(s => s.id === resizingImage.strokeId);
+      if (stroke) {
+        const d = stroke.stroke_data as StrokeData;
+        updateImageStroke(resizingImage.strokeId, { x: d.x, y: d.y, w: d.w, h: d.h });
+      }
+      setResizingImage(null);
+      return;
+    }
+
+    // Finish image drag
+    if (draggingImage) {
+      const stroke = strokes.find(s => s.id === draggingImage.strokeId);
+      if (stroke) {
+        const d = stroke.stroke_data as StrokeData;
+        updateImageStroke(draggingImage.strokeId, { x: d.x, y: d.y });
+      }
+      setDraggingImage(null);
+      return;
+    }
+
     if (isPanning.current) { isPanning.current = false; return; }
     if (!drawing) return;
     setDrawing(false);
@@ -369,13 +626,11 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
   async function handleUndo() {
     if (strokes.length === 0) return;
-    // Find last stroke by this user
     const myStrokes = strokes.filter(s => s.user_nickname === nickname);
     if (myStrokes.length === 0) return;
     const last = myStrokes[myStrokes.length - 1];
     setUndoStack(prev => [...prev, last]);
     setStrokes(prev => prev.filter(s => s.id !== last.id));
-    // Delete from DB
     if (isCreator && creatorToken) {
       await supabase.rpc('delete_board_stroke', {
         p_board_id: boardId,
@@ -402,7 +657,32 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     link.click();
   }
 
-  const tools: { id: Tool; icon: any; label: string }[] = [
+  // Drag & drop support
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isLocked && !isCreator) return;
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) {
+      files.forEach(f => handleImageUpload(f));
+    }
+  }
+
+  function getCursor() {
+    if (draggingImage) return 'grabbing';
+    if (resizingImage) return 'nwse-resize';
+    if (tool === 'select') return 'grab';
+    if (tool === 'text') return 'text';
+    if (tool === 'image') return 'default';
+    return 'crosshair';
+  }
+
+  const tools_list: { id: Tool; icon: any; label: string }[] = [
     { id: 'select', icon: MousePointer, label: '移动' },
     { id: 'pen', icon: Pen, label: '画笔' },
     { id: 'eraser', icon: Eraser, label: '橡皮擦' },
@@ -411,26 +691,41 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     { id: 'arrow', icon: ArrowRight, label: '箭头' },
     { id: 'line', icon: Minus, label: '直线' },
     { id: 'text', icon: Type, label: '文字' },
+    { id: 'image', icon: ImagePlus, label: '图片' },
   ];
 
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-card flex-wrap">
-        {/* Drawing tools */}
-        {tools.map(t => (
+        {tools_list.map(t => (
           <Button
             key={t.id}
             variant={tool === t.id ? 'default' : 'ghost'}
             size="sm"
             className="h-8 w-8 p-0"
-            onClick={() => setTool(t.id)}
+            onClick={() => {
+              setTool(t.id);
+              if (t.id === 'image') fileInputRef.current?.click();
+            }}
             title={t.label}
             disabled={isLocked && !isCreator}
           >
             <t.icon className="w-4 h-4" />
           </Button>
         ))}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          multiple
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            files.forEach(f => handleImageUpload(f));
+          }}
+        />
 
         <div className="w-px h-6 bg-border mx-1" />
 
@@ -470,7 +765,6 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
         <div className="w-px h-6 bg-border mx-1" />
 
-        {/* Actions */}
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleUndo} title="撤销">
           <Undo2 className="w-4 h-4" />
         </Button>
@@ -490,6 +784,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={handleClearAll} title="清除全部">
             <Trash2 className="w-4 h-4" />
           </Button>
+        )}
+
+        {uploading && (
+          <span className="text-xs text-muted-foreground animate-pulse ml-1">上传中...</span>
         )}
 
         {/* Online users */}
@@ -516,11 +814,15 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       </div>
 
       {/* Canvas area */}
-      <div className="flex-1 relative overflow-hidden bg-white">
+      <div
+        className="flex-1 relative overflow-hidden bg-white"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
-          style={{ cursor: tool === 'select' ? 'grab' : tool === 'text' ? 'text' : 'crosshair' }}
+          style={{ cursor: getCursor() }}
           onMouseDown={handlePointerDown}
           onMouseMove={handlePointerMove}
           onMouseUp={handlePointerUp}
