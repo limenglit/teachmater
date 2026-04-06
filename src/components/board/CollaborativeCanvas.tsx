@@ -20,6 +20,7 @@ interface StrokeData {
   text?: string;
   fontSize?: number;
   imageUrl?: string;
+  fileName?: string;
 }
 
 interface Stroke {
@@ -340,41 +341,101 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       ctx.font = `${d.fontSize || 16}px sans-serif`;
       ctx.fillText(d.text, d.x!, d.y!);
     } else if (stroke.tool === 'image' && d.imageUrl) {
-      const img = imageCache.current.get(d.imageUrl);
-      if (img && img.complete && img.naturalWidth > 0) {
-        const ix = d.x ?? 0;
-        const iy = d.y ?? 0;
-        const iw = d.w ?? 200;
-        const ih = d.h ?? 150;
-        ctx.drawImage(img, ix, iy, iw, ih);
-        // Draw border & resize handles when select tool is active
-        if (tool === 'select' || tool === 'image') {
+      const ix = d.x ?? 0;
+      const iy = d.y ?? 0;
+      const iw = d.w ?? 200;
+      const ih = d.h ?? 150;
+
+      // Non-image file card rendering
+      if (d.fileName && !d.imageUrl.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i)) {
+        // Draw file card background
+        ctx.save();
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1.5;
+        const radius = 8;
+        ctx.beginPath();
+        ctx.moveTo(ix + radius, iy);
+        ctx.lineTo(ix + iw - radius, iy);
+        ctx.quadraticCurveTo(ix + iw, iy, ix + iw, iy + radius);
+        ctx.lineTo(ix + iw, iy + ih - radius);
+        ctx.quadraticCurveTo(ix + iw, iy + ih, ix + iw - radius, iy + ih);
+        ctx.lineTo(ix + radius, iy + ih);
+        ctx.quadraticCurveTo(ix, iy + ih, ix, iy + ih - radius);
+        ctx.lineTo(ix, iy + radius);
+        ctx.quadraticCurveTo(ix, iy, ix + radius, iy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // File icon
+        const ext = d.fileName.split('.').pop()?.toLowerCase() || '';
+        let icon = '📎';
+        if (['pdf'].includes(ext)) icon = '📄';
+        else if (['doc', 'docx', 'rtf'].includes(ext)) icon = '📝';
+        else if (['xls', 'xlsx', 'csv'].includes(ext)) icon = '📊';
+        else if (['ppt', 'pptx'].includes(ext)) icon = '📽️';
+        else if (['mp4', 'webm', 'mov', 'avi'].includes(ext)) icon = '🎬';
+        else if (['mp3', 'wav', 'ogg', 'aac'].includes(ext)) icon = '🎵';
+
+        ctx.font = `${Math.min(ih * 0.35, 40)}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#000';
+        ctx.fillText(icon, ix + iw / 2, iy + ih * 0.35);
+
+        // File name
+        ctx.font = `${Math.min(ih * 0.12, 13)}px sans-serif`;
+        ctx.fillStyle = '#334155';
+        const maxTextW = iw - 16;
+        let displayName = d.fileName;
+        if (ctx.measureText(displayName).width > maxTextW) {
+          while (displayName.length > 3 && ctx.measureText(displayName + '…').width > maxTextW) {
+            displayName = displayName.slice(0, -1);
+          }
+          displayName += '…';
+        }
+        ctx.fillText(displayName, ix + iw / 2, iy + ih * 0.65);
+
+        // "Click to open" hint
+        ctx.font = `${Math.min(ih * 0.09, 10)}px sans-serif`;
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText('点击打开', ix + iw / 2, iy + ih * 0.82);
+        ctx.restore();
+      } else {
+        // Image rendering
+        const img = imageCache.current.get(d.imageUrl);
+        if (img && img.complete && img.naturalWidth > 0) {
+          ctx.drawImage(img, ix, iy, iw, ih);
+        } else {
+          // Draw placeholder while loading
           ctx.save();
-          ctx.strokeStyle = '#3b82f6';
-          ctx.lineWidth = 1.5 / zoom;
-          ctx.setLineDash([4 / zoom, 4 / zoom]);
+          ctx.strokeStyle = '#d1d5db';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
           ctx.strokeRect(ix, iy, iw, ih);
           ctx.setLineDash([]);
-          // Corner handles
-          const hs = 6 / zoom;
-          ctx.fillStyle = '#3b82f6';
-          for (const [cx, cy] of [[ix, iy], [ix + iw, iy], [ix, iy + ih], [ix + iw, iy + ih]]) {
-            ctx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs);
-          }
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = '14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('加载中...', ix + iw / 2, iy + ih / 2);
           ctx.restore();
         }
-      } else {
-        // Draw placeholder while loading
+      }
+
+      // Draw border & resize handles when select tool is active
+      if (tool === 'select' || tool === 'image') {
         ctx.save();
-        ctx.strokeStyle = '#d1d5db';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(d.x ?? 0, d.y ?? 0, d.w ?? 200, d.h ?? 150);
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 1.5 / zoom;
+        ctx.setLineDash([4 / zoom, 4 / zoom]);
+        ctx.strokeRect(ix, iy, iw, ih);
         ctx.setLineDash([]);
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('加载中...', (d.x ?? 0) + (d.w ?? 200) / 2, (d.y ?? 0) + (d.h ?? 150) / 2);
+        const hs = 6 / zoom;
+        ctx.fillStyle = '#3b82f6';
+        for (const [cx, cy] of [[ix, iy], [ix + iw, iy], [ix, iy + ih], [ix + iw, iy + ih]]) {
+          ctx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs);
+        }
         ctx.restore();
       }
     }
@@ -469,20 +530,17 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     return null;
   }
 
-  // Upload image file
-  async function handleImageUpload(file: File) {
-    if (!file.type.startsWith('image/')) {
-      toast({ title: '仅支持图片文件', variant: 'destructive' });
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: '图片不能超过10MB', variant: 'destructive' });
+  // Upload file (image or document/media)
+  async function handleFileUpload(file: File) {
+    const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+    if (file.size > MAX_SIZE) {
+      toast({ title: '文件不能超过20MB', variant: 'destructive' });
       return;
     }
 
     setUploading(true);
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
       const path = `collab/${boardId}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('board-media')
@@ -491,18 +549,21 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(path);
-      const imageUrl = urlData.publicUrl;
+      const fileUrl = urlData.publicUrl;
+      const isImage = file.type.startsWith('image/');
 
-      // Get image natural dimensions to set aspect ratio
-      const img = await loadImage(imageUrl);
-      let w = img.naturalWidth || 300;
-      let h = img.naturalHeight || 200;
-      // Scale down to fit
-      const maxDim = 400;
-      if (w > maxDim || h > maxDim) {
-        const ratio = Math.min(maxDim / w, maxDim / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
+      let w = 200, h = 120;
+      if (isImage) {
+        // Get image natural dimensions
+        const img = await loadImage(fileUrl);
+        w = img.naturalWidth || 300;
+        h = img.naturalHeight || 200;
+        const maxDim = 400;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
       }
 
       // Place at center of current view
@@ -511,13 +572,18 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       const cx = rect ? ((rect.width / 2) - pan.x) / zoom - w / 2 : 100;
       const cy = rect ? ((rect.height / 2) - pan.y) / zoom - h / 2 : 100;
 
-      const saved = await saveStroke({ tool: 'image', imageUrl, x: cx, y: cy, w, h });
+      const strokeData: StrokeData = { tool: 'image', imageUrl: fileUrl, x: cx, y: cy, w, h };
+      if (!isImage) {
+        strokeData.fileName = file.name;
+      }
+
+      const saved = await saveStroke(strokeData);
       if (saved) {
         setTool('select');
-        toast({ title: '图片已添加到画布' });
+        toast({ title: isImage ? '图片已添加到画布' : `文件 ${file.name} 已添加` });
       }
     } catch (err: any) {
-      console.error('Image upload error:', err);
+      console.error('File upload error:', err);
       toast({ title: '上传失败: ' + (err.message || '未知错误'), variant: 'destructive' });
     } finally {
       setUploading(false);
@@ -848,9 +914,9 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     e.preventDefault();
     e.stopPropagation();
     if (isLocked && !isCreator) return;
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      files.forEach(f => handleImageUpload(f));
+      files.forEach(f => handleFileUpload(f));
     }
   }
 
@@ -873,7 +939,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     { id: 'arrow', icon: ArrowRight, label: '箭头' },
     { id: 'line', icon: Minus, label: '直线' },
     { id: 'text', icon: Type, label: '文字' },
-    { id: 'image', icon: ImagePlus, label: '图片' },
+    { id: 'image', icon: ImagePlus, label: '选择图片/文件' },
   ];
 
   return (
@@ -899,12 +965,12 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.rtf,.zip,.rar"
           className="hidden"
           multiple
           onChange={(e) => {
             const files = Array.from(e.target.files || []);
-            files.forEach(f => handleImageUpload(f));
+            files.forEach(f => handleFileUpload(f));
           }}
         />
 
@@ -915,7 +981,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           size="sm"
           className="h-8 w-8 p-0"
           onClick={() => fileInputRef.current?.click()}
-          title="上传图片"
+          title="上传文件"
           disabled={(isLocked && !isCreator) || uploading}
         >
           <Upload className="w-4 h-4" />
@@ -1016,6 +1082,16 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           className="absolute inset-0 w-full h-full"
           style={{ cursor: getCursor(), touchAction: 'none' }}
           onPointerDown={handlePointerDown}
+          onDoubleClick={(e) => {
+            const coords = getCanvasCoords(e);
+            const imgStroke = findImageAt(coords.x, coords.y);
+            if (imgStroke) {
+              const d = imgStroke.stroke_data as StrokeData;
+              if (d.imageUrl) {
+                window.open(d.imageUrl, '_blank', 'noopener,noreferrer');
+              }
+            }
+          }}
         />
 
         {/* Text input overlay */}
