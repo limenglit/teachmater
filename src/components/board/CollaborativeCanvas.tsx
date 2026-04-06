@@ -66,6 +66,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [imageRenderVersion, setImageRenderVersion] = useState(0);
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
 
@@ -78,18 +79,23 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   // Uploading state
   const [uploading, setUploading] = useState(false);
 
+  const fetchStrokes = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('board_strokes')
+      .select('*')
+      .eq('board_id', boardId)
+      .order('created_at', { ascending: true })
+      .limit(1000);
+
+    if (!error && data) {
+      setStrokes(data as unknown as Stroke[]);
+    }
+  }, [boardId]);
+
   // Load existing strokes
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('board_strokes')
-        .select('*')
-        .eq('board_id', boardId)
-        .order('created_at', { ascending: true })
-        .limit(1000);
-      if (data) setStrokes(data as unknown as Stroke[]);
-    })();
-  }, [boardId]);
+    void fetchStrokes();
+  }, [fetchStrokes]);
 
   // Realtime subscription
   useEffect(() => {
@@ -132,26 +138,49 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({ nickname });
+          await Promise.all([channel.track({ nickname }), fetchStrokes()]);
         }
       });
 
     return () => { supabase.removeChannel(channel); };
-  }, [boardId, nickname]);
+  }, [boardId, nickname, fetchStrokes]);
+
+  const triggerImageRedraw = useCallback(() => {
+    setImageRenderVersion(version => version + 1);
+  }, []);
 
   // Preload images into cache
-  const loadImage = useCallback((url: string): Promise<HTMLImageElement> => {
+  const loadImage = useCallback((url: string, attempt = 0): Promise<HTMLImageElement> => {
     const cached = imageCache.current.get(url);
-    if (cached && cached.complete) return Promise.resolve(cached);
+
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      return Promise.resolve(cached);
+    }
+
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => { imageCache.current.set(url, img); resolve(img); };
-      img.onerror = () => resolve(img);
-      img.src = url;
+      img.onload = () => {
+        imageCache.current.set(url, img);
+        triggerImageRedraw();
+        resolve(img);
+      };
+      img.onerror = () => {
+        imageCache.current.delete(url);
+        triggerImageRedraw();
+
+        if (attempt < 3) {
+          window.setTimeout(() => {
+            void loadImage(url, attempt + 1);
+          }, 600 * (attempt + 1));
+        }
+
+        resolve(img);
+      };
+      img.src = `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`;
       imageCache.current.set(url, img);
     });
-  }, []);
+  }, [triggerImageRedraw]);
 
   // Preload all image strokes
   useEffect(() => {
@@ -243,7 +272,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
 
     ctx.restore();
-  }, [strokes, drawing, currentPoints, shapeStart, shapeEnd, tool, color, strokeWidth, zoom, pan]);
+  }, [strokes, drawing, currentPoints, shapeStart, shapeEnd, tool, color, strokeWidth, zoom, pan, imageRenderVersion]);
 
   useEffect(() => {
     renderCanvas();
@@ -365,7 +394,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     };
   }
 
-  async function saveStroke(strokeData: StrokeData) {
+  async function saveStroke(strokeData: StrokeData): Promise<Stroke | null> {
     const { data, error } = await supabase.from('board_strokes').insert({
       board_id: boardId,
       user_nickname: nickname,
@@ -377,12 +406,17 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
     if (error) {
       console.error('Save stroke error:', error);
+      toast({ title: '白板内容同步失败', description: '请检查网络后重试', variant: 'destructive' });
+      return null;
     } else if (data) {
       setStrokes(prev => {
         if (prev.find(s => s.id === (data as any).id)) return prev;
         return [...prev, data as unknown as Stroke];
       });
+      return data as unknown as Stroke;
     }
+
+    return null;
   }
 
   // Find image stroke at a given canvas coordinate
@@ -461,8 +495,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       const cx = rect ? ((rect.width / 2) - pan.x) / zoom - w / 2 : 100;
       const cy = rect ? ((rect.height / 2) - pan.y) / zoom - h / 2 : 100;
 
-      await saveStroke({ tool: 'image', imageUrl, x: cx, y: cy, w, h });
-      toast({ title: '图片已添加到画布' });
+      const saved = await saveStroke({ tool: 'image', imageUrl, x: cx, y: cy, w, h });
+      if (saved) {
+        toast({ title: '图片已添加到画布' });
+      }
     } catch (err: any) {
       console.error('Image upload error:', err);
       toast({ title: '上传失败: ' + (err.message || '未知错误'), variant: 'destructive' });
@@ -476,10 +512,21 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   async function updateImageStroke(strokeId: string, updates: Partial<StrokeData>) {
     const stroke = strokes.find(s => s.id === strokeId);
     if (!stroke) return;
+    const previousData = stroke.stroke_data as StrokeData;
     const newData = { ...(stroke.stroke_data as StrokeData), ...updates };
     // Optimistic update
     setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: newData } : s));
-    await supabase.from('board_strokes').update({ stroke_data: newData as any } as any).eq('id', strokeId);
+    const { error } = await supabase
+      .from('board_strokes')
+      .update({ stroke_data: newData as any } as any)
+      .eq('id', strokeId);
+
+    if (error) {
+      console.error('Update image stroke error:', error);
+      setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: previousData } : s));
+      toast({ title: '图片同步失败', description: '请稍后重试', variant: 'destructive' });
+      await fetchStrokes();
+    }
   }
 
   // Track active pointer for drawing (ignore secondary touches while drawing)
