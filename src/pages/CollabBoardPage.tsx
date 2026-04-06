@@ -4,11 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import CollaborativeCanvas from '@/components/board/CollaborativeCanvas';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Board } from '@/components/BoardPanel';
 
 function getCreatorToken(boardId: string): string | null {
   try {
-    const raw = localStorage.getItem('board_creator_tokens');
+    const raw = localStorage.getItem('board-creator-tokens');
     if (!raw) return null;
     const tokens = JSON.parse(raw) as Record<string, string>;
     return tokens[boardId] || null;
@@ -19,6 +20,7 @@ function getCreatorToken(boardId: string): string | null {
 
 export default function CollabBoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
+  const { user } = useAuth();
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
   const [nickname, setNickname] = useState('');
@@ -125,7 +127,8 @@ export default function CollabBoardPage() {
   }
 
   const creatorToken = boardId ? getCreatorToken(boardId) : null;
-  const isCreator = !!creatorToken;
+  const isBoardOwner = !!user && !!board && (board as any).user_id === user.id;
+  const isCreator = !!creatorToken || isBoardOwner;
 
   return (
     <div className="h-screen flex flex-col bg-background">

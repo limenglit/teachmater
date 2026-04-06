@@ -89,16 +89,16 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   const [uploading, setUploading] = useState(false);
 
   const fetchStrokes = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('board_strokes')
-      .select('*')
-      .eq('board_id', boardId)
-      .order('created_at', { ascending: false })
-      .limit(1000);
+    const { data, error } = await (supabase.rpc('list_board_strokes', {
+      p_board_id: boardId,
+      p_limit: 1000,
+    } as any) as any);
 
     if (!error && data) {
       // Query newest strokes first for scalable polling, then restore paint order.
       setStrokes(([...data].reverse()) as unknown as Stroke[]);
+    } else if (error) {
+      console.error('Fetch strokes error:', error);
     }
   }, [boardId]);
 
@@ -476,14 +476,14 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   async function saveStroke(strokeData: StrokeData): Promise<Stroke | null> {
-    const { data, error } = await supabase.from('board_strokes').insert({
-      board_id: boardId,
-      user_nickname: nickname,
-      tool: strokeData.tool,
-      stroke_data: strokeData as any,
-      color,
-      stroke_width: strokeWidth,
-    } as any).select().single();
+    const { data, error } = await (supabase.rpc('insert_board_stroke', {
+      p_board_id: boardId,
+      p_user_nickname: nickname,
+      p_tool: strokeData.tool,
+      p_stroke_data: strokeData as any,
+      p_color: color,
+      p_stroke_width: strokeWidth,
+    } as any) as any);
 
     if (error) {
       console.error('Save stroke error:', error);
@@ -603,10 +603,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     const newData = { ...(stroke.stroke_data as StrokeData), ...updates };
     // Optimistic update
     setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: newData } : s));
-    const { error } = await supabase
-      .from('board_strokes')
-      .update({ stroke_data: newData as any } as any)
-      .eq('id', strokeId);
+    const { error } = await (supabase.rpc('update_board_stroke_data', {
+      p_stroke_id: strokeId,
+      p_stroke_data: newData as any,
+    } as any) as any);
 
     if (error) {
       console.error('Update image stroke error:', error);
