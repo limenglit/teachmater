@@ -775,9 +775,26 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
   }
 
-  function handlePointerDown(e: React.PointerEvent) {
+  function handlePointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     e.preventDefault();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
     beginPointerInteraction(e.nativeEvent);
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (activePointerId.current != null && e.pointerId === activePointerId.current) {
+      e.preventDefault();
+    }
+    movePointerInteraction(e.nativeEvent);
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+    endPointerInteraction(e.nativeEvent);
   }
 
   useEffect(() => {
@@ -1082,6 +1099,9 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           className="absolute inset-0 w-full h-full"
           style={{ cursor: getCursor(), touchAction: 'none' }}
           onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           onDoubleClick={(e) => {
             const coords = getCanvasCoords(e);
             const imgStroke = findImageAt(coords.x, coords.y);
