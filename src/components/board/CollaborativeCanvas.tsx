@@ -1082,6 +1082,16 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           className="absolute inset-0 w-full h-full"
           style={{ cursor: getCursor(), touchAction: 'none' }}
           onPointerDown={handlePointerDown}
+          onDoubleClick={(e) => {
+            const coords = getCanvasCoords(e);
+            const imgStroke = findImageAt(coords.x, coords.y);
+            if (imgStroke) {
+              const d = imgStroke.stroke_data as StrokeData;
+              if (d.imageUrl) {
+                window.open(d.imageUrl, '_blank', 'noopener,noreferrer');
+              }
+            }
+          }}
         />
 
         {/* Text input overlay */}
