@@ -346,11 +346,19 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     ctx.stroke();
   }
 
-  function getCanvasCoords(e: React.MouseEvent | React.TouchEvent): { x: number; y: number } {
+  function getCanvasCoords(e: React.PointerEvent | React.MouseEvent | React.TouchEvent | { clientX: number; clientY: number }): { x: number; y: number } {
     const canvas = canvasRef.current!;
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    let clientX: number, clientY: number;
+    if ('touches' in e && (e as React.TouchEvent).touches?.length > 0) {
+      clientX = (e as React.TouchEvent).touches[0].clientX;
+      clientY = (e as React.TouchEvent).touches[0].clientY;
+    } else if ('clientX' in e) {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else {
+      return { x: 0, y: 0 };
+    }
     return {
       x: (clientX - rect.left - pan.x) / zoom,
       y: (clientY - rect.top - pan.y) / zoom,
