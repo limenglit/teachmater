@@ -87,8 +87,22 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   const [resizingImage, setResizingImage] = useState<{ strokeId: string; corner: string; origX: number; origY: number; origW: number; origH: number; startX: number; startY: number } | null>(null);
   // Uploading state
   const [uploading, setUploading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState('INIT');
+  const [lastFetchError, setLastFetchError] = useState<string | null>(null);
+  const [lastInsertError, setLastInsertError] = useState<string | null>(null);
+  const [lastUpdateError, setLastUpdateError] = useState<string | null>(null);
+  const [lastFetchAt, setLastFetchAt] = useState<string | null>(null);
+  const [lastInsertAt, setLastInsertAt] = useState<string | null>(null);
+  const [lastDataSource, setLastDataSource] = useState<'rpc' | 'table' | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(true);
+
+  const formatTs = (ts: string | null) => {
+    if (!ts) return '-';
+    return new Date(ts).toLocaleTimeString();
+  };
 
   const fetchStrokes = useCallback(async () => {
+    setLastFetchAt(new Date().toISOString());
     const { data, error } = await (supabase.rpc('list_board_strokes', {
       p_board_id: boardId,
       p_limit: 1000,
@@ -97,6 +111,8 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     if (!error && data) {
       // Query newest strokes first for scalable polling, then restore paint order.
       setStrokes(([...data].reverse()) as unknown as Stroke[]);
+      setLastDataSource('rpc');
+      setLastFetchError(null);
     } else if (error) {
       console.error('Fetch strokes RPC error:', error);
       const fallback = await supabase
@@ -107,6 +123,11 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         .limit(1000);
       if (!fallback.error && fallback.data) {
         setStrokes(([...fallback.data].reverse()) as unknown as Stroke[]);
+        setLastDataSource('table');
+        setLastFetchError(`RPC失败, 已回退表查询: ${error.message || 'unknown error'}`);
+      } else {
+        const msg = fallback.error?.message || error.message || 'unknown error';
+        setLastFetchError(msg);
       }
     }
   }, [boardId]);
@@ -164,6 +185,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         setOnlineUsers([...new Set(users)]);
       })
       .subscribe(async (status) => {
+        setSubscriptionStatus(status);
         if (status === 'SUBSCRIBED') {
           await Promise.all([channel.track({ nickname }), fetchStrokes()]);
         }
@@ -485,6 +507,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   async function saveStroke(strokeData: StrokeData): Promise<Stroke | null> {
+    setLastInsertAt(new Date().toISOString());
     const { data, error } = await (supabase.rpc('insert_board_stroke', {
       p_board_id: boardId,
       p_user_nickname: nickname,
@@ -498,6 +521,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
     if (!error && data) {
       savedStroke = data as unknown as Stroke;
+      setLastInsertError(null);
     } else {
       console.error('Save stroke RPC error:', error);
       const fallback = await supabase
@@ -515,11 +539,13 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
       if (fallback.error) {
         console.error('Save stroke fallback error:', fallback.error);
+        setLastInsertError(fallback.error.message || error?.message || 'unknown error');
         toast({ title: '白板内容同步失败', description: '请检查网络后重试', variant: 'destructive' });
         return null;
       }
 
       savedStroke = fallback.data as unknown as Stroke;
+      setLastInsertError(`RPC失败, 已回退表写入: ${error?.message || 'unknown error'}`);
     }
 
     if (savedStroke) {
@@ -650,10 +676,15 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
       if (fallback.error) {
         console.error('Update image stroke fallback error:', fallback.error);
+        setLastUpdateError(fallback.error.message || error.message || 'unknown error');
         setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: previousData } : s));
         toast({ title: '图片同步失败', description: '请稍后重试', variant: 'destructive' });
         await fetchStrokes();
+      } else {
+        setLastUpdateError(`RPC失败, 已回退表更新: ${error.message || 'unknown error'}`);
       }
+    } else {
+      setLastUpdateError(null);
     }
   }
 
@@ -1160,6 +1191,35 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
+        <div className="absolute left-2 top-2 z-30 pointer-events-auto">
+          <div className="rounded-md border border-border bg-background/90 px-2 py-1 text-[11px] leading-5 shadow-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">协同诊断</span>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setShowDiagnostics(v => !v)}
+              >
+                {showDiagnostics ? '收起' : '展开'}
+              </button>
+            </div>
+            {showDiagnostics && (
+              <div className="mt-1 space-y-0.5 font-mono text-[10px] text-muted-foreground">
+                <div>boardId: {boardId}</div>
+                <div>strokes: {strokes.length}</div>
+                <div>sub: {subscriptionStatus}</div>
+                <div>locked/isCreator: {String(isLocked)} / {String(isCreator)}</div>
+                <div>source: {lastDataSource || '-'}</div>
+                <div>lastFetch: {formatTs(lastFetchAt)}</div>
+                <div>lastInsert: {formatTs(lastInsertAt)}</div>
+                <div className="text-destructive/90">fetchErr: {lastFetchError || '-'}</div>
+                <div className="text-destructive/90">insertErr: {lastInsertError || '-'}</div>
+                <div className="text-destructive/90">updateErr: {lastUpdateError || '-'}</div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
