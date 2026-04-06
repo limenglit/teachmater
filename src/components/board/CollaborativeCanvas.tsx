@@ -1225,6 +1225,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
             {showDiagnostics && (
               <div className="mt-1 space-y-0.5 font-mono text-[10px] text-muted-foreground">
                 <div>boardId: {boardId}</div>
+                <div>path: {window.location.pathname}</div>
                 <div>strokes: {strokes.length}</div>
                 <div>sub: {subscriptionStatus}</div>
                 <div>locked/isCreator: {String(isLocked)} / {String(isCreator)}</div>
