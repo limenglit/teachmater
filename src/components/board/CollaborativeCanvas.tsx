@@ -1021,7 +1021,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   ];
 
   return (
-    <div className="flex flex-col h-full" ref={containerRef}>
+    <div className="flex flex-col h-full min-h-0" ref={containerRef}>
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-card flex-wrap">
         {tools_list.map(t => (
@@ -1156,7 +1156,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
       {/* Canvas area */}
       <div
-        className="flex-1 relative overflow-hidden bg-white select-none"
+        className="flex-1 min-h-0 relative overflow-hidden bg-white select-none"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >

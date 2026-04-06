@@ -636,13 +636,15 @@ export default function BoardPanel() {
             )}
           </div>
         </div>
-        <CollaborativeCanvas
-          boardId={activeBoard.id}
-          nickname={user?.email?.split('@')[0] || '教师'}
-          isCreator={isCreator}
-          isLocked={activeBoard.is_locked}
-          creatorToken={getCreatorToken(activeBoard.id)}
-        />
+        <div className="flex-1 min-h-0">
+          <CollaborativeCanvas
+            boardId={activeBoard.id}
+            nickname={user?.email?.split('@')[0] || '教师'}
+            isCreator={isCreator}
+            isLocked={activeBoard.is_locked}
+            creatorToken={getCreatorToken(activeBoard.id)}
+          />
+        </div>
 
         {/* QR dialog */}
         <Dialog open={showQR} onOpenChange={setShowQR}>
