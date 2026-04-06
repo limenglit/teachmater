@@ -20,6 +20,7 @@ interface StrokeData {
   text?: string;
   fontSize?: number;
   imageUrl?: string;
+  fileName?: string;
 }
 
 interface Stroke {
