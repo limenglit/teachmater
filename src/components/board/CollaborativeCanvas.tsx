@@ -103,32 +103,21 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
   const fetchStrokes = useCallback(async () => {
     setLastFetchAt(new Date().toISOString());
-    const { data, error } = await (supabase.rpc('list_board_strokes', {
-      p_board_id: boardId,
-      p_limit: 1000,
-    } as any) as any);
+    const { data, error } = await supabase
+      .from('board_strokes')
+      .select('*')
+      .eq('board_id', boardId)
+      .order('created_at', { ascending: false })
+      .limit(1000);
 
     if (!error && data) {
       // Query newest strokes first for scalable polling, then restore paint order.
       setStrokes(([...data].reverse()) as unknown as Stroke[]);
-      setLastDataSource('rpc');
+      setLastDataSource('table');
       setLastFetchError(null);
     } else if (error) {
-      console.error('Fetch strokes RPC error:', error);
-      const fallback = await supabase
-        .from('board_strokes')
-        .select('*')
-        .eq('board_id', boardId)
-        .order('created_at', { ascending: false })
-        .limit(1000);
-      if (!fallback.error && fallback.data) {
-        setStrokes(([...fallback.data].reverse()) as unknown as Stroke[]);
-        setLastDataSource('table');
-        setLastFetchError(`RPC失败, 已回退表查询: ${error.message || 'unknown error'}`);
-      } else {
-        const msg = fallback.error?.message || error.message || 'unknown error';
-        setLastFetchError(msg);
-      }
+      console.error('Fetch strokes error:', error);
+      setLastFetchError(error.message || 'unknown error');
     }
   }, [boardId]);
 
@@ -508,14 +497,18 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
   async function saveStroke(strokeData: StrokeData): Promise<Stroke | null> {
     setLastInsertAt(new Date().toISOString());
-    const { data, error } = await (supabase.rpc('insert_board_stroke', {
-      p_board_id: boardId,
-      p_user_nickname: nickname,
-      p_tool: strokeData.tool,
-      p_stroke_data: strokeData as any,
-      p_color: color,
-      p_stroke_width: strokeWidth,
-    } as any) as any);
+    const { data, error } = await supabase
+      .from('board_strokes')
+      .insert({
+        board_id: boardId,
+        user_nickname: nickname,
+        tool: strokeData.tool,
+        stroke_data: strokeData as any,
+        color,
+        stroke_width: strokeWidth,
+      } as any)
+      .select()
+      .single();
 
     let savedStroke: Stroke | null = null;
 
@@ -523,29 +516,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       savedStroke = data as unknown as Stroke;
       setLastInsertError(null);
     } else {
-      console.error('Save stroke RPC error:', error);
-      const fallback = await supabase
-        .from('board_strokes')
-        .insert({
-          board_id: boardId,
-          user_nickname: nickname,
-          tool: strokeData.tool,
-          stroke_data: strokeData as any,
-          color,
-          stroke_width: strokeWidth,
-        } as any)
-        .select()
-        .single();
-
-      if (fallback.error) {
-        console.error('Save stroke fallback error:', fallback.error);
-        setLastInsertError(fallback.error.message || error?.message || 'unknown error');
-        toast({ title: '白板内容同步失败', description: '请检查网络后重试', variant: 'destructive' });
-        return null;
-      }
-
-      savedStroke = fallback.data as unknown as Stroke;
-      setLastInsertError(`RPC失败, 已回退表写入: ${error?.message || 'unknown error'}`);
+      console.error('Save stroke error:', error);
+      setLastInsertError(error?.message || 'unknown error');
+      toast({ title: '白板内容同步失败', description: '请检查网络后重试', variant: 'destructive' });
+      return null;
     }
 
     if (savedStroke) {
@@ -662,27 +636,17 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     const newData = { ...(stroke.stroke_data as StrokeData), ...updates };
     // Optimistic update
     setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: newData } : s));
-    const { error } = await (supabase.rpc('update_board_stroke_data', {
-      p_stroke_id: strokeId,
-      p_stroke_data: newData as any,
-    } as any) as any);
+    const { error } = await supabase
+      .from('board_strokes')
+      .update({ stroke_data: newData as any } as any)
+      .eq('id', strokeId);
 
     if (error) {
-      console.error('Update image stroke RPC error:', error);
-      const fallback = await supabase
-        .from('board_strokes')
-        .update({ stroke_data: newData as any } as any)
-        .eq('id', strokeId);
-
-      if (fallback.error) {
-        console.error('Update image stroke fallback error:', fallback.error);
-        setLastUpdateError(fallback.error.message || error.message || 'unknown error');
-        setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: previousData } : s));
-        toast({ title: '图片同步失败', description: '请稍后重试', variant: 'destructive' });
-        await fetchStrokes();
-      } else {
-        setLastUpdateError(`RPC失败, 已回退表更新: ${error.message || 'unknown error'}`);
-      }
+      console.error('Update image stroke error:', error);
+      setLastUpdateError(error.message || 'unknown error');
+      setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: previousData } : s));
+      toast({ title: '图片同步失败', description: '请稍后重试', variant: 'destructive' });
+      await fetchStrokes();
     } else {
       setLastUpdateError(null);
     }
@@ -874,18 +838,18 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   function handleMouseDownFallback(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (window.PointerEvent) return;
+    if (activePointerId.current != null) return;
     e.preventDefault();
     beginPointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
   }
 
   function handleMouseMoveFallback(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (window.PointerEvent) return;
+    if (activePointerId.current !== 1) return;
     movePointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
   }
 
   function handleMouseUpFallback(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (window.PointerEvent) return;
+    if (activePointerId.current !== 1) return;
     endPointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
   }
 
