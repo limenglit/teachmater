@@ -482,9 +482,21 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     await supabase.from('board_strokes').update({ stroke_data: newData as any } as any).eq('id', strokeId);
   }
 
-  function handlePointerDown(e: React.MouseEvent) {
+  // Track active pointer for drawing (ignore secondary touches while drawing)
+  const activePointerId = useRef<number | null>(null);
+  // Pinch-to-zoom state
+  const pinchRef = useRef<{ dist: number; zoom: number; midX: number; midY: number } | null>(null);
+
+  function handlePointerDown(e: React.PointerEvent) {
     if (isLocked && !isCreator) return;
 
+    // Capture pointer for reliable move/up tracking (critical on touch)
+    canvasRef.current?.setPointerCapture(e.pointerId);
+
+    // If already tracking a pointer (multi-touch secondary finger), ignore for drawing
+    if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
+
+    activePointerId.current = e.pointerId;
     const coords = getCanvasCoords(e);
 
     // Check resize handles first (when select or image tool)
@@ -520,7 +532,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       panStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       return;
     }
-    if (tool === 'image') return; // clicking empty area with image tool does nothing
+    if (tool === 'image') return;
     if (tool === 'text') {
       setTextPos(coords);
       return;
@@ -535,7 +547,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
   }
 
-  function handlePointerMove(e: React.MouseEvent) {
+  function handlePointerMove(e: React.PointerEvent) {
+    // Only track the active pointer
+    if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
+
     const coords = getCanvasCoords(e);
 
     // Handle image resize
@@ -580,7 +595,14 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e: React.PointerEvent) {
+    // Release capture
+    try { canvasRef.current?.releasePointerCapture(e.pointerId); } catch {}
+
+    if (activePointerId.current === e.pointerId) {
+      activePointerId.current = null;
+    }
+
     // Finish image resize
     if (resizingImage) {
       const stroke = strokes.find(s => s.id === resizingImage.strokeId);
@@ -624,6 +646,65 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       setShapeEnd(null);
     }
   }
+
+  // Pinch-to-zoom via native touch events (mounted on canvas)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        const dist = Math.hypot(dx, dy);
+        const rect = canvas!.getBoundingClientRect();
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        pinchRef.current = { dist, zoom, midX, midY };
+        // Cancel any active single-pointer drawing
+        setDrawing(false);
+        setCurrentPoints([]);
+        activePointerId.current = null;
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault();
+        const dx = e.touches[1].clientX - e.touches[0].clientX;
+        const dy = e.touches[1].clientY - e.touches[0].clientY;
+        const dist = Math.hypot(dx, dy);
+        const scale = dist / pinchRef.current.dist;
+        const newZoom = Math.min(3, Math.max(0.3, pinchRef.current.zoom * scale));
+        setZoom(newZoom);
+        // Pan to keep pinch center stable
+        const rect = canvas!.getBoundingClientRect();
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        setPan(prev => ({
+          x: prev.x + (midX - pinchRef.current!.midX) * 0.5,
+          y: prev.y + (midY - pinchRef.current!.midY) * 0.5,
+        }));
+      }
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      if (e.touches.length < 2) {
+        pinchRef.current = null;
+      }
+    }
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd);
+
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [zoom]);
 
   function handleTextSubmit() {
     if (!textPos || !textInput.trim()) { setTextPos(null); return; }
