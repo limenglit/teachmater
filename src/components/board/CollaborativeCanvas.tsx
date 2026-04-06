@@ -98,7 +98,16 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       // Query newest strokes first for scalable polling, then restore paint order.
       setStrokes(([...data].reverse()) as unknown as Stroke[]);
     } else if (error) {
-      console.error('Fetch strokes error:', error);
+      console.error('Fetch strokes RPC error:', error);
+      const fallback = await supabase
+        .from('board_strokes')
+        .select('*')
+        .eq('board_id', boardId)
+        .order('created_at', { ascending: false })
+        .limit(1000);
+      if (!fallback.error && fallback.data) {
+        setStrokes(([...fallback.data].reverse()) as unknown as Stroke[]);
+      }
     }
   }, [boardId]);
 
@@ -485,16 +494,40 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       p_stroke_width: strokeWidth,
     } as any) as any);
 
-    if (error) {
-      console.error('Save stroke error:', error);
-      toast({ title: '白板内容同步失败', description: '请检查网络后重试', variant: 'destructive' });
-      return null;
-    } else if (data) {
+    let savedStroke: Stroke | null = null;
+
+    if (!error && data) {
+      savedStroke = data as unknown as Stroke;
+    } else {
+      console.error('Save stroke RPC error:', error);
+      const fallback = await supabase
+        .from('board_strokes')
+        .insert({
+          board_id: boardId,
+          user_nickname: nickname,
+          tool: strokeData.tool,
+          stroke_data: strokeData as any,
+          color,
+          stroke_width: strokeWidth,
+        } as any)
+        .select()
+        .single();
+
+      if (fallback.error) {
+        console.error('Save stroke fallback error:', fallback.error);
+        toast({ title: '白板内容同步失败', description: '请检查网络后重试', variant: 'destructive' });
+        return null;
+      }
+
+      savedStroke = fallback.data as unknown as Stroke;
+    }
+
+    if (savedStroke) {
       setStrokes(prev => {
-        if (prev.find(s => s.id === (data as any).id)) return prev;
-        return [...prev, data as unknown as Stroke];
+        if (prev.find(s => s.id === savedStroke!.id)) return prev;
+        return [...prev, savedStroke!];
       });
-      return data as unknown as Stroke;
+      return savedStroke;
     }
 
     return null;
@@ -609,10 +642,18 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     } as any) as any);
 
     if (error) {
-      console.error('Update image stroke error:', error);
-      setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: previousData } : s));
-      toast({ title: '图片同步失败', description: '请稍后重试', variant: 'destructive' });
-      await fetchStrokes();
+      console.error('Update image stroke RPC error:', error);
+      const fallback = await supabase
+        .from('board_strokes')
+        .update({ stroke_data: newData as any } as any)
+        .eq('id', strokeId);
+
+      if (fallback.error) {
+        console.error('Update image stroke fallback error:', fallback.error);
+        setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: previousData } : s));
+        toast({ title: '图片同步失败', description: '请稍后重试', variant: 'destructive' });
+        await fetchStrokes();
+      }
     }
   }
 
