@@ -911,11 +911,11 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"
-          style={{ cursor: getCursor() }}
-          onMouseDown={handlePointerDown}
-          onMouseMove={handlePointerMove}
-          onMouseUp={handlePointerUp}
-          onMouseLeave={handlePointerUp}
+          style={{ cursor: getCursor(), touchAction: 'none' }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
         />
 
         {/* Text input overlay */}
