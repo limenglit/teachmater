@@ -95,11 +95,28 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   const [lastInsertAt, setLastInsertAt] = useState<string | null>(null);
   const [lastDataSource, setLastDataSource] = useState<'rpc' | 'table' | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(true);
+  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+  const [eventCounters, setEventCounters] = useState({
+    pDown: 0,
+    pMove: 0,
+    pUp: 0,
+    mDown: 0,
+    mMove: 0,
+    mUp: 0,
+    tDown: 0,
+    tMove: 0,
+    tUp: 0,
+    save: 0,
+  });
 
   const formatTs = (ts: string | null) => {
     if (!ts) return '-';
     return new Date(ts).toLocaleTimeString();
   };
+
+  const bumpCounter = useCallback((key: keyof typeof eventCounters) => {
+    setEventCounters(prev => ({ ...prev, [key]: prev[key] + 1 }));
+  }, []);
 
   const fetchStrokes = useCallback(async () => {
     setLastFetchAt(new Date().toISOString());
@@ -323,10 +340,21 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-    const ro = new ResizeObserver(() => renderCanvas());
+    const ro = new ResizeObserver(() => {
+      const rect = container.getBoundingClientRect();
+      setCanvasSize({ w: Math.round(rect.width), h: Math.round(rect.height) });
+      renderCanvas();
+    });
     ro.observe(container);
     return () => ro.disconnect();
   }, [renderCanvas]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    setCanvasSize({ w: Math.round(rect.width), h: Math.round(rect.height) });
+  }, []);
 
   function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
     const d = stroke.stroke_data as StrokeData;
@@ -496,6 +524,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   async function saveStroke(strokeData: StrokeData): Promise<Stroke | null> {
+    bumpCounter('save');
     setLastInsertAt(new Date().toISOString());
     const { data, error } = await supabase
       .from('board_strokes')
@@ -816,6 +845,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    bumpCounter('pDown');
     e.preventDefault();
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -824,6 +854,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
+    bumpCounter('pMove');
     if (activePointerId.current != null && e.pointerId === activePointerId.current) {
       e.preventDefault();
     }
@@ -831,6 +862,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   function handlePointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
+    bumpCounter('pUp');
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {}
@@ -838,19 +870,42 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   function handleMouseDownFallback(e: React.MouseEvent<HTMLCanvasElement>) {
+    bumpCounter('mDown');
     if (activePointerId.current != null) return;
     e.preventDefault();
     beginPointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
   }
 
   function handleMouseMoveFallback(e: React.MouseEvent<HTMLCanvasElement>) {
+    bumpCounter('mMove');
     if (activePointerId.current !== 1) return;
     movePointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
   }
 
   function handleMouseUpFallback(e: React.MouseEvent<HTMLCanvasElement>) {
+    bumpCounter('mUp');
     if (activePointerId.current !== 1) return;
     endPointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
+  }
+
+  function handleTouchStartDraw(e: React.TouchEvent<HTMLCanvasElement>) {
+    bumpCounter('tDown');
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    beginPointerInteraction({ pointerId: 101, clientX: t.clientX, clientY: t.clientY, pointerType: 'touch' });
+  }
+
+  function handleTouchMoveDraw(e: React.TouchEvent<HTMLCanvasElement>) {
+    bumpCounter('tMove');
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    movePointerInteraction({ pointerId: 101, clientX: t.clientX, clientY: t.clientY, pointerType: 'touch' });
+  }
+
+  function handleTouchEndDraw(e: React.TouchEvent<HTMLCanvasElement>) {
+    bumpCounter('tUp');
+    const t = e.changedTouches[0];
+    endPointerInteraction({ pointerId: 101, clientX: t?.clientX ?? 0, clientY: t?.clientY ?? 0, pointerType: 'touch' });
   }
 
   useEffect(() => {
@@ -1174,8 +1229,13 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
                 <div>sub: {subscriptionStatus}</div>
                 <div>locked/isCreator: {String(isLocked)} / {String(isCreator)}</div>
                 <div>source: {lastDataSource || '-'}</div>
+                <div>canvas: {canvasSize.w}x{canvasSize.h}</div>
                 <div>lastFetch: {formatTs(lastFetchAt)}</div>
                 <div>lastInsert: {formatTs(lastInsertAt)}</div>
+                <div>evt p:{eventCounters.pDown}/{eventCounters.pMove}/{eventCounters.pUp}</div>
+                <div>evt m:{eventCounters.mDown}/{eventCounters.mMove}/{eventCounters.mUp}</div>
+                <div>evt t:{eventCounters.tDown}/{eventCounters.tMove}/{eventCounters.tUp}</div>
+                <div>saveCalls: {eventCounters.save}</div>
                 <div className="text-destructive/90">fetchErr: {lastFetchError || '-'}</div>
                 <div className="text-destructive/90">insertErr: {lastInsertError || '-'}</div>
                 <div className="text-destructive/90">updateErr: {lastUpdateError || '-'}</div>
@@ -1195,6 +1255,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           onMouseDown={handleMouseDownFallback}
           onMouseMove={handleMouseMoveFallback}
           onMouseUp={handleMouseUpFallback}
+          onTouchStart={handleTouchStartDraw}
+          onTouchMove={handleTouchMoveDraw}
+          onTouchEnd={handleTouchEndDraw}
+          onTouchCancel={handleTouchEndDraw}
           onDoubleClick={(e) => {
             const coords = getCanvasCoords(e);
             const imgStroke = findImageAt(coords.x, coords.y);
