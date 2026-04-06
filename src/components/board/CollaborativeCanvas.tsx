@@ -93,11 +93,12 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       .from('board_strokes')
       .select('*')
       .eq('board_id', boardId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(1000);
 
     if (!error && data) {
-      setStrokes(data as unknown as Stroke[]);
+      // Query newest strokes first for scalable polling, then restore paint order.
+      setStrokes(([...data].reverse()) as unknown as Stroke[]);
     }
   }, [boardId]);
 
@@ -156,6 +157,9 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await Promise.all([channel.track({ nickname }), fetchStrokes()]);
+        }
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          void fetchStrokes();
         }
       });
 
@@ -797,6 +801,22 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     endPointerInteraction(e.nativeEvent);
   }
 
+  function handleMouseDownFallback(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (window.PointerEvent) return;
+    e.preventDefault();
+    beginPointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
+  }
+
+  function handleMouseMoveFallback(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (window.PointerEvent) return;
+    movePointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
+  }
+
+  function handleMouseUpFallback(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (window.PointerEvent) return;
+    endPointerInteraction({ pointerId: 1, clientX: e.clientX, clientY: e.clientY, button: e.button, pointerType: 'mouse' });
+  }
+
   useEffect(() => {
     if (!drawing && !draggingImage && !resizingImage && !panning) return;
 
@@ -970,6 +990,11 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
             size="sm"
             className="h-8 w-8 p-0"
             onClick={() => {
+              if (t.id === 'image') {
+                setTool('image');
+                fileInputRef.current?.click();
+                return;
+              }
               setTool(t.id);
             }}
             title={t.label}
@@ -1102,6 +1127,9 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
+          onMouseDown={handleMouseDownFallback}
+          onMouseMove={handleMouseMoveFallback}
+          onMouseUp={handleMouseUpFallback}
           onDoubleClick={(e) => {
             const coords = getCanvasCoords(e);
             const imgStroke = findImageAt(coords.x, coords.y);
