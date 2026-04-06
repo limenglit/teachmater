@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import {
   Pen, Eraser, Square, Circle, ArrowRight, Type, Undo2,
-  Trash2, MousePointer, Minus, Download, Users, ZoomIn, ZoomOut, ImagePlus,
+  Trash2, MousePointer, Minus, Download, Users, ZoomIn, ZoomOut, ImagePlus, Upload,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -47,6 +47,14 @@ interface Props {
   onlineUsers?: string[];
 }
 
+type PointerLikeEvent = {
+  pointerId: number;
+  clientX: number;
+  clientY: number;
+  button?: number;
+  pointerType?: string;
+};
+
 export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLocked, creatorToken }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +75,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [imageRenderVersion, setImageRenderVersion] = useState(0);
-  const isPanning = useRef(false);
+  const [panning, setPanning] = useState(false);
   const panStart = useRef({ x: 0, y: 0 });
 
   // Image cache for rendering
@@ -95,6 +103,14 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   // Load existing strokes
   useEffect(() => {
     void fetchStrokes();
+  }, [fetchStrokes]);
+
+  useEffect(() => {
+    const fallbackTimer = window.setInterval(() => {
+      void fetchStrokes();
+    }, 2000);
+
+    return () => window.clearInterval(fallbackTimer);
   }, [fetchStrokes]);
 
   // Realtime subscription
@@ -497,6 +513,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
       const saved = await saveStroke({ tool: 'image', imageUrl, x: cx, y: cy, w, h });
       if (saved) {
+        setTool('select');
         toast({ title: '图片已添加到画布' });
       }
     } catch (err: any) {
@@ -534,11 +551,9 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   // Pinch-to-zoom state
   const pinchRef = useRef<{ dist: number; zoom: number; midX: number; midY: number } | null>(null);
 
-  function handlePointerDown(e: React.PointerEvent) {
+  function beginPointerInteraction(e: PointerLikeEvent) {
     if (isLocked && !isCreator) return;
-
-    // Capture pointer for reliable move/up tracking (critical on touch)
-    canvasRef.current?.setPointerCapture(e.pointerId);
+    if ((e.pointerType === 'mouse' || e.pointerType === 'pen') && e.button != null && e.button !== 0) return;
 
     // If already tracking a pointer (multi-touch secondary finger), ignore for drawing
     if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
@@ -575,7 +590,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
 
     if (tool === 'select') {
-      isPanning.current = true;
+      setPanning(true);
       panStart.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       return;
     }
@@ -594,7 +609,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
   }
 
-  function handlePointerMove(e: React.PointerEvent) {
+  function movePointerInteraction(e: PointerLikeEvent) {
     // Only track the active pointer
     if (activePointerId.current != null && e.pointerId !== activePointerId.current) return;
 
@@ -629,7 +644,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       return;
     }
 
-    if (isPanning.current) {
+    if (panning) {
       setPan({ x: e.clientX - panStart.current.x, y: e.clientY - panStart.current.y });
       return;
     }
@@ -642,10 +657,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     }
   }
 
-  function handlePointerUp(e: React.PointerEvent) {
-    // Release capture
-    try { canvasRef.current?.releasePointerCapture(e.pointerId); } catch {}
-
+  function endPointerInteraction(e: PointerLikeEvent) {
     if (activePointerId.current === e.pointerId) {
       activePointerId.current = null;
     }
@@ -672,7 +684,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       return;
     }
 
-    if (isPanning.current) { isPanning.current = false; return; }
+    if (panning) {
+      setPanning(false);
+      return;
+    }
     if (!drawing) return;
     setDrawing(false);
 
@@ -693,6 +708,36 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       setShapeEnd(null);
     }
   }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    e.preventDefault();
+    beginPointerInteraction(e.nativeEvent);
+  }
+
+  useEffect(() => {
+    if (!drawing && !draggingImage && !resizingImage && !panning) return;
+
+    const handleWindowPointerMove = (event: PointerEvent) => {
+      if (activePointerId.current != null && event.pointerId === activePointerId.current) {
+        event.preventDefault();
+      }
+      movePointerInteraction(event);
+    };
+
+    const handleWindowPointerUp = (event: PointerEvent) => {
+      endPointerInteraction(event);
+    };
+
+    window.addEventListener('pointermove', handleWindowPointerMove, { passive: false });
+    window.addEventListener('pointerup', handleWindowPointerUp);
+    window.addEventListener('pointercancel', handleWindowPointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handleWindowPointerMove);
+      window.removeEventListener('pointerup', handleWindowPointerUp);
+      window.removeEventListener('pointercancel', handleWindowPointerUp);
+    };
+  }, [drawing, draggingImage, resizingImage, panning, movePointerInteraction, endPointerInteraction]);
 
   // Pinch-to-zoom via native touch events (mounted on canvas)
   useEffect(() => {
@@ -812,6 +857,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   function getCursor() {
     if (draggingImage) return 'grabbing';
     if (resizingImage) return 'nwse-resize';
+    if (panning) return 'grabbing';
     if (tool === 'select') return 'grab';
     if (tool === 'text') return 'text';
     if (tool === 'image') return 'default';
@@ -842,7 +888,6 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
             className="h-8 w-8 p-0"
             onClick={() => {
               setTool(t.id);
-              if (t.id === 'image') fileInputRef.current?.click();
             }}
             title={t.label}
             disabled={isLocked && !isCreator}
@@ -864,6 +909,17 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         />
 
         <div className="w-px h-6 bg-border mx-1" />
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => fileInputRef.current?.click()}
+          title="上传图片"
+          disabled={(isLocked && !isCreator) || uploading}
+        >
+          <Upload className="w-4 h-4" />
+        </Button>
 
         {/* Color picker */}
         <Popover>
@@ -951,7 +1007,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
       {/* Canvas area */}
       <div
-        className="flex-1 relative overflow-hidden bg-white"
+        className="flex-1 relative overflow-hidden bg-white select-none"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
@@ -960,9 +1016,6 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           className="absolute inset-0 w-full h-full"
           style={{ cursor: getCursor(), touchAction: 'none' }}
           onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
         />
 
         {/* Text input overlay */}
