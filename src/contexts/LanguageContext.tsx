@@ -6920,10 +6920,24 @@ const fallbackLanguageContext: LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue>(fallbackLanguageContext);
 
+function isLangCode(value: string | null): value is LangCode {
+  return !!value && LANGUAGES.some((language) => language.code === value);
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<LangCode>(() => {
+    const urlLang = new URLSearchParams(window.location.search).get('lang');
+    if (isLangCode(urlLang)) {
+      localStorage.setItem('app-lang', urlLang);
+      return urlLang;
+    }
+
     const saved = localStorage.getItem('app-lang');
-    return (saved as LangCode) || 'zh';
+    if (isLangCode(saved)) {
+      return saved;
+    }
+
+    return 'zh';
   });
 
   const setLang = useCallback((code: LangCode) => {
