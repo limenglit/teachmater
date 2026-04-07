@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import {
   Pen, Eraser, Square, Circle, ArrowRight, Type, Undo2,
-  Trash2, MousePointer, Minus, Download, Users, ZoomIn, ZoomOut, ImagePlus, Upload,
+  Trash2, MousePointer, Minus, Download, Users, ZoomIn, ZoomOut, ImagePlus, Upload, LocateFixed,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -136,6 +136,12 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       console.error('Fetch strokes error:', error);
       setLastFetchError(error.message || 'unknown error');
     }
+  }, [boardId]);
+
+  useEffect(() => {
+    // Reset viewport on board switch so drawings are not left off-screen.
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   }, [boardId]);
 
   // Load existing strokes
@@ -1166,6 +1172,18 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setZoom(z => Math.max(0.3, z - 0.2))} title="缩小">
           <ZoomOut className="w-4 h-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() => {
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+          }}
+          title="重置视图"
+        >
+          <LocateFixed className="w-4 h-4" />
+        </Button>
 
         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleExport} title="导出PNG">
           <Download className="w-4 h-4" />
@@ -1230,6 +1248,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
                 <div>sub: {subscriptionStatus}</div>
                 <div>locked/isCreator: {String(isLocked)} / {String(isCreator)}</div>
                 <div>source: {lastDataSource || '-'}</div>
+                <div>zoom/pan: {zoom.toFixed(2)} / {Math.round(pan.x)},{Math.round(pan.y)}</div>
                 <div>canvas: {canvasSize.w}x{canvasSize.h}</div>
                 <div>lastFetch: {formatTs(lastFetchAt)}</div>
                 <div>lastInsert: {formatTs(lastInsertAt)}</div>
