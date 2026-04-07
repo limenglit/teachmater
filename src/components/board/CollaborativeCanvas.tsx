@@ -1265,42 +1265,6 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >
-        <div className="absolute left-2 top-2 z-30 pointer-events-auto">
-          <div className="rounded-md border border-border bg-background/90 px-2 py-1 text-[11px] leading-5 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              <span className="font-medium">协同诊断</span>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground"
-                onClick={() => setShowDiagnostics(v => !v)}
-              >
-                {showDiagnostics ? '收起' : '展开'}
-              </button>
-            </div>
-            {showDiagnostics && (
-              <div className="mt-1 space-y-0.5 font-mono text-[10px] text-muted-foreground">
-                <div>boardId: {boardId}</div>
-                <div>path: {window.location.pathname}</div>
-                <div>strokes: {strokes.length}</div>
-                <div>sub: {subscriptionStatus}</div>
-                <div>locked/isCreator: {String(isLocked)} / {String(isCreator)}</div>
-                <div>source: {lastDataSource || '-'}</div>
-                <div>zoom/pan: {zoom.toFixed(2)} / {Math.round(pan.x)},{Math.round(pan.y)}</div>
-                <div>canvas: {canvasSize.w}x{canvasSize.h}</div>
-                <div>lastFetch: {formatTs(lastFetchAt)}</div>
-                <div>lastInsert: {formatTs(lastInsertAt)}</div>
-                <div>evt p:{eventCounters.pDown}/{eventCounters.pMove}/{eventCounters.pUp}</div>
-                <div>evt m:{eventCounters.mDown}/{eventCounters.mMove}/{eventCounters.mUp}</div>
-                <div>evt t:{eventCounters.tDown}/{eventCounters.tMove}/{eventCounters.tUp}</div>
-                <div>saveCalls: {eventCounters.save}</div>
-                <div className="text-destructive/90">fetchErr: {lastFetchError || '-'}</div>
-                <div className="text-destructive/90">insertErr: {lastInsertError || '-'}</div>
-                <div className="text-destructive/90">updateErr: {lastUpdateError || '-'}</div>
-              </div>
-            )}
-          </div>
-        </div>
-
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full"

@@ -644,14 +644,24 @@ export default function BoardPanel() {
             )}
           </div>
         </div>
-        <div className="flex-1 min-h-0">
-          <CollaborativeCanvas
-            boardId={activeBoard.id}
-            nickname={user?.email?.split('@')[0] || '教师'}
-            isCreator={isCreator}
-            isLocked={activeBoard.is_locked}
-            creatorToken={getCreatorToken(activeBoard.id)}
-          />
+        <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-4 p-8">
+          <div className="text-center space-y-2">
+            <Palette className="w-12 h-12 text-primary mx-auto" />
+            <h3 className="text-lg font-semibold text-foreground">{activeBoard.title}</h3>
+            <p className="text-sm text-muted-foreground">点击下方按钮在独立页面中打开协同白板</p>
+          </div>
+          <Button
+            size="lg"
+            className="gap-2"
+            onClick={() => window.open(`/board/${activeBoard.id}/collab?lang=${lang}`, '_blank', 'noopener,noreferrer')}
+          >
+            <ExternalLink className="w-4 h-4" /> 打开协同白板
+          </Button>
+          <div className="flex gap-2 mt-2">
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setShowQR(true)}>
+              <QrCode className="w-3 h-3" /> {t('board.qrcode')}
+            </Button>
+          </div>
         </div>
 
         {/* QR dialog */}
