@@ -102,7 +102,7 @@ function saveLocalCards(boardId: string, cards: BoardCard[]) {
 }
 
 export default function BoardPanel() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const { students: sidebarStudents } = useStudents();
   const isCloud = true; // All users use cloud for collaboration features
@@ -594,7 +594,7 @@ export default function BoardPanel() {
 
   // Collaborative board view
   if (activeBoard && activeBoard.is_collaborative) {
-    const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab`;
+    const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab?lang=${lang}`;
     const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
@@ -618,7 +618,7 @@ export default function BoardPanel() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs gap-1"
-                  onClick={() => window.open(`/board/${activeBoard.id}/collab`, '_blank', 'noopener,noreferrer')}
+                  onClick={() => window.open(`/board/${activeBoard.id}/collab?lang=${lang}`, '_blank', 'noopener,noreferrer')}
                 >
                   <ExternalLink className="w-3 h-3" /> 独立页
                 </Button>

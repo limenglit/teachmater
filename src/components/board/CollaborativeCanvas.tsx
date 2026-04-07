@@ -34,6 +34,36 @@ interface Stroke {
   created_at: string;
 }
 
+const FILE_CONTENT_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  csv: 'text/csv',
+  txt: 'text/plain',
+  rtf: 'application/rtf',
+  zip: 'application/zip',
+  rar: 'application/vnd.rar',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  aac: 'audio/aac',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+};
+
 const COLORS = [
   '#000000', '#ef4444', '#f97316', '#eab308', '#22c55e',
   '#3b82f6', '#8b5cf6', '#ec4899', '#ffffff',
@@ -614,9 +644,16 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
       const path = `collab/${boardId}/${crypto.randomUUID()}.${ext}`;
+      const contentType = file.type || FILE_CONTENT_TYPES[ext] || 'application/octet-stream';
+      const fileBuffer = await file.arrayBuffer();
+      const uploadBody = new Blob([fileBuffer], { type: contentType });
       const { error: uploadError } = await supabase.storage
         .from('board-media')
-        .upload(path, file, { upsert: false });
+        .upload(path, uploadBody, {
+          upsert: false,
+          contentType,
+          cacheControl: '3600',
+        });
 
       if (uploadError) throw uploadError;
 
