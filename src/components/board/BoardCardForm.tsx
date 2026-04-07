@@ -1,12 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ImagePlus, Paperclip, X } from 'lucide-react';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getCodeIcon, getCodeLanguage, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
+import { compressImage, validateFile } from '@/lib/upload-queue';
+import { uploadBoardMediaFile } from '@/lib/board-media-upload';
+import { toast } from '@/hooks/use-toast';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 
@@ -45,17 +47,35 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
 
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
     const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
-    
-    const { data, error } = await supabase.storage.from('board-media').upload(path, file);
-    if (error) { setUploading(false); return; }
 
-    const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(data.path);
-    setMediaUrl(urlData.publicUrl);
-    setFileName(file.name);
-    setFileCategory(category);
-    setUploading(false);
+    try {
+      const validationError = validateFile(file);
+      if (validationError) {
+        toast({ title: validationError, variant: 'destructive' });
+        return;
+      }
+
+      let fileToUpload: Blob | File = file;
+      if (category === 'image') {
+        fileToUpload = await compressImage(file);
+      }
+
+      const { publicUrl } = await uploadBoardMediaFile(fileToUpload, {
+        boardId,
+        fileName: file.name,
+      });
+
+      setMediaUrl(publicUrl);
+      setFileName(file.name);
+      setFileCategory(category);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误';
+      toast({ title: `上传失败: ${message}`, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
   };
 
   const clearMedia = () => {

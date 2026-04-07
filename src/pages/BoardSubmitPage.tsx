@@ -13,6 +13,7 @@ import {
 import type { Board, BoardCard } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getDocIcon, getCodeIcon, getCodeLanguage, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
+import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import BoardCardItem from '@/components/board/BoardCardItem';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
@@ -217,25 +218,33 @@ export default function BoardSubmitPage() {
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
-    let fileToUpload: File = file;
-    if (category === 'image') fileToUpload = await compressImage(file);
-    const path = `${boardId}/${crypto.randomUUID()}.${ext}`;
-    let lastError: string | undefined;
-    for (let attempt = 0; attempt < UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, UPLOAD_CONFIG.RETRY_DELAY_MS * Math.pow(2, attempt - 1)));
-      const { data, error } = await supabase.storage.from('board-media').upload(path, fileToUpload);
-      if (!error && data) {
-        const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(data.path);
-        setMediaUrl(urlData.publicUrl);
-        setFileName(file.name);
-        setFileCategory(category);
-        lastError = undefined;
-        break;
+    try {
+      let fileToUpload: Blob | File = file;
+      if (category === 'image') fileToUpload = await compressImage(file);
+
+      let lastError: string | undefined;
+      for (let attempt = 0; attempt < UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, UPLOAD_CONFIG.RETRY_DELAY_MS * Math.pow(2, attempt - 1)));
+
+        try {
+          const { publicUrl } = await uploadBoardMediaFile(fileToUpload, {
+            boardId,
+            fileName: file.name,
+          });
+          setMediaUrl(publicUrl);
+          setFileName(file.name);
+          setFileCategory(category);
+          lastError = undefined;
+          break;
+        } catch (error) {
+          lastError = error instanceof Error ? error.message : '未知错误';
+        }
       }
-      lastError = error?.message;
+
+      if (lastError) toast({ title: `上传失败: ${lastError}`, variant: 'destructive' });
+    } finally {
+      setUploading(false);
     }
-    if (lastError) toast({ title: `上传失败: ${lastError}`, variant: 'destructive' });
-    setUploading(false);
   }, [boardId]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
