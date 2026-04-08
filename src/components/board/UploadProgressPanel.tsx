@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { X, RotateCcw, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadBoardMediaFile, type UploadBoardMediaOptions, type UploadBoardMediaResult } from '@/lib/board-media-upload';
 import { compressImage } from '@/lib/upload-queue';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // ─── Upload item type ────────────────────────────────────────
 export interface UploadItem {
@@ -105,13 +106,6 @@ export function useUploadProgress() {
 }
 
 // ─── UI Component ────────────────────────────────────────────
-const STATUS_LABELS: Record<UploadItem['status'], string> = {
-  compressing: '压缩中...',
-  uploading: '上传中...',
-  success: '完成',
-  failed: '失败',
-};
-
 interface UploadProgressPanelProps {
   items: UploadItem[];
   onRetry: (id: string) => void;
@@ -120,17 +114,27 @@ interface UploadProgressPanelProps {
 }
 
 export function UploadProgressPanel({ items, onRetry, onRemove, onClearCompleted }: UploadProgressPanelProps) {
+  const { t } = useLanguage();
   if (items.length === 0) return null;
+
+  const statusLabel = (status: UploadItem['status']) => {
+    switch (status) {
+      case 'compressing': return t('board.uploadCompressing');
+      case 'uploading': return t('board.uploading');
+      case 'success': return t('board.uploadDone');
+      case 'failed': return t('board.uploadFailed');
+    }
+  };
 
   const hasCompleted = items.some(it => it.status === 'success');
 
   return (
     <div className="absolute bottom-2 right-2 z-50 w-72 bg-background/95 backdrop-blur border rounded-lg shadow-lg p-3 space-y-2 max-h-64 overflow-y-auto">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-foreground">文件上传</span>
+        <span className="text-xs font-medium text-foreground">{t('board.uploadProgress')}</span>
         {hasCompleted && (
           <Button variant="ghost" size="sm" className="h-5 px-1 text-xs" onClick={onClearCompleted}>
-            清除已完成
+            {t('board.uploadClearDone')}
           </Button>
         )}
       </div>
@@ -143,9 +147,9 @@ export function UploadProgressPanel({ items, onRetry, onRemove, onClearCompleted
               <Loader2 className="w-3.5 h-3.5 text-primary animate-spin shrink-0" />
             )}
             <span className="text-xs truncate flex-1" title={item.file.name}>{item.file.name}</span>
-            <span className="text-[10px] text-muted-foreground shrink-0">{STATUS_LABELS[item.status]}</span>
+            <span className="text-[10px] text-muted-foreground shrink-0">{statusLabel(item.status)}</span>
             {item.status === 'failed' && (
-              <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => onRetry(item.id)} title="重试">
+              <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => onRetry(item.id)} title={t('board.uploadRetry')}>
                 <RotateCcw className="w-3 h-3" />
               </Button>
             )}
