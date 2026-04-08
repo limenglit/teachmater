@@ -924,6 +924,12 @@ export default function BoardSubmitPage() {
                   <CheckCircle2 className="w-5 h-5" /> {t('board.submitSuccess')}
                 </div>
               )}
+              <UploadProgressPanel
+                items={uploadProgress.items}
+                onRetry={(id) => uploadProgress.retryUpload(id)}
+                onRemove={(id) => uploadProgress.removeItem(id)}
+                onClearCompleted={() => uploadProgress.clearCompleted()}
+              />
             </div>
           </div>
         </div>
