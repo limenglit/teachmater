@@ -9,6 +9,7 @@ import { getFileCategory, getCardType, getCodeIcon, getCodeLanguage, ACCEPT_ALL_
 import { compressImage, validateFile } from '@/lib/upload-queue';
 import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import { toast } from '@/hooks/use-toast';
+import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 
@@ -29,6 +30,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const [nickname, setNickname] = useState(defaultNickname || '');
   const [columnId, setColumnId] = useState(columns?.[0] || '');
   const [uploading, setUploading] = useState(false);
+  const uploadProgress = useUploadProgress();
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
@@ -45,33 +47,24 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
     const file = e.target.files?.[0];
     if (!file || !isCloud || !boardId) return;
 
+    const validationError = validateFile(file);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
+      return;
+    }
+
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
 
+    const { promise } = uploadProgress.addUpload(file, { boardId });
     try {
-      const validationError = validateFile(file);
-      if (validationError) {
-        toast({ title: validationError, variant: 'destructive' });
-        return;
+      const result = await promise;
+      if (result) {
+        setMediaUrl(result.publicUrl);
+        setFileName(file.name);
+        setFileCategory(category);
       }
-
-      let fileToUpload: Blob | File = file;
-      if (category === 'image') {
-        fileToUpload = await compressImage(file);
-      }
-
-      const { publicUrl } = await uploadBoardMediaFile(fileToUpload, {
-        boardId,
-        fileName: file.name,
-      });
-
-      setMediaUrl(publicUrl);
-      setFileName(file.name);
-      setFileCategory(category);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      toast({ title: `上传失败: ${message}`, variant: 'destructive' });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -205,6 +198,12 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
           {t('board.submit')}
         </Button>
       </div>
+      <UploadProgressPanel
+        items={uploadProgress.items}
+        onRetry={(id) => uploadProgress.retryUpload(id)}
+        onRemove={(id) => uploadProgress.removeItem(id)}
+        onClearCompleted={() => uploadProgress.clearCompleted()}
+      />
     </div>
   );
 }
