@@ -10,6 +10,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { uploadBoardMediaFile } from '@/lib/board-media-upload';
+import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
 
 type Tool = 'select' | 'pen' | 'eraser' | 'rect' | 'circle' | 'arrow' | 'line' | 'text' | 'image';
 
@@ -86,8 +87,9 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   const [draggingImage, setDraggingImage] = useState<{ strokeId: string; offsetX: number; offsetY: number } | null>(null);
   // Image resize state
   const [resizingImage, setResizingImage] = useState<{ strokeId: string; corner: string; origX: number; origY: number; origW: number; origH: number; startX: number; startY: number } | null>(null);
-  // Uploading state
-  const [uploading, setUploading] = useState(false);
+  // Upload progress
+  const uploadProgress = useUploadProgress();
+  const uploading = uploadProgress.hasActive;
   const [subscriptionStatus, setSubscriptionStatus] = useState('INIT');
   const [lastFetchError, setLastFetchError] = useState<string | null>(null);
   const [lastInsertError, setLastInsertError] = useState<string | null>(null);
@@ -611,14 +613,13 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       return;
     }
 
-    setUploading(true);
+    const { promise } = uploadProgress.addUpload(file, { boardId, scope: 'collab' });
     try {
-      const { publicUrl: fileUrl, contentType } = await uploadBoardMediaFile(file, {
-        boardId,
-        fileName: file.name,
-        scope: 'collab',
-      });
-      const isImage = contentType.startsWith('image/');
+      const result = await promise;
+      if (!result) return; // failed, progress panel shows error
+
+      const fileUrl = result.publicUrl;
+      const isImage = result.contentType.startsWith('image/');
 
       let w = 200, h = 120;
       if (isImage) {
@@ -635,7 +636,6 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         }
       }
 
-      // Place at center of current view
       const canvas = canvasRef.current;
       const rect = canvas?.getBoundingClientRect();
       const cx = rect ? ((rect.width / 2) - pan.x) / zoom - w / 2 : 100;
@@ -651,11 +651,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         setTool('select');
         toast({ title: isImage ? '图片已添加到画布' : `文件 ${file.name} 已添加` });
       }
-    } catch (err: any) {
-      console.error('File upload error:', err);
-      toast({ title: '上传失败: ' + (err.message || '未知错误'), variant: 'destructive' });
     } finally {
-      setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }
@@ -1196,6 +1192,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           <span className="text-xs text-muted-foreground animate-pulse ml-1">上传中...</span>
         )}
 
+
         {/* Online users */}
         <div className="ml-auto flex items-center gap-1">
           <Users className="w-4 h-4 text-muted-foreground" />
@@ -1272,6 +1269,14 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
             </div>
           </div>
         )}
+
+        {/* Upload progress panel */}
+        <UploadProgressPanel
+          items={uploadProgress.items}
+          onRetry={(id) => uploadProgress.retryUpload(id)}
+          onRemove={(id) => uploadProgress.removeItem(id)}
+          onClearCompleted={() => uploadProgress.clearCompleted()}
+        />
 
         {/* Locked overlay */}
         {isLocked && !isCreator && (
