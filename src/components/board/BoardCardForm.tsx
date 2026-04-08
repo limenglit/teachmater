@@ -9,6 +9,7 @@ import { getFileCategory, getCardType, getCodeIcon, getCodeLanguage, ACCEPT_ALL_
 import { compressImage, validateFile } from '@/lib/upload-queue';
 import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import { toast } from '@/hooks/use-toast';
+import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 
@@ -29,6 +30,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const [nickname, setNickname] = useState(defaultNickname || '');
   const [columnId, setColumnId] = useState(columns?.[0] || '');
   const [uploading, setUploading] = useState(false);
+  const uploadProgress = useUploadProgress();
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
