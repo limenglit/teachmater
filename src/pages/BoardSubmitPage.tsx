@@ -15,6 +15,7 @@ import { getFileCategory, getCardType, getDocIcon, getCodeIcon, getCodeLanguage,
 import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
 import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import BoardCardItem from '@/components/board/BoardCardItem';
+import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 const RECORDING_MAX_SECONDS = 60;
@@ -56,6 +57,7 @@ export default function BoardSubmitPage() {
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
   const [uploading, setUploading] = useState(false);
+  const uploadProgress = useUploadProgress();
   const [isRecording, setIsRecording] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -218,34 +220,19 @@ export default function BoardSubmitPage() {
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
+
+    const { promise } = uploadProgress.addUpload(file, { boardId });
     try {
-      let fileToUpload: Blob | File = file;
-      if (category === 'image') fileToUpload = await compressImage(file);
-
-      let lastError: string | undefined;
-      for (let attempt = 0; attempt < UPLOAD_CONFIG.MAX_RETRIES; attempt++) {
-        if (attempt > 0) await new Promise(r => setTimeout(r, UPLOAD_CONFIG.RETRY_DELAY_MS * Math.pow(2, attempt - 1)));
-
-        try {
-          const { publicUrl } = await uploadBoardMediaFile(fileToUpload, {
-            boardId,
-            fileName: file.name,
-          });
-          setMediaUrl(publicUrl);
-          setFileName(file.name);
-          setFileCategory(category);
-          lastError = undefined;
-          break;
-        } catch (error) {
-          lastError = error instanceof Error ? error.message : '未知错误';
-        }
+      const result = await promise;
+      if (result) {
+        setMediaUrl(result.publicUrl);
+        setFileName(file.name);
+        setFileCategory(category);
       }
-
-      if (lastError) toast({ title: `上传失败: ${lastError}`, variant: 'destructive' });
     } finally {
       setUploading(false);
     }
-  }, [boardId]);
+  }, [boardId, uploadProgress]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
