@@ -47,33 +47,24 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
     const file = e.target.files?.[0];
     if (!file || !isCloud || !boardId) return;
 
+    const validationError = validateFile(file);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
+      return;
+    }
+
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
 
+    const { promise } = uploadProgress.addUpload(file, { boardId });
     try {
-      const validationError = validateFile(file);
-      if (validationError) {
-        toast({ title: validationError, variant: 'destructive' });
-        return;
+      const result = await promise;
+      if (result) {
+        setMediaUrl(result.publicUrl);
+        setFileName(file.name);
+        setFileCategory(category);
       }
-
-      let fileToUpload: Blob | File = file;
-      if (category === 'image') {
-        fileToUpload = await compressImage(file);
-      }
-
-      const { publicUrl } = await uploadBoardMediaFile(fileToUpload, {
-        boardId,
-        fileName: file.name,
-      });
-
-      setMediaUrl(publicUrl);
-      setFileName(file.name);
-      setFileCategory(category);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : '未知错误';
-      toast({ title: `上传失败: ${message}`, variant: 'destructive' });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -207,6 +198,12 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
           {t('board.submit')}
         </Button>
       </div>
+      <UploadProgressPanel
+        items={uploadProgress.items}
+        onRetry={(id) => uploadProgress.retryUpload(id)}
+        onRemove={(id) => uploadProgress.removeItem(id)}
+        onClearCompleted={() => uploadProgress.clearCompleted()}
+      />
     </div>
   );
 }
