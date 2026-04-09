@@ -43,11 +43,13 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function ComputerLab({ students }: Props) {
-  const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 8));
+  const [tableCols, setTableCols] = useState(1);
+  const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 8, 1));
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<LabSeatMode>('balanced');
   const [dualSide, setDualSide] = useState(true);
+  const [autoRowCount, setAutoRowCount] = useState(true);
   const [tableGap, setTableGap] = useState(80);
   const [assignment, setAssignment] = useState<ComputerLabRowAssignment[]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
