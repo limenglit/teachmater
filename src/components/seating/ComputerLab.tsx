@@ -309,9 +309,10 @@ export default function ComputerLab({ students }: Props) {
   };
 
   useEffect(() => {
-    const nextRows = getAutoRowCount(students.length, seatsPerSide);
+    if (!autoRowCount) return;
+    const nextRows = getAutoRowCount(students.length, seatsPerSide, tableCols);
     setRowCount(prev => (prev === nextRows ? prev : nextRows));
-  }, [students.length, seatsPerSide]);
+  }, [students.length, seatsPerSide, tableCols, autoRowCount]);
 
   useEffect(() => {
     setHistoryItems(loadComputerLabHistory());
