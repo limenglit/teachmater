@@ -282,9 +282,12 @@ export default function ComputerLab({ students }: Props) {
     const snapshot = item.snapshot;
     const nextSeatsPerSide = Math.max(3, Math.min(16, snapshot.seatsPerSide));
     const nextRowCount = Math.max(1, snapshot.rowCount);
+    const nextTableCols = Math.max(1, Math.min(6, snapshot.tableCols || 1));
 
     setSeatsPerSide(nextSeatsPerSide);
     setRowCount(nextRowCount);
+    setTableCols(nextTableCols);
+    setAutoRowCount(snapshot.autoRowCount !== false);
     setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
     setMode(snapshot.mode);
     setDualSide(!!snapshot.dualSide);
@@ -292,7 +295,7 @@ export default function ComputerLab({ students }: Props) {
     setSeated(!!snapshot.seated);
     setRecordName(item.name);
 
-    const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextRowCount, nextSeatsPerSide);
+    const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextRowCount, nextSeatsPerSide * nextTableCols);
     setAssignment(nextAssignment);
     setClosedSeats(new Set(snapshot.closedSeats || []));
     setRowTransforms(
