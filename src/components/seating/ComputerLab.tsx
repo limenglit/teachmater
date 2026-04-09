@@ -172,8 +172,8 @@ export default function ComputerLab({ students }: Props) {
     const result: typeof assignment = [];
     const matrix = Array.from({ length: rowCount }, (_, rowIndex) => ({
       rowIndex,
-      top: Array.from({ length: seatsPerSide }, () => ''),
-      bottom: Array.from({ length: seatsPerSide }, () => ''),
+      top: Array.from({ length: totalSeatsPerSide }, () => ''),
+      bottom: Array.from({ length: totalSeatsPerSide }, () => ''),
     }));
 
     if (mode === 'groupRow') {
@@ -181,10 +181,10 @@ export default function ComputerLab({ students }: Props) {
       groups.forEach((group, gi) => {
         const row = gi % rowCount;
         const rowSlots: { side: 'top' | 'bottom'; col: number }[] = [];
-        for (let c = 0; c < seatsPerSide; c++) {
+        for (let c = 0; c < totalSeatsPerSide; c++) {
           if (!closedSeats.has(seatKey(row, 'top', c))) rowSlots.push({ side: 'top', col: c });
         }
-        for (let c = 0; c < seatsPerSide; c++) {
+        for (let c = 0; c < totalSeatsPerSide; c++) {
           if (!closedSeats.has(seatKey(row, 'bottom', c))) rowSlots.push({ side: 'bottom', col: c });
         }
 
