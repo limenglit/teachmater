@@ -631,7 +631,7 @@ export default function ComputerLab({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        <span className="text-xs text-muted-foreground">可容纳 {rowCount * seatsPerSide * 2} 人 | 当前 {students.length} 人</span>
+        <span className="text-xs text-muted-foreground">可容纳 {rowCount * totalSeatsPerSide * 2} 人 | 当前 {students.length} 人</span>
         {seated && (
           <ExportButtons
             targetRef={printRef}
