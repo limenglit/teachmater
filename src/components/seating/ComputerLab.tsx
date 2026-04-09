@@ -368,7 +368,7 @@ export default function ComputerLab({ students }: Props) {
         const [rowStr, side, colStr] = key.split('-');
         const row = Number(rowStr);
         const col = Number(colStr);
-        if (row < rowCount && (side === 'top' || side === 'bottom') && col < seatsPerSide) next.add(key);
+        if (row < rowCount && (side === 'top' || side === 'bottom') && col < totalSeatsPerSide) next.add(key);
       });
       return next;
     });
