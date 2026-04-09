@@ -741,8 +741,8 @@ export default function ComputerLab({ students }: Props) {
                       })}
 
                       <g onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); rotateRow(rowIdx); }} style={{ cursor: 'pointer' }}>
-                        <rect x={tableX + tableW + 12} y={baseY + 2} width={30} height={20} rx={5} className="fill-card stroke-border hover:stroke-primary/60" strokeWidth={1.2} />
-                        <text x={tableX + tableW + 27} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[10px]">90°</text>
+                        <rect x={allTableStartX + allTableW + 12} y={baseY + 2} width={30} height={20} rx={5} className="fill-card stroke-border hover:stroke-primary/60" strokeWidth={1.2} />
+                        <text x={allTableStartX + allTableW + 27} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[10px]">90°</text>
                       </g>
                       </g>
                     </g>
