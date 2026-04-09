@@ -31,9 +31,13 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
 
   const seatW = 40, seatH = 28, gap = 3;
   const tableW = seatsPerSide * (seatW + gap);
-  const rowH = seatH * 2 + 20 + 16; // top + table + bottom + spacing
-  const svgW = tableW + 60;
+  const colGap = 20;
+  const allTableW = tableW * tableCols + colGap * (tableCols - 1);
+  const rowH = seatH * 2 + 20 + 16;
+  const svgW = allTableW + 60;
   const svgH = rowCount * rowH + 40;
+  const totalSeatsPerSide = seatsPerSide * tableCols;
+  const tableColIdx = Math.floor(myPos.col / seatsPerSide);
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos.rowIndex, myPos.side, myPos.col]);
 
   return (
