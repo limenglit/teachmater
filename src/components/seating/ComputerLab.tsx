@@ -355,7 +355,7 @@ export default function ComputerLab({ students }: Props) {
   useEffect(() => {
     if (!restoredOnceRef.current) return;
     saveComputerLabSnapshot(buildSnapshot());
-  }, [assignment, rowCount, seatsPerSide, groupCount, mode, dualSide, tableGap, closedSeats, rowTransforms, seated]);
+  }, [assignment, rowCount, seatsPerSide, tableCols, autoRowCount, groupCount, mode, dualSide, tableGap, closedSeats, rowTransforms, seated]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
