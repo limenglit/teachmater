@@ -133,6 +133,8 @@ export interface ComputerLabRowTransform {
 export interface ComputerLabSnapshot {
   rowCount: number;
   seatsPerSide: number;
+  tableCols?: number;
+  autoRowCount?: boolean;
   groupCount: number;
   mode: 'balanced' | 'groupRow' | 'verticalS' | 'horizontalS';
   dualSide: boolean;

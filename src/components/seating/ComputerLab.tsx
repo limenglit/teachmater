@@ -25,8 +25,8 @@ type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
 const REF_BLACKBOARD_TOP = 12;
 
-function getAutoRowCount(totalStudents: number, seatsPerSide: number) {
-  const capacityPerRow = Math.max(1, seatsPerSide * 2);
+function getAutoRowCount(totalStudents: number, seatsPerSide: number, tableCols: number = 1) {
+  const capacityPerRow = Math.max(1, seatsPerSide * 2) * tableCols;
   return Math.max(1, Math.ceil(totalStudents / capacityPerRow));
 }
 
@@ -43,11 +43,13 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function ComputerLab({ students }: Props) {
-  const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 8));
+  const [tableCols, setTableCols] = useState(1);
+  const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 8, 1));
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<LabSeatMode>('balanced');
   const [dualSide, setDualSide] = useState(true);
+  const [autoRowCount, setAutoRowCount] = useState(true);
   const [tableGap, setTableGap] = useState(80);
   const [assignment, setAssignment] = useState<ComputerLabRowAssignment[]>([]);
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
@@ -79,13 +81,16 @@ export default function ComputerLab({ students }: Props) {
   const tableMargin = 20;
   const tableW = seatsPerSide * (seatW + gap) + gap;
 
+  const colGap = 40;
+  const allTableW = tableW * tableCols + colGap * (tableCols - 1);
+
   const minRowGap = dualSide ? 128 : 188;
   const rowGap = Math.max(tableGap, minRowGap);
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
 
-  const roomWidth = Math.max(980, tableW + tableMargin * 2 + 220);
+  const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220);
   const roomHeight = Math.max(760, maxRows * rowGap + 220);
-  const exportSceneConfig = { rowCount, seatsPerSide, dualSide };
+  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, tableCols };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
@@ -100,6 +105,7 @@ export default function ComputerLab({ students }: Props) {
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
+  const totalSeatsPerSide = seatsPerSide * tableCols;
   const seatKey = (row: number, side: 'top' | 'bottom', col: number) => `${row}-${side}-${col}`;
 
   const toggleSeatOpen = (row: number, side: 'top' | 'bottom', col: number) => {
@@ -122,7 +128,7 @@ export default function ComputerLab({ students }: Props) {
     const slots: { row: number; side: 'top' | 'bottom'; col: number }[] = [];
 
     if (seatMode === 'verticalS') {
-      for (let c = 0; c < seatsPerSide; c++) {
+      for (let c = 0; c < totalSeatsPerSide; c++) {
         for (let ri = 0; ri < rowCount; ri++) {
           const row = c % 2 === 0 ? ri : rowCount - 1 - ri;
           if ((row + c) % 2 === 0) {
@@ -139,12 +145,12 @@ export default function ComputerLab({ students }: Props) {
 
     if (seatMode === 'horizontalS') {
       for (let r = 0; r < rowCount; r++) {
-        for (let ci = 0; ci < seatsPerSide; ci++) {
-          const c = r % 2 === 0 ? ci : seatsPerSide - 1 - ci;
+        for (let ci = 0; ci < totalSeatsPerSide; ci++) {
+          const c = r % 2 === 0 ? ci : totalSeatsPerSide - 1 - ci;
           slots.push({ row: r, side: 'top', col: c });
         }
-        for (let ci = 0; ci < seatsPerSide; ci++) {
-          const c = r % 2 === 0 ? seatsPerSide - 1 - ci : ci;
+        for (let ci = 0; ci < totalSeatsPerSide; ci++) {
+          const c = r % 2 === 0 ? totalSeatsPerSide - 1 - ci : ci;
           slots.push({ row: r, side: 'bottom', col: c });
         }
       }
@@ -152,8 +158,8 @@ export default function ComputerLab({ students }: Props) {
     }
 
     for (let r = 0; r < rowCount; r++) {
-      for (let c = 0; c < seatsPerSide; c++) slots.push({ row: r, side: 'top', col: c });
-      for (let c = 0; c < seatsPerSide; c++) slots.push({ row: r, side: 'bottom', col: c });
+      for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'top', col: c });
+      for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'bottom', col: c });
     }
     return slots;
   };
@@ -166,8 +172,8 @@ export default function ComputerLab({ students }: Props) {
     const result: typeof assignment = [];
     const matrix = Array.from({ length: rowCount }, (_, rowIndex) => ({
       rowIndex,
-      top: Array.from({ length: seatsPerSide }, () => ''),
-      bottom: Array.from({ length: seatsPerSide }, () => ''),
+      top: Array.from({ length: totalSeatsPerSide }, () => ''),
+      bottom: Array.from({ length: totalSeatsPerSide }, () => ''),
     }));
 
     if (mode === 'groupRow') {
@@ -175,10 +181,10 @@ export default function ComputerLab({ students }: Props) {
       groups.forEach((group, gi) => {
         const row = gi % rowCount;
         const rowSlots: { side: 'top' | 'bottom'; col: number }[] = [];
-        for (let c = 0; c < seatsPerSide; c++) {
+        for (let c = 0; c < totalSeatsPerSide; c++) {
           if (!closedSeats.has(seatKey(row, 'top', c))) rowSlots.push({ side: 'top', col: c });
         }
-        for (let c = 0; c < seatsPerSide; c++) {
+        for (let c = 0; c < totalSeatsPerSide; c++) {
           if (!closedSeats.has(seatKey(row, 'bottom', c))) rowSlots.push({ side: 'bottom', col: c });
         }
 
@@ -210,6 +216,8 @@ export default function ComputerLab({ students }: Props) {
   const buildSnapshot = () => ({
     rowCount,
     seatsPerSide,
+    tableCols,
+    autoRowCount,
     groupCount,
     mode,
     dualSide,
@@ -274,9 +282,12 @@ export default function ComputerLab({ students }: Props) {
     const snapshot = item.snapshot;
     const nextSeatsPerSide = Math.max(3, Math.min(16, snapshot.seatsPerSide));
     const nextRowCount = Math.max(1, snapshot.rowCount);
+    const nextTableCols = Math.max(1, Math.min(6, snapshot.tableCols || 1));
 
     setSeatsPerSide(nextSeatsPerSide);
     setRowCount(nextRowCount);
+    setTableCols(nextTableCols);
+    setAutoRowCount(snapshot.autoRowCount !== false);
     setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
     setMode(snapshot.mode);
     setDualSide(!!snapshot.dualSide);
@@ -284,7 +295,7 @@ export default function ComputerLab({ students }: Props) {
     setSeated(!!snapshot.seated);
     setRecordName(item.name);
 
-    const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextRowCount, nextSeatsPerSide);
+    const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextRowCount, nextSeatsPerSide * nextTableCols);
     setAssignment(nextAssignment);
     setClosedSeats(new Set(snapshot.closedSeats || []));
     setRowTransforms(
@@ -301,9 +312,10 @@ export default function ComputerLab({ students }: Props) {
   };
 
   useEffect(() => {
-    const nextRows = getAutoRowCount(students.length, seatsPerSide);
+    if (!autoRowCount) return;
+    const nextRows = getAutoRowCount(students.length, seatsPerSide, tableCols);
     setRowCount(prev => (prev === nextRows ? prev : nextRows));
-  }, [students.length, seatsPerSide]);
+  }, [students.length, seatsPerSide, tableCols, autoRowCount]);
 
   useEffect(() => {
     setHistoryItems(loadComputerLabHistory());
@@ -319,16 +331,19 @@ export default function ComputerLab({ students }: Props) {
 
     const nextSeatsPerSide = Math.max(3, Math.min(16, snapshot.seatsPerSide));
     const nextRowCount = Math.max(1, snapshot.rowCount);
+    const nextTableCols = Math.max(1, Math.min(6, snapshot.tableCols || 1));
 
     setSeatsPerSide(nextSeatsPerSide);
     setRowCount(nextRowCount);
+    setTableCols(nextTableCols);
+    setAutoRowCount(snapshot.autoRowCount !== false);
     setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
     setMode(snapshot.mode);
     setDualSide(!!snapshot.dualSide);
     setTableGap(Math.max(80, Math.min(260, snapshot.tableGap)));
     setSeated(!!snapshot.seated);
 
-    const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextRowCount, nextSeatsPerSide);
+    const nextAssignment = sanitizeAssignment(snapshot.assignment || [], nextRowCount, nextSeatsPerSide * nextTableCols);
     setAssignment(nextAssignment);
     setClosedSeats(new Set(snapshot.closedSeats || []));
     setRowTransforms(
@@ -340,7 +355,7 @@ export default function ComputerLab({ students }: Props) {
   useEffect(() => {
     if (!restoredOnceRef.current) return;
     saveComputerLabSnapshot(buildSnapshot());
-  }, [assignment, rowCount, seatsPerSide, groupCount, mode, dualSide, tableGap, closedSeats, rowTransforms, seated]);
+  }, [assignment, rowCount, seatsPerSide, tableCols, autoRowCount, groupCount, mode, dualSide, tableGap, closedSeats, rowTransforms, seated]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -353,7 +368,7 @@ export default function ComputerLab({ students }: Props) {
         const [rowStr, side, colStr] = key.split('-');
         const row = Number(rowStr);
         const col = Number(colStr);
-        if (row < rowCount && (side === 'top' || side === 'bottom') && col < seatsPerSide) next.add(key);
+        if (row < rowCount && (side === 'top' || side === 'bottom') && col < totalSeatsPerSide) next.add(key);
       });
       return next;
     });
@@ -531,13 +546,19 @@ export default function ComputerLab({ students }: Props) {
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          自动排数
-          <span className="inline-flex items-center justify-center min-w-10 h-8 px-2 rounded-md border border-border bg-muted/40 text-foreground font-medium">
-            {rowCount}
-          </span>
+          排数
+          <Input type="number" min={1} max={30} value={rowCount}
+            onChange={e => { setRowCount(Math.max(1, Math.min(30, Number(e.target.value)))); setAutoRowCount(false); }}
+            className="w-14 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每侧座位数
+          列数（桌组）
+          <Input type="number" min={1} max={6} value={tableCols}
+            onChange={e => setTableCols(Math.max(1, Math.min(6, Number(e.target.value))))}
+            className="w-14 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          每桌座位数
           <Input type="number" min={3} max={16} value={seatsPerSide}
             onChange={e => setSeatsPerSide(Math.max(3, Math.min(16, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
@@ -610,7 +631,7 @@ export default function ComputerLab({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        <span className="text-xs text-muted-foreground">可容纳 {rowCount * seatsPerSide * 2} 人 | 当前 {students.length} 人</span>
+        <span className="text-xs text-muted-foreground">可容纳 {rowCount * totalSeatsPerSide * 2} 人 | 当前 {students.length} 人</span>
         {seated && (
           <ExportButtons
             targetRef={printRef}
@@ -663,7 +684,7 @@ export default function ComputerLab({ students }: Props) {
                 {Array.from({ length: maxRows }).map((_, rowIdx) => {
                   const baseY = 120 + rowIdx * rowGap;
                   const centerX = roomWidth / 2;
-                  const tableX = (roomWidth - tableW) / 2;
+                  const allTableStartX = (roomWidth - allTableW) / 2;
                   const transform = rowTransforms[rowIdx] || { x: 0, y: 0, rotation: 0 };
                   const rowCenterY = dualSide ? baseY + 20 : baseY + 52;
 
@@ -678,38 +699,50 @@ export default function ComputerLab({ students }: Props) {
                       style={{ cursor: 'move' }}
                     >
                       <g transform={`rotate(${transform.rotation} ${centerX} ${rowCenterY})`}>
-                      {topGroup && (
-                        <>
-                          <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
-                            className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
-                          <text x={centerX} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-xs">
-                            ━━━ 长桌 ━━━
-                          </text>
-                          {topGroup.students.map((name, i) => {
-                            const x = tableX + gap + i * (seatW + gap);
-                            const y = baseY - seatH - 8;
-                            return renderSeat(x, y, name, seatKey(rowIdx, 'top', i));
-                          })}
-                        </>
-                      )}
-
-                      {bottomGroup && (
-                        <>
-                          {!dualSide && (
-                            <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
+                      {Array.from({ length: tableCols }).map((_, tci) => {
+                        const tableX = allTableStartX + tci * (tableW + colGap);
+                        const seatOffset = tci * seatsPerSide;
+                        return (
+                          <g key={`tc-${tci}`}>
+                            {/* Table bar */}
+                            <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
                               className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
-                          )}
-                          {bottomGroup.students.map((name, i) => {
-                            const x = tableX + gap + i * (seatW + gap);
-                            const y = dualSide ? baseY + 28 : baseY + 88;
-                            return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', i));
-                          })}
-                        </>
-                      )}
+                            <text x={tableX + tableW / 2} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-[10px]">
+                              {tableCols > 1 ? `长桌${tci + 1}` : '━━━ 长桌 ━━━'}
+                            </text>
+
+                            {/* Top seats */}
+                            {topGroup && Array.from({ length: seatsPerSide }).map((_, ci) => {
+                              const x = tableX + gap + ci * (seatW + gap);
+                              const y = baseY - seatH - 8;
+                              const globalCol = seatOffset + ci;
+                              const name = topGroup.students[globalCol] || '';
+                              return renderSeat(x, y, name, seatKey(rowIdx, 'top', globalCol));
+                            })}
+
+                            {/* Bottom seats */}
+                            {bottomGroup && (
+                              <>
+                                {!dualSide && (
+                                  <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
+                                    className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
+                                )}
+                                {Array.from({ length: seatsPerSide }).map((_, ci) => {
+                                  const x = tableX + gap + ci * (seatW + gap);
+                                  const y = dualSide ? baseY + 28 : baseY + 88;
+                                  const globalCol = seatOffset + ci;
+                                  const name = bottomGroup.students[globalCol] || '';
+                                  return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', globalCol));
+                                })}
+                              </>
+                            )}
+                          </g>
+                        );
+                      })}
 
                       <g onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); rotateRow(rowIdx); }} style={{ cursor: 'pointer' }}>
-                        <rect x={tableX + tableW + 12} y={baseY + 2} width={30} height={20} rx={5} className="fill-card stroke-border hover:stroke-primary/60" strokeWidth={1.2} />
-                        <text x={tableX + tableW + 27} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[10px]">90°</text>
+                        <rect x={allTableStartX + allTableW + 12} y={baseY + 2} width={30} height={20} rx={5} className="fill-card stroke-border hover:stroke-primary/60" strokeWidth={1.2} />
+                        <text x={allTableStartX + allTableW + 27} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[10px]">90°</text>
                       </g>
                       </g>
                     </g>
@@ -722,9 +755,7 @@ export default function ComputerLab({ students }: Props) {
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>
             <p className="text-sm">
-              {dualSide
-                ? `长桌长边两侧，自动 ${rowCount} 排，每侧 ${seatsPerSide} 个座位`
-                : `长桌单侧，自动 ${rowCount} 排，每排 ${seatsPerSide * 2} 个座位`}
+              {`${rowCount} 排 × ${tableCols} 列桌组，每桌每侧 ${seatsPerSide} 座位${dualSide ? '（两侧）' : '（单侧）'}`}
             </p>
           </div>
         )}
