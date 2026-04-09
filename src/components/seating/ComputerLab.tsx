@@ -25,8 +25,8 @@ type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
 const REF_BLACKBOARD_TOP = 12;
 
-function getAutoRowCount(totalStudents: number, seatsPerSide: number) {
-  const capacityPerRow = Math.max(1, seatsPerSide * 2);
+function getAutoRowCount(totalStudents: number, seatsPerSide: number, tableCols: number = 1) {
+  const capacityPerRow = Math.max(1, seatsPerSide * 2) * tableCols;
   return Math.max(1, Math.ceil(totalStudents / capacityPerRow));
 }
 
