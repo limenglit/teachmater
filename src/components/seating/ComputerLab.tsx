@@ -546,13 +546,19 @@ export default function ComputerLab({ students }: Props) {
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          自动排数
-          <span className="inline-flex items-center justify-center min-w-10 h-8 px-2 rounded-md border border-border bg-muted/40 text-foreground font-medium">
-            {rowCount}
-          </span>
+          排数
+          <Input type="number" min={1} max={30} value={rowCount}
+            onChange={e => { setRowCount(Math.max(1, Math.min(30, Number(e.target.value)))); setAutoRowCount(false); }}
+            className="w-14 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每侧座位数
+          列数（桌组）
+          <Input type="number" min={1} max={6} value={tableCols}
+            onChange={e => setTableCols(Math.max(1, Math.min(6, Number(e.target.value))))}
+            className="w-14 h-8 text-center" />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          每桌座位数
           <Input type="number" min={3} max={16} value={seatsPerSide}
             onChange={e => setSeatsPerSide(Math.max(3, Math.min(16, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
