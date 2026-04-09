@@ -755,9 +755,7 @@ export default function ComputerLab({ students }: Props) {
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>
             <p className="text-sm">
-              {dualSide
-                ? `长桌长边两侧，自动 ${rowCount} 排，每侧 ${seatsPerSide} 个座位`
-                : `长桌单侧，自动 ${rowCount} 排，每排 ${seatsPerSide * 2} 个座位`}
+              {`${rowCount} 排 × ${tableCols} 列桌组，每桌每侧 ${seatsPerSide} 座位${dualSide ? '（两侧）' : '（单侧）'}`}
             </p>
           </div>
         )}
