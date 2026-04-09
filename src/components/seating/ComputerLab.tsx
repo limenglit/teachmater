@@ -684,7 +684,7 @@ export default function ComputerLab({ students }: Props) {
                 {Array.from({ length: maxRows }).map((_, rowIdx) => {
                   const baseY = 120 + rowIdx * rowGap;
                   const centerX = roomWidth / 2;
-                  const tableX = (roomWidth - tableW) / 2;
+                  const allTableStartX = (roomWidth - allTableW) / 2;
                   const transform = rowTransforms[rowIdx] || { x: 0, y: 0, rotation: 0 };
                   const rowCenterY = dualSide ? baseY + 20 : baseY + 52;
 
@@ -699,34 +699,46 @@ export default function ComputerLab({ students }: Props) {
                       style={{ cursor: 'move' }}
                     >
                       <g transform={`rotate(${transform.rotation} ${centerX} ${rowCenterY})`}>
-                      {topGroup && (
-                        <>
-                          <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
-                            className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
-                          <text x={centerX} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-xs">
-                            ━━━ 长桌 ━━━
-                          </text>
-                          {topGroup.students.map((name, i) => {
-                            const x = tableX + gap + i * (seatW + gap);
-                            const y = baseY - seatH - 8;
-                            return renderSeat(x, y, name, seatKey(rowIdx, 'top', i));
-                          })}
-                        </>
-                      )}
-
-                      {bottomGroup && (
-                        <>
-                          {!dualSide && (
-                            <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
+                      {Array.from({ length: tableCols }).map((_, tci) => {
+                        const tableX = allTableStartX + tci * (tableW + colGap);
+                        const seatOffset = tci * seatsPerSide;
+                        return (
+                          <g key={`tc-${tci}`}>
+                            {/* Table bar */}
+                            <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
                               className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
-                          )}
-                          {bottomGroup.students.map((name, i) => {
-                            const x = tableX + gap + i * (seatW + gap);
-                            const y = dualSide ? baseY + 28 : baseY + 88;
-                            return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', i));
-                          })}
-                        </>
-                      )}
+                            <text x={tableX + tableW / 2} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-[10px]">
+                              {tableCols > 1 ? `长桌${tci + 1}` : '━━━ 长桌 ━━━'}
+                            </text>
+
+                            {/* Top seats */}
+                            {topGroup && Array.from({ length: seatsPerSide }).map((_, ci) => {
+                              const x = tableX + gap + ci * (seatW + gap);
+                              const y = baseY - seatH - 8;
+                              const globalCol = seatOffset + ci;
+                              const name = topGroup.students[globalCol] || '';
+                              return renderSeat(x, y, name, seatKey(rowIdx, 'top', globalCol));
+                            })}
+
+                            {/* Bottom seats */}
+                            {bottomGroup && (
+                              <>
+                                {!dualSide && (
+                                  <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
+                                    className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
+                                )}
+                                {Array.from({ length: seatsPerSide }).map((_, ci) => {
+                                  const x = tableX + gap + ci * (seatW + gap);
+                                  const y = dualSide ? baseY + 28 : baseY + 88;
+                                  const globalCol = seatOffset + ci;
+                                  const name = bottomGroup.students[globalCol] || '';
+                                  return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', globalCol));
+                                })}
+                              </>
+                            )}
+                          </g>
+                        );
+                      })}
 
                       <g onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); rotateRow(rowIdx); }} style={{ cursor: 'pointer' }}>
                         <rect x={tableX + tableW + 12} y={baseY + 2} width={30} height={20} rx={5} className="fill-card stroke-border hover:stroke-primary/60" strokeWidth={1.2} />
