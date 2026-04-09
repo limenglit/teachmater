@@ -216,6 +216,8 @@ export default function ComputerLab({ students }: Props) {
   const buildSnapshot = () => ({
     rowCount,
     seatsPerSide,
+    tableCols,
+    autoRowCount,
     groupCount,
     mode,
     dualSide,
