@@ -105,6 +105,7 @@ export default function ComputerLab({ students }: Props) {
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
+  const totalSeatsPerSide = seatsPerSide * tableCols;
   const seatKey = (row: number, side: 'top' | 'bottom', col: number) => `${row}-${side}-${col}`;
 
   const toggleSeatOpen = (row: number, side: 'top' | 'bottom', col: number) => {
