@@ -128,7 +128,7 @@ export default function ComputerLab({ students }: Props) {
     const slots: { row: number; side: 'top' | 'bottom'; col: number }[] = [];
 
     if (seatMode === 'verticalS') {
-      for (let c = 0; c < seatsPerSide; c++) {
+      for (let c = 0; c < totalSeatsPerSide; c++) {
         for (let ri = 0; ri < rowCount; ri++) {
           const row = c % 2 === 0 ? ri : rowCount - 1 - ri;
           if ((row + c) % 2 === 0) {
@@ -145,12 +145,12 @@ export default function ComputerLab({ students }: Props) {
 
     if (seatMode === 'horizontalS') {
       for (let r = 0; r < rowCount; r++) {
-        for (let ci = 0; ci < seatsPerSide; ci++) {
-          const c = r % 2 === 0 ? ci : seatsPerSide - 1 - ci;
+        for (let ci = 0; ci < totalSeatsPerSide; ci++) {
+          const c = r % 2 === 0 ? ci : totalSeatsPerSide - 1 - ci;
           slots.push({ row: r, side: 'top', col: c });
         }
-        for (let ci = 0; ci < seatsPerSide; ci++) {
-          const c = r % 2 === 0 ? seatsPerSide - 1 - ci : ci;
+        for (let ci = 0; ci < totalSeatsPerSide; ci++) {
+          const c = r % 2 === 0 ? totalSeatsPerSide - 1 - ci : ci;
           slots.push({ row: r, side: 'bottom', col: c });
         }
       }
@@ -158,8 +158,8 @@ export default function ComputerLab({ students }: Props) {
     }
 
     for (let r = 0; r < rowCount; r++) {
-      for (let c = 0; c < seatsPerSide; c++) slots.push({ row: r, side: 'top', col: c });
-      for (let c = 0; c < seatsPerSide; c++) slots.push({ row: r, side: 'bottom', col: c });
+      for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'top', col: c });
+      for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'bottom', col: c });
     }
     return slots;
   };
