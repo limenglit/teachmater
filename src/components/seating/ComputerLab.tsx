@@ -81,13 +81,16 @@ export default function ComputerLab({ students }: Props) {
   const tableMargin = 20;
   const tableW = seatsPerSide * (seatW + gap) + gap;
 
+  const colGap = 40;
+  const allTableW = tableW * tableCols + colGap * (tableCols - 1);
+
   const minRowGap = dualSide ? 128 : 188;
   const rowGap = Math.max(tableGap, minRowGap);
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
 
-  const roomWidth = Math.max(980, tableW + tableMargin * 2 + 220);
+  const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220);
   const roomHeight = Math.max(760, maxRows * rowGap + 220);
-  const exportSceneConfig = { rowCount, seatsPerSide, dualSide };
+  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, tableCols };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
