@@ -753,7 +753,7 @@ export default function ComputerLab({ students }: Props) {
                               <>
                                 {Array.from({ length: seatsPerSide }).map((_, ci) => {
                                   const x = tableX + gap + ci * (seatW + gap);
-                                  const y = dualSide ? baseY + 28 : baseY + 88;
+                                  const y = dualSide ? baseY + 28 : baseY + 24 + 8;
                                   const globalCol = seatOffset + ci;
                                   const name = bottomGroup.students[globalCol] || '';
                                   return renderSeat(x, y, name, seatKey(rowIdx, 'bottom', globalCol));
