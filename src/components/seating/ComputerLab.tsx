@@ -20,6 +20,7 @@ interface Props {
 }
 
 type LabSeatMode = 'balanced' | 'groupRow' | 'verticalS' | 'horizontalS';
+type LabSeatSide = 'top' | 'bottom' | 'both';
 type RefKey = 'window' | 'door' | 'blackboard';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
