@@ -132,16 +132,22 @@ export default function ComputerLab({ students }: Props) {
   const getSeatOrder = (seatMode: LabSeatMode) => {
     const slots: { row: number; side: 'top' | 'bottom'; col: number }[] = [];
 
+    const pushSide = (row: number, side: 'top' | 'bottom', col: number) => {
+      if (side === 'top' && !showTop) return;
+      if (side === 'bottom' && !showBottom) return;
+      slots.push({ row, side, col });
+    };
+
     if (seatMode === 'verticalS') {
       for (let c = 0; c < totalSeatsPerSide; c++) {
         for (let ri = 0; ri < rowCount; ri++) {
           const row = c % 2 === 0 ? ri : rowCount - 1 - ri;
           if ((row + c) % 2 === 0) {
-            slots.push({ row, side: 'top', col: c });
-            slots.push({ row, side: 'bottom', col: c });
+            pushSide(row, 'top', c);
+            pushSide(row, 'bottom', c);
           } else {
-            slots.push({ row, side: 'bottom', col: c });
-            slots.push({ row, side: 'top', col: c });
+            pushSide(row, 'bottom', c);
+            pushSide(row, 'top', c);
           }
         }
       }
@@ -150,21 +156,25 @@ export default function ComputerLab({ students }: Props) {
 
     if (seatMode === 'horizontalS') {
       for (let r = 0; r < rowCount; r++) {
-        for (let ci = 0; ci < totalSeatsPerSide; ci++) {
-          const c = r % 2 === 0 ? ci : totalSeatsPerSide - 1 - ci;
-          slots.push({ row: r, side: 'top', col: c });
+        if (showTop) {
+          for (let ci = 0; ci < totalSeatsPerSide; ci++) {
+            const c = r % 2 === 0 ? ci : totalSeatsPerSide - 1 - ci;
+            slots.push({ row: r, side: 'top', col: c });
+          }
         }
-        for (let ci = 0; ci < totalSeatsPerSide; ci++) {
-          const c = r % 2 === 0 ? totalSeatsPerSide - 1 - ci : ci;
-          slots.push({ row: r, side: 'bottom', col: c });
+        if (showBottom) {
+          for (let ci = 0; ci < totalSeatsPerSide; ci++) {
+            const c = r % 2 === 0 ? totalSeatsPerSide - 1 - ci : ci;
+            slots.push({ row: r, side: 'bottom', col: c });
+          }
         }
       }
       return slots;
     }
 
     for (let r = 0; r < rowCount; r++) {
-      for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'top', col: c });
-      for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'bottom', col: c });
+      if (showTop) for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'top', col: c });
+      if (showBottom) for (let c = 0; c < totalSeatsPerSide; c++) slots.push({ row: r, side: 'bottom', col: c });
     }
     return slots;
   };
@@ -319,9 +329,9 @@ export default function ComputerLab({ students }: Props) {
 
   useEffect(() => {
     if (!autoRowCount) return;
-    const nextRows = getAutoRowCount(students.length, seatsPerSide, tableCols);
+    const nextRows = getAutoRowCount(students.length, seatsPerSide, tableCols, seatSide);
     setRowCount(prev => (prev === nextRows ? prev : nextRows));
-  }, [students.length, seatsPerSide, tableCols, autoRowCount]);
+  }, [students.length, seatsPerSide, tableCols, autoRowCount, seatSide]);
 
   useEffect(() => {
     setHistoryItems(loadComputerLabHistory());
