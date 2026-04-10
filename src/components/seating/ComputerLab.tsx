@@ -49,7 +49,7 @@ export default function ComputerLab({ students }: Props) {
   const [seatsPerSide, setSeatsPerSide] = useState(8);
   const [groupCount, setGroupCount] = useState(4);
   const [mode, setMode] = useState<LabSeatMode>('balanced');
-  const [dualSide, setDualSide] = useState(true);
+  const [seatSide, setSeatSide] = useState<LabSeatSide>('both');
   const [autoRowCount, setAutoRowCount] = useState(true);
   const [tableGap, setTableGap] = useState(80);
   const [assignment, setAssignment] = useState<ComputerLabRowAssignment[]>([]);
