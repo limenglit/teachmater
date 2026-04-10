@@ -85,6 +85,9 @@ export default function ComputerLab({ students }: Props) {
   const colGap = 40;
   const allTableW = tableW * tableCols + colGap * (tableCols - 1);
 
+  const dualSide = seatSide === 'both';
+  const showTop = seatSide === 'top' || seatSide === 'both';
+  const showBottom = seatSide === 'bottom' || seatSide === 'both';
   const minRowGap = dualSide ? 128 : 188;
   const rowGap = Math.max(tableGap, minRowGap);
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
