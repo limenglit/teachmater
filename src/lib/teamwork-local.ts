@@ -137,7 +137,8 @@ export interface ComputerLabSnapshot {
   autoRowCount?: boolean;
   groupCount: number;
   mode: 'balanced' | 'groupRow' | 'verticalS' | 'horizontalS';
-  dualSide: boolean;
+  dualSide?: boolean;
+  seatSide?: 'top' | 'bottom' | 'both';
   tableGap: number;
   assignment: ComputerLabRowAssignment[];
   closedSeats: string[];
