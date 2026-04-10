@@ -94,7 +94,7 @@ export default function ComputerLab({ students }: Props) {
 
   const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220);
   const roomHeight = Math.max(760, maxRows * rowGap + 220);
-  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, tableCols };
+  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, seatSide, tableCols };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
@@ -225,6 +225,7 @@ export default function ComputerLab({ students }: Props) {
     groupCount,
     mode,
     dualSide,
+    seatSide,
     tableGap,
     assignment,
     closedSeats: Array.from(closedSeats),
@@ -294,7 +295,7 @@ export default function ComputerLab({ students }: Props) {
     setAutoRowCount(snapshot.autoRowCount !== false);
     setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
     setMode(snapshot.mode);
-    setDualSide(!!snapshot.dualSide);
+    setSeatSide(snapshot.seatSide || (snapshot.dualSide !== false ? 'both' : 'both'));
     setTableGap(Math.max(80, Math.min(260, snapshot.tableGap)));
     setSeated(!!snapshot.seated);
     setRecordName(item.name);
@@ -343,7 +344,7 @@ export default function ComputerLab({ students }: Props) {
     setAutoRowCount(snapshot.autoRowCount !== false);
     setGroupCount(Math.max(2, Math.min(20, snapshot.groupCount)));
     setMode(snapshot.mode);
-    setDualSide(!!snapshot.dualSide);
+    setSeatSide(snapshot.seatSide || (snapshot.dualSide !== false ? 'both' : 'both'));
     setTableGap(Math.max(80, Math.min(260, snapshot.tableGap)));
     setSeated(!!snapshot.seated);
 
@@ -359,7 +360,7 @@ export default function ComputerLab({ students }: Props) {
   useEffect(() => {
     if (!restoredOnceRef.current) return;
     saveComputerLabSnapshot(buildSnapshot());
-  }, [assignment, rowCount, seatsPerSide, tableCols, autoRowCount, groupCount, mode, dualSide, tableGap, closedSeats, rowTransforms, seated]);
+  }, [assignment, rowCount, seatsPerSide, tableCols, autoRowCount, groupCount, mode, seatSide, tableGap, closedSeats, rowTransforms, seated]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -591,9 +592,17 @@ export default function ComputerLab({ students }: Props) {
           <Input type="number" min={80} max={260} value={tableGap}
             onChange={e => setTableGap(Math.max(80, Math.min(260, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
-        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-          <input type="checkbox" checked={dualSide} onChange={e => setDualSide(e.target.checked)} className="accent-primary" />
-          长桌两侧
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          学生位置
+          <select
+            value={seatSide}
+            onChange={e => setSeatSide(e.target.value as LabSeatSide)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="both">两侧</option>
+            <option value="top">仅上侧</option>
+            <option value="bottom">仅下侧</option>
+          </select>
         </label>
         <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
           <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={!seated}>
@@ -635,7 +644,7 @@ export default function ComputerLab({ students }: Props) {
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
           </label>
         </div>
-        <span className="text-xs text-muted-foreground">可容纳 {rowCount * totalSeatsPerSide * 2} 人 | 当前 {students.length} 人</span>
+        <span className="text-xs text-muted-foreground">可容纳 {rowCount * totalSeatsPerSide * (dualSide ? 2 : 1)} 人 | 当前 {students.length} 人</span>
         {seated && (
           <ExportButtons
             targetRef={printRef}
@@ -716,7 +725,7 @@ export default function ComputerLab({ students }: Props) {
                             </text>
 
                             {/* Top seats */}
-                            {topGroup && Array.from({ length: seatsPerSide }).map((_, ci) => {
+                            {showTop && topGroup && Array.from({ length: seatsPerSide }).map((_, ci) => {
                               const x = tableX + gap + ci * (seatW + gap);
                               const y = baseY - seatH - 8;
                               const globalCol = seatOffset + ci;
@@ -725,7 +734,7 @@ export default function ComputerLab({ students }: Props) {
                             })}
 
                             {/* Bottom seats */}
-                            {bottomGroup && (
+                            {showBottom && bottomGroup && (
                               <>
                                 {!dualSide && (
                                   <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
@@ -759,7 +768,7 @@ export default function ComputerLab({ students }: Props) {
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>
             <p className="text-sm">
-              {`${rowCount} 排 × ${tableCols} 列桌组，每桌每侧 ${seatsPerSide} 座位${dualSide ? '（两侧）' : '（单侧）'}`}
+              {`${rowCount} 排 × ${tableCols} 列桌组，每桌每侧 ${seatsPerSide} 座位（${seatSide === 'both' ? '两侧' : seatSide === 'top' ? '仅上侧' : '仅下侧'}）`}
             </p>
           </div>
         )}
