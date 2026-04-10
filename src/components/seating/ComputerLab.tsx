@@ -751,10 +751,6 @@ export default function ComputerLab({ students }: Props) {
                             {/* Bottom seats */}
                             {showBottom && bottomGroup && (
                               <>
-                                {!dualSide && (
-                                  <rect x={tableX} y={baseY + 56} width={tableW} height={24} rx={6}
-                                    className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
-                                )}
                                 {Array.from({ length: seatsPerSide }).map((_, ci) => {
                                   const x = tableX + gap + ci * (seatW + gap);
                                   const y = dualSide ? baseY + 28 : baseY + 88;
