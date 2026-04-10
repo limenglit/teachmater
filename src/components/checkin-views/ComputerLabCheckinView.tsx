@@ -72,7 +72,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                       <rect x={tblX} y={baseY + seatH + 4} width={tableW} height={12} rx={3}
                         className="fill-primary/10 stroke-primary/20" strokeWidth={1} />
 
-                      {Array.from({ length: seatsPerSide }).map((_, ci) => {
+                      {showTop && Array.from({ length: seatsPerSide }).map((_, ci) => {
                         const x = tblX + ci * (seatW + gap);
                         const y = baseY;
                         const globalCol = seatOffset + ci;
@@ -92,7 +92,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                         );
                       })}
 
-                      {Array.from({ length: seatsPerSide }).map((_, ci) => {
+                      {showBottom && Array.from({ length: seatsPerSide }).map((_, ci) => {
                         const x = tblX + ci * (seatW + gap);
                         const y = baseY + seatH + 20;
                         const globalCol = seatOffset + ci;
