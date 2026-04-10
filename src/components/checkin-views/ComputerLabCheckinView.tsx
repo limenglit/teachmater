@@ -18,6 +18,9 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const rowCount = (sceneConfig.rowCount as number) || 5;
   const seatsPerSide = (sceneConfig.seatsPerSide as number) || 8;
   const tableCols = (sceneConfig.tableCols as number) || 1;
+  const seatSide = (sceneConfig.seatSide as string) || ((sceneConfig.dualSide as boolean) !== false ? 'both' : 'both');
+  const showTop = seatSide === 'top' || seatSide === 'both';
+  const showBottom = seatSide === 'bottom' || seatSide === 'both';
 
   const myPos = useMemo(() => {
     for (const row of labRows) {
