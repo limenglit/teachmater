@@ -95,7 +95,16 @@ export default function ComputerLab({ students }: Props) {
 
   const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220);
   const roomHeight = Math.max(760, maxRows * rowGap + 220);
-  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, seatSide, tableCols };
+  // Determine door position quadrant for student navigation
+  const doorQuadrant = useMemo(() => {
+    const doorPos = refPositions.door;
+    const midX = roomWidth / 2;
+    const midY = roomHeight / 2;
+    const vPos = doorPos.y < midY ? 'top' : 'bottom';
+    const hPos = doorPos.x < midX ? 'left' : 'right';
+    return `${vPos}-${hPos}` as 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  }, [refPositions.door, roomWidth, roomHeight]);
+  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, seatSide, tableCols, doorPosition: doorQuadrant };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
