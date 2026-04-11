@@ -112,10 +112,9 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground mb-2">
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
         {entryDoors.map((d, idx) => (
-          <span key={idx} className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-green-400/60 border border-green-600/30 inline-block" /> {d.label}</span>
+          <span key={idx} className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-accent border border-accent-foreground/20 inline-block" /> {d.label}</span>
         ))}
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-sky-400/40 border border-sky-600/30 inline-block" /> {window.label}</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-yellow-300/60 border border-yellow-600/30 inline-block" /> 导航路径</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
       </div>
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
