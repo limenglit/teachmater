@@ -95,7 +95,20 @@ export default function ComputerLab({ students }: Props) {
 
   const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220);
   const roomHeight = Math.max(760, maxRows * rowGap + 220);
-  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, seatSide, tableCols };
+  const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
+  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 760));
+
+  // Determine door position quadrant for student navigation
+  const doorQuadrant = useMemo(() => {
+    const doorPos = refPositions.door;
+    const midX = roomWidth / 2;
+    const midY = roomHeight / 2;
+    const vPos = doorPos.y < midY ? 'top' : 'bottom';
+    const hPos = doorPos.x < midX ? 'left' : 'right';
+    return `${vPos}-${hPos}`;
+  }, [refPositions.door, roomWidth, roomHeight]);
+
+  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, seatSide, tableCols, doorPosition: doorQuadrant };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
@@ -103,8 +116,6 @@ export default function ComputerLab({ students }: Props) {
     sceneConfig: exportSceneConfig,
     sceneType: 'computerLab',
   });
-  const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
-  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 760));
 
   const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
