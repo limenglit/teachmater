@@ -1,9 +1,6 @@
 import { useMemo } from 'react';
+import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
-
-// 门窗布局与导航逻辑参考 SmartClassroom/RoundTableCheckinView
-type EntryDoor = { side: 'top' | 'bottom' | 'left' | 'right'; label: string; };
-type Window = { side: 'left' | 'right'; label: string };
 
 interface Props {
   seatData: unknown;
@@ -11,21 +8,58 @@ interface Props {
   studentName: string;
 }
 
-interface ConferenceData {
-  top: string[];
-  bottom: string[];
-  headLeft: string;
-  headRight: string;
-}
+type SeatPosition = {
+  side: 'head-left' | 'head-right' | 'top' | 'bottom' | 'companion-top' | 'companion-bottom';
+  index: number;
+  companionRow?: number;
+  label: string;
+};
 
 export default function ConferenceCheckinView({ seatData, sceneConfig, studentName }: Props) {
-  // 兼容 mainTop/mainBottom 字段
-  const valid = seatData && typeof seatData === 'object'
-    && ((Array.isArray((seatData as any).top) && Array.isArray((seatData as any).bottom))
-      || (Array.isArray((seatData as any).mainTop) && Array.isArray((seatData as any).mainBottom)))
-    && typeof (seatData as any).headLeft === 'string'
-    && typeof (seatData as any).headRight === 'string';
-  if (!valid) {
+  const raw = seatData as Record<string, unknown>;
+  const valid = raw && typeof raw === 'object'
+    && ((Array.isArray(raw.top) && Array.isArray(raw.bottom))
+      || (Array.isArray(raw.mainTop) && Array.isArray(raw.mainBottom)))
+    && typeof raw.headLeft === 'string'
+    && typeof raw.headRight === 'string';
+
+  const data = useMemo(() => {
+    if (!valid) return null;
+    return {
+      headLeft: raw.headLeft as string,
+      headRight: raw.headRight as string,
+      top: (raw.top || raw.mainTop) as string[],
+      bottom: (raw.bottom || raw.mainBottom) as string[],
+      companionTop: (raw.companionTop as string[][] | undefined) || [],
+      companionBottom: (raw.companionBottom as string[][] | undefined) || [],
+    };
+  }, [raw, valid]);
+
+  const seatsPerSide = (sceneConfig.seatsPerSide as number) || data?.top.length || 10;
+  const companionRows = (sceneConfig.companionRows as number) || 0;
+
+  const myPos = useMemo((): SeatPosition | null => {
+    if (!data) return null;
+    if (data.headLeft === studentName) return { side: 'head-left', index: 0, label: '左侧主位' };
+    if (data.headRight === studentName) return { side: 'head-right', index: 0, label: '右侧主位' };
+    const topIdx = data.top.indexOf(studentName);
+    if (topIdx >= 0) return { side: 'top', index: topIdx, label: `上方第${topIdx + 1}位` };
+    const bottomIdx = data.bottom.indexOf(studentName);
+    if (bottomIdx >= 0) return { side: 'bottom', index: bottomIdx, label: `下方第${bottomIdx + 1}位` };
+    for (let cr = 0; cr < data.companionTop.length; cr++) {
+      const ci = data.companionTop[cr].indexOf(studentName);
+      if (ci >= 0) return { side: 'companion-top', index: ci, companionRow: cr, label: `上方随员第${cr + 1}排第${ci + 1}位` };
+    }
+    for (let cr = 0; cr < data.companionBottom.length; cr++) {
+      const ci = data.companionBottom[cr].indexOf(studentName);
+      if (ci >= 0) return { side: 'companion-bottom', index: ci, companionRow: cr, label: `下方随员第${cr + 1}排第${ci + 1}位` };
+    }
+    return null;
+  }, [data, studentName]);
+
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index]);
+
+  if (!valid || !data) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <div className="text-3xl mb-4 text-destructive">⚠️</div>
@@ -34,101 +68,169 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       </div>
     );
   }
-  // 统一数据结构
-  const data = {
-    top: (seatData as any).top || (seatData as any).mainTop || [],
-    bottom: (seatData as any).bottom || (seatData as any).mainBottom || [],
-    headLeft: (seatData as any).headLeft,
-    headRight: (seatData as any).headRight,
-  };
-  const seatsPerSide = (sceneConfig.seatsPerSide as number) || data.top.length;
-
-  // 门窗布局，参考教室场景
-  const entryDoors: EntryDoor[] = useMemo(() => {
-    // 支持自定义 entryDoorSide: ['top', ...]
-    if (Array.isArray(sceneConfig.entryDoorSides)) {
-      return (sceneConfig.entryDoorSides as string[]).map(side => ({
-        side: side as EntryDoor['side'],
-        label: side === 'top' ? '前门' : side === 'bottom' ? '后门' : side === 'left' ? '左门' : '右门',
-      }));
-    }
-    // 兼容旧配置
-    const mode = sceneConfig.entryDoorMode as string || 'front';
-    if (mode === 'both') return [
-      { side: 'top', label: '前门' },
-      { side: 'bottom', label: '后门' },
-    ];
-    if (mode === 'back') return [{ side: 'bottom', label: '后门' }];
-    return [{ side: 'top', label: '前门' }];
-  }, [sceneConfig]);
-
-  // 窗户自动避开门
-  const window: Window = useMemo(() => {
-    const doorSides = entryDoors.map(d => d.side);
-    if (doorSides.includes('left')) return { side: 'right', label: '窗户' };
-    if (doorSides.includes('right')) return { side: 'left', label: '窗户' };
-    return { side: 'right', label: '窗户' };
-  }, [entryDoors]);
-
-  // 查找我的座位，支持 mainTop/mainBottom，返回排、位、类型
-  const myPos = useMemo(() => {
-    if (data.headLeft === studentName) return { side: 'head-left' as const, index: 0, row: 0, label: '左侧主位' };
-    if (data.headRight === studentName) return { side: 'head-right' as const, index: 0, row: 0, label: '右侧主位' };
-    const topIdx = data.top.indexOf(studentName);
-    if (topIdx >= 0) return { side: 'top' as const, index: topIdx, row: 1, label: '上方' };
-    const bottomIdx = data.bottom.indexOf(studentName);
-    if (bottomIdx >= 0) return { side: 'bottom' as const, index: bottomIdx, row: 2, label: '下方' };
-    return null;
-  }, [data, studentName]);
 
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
-  // 导航指示
-  let navText = '';
-  if (myPos.side === 'head-left' || myPos.side === 'head-right') {
-    navText = `请从门口进入，直接到${myPos.label}`;
-  } else {
-    navText = `请从门口进入，沿黄色路径到${myPos.label}第${myPos.index + 1}位`;
-  }
+  // Layout constants
+  const seatW = 38, seatH = 26, gap = 3;
+  const tableW = seatsPerSide * (seatW + gap) + 20;
+  const tableH = 16;
+  const sideGap = 6;
+  const companionGap = 4;
+
+  // Calculate total height
+  const topCompanionH = companionRows * (seatH + companionGap);
+  const bottomCompanionH = companionRows * (seatH + companionGap);
+  const totalH = topCompanionH + seatH + sideGap + tableH + sideGap + seatH + bottomCompanionH;
+
+  const svgW = tableW + 100; // extra for head seats + door
+  const svgH = totalH + 80;
+
+  const tableX = (svgW - tableW) / 2;
+  const tableY = 40 + topCompanionH + seatH + sideGap;
+  const headSeatW = 32, headSeatH = tableH;
+
+  // Door position: right side, vertically centered
+  const doorX = svgW - 20;
+  const doorY = tableY + tableH / 2;
+
+  // Compute seat center positions
+  const getSeatCenter = (pos: SeatPosition): { x: number; y: number } => {
+    const seatStartX = tableX + 10;
+    switch (pos.side) {
+      case 'head-left':
+        return { x: tableX - headSeatW / 2 - 4, y: tableY + tableH / 2 };
+      case 'head-right':
+        return { x: tableX + tableW + headSeatW / 2 + 4, y: tableY + tableH / 2 };
+      case 'top':
+        return { x: seatStartX + pos.index * (seatW + gap) + seatW / 2, y: tableY - sideGap - seatH / 2 };
+      case 'bottom':
+        return { x: seatStartX + pos.index * (seatW + gap) + seatW / 2, y: tableY + tableH + sideGap + seatH / 2 };
+      case 'companion-top': {
+        const cr = pos.companionRow || 0;
+        return { x: seatStartX + pos.index * (seatW + gap) + seatW / 2, y: tableY - sideGap - seatH - (cr + 1) * (seatH + companionGap) + seatH / 2 };
+      }
+      case 'companion-bottom': {
+        const cr = pos.companionRow || 0;
+        return { x: seatStartX + pos.index * (seatW + gap) + seatW / 2, y: tableY + tableH + sideGap + seatH + (cr + 1) * companionGap + cr * seatH + seatH / 2 };
+      }
+    }
+  };
+
+  const mySeatCenter = getSeatCenter(myPos);
+
+  // Navigation path from door to seat
+  const navPath = [
+    { x: doorX, y: doorY },
+    { x: mySeatCenter.x, y: doorY },
+    { x: mySeatCenter.x, y: mySeatCenter.y },
+  ];
+  const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  const renderSeat = (x: number, y: number, w: number, h: number, name: string, isMine: boolean, key: string) => (
+    <g key={key} data-my-seat={isMine ? 'true' : undefined}>
+      <rect x={x} y={y} width={w} height={h} rx={4}
+        className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
+        strokeWidth={isMine ? 2.5 : 1}
+      />
+      {isMine && (
+        <circle cx={x + w / 2} cy={y - 6} r={4} className="fill-primary">
+          <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
+        </circle>
+      )}
+      {name && (
+        <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+          className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+          {name}
+        </text>
+      )}
+    </g>
+  );
+
+  const seatStartX = tableX + 10;
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 space-y-3">
-      <div className="text-3xl mb-2">✅</div>
-      <div className="text-xl font-bold text-primary">签到成功</div>
-      <div className="text-base text-foreground">{studentName}，你的座位在 <strong>{myPos.label}{myPos.side === 'top' || myPos.side === 'bottom' ? ` · 第${myPos.index + 1}位` : ''}</strong></div>
-      <div className="text-sm text-muted-foreground">{navText}</div>
-      <div className="mt-4 w-full max-w-md flex flex-col items-center">
-        <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground mb-2">
-          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
-          {entryDoors.map((d, idx) => (
-            <span key={idx} className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-green-400/60 border border-green-600/30 inline-block" /> {d.label}</span>
+    <>
+      <p className="text-sm text-muted-foreground text-center">
+        {studentName}，你的座位在 <strong>{myPos.label}</strong>
+      </p>
+      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
+      </div>
+
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
+        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans">
+          {/* Navigation path */}
+          <path d={pathD} fill="none" className="stroke-primary/50" strokeWidth={2.5}
+            strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round">
+            <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite" />
+          </path>
+
+          {/* Door marker */}
+          <g>
+            <circle cx={doorX} cy={doorY} r={12} className="fill-accent stroke-accent-foreground/30" strokeWidth={1.5} />
+            <text x={doorX} y={doorY + 1} textAnchor="middle" dominantBaseline="middle" className="text-[9px] fill-accent-foreground">🚪</text>
+          </g>
+
+          {/* Turning points */}
+          {navPath.slice(1, -1).map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={3} className="fill-primary/40 stroke-primary/60" strokeWidth={1} />
           ))}
-          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-sky-400/40 border border-sky-600/30 inline-block" /> {window.label}</span>
-          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-yellow-300/60 border border-yellow-600/30 inline-block" /> 导航路径</span>
-        </div>
-        {/* 简化版SVG导航示意图，动态高亮目标座位 */}
-        <svg width="320" height="100" viewBox="0 0 320 100" className="my-2">
-          {/* 门口 */}
-          <rect x="150" y="10" width="40" height="20" rx="6" className="fill-green-200/80 stroke-green-600/40" strokeWidth="2" />
-          <text x="170" y="25" textAnchor="middle" dominantBaseline="middle" className="fill-green-700 text-xs font-bold">门口</text>
-          {/* 路径高亮 */}
-          <polyline points="170,30 170,80" fill="none" stroke="#facc15" strokeWidth="5" strokeDasharray="8 6" opacity="0.85" />
-          {/* 会议桌 */}
-          <rect x="110" y="80" width="120" height="16" rx="8" className="fill-primary/10 stroke-primary/30" strokeWidth="2" />
-          <text x="170" y="88" textAnchor="middle" dominantBaseline="middle" className="fill-primary text-xs font-semibold">会议桌</text>
-          {/* 我的座位高亮，左右主位特殊显示 */}
-          {myPos.side === 'head-left' && (
-            <circle cx="120" cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
-          )}
-          {myPos.side === 'head-right' && (
-            <circle cx="220" cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
-          )}
-          {(myPos.side === 'top' || myPos.side === 'bottom') && (
-            <circle cx={120 + 20 * myPos.index} cy="88" r="10" className="fill-primary stroke-primary" strokeWidth="2.5" />
-          )}
-          <text x={myPos.side === 'head-left' ? 120 : myPos.side === 'head-right' ? 220 : 120 + 20 * myPos.index} y="91" textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground text-xs font-bold">你</text>
+
+          {/* Conference table */}
+          <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={6}
+            className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
+          <text x={tableX + tableW / 2} y={tableY + tableH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+            className="fill-primary text-[9px] font-medium">会议桌</text>
+
+          {/* Head seats */}
+          {renderSeat(tableX - headSeatW - 4, tableY + (tableH - headSeatH) / 2, headSeatW, headSeatH,
+            data.headLeft, myPos.side === 'head-left', 'head-left')}
+          {renderSeat(tableX + tableW + 4, tableY + (tableH - headSeatH) / 2, headSeatW, headSeatH,
+            data.headRight, myPos.side === 'head-right', 'head-right')}
+
+          {/* Main top seats */}
+          {data.top.map((name, i) => {
+            const x = seatStartX + i * (seatW + gap);
+            const y = tableY - sideGap - seatH;
+            const isMine = myPos.side === 'top' && myPos.index === i;
+            return renderSeat(x, y, seatW, seatH, name, isMine, `top-${i}`);
+          })}
+
+          {/* Main bottom seats */}
+          {data.bottom.map((name, i) => {
+            const x = seatStartX + i * (seatW + gap);
+            const y = tableY + tableH + sideGap;
+            const isMine = myPos.side === 'bottom' && myPos.index === i;
+            return renderSeat(x, y, seatW, seatH, name, isMine, `bottom-${i}`);
+          })}
+
+          {/* Companion top rows */}
+          {data.companionTop.map((row, cr) => row.map((name, i) => {
+            const x = seatStartX + i * (seatW + gap);
+            const y = tableY - sideGap - seatH - (cr + 1) * (seatH + companionGap);
+            const isMine = myPos.side === 'companion-top' && myPos.companionRow === cr && myPos.index === i;
+            return renderSeat(x, y, seatW, seatH, name, isMine, `ct-${cr}-${i}`);
+          }))}
+
+          {/* Companion bottom rows */}
+          {data.companionBottom.map((row, cr) => row.map((name, i) => {
+            const x = seatStartX + i * (seatW + gap);
+            const y = tableY + tableH + sideGap + seatH + (cr + 1) * companionGap + cr * seatH;
+            const isMine = myPos.side === 'companion-bottom' && myPos.companionRow === cr && myPos.index === i;
+            return renderSeat(x, y, seatW, seatH, name, isMine, `cb-${cr}-${i}`);
+          }))}
         </svg>
       </div>
-    </div>
+
+      <div className="text-center text-xs text-muted-foreground space-y-1">
+        <p className="flex items-center justify-center gap-1">
+          <Navigation className="w-3 h-3 text-primary" />
+          从<strong>右侧门</strong>进入，沿虚线路径前行
+        </p>
+        <p>🪑 到达 <strong>{myPos.label}</strong></p>
+      </div>
+    </>
   );
 }

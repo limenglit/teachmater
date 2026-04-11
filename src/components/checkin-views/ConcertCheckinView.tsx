@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 
 type EntryDoor = { side: 'front' | 'back'; label: string };
@@ -111,40 +112,43 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground mb-2">
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
         {entryDoors.map((d, idx) => (
-          <span key={idx} className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-green-400/60 border border-green-600/30 inline-block" /> {d.label}</span>
+          <span key={idx} className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-accent border border-accent-foreground/20 inline-block" /> {d.label}</span>
         ))}
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-sky-400/40 border border-sky-600/30 inline-block" /> {window.label}</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-yellow-300/60 border border-yellow-600/30 inline-block" /> 导航路径</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
       </div>
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
         <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans">
-          {/* 门口 */}
-          {entryDoors.map((d, idx) => {
+          {/* Door markers */}
+          {entryDoors.map((d) => {
             const pos = doorPos(d.side);
             return (
               <g key={d.side}>
-                <rect x={pos.x - 24} y={pos.y - 18} width={48} height={36} rx={10}
-                  className="fill-green-200/80 stroke-green-600/40" strokeWidth={2} />
-                <text x={pos.x} y={pos.y + 2} textAnchor="middle" dominantBaseline="middle" className="fill-green-700 text-xs font-bold">{d.label}</text>
+                <circle cx={pos.x} cy={pos.y} r={14} className="fill-accent stroke-accent-foreground/30" strokeWidth={1.5} />
+                <text x={pos.x} y={pos.y + 1} textAnchor="middle" dominantBaseline="middle" className="text-[9px] fill-accent-foreground">🚪</text>
+                <text x={pos.x} y={pos.y + 22} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[9px]">{d.label}</text>
               </g>
             );
           })}
-          {/* 窗户 */}
-          <g>
-            <rect x={windowPos.x - 18} y={windowPos.y - 32} width={36} height={64} rx={8}
-              className="fill-sky-200/80 stroke-sky-600/40" strokeWidth={2} />
-            <text x={windowPos.x} y={windowPos.y} textAnchor="middle" dominantBaseline="middle" className="fill-sky-700 text-xs font-bold">{window.label}</text>
-          </g>
-          {/* 路径高亮 */}
-          <polyline points={pathPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#facc15" strokeWidth={5} strokeDasharray="8 6" opacity={0.85} />
-          {/* 舞台 */}
+
+          {/* Animated navigation path */}
+          <polyline points={pathPoints.map(p => `${p.x},${p.y}`).join(' ')} fill="none"
+            className="stroke-primary/50" strokeWidth={3} strokeDasharray="8 5" strokeLinecap="round" strokeLinejoin="round">
+            <animate attributeName="stroke-dashoffset" from="26" to="0" dur="1.5s" repeatCount="indefinite" />
+          </polyline>
+
+          {/* Turning points */}
+          {pathPoints.slice(1, -1).map((p, i) => (
+            <circle key={i} cx={p.x} cy={p.y} r={3} className="fill-primary/40 stroke-primary/60" strokeWidth={1} />
+          ))}
+
+          {/* Stage */}
           <rect x={cx - 60} y={stageY - 15} width={120} height={28} rx={8}
             className="fill-primary/15 stroke-primary/30" strokeWidth={2} />
           <text x={cx} y={stageY} textAnchor="middle" dominantBaseline="middle"
             className="fill-primary text-base font-semibold">🎵 舞 台</text>
 
-          {/* 半圆座位排布 */}
+          {/* Semicircular seats */}
           {rows.map((row, ri) => {
             const r = startRadius + ri * radiusStep;
             const seatCount = seatCaps[ri];
@@ -167,6 +171,11 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
                     strokeWidth={isMine ? 2.5 : 1.5}
                     filter={isMine ? 'drop-shadow(0 2px 8px #38bdf8aa)' : undefined}
                   />
+                  {isMine && (
+                    <circle cx={sx} cy={sy - seatR - 5} r={3} className="fill-primary">
+                      <animate attributeName="r" values="2;4;2" dur="1.2s" repeatCount="indefinite" />
+                    </circle>
+                  )}
                   {name && (
                     <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
                       fontSize={getTextFontSize(name)}
@@ -183,11 +192,11 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
         </svg>
       </div>
 
-      <div className="text-center text-xs text-primary font-medium mb-2">
-        <span>🚪 从<strong>{nearestDoor.label}</strong>出发，沿黄色路径到达你的座位</span>
-      </div>
-
       <div className="text-center text-xs text-muted-foreground space-y-1">
+        <p className="flex items-center justify-center gap-1">
+          <Navigation className="w-3 h-3 text-primary" />
+          从<strong>{nearestDoor.label}</strong>进入，沿虚线路径前行
+        </p>
         <p>📍 面向舞台，走到第 <strong>{myPos.row + 1}</strong> 排</p>
         <p>🪑 从左侧数第 <strong>{myPos.col + 1}</strong> 个座位就是你的位置</p>
       </div>
