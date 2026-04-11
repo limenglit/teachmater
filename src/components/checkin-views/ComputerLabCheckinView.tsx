@@ -87,8 +87,6 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
     return null;
   }, [labRows, studentName]);
 
-  if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
-
   const seatW = 40, seatH = 28, gap = 3;
   const tableW = seatsPerSide * (seatW + gap);
   const colGap = 20;
@@ -97,16 +95,21 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const svgPadLeft = 30;
   const svgW = allTableW + 60;
   const svgH = rowCount * rowH + 40;
-  const tableColIdx = Math.floor(myPos.col / seatsPerSide);
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPos.rowIndex, myPos.side, myPos.col]);
+  const tableColIdx = myPos ? Math.floor(myPos.col / seatsPerSide) : 0;
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.rowIndex, myPos?.side, myPos?.col]);
 
-  const navPath = useMemo(() => computeNavPath(
-    doorPosition, myPos.rowIndex, myPos.side, myPos.col,
-    rowCount, seatsPerSide, tableCols,
-    seatW, seatH, gap, colGap, tableW, svgPadLeft, rowH,
-  ), [doorPosition, myPos, rowCount, seatsPerSide, tableCols, seatW, seatH, gap, colGap, tableW, svgPadLeft, rowH]);
+  const navPath = useMemo(() => {
+    if (!myPos) return [];
+    return computeNavPath(
+      doorPosition, myPos.rowIndex, myPos.side, myPos.col,
+      rowCount, seatsPerSide, tableCols,
+      seatW, seatH, gap, colGap, tableW, svgPadLeft, rowH,
+    );
+  }, [doorPosition, myPos, rowCount, seatsPerSide, tableCols, seatW, seatH, gap, colGap, tableW, svgPadLeft, rowH]);
 
   const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
   // Navigation text directions
   const doorOnTop = doorPosition.startsWith('top');
