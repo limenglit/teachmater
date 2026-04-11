@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 
 type EntryDoor = { side: 'front' | 'back'; label: string };
