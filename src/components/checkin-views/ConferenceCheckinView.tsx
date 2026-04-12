@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
+import { usePinchZoom } from './usePinchZoom';
 
 interface Props {
   seatData: unknown;
@@ -58,6 +59,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   }, [data, studentName]);
 
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index]);
+  const { containerRef: pinchRef, transformStyle } = usePinchZoom();
 
   if (!valid || !data) {
     return (
@@ -158,8 +160,10 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
       </div>
+      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
 
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+        <div ref={pinchRef} style={transformStyle} className="touch-none">
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[560px]" style={{ minWidth: Math.min(svgW, 320) }}>
           {/* Navigation path */}
           <path d={pathD} fill="none" className="stroke-primary/50" strokeWidth={2.5}
@@ -222,6 +226,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
             return renderSeat(x, y, seatW, seatH, name, isMine, `cb-${cr}-${i}`);
           }))}
         </svg>
+        </div>
       </div>
 
       <div className="text-center text-xs text-muted-foreground space-y-1">

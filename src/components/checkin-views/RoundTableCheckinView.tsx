@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { usePinchZoom } from './usePinchZoom';
 
 interface Props {
   seatData: unknown;
@@ -97,6 +98,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
   const label = sceneType === 'banquet' ? '宴会厅' : '智能教室';
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat]);
+  const { containerRef: pinchRef, transformStyle } = usePinchZoom();
   const svgSize = isMobile ? 120 : 160;
   const cx = svgSize / 2;
   const cy = svgSize / 2;
@@ -189,7 +191,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
           {label}
         </div>
         {isMobile && (
-          <p className="text-[11px] text-muted-foreground/90">双击你的桌子可放大，再次双击恢复</p>
+          <p className="text-[11px] text-muted-foreground/90">双指缩放查看细节，双击恢复原位</p>
         )}
       </div>
 
@@ -198,8 +200,8 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
         <span>从<strong>{nearestDoor.label}</strong>出发，{getNavDirections()}到第 <strong>{myPos.table + 1}</strong> 桌</span>
       </div>
 
-      <div ref={seatContainerRef} className="seat-checkin-surface -mx-2 px-2 flex justify-start sm:justify-center overflow-x-auto overflow-y-visible pb-4 touch-pan-x">
-        <div className="relative">
+      <div ref={seatContainerRef} className="seat-checkin-surface -mx-2 px-2 flex justify-start sm:justify-center overflow-hidden pb-4">
+        <div ref={pinchRef} style={transformStyle} className="relative touch-none">
           {/* SVG overlay for animated path */}
           {pathSvgData && (
             <svg
