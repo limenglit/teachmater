@@ -97,12 +97,12 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
   const label = sceneType === 'banquet' ? '宴会厅' : '智能教室';
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat]);
-  const svgSize = isMobile ? 152 : 160;
+  const svgSize = isMobile ? 120 : 160;
   const cx = svgSize / 2;
   const cy = svgSize / 2;
-  const tableRadius = isMobile ? 31 : 34;
-  const seatOrbitRadius = isMobile ? 47 : 50;
-  const seatRadius = isMobile ? 14 : 15;
+  const tableRadius = isMobile ? 24 : 34;
+  const seatOrbitRadius = isMobile ? 38 : 50;
+  const seatRadius = isMobile ? 11 : 15;
 
   const toggleZoomMyTable = () => {
     if (!isMobile) return;

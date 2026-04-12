@@ -160,7 +160,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       </div>
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
-        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans">
+        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[560px]" style={{ minWidth: Math.min(svgW, 320) }}>
           {/* Navigation path */}
           <path d={pathD} fill="none" className="stroke-primary/50" strokeWidth={2.5}
             strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round">
