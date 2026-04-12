@@ -198,7 +198,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
         <span>从<strong>{nearestDoor.label}</strong>出发，{getNavDirections()}到第 <strong>{myPos.table + 1}</strong> 桌</span>
       </div>
 
-      <div ref={seatContainerRef} className="seat-checkin-surface -mx-2 px-2 flex justify-start sm:justify-center overflow-x-auto overflow-y-visible pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface -mx-2 px-2 flex justify-start sm:justify-center overflow-x-auto overflow-y-visible pb-4 touch-pan-x">
         <div className="relative">
           {/* SVG overlay for animated path */}
           {pathSvgData && (
@@ -215,7 +215,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
             </svg>
           )}
 
-          <div ref={gridRef} className="inline-grid w-max gap-2 sm:gap-4" style={{ gridTemplateColumns: `repeat(${tableCols}, max-content)` }}>
+          <div ref={gridRef} className="inline-grid w-max gap-1 sm:gap-4" style={{ gridTemplateColumns: `repeat(${tableCols}, max-content)` }}>
             {tables.map((people, ti) => {
               const isMyTable = ti === myPos.table;
               const isZoomedMyTable = isMyTable && zoomMyTable;
