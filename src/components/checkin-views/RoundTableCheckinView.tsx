@@ -3,6 +3,7 @@ import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePinchZoom } from './usePinchZoom';
+import ZoomIndicator from './ZoomIndicator';
 
 interface Props {
   seatData: unknown;
@@ -98,7 +99,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
   const label = sceneType === 'banquet' ? '宴会厅' : '智能教室';
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat]);
-  const { containerRef: pinchRef, transformStyle } = usePinchZoom();
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
   const svgSize = isMobile ? 120 : 160;
   const cx = svgSize / 2;
   const cy = svgSize / 2;
@@ -193,6 +194,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
         {isMobile && (
           <p className="text-[11px] text-muted-foreground/90">双指缩放查看细节，双击恢复原位</p>
         )}
+        <ZoomIndicator scale={scale} onReset={resetZoom} />
       </div>
 
       <div className="text-center text-xs text-primary font-medium mb-2 flex items-center justify-center gap-1">
