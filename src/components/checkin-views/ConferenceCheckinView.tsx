@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
+import ZoomIndicator from './ZoomIndicator';
 
 interface Props {
   seatData: unknown;
@@ -59,7 +60,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   }, [data, studentName]);
 
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index]);
-  const { containerRef: pinchRef, transformStyle } = usePinchZoom();
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
 
   if (!valid || !data) {
     return (
@@ -161,6 +162,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
       </div>
       <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
+      <ZoomIndicator scale={scale} onReset={resetZoom} />
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
         <div ref={pinchRef} style={transformStyle} className="touch-none">
