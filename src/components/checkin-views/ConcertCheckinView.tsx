@@ -118,7 +118,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
       </div>
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
-        <svg width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans">
+        <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[560px]" style={{ minWidth: Math.min(svgW, 320) }}>
           {/* Door markers */}
           {entryDoors.map((d) => {
             const pos = doorPos(d.side);
