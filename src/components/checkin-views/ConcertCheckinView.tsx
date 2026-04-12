@@ -118,6 +118,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
         ))}
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
       </div>
+      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
         <div ref={pinchRef} style={transformStyle} className="touch-none">

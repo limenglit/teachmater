@@ -191,7 +191,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
           {label}
         </div>
         {isMobile && (
-          <p className="text-[11px] text-muted-foreground/90">双击你的桌子可放大，再次双击恢复</p>
+          <p className="text-[11px] text-muted-foreground/90">双指缩放查看细节，双击恢复原位</p>
         )}
       </div>
 
