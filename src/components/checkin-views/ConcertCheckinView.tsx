@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
+import { usePinchZoom } from './usePinchZoom';
 
 type EntryDoor = { side: 'front' | 'back'; label: string };
 type Window = { side: 'left' | 'right'; label: string };
@@ -61,6 +62,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
   const radiusStep = 44;
   const seatR = 15;
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos.row, myPos.col]);
+  const { containerRef: pinchRef, transformStyle } = usePinchZoom();
 
   // 门窗坐标
   const doorPos = (side: EntryDoor['side']) => {
@@ -117,7 +119,8 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
       </div>
 
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-auto pb-4">
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+        <div ref={pinchRef} style={transformStyle} className="touch-none">
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[560px]" style={{ minWidth: Math.min(svgW, 320) }}>
           {/* Door markers */}
           {entryDoors.map((d) => {
