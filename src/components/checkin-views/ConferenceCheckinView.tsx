@@ -225,6 +225,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
             return renderSeat(x, y, seatW, seatH, name, isMine, `cb-${cr}-${i}`);
           }))}
         </svg>
+        </div>
       </div>
 
       <div className="text-center text-xs text-muted-foreground space-y-1">

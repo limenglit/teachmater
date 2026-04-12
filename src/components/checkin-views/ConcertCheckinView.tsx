@@ -193,6 +193,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
             });
           })}
         </svg>
+        </div>
       </div>
 
       <div className="text-center text-xs text-muted-foreground space-y-1">
