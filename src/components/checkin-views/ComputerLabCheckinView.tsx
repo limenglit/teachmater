@@ -226,6 +226,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
             );
           })}
         </svg>
+        </div>
       </div>
 
       <div className="text-center text-xs text-muted-foreground space-y-1">
