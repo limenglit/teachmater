@@ -136,10 +136,10 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
           </Button>
         </div>
         <div className="flex items-center justify-center gap-2 flex-wrap">
-          <Button size="sm" onClick={markCorrect} className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-700 text-white">
+          <Button size="sm" onClick={markCorrect} className="h-7 text-xs gap-1 bg-primary hover:bg-primary/90 text-primary-foreground">
             <CheckCircle2 className="w-3 h-3" /> {t('memory.correct')} ({correct})
           </Button>
-          <Button size="sm" onClick={markWrong} className="h-7 text-xs gap-1 bg-red-500 hover:bg-red-600 text-white">
+          <Button size="sm" onClick={markWrong} className="h-7 text-xs gap-1 bg-destructive hover:bg-destructive/90 text-destructive-foreground">
             <XCircle className="w-3 h-3" /> {t('memory.wrong')} ({wrong})
           </Button>
           <Button size="sm" variant="ghost" onClick={resetCount} className="h-7 text-xs gap-1">
