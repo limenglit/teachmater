@@ -5,14 +5,14 @@ export type ToolkitToolId =
   | 'barrage' | 'countdown' | 'noise' | 'scoreboard' | 'randomAssigner'
   | 'lottery' | 'poll' | 'stopwatch' | 'trafficLight' | 'breathing'
   | 'textMagnifier' | 'screenCapture' | 'taskChecklist' | 'codeVisualizer'
-  | 'imageEditor' | 'commandCards' | 'qrCode';
+  | 'imageEditor' | 'commandCards' | 'qrCode' | 'memoryAid';
 
 export interface ToolkitToolFlags {
   barrage: boolean; countdown: boolean; noise: boolean; scoreboard: boolean;
   randomAssigner: boolean; lottery: boolean; poll: boolean; stopwatch: boolean;
   trafficLight: boolean; breathing: boolean; textMagnifier: boolean;
   screenCapture: boolean; taskChecklist: boolean; codeVisualizer: boolean;
-  imageEditor: boolean; commandCards: boolean; qrCode: boolean;
+  imageEditor: boolean; commandCards: boolean; qrCode: boolean; memoryAid: boolean;
 }
 
 export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
@@ -20,7 +20,7 @@ export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
   randomAssigner: true, lottery: true, poll: true, stopwatch: true,
   trafficLight: true, breathing: true, textMagnifier: true,
   screenCapture: true, taskChecklist: true, codeVisualizer: true,
-  imageEditor: true, commandCards: true, qrCode: true,
+  imageEditor: true, commandCards: true, qrCode: true, memoryAid: true,
 };
 
 const TOOLKIT_TOOL_KEYS: { key: ToolkitToolId; emoji: string; labelKey: string }[] = [
@@ -41,6 +41,7 @@ const TOOLKIT_TOOL_KEYS: { key: ToolkitToolId; emoji: string; labelKey: string }
   { key: 'imageEditor', emoji: '🖼️', labelKey: 'toolkit.imageEditor' },
   { key: 'commandCards', emoji: '📢', labelKey: 'toolkit.commandCards' },
   { key: 'qrCode', emoji: '📱', labelKey: 'toolkit.qrCode' },
+  { key: 'memoryAid', emoji: '🧠', labelKey: 'toolkit.memoryAid' },
 ];
 
 interface Props {
