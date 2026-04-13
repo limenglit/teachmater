@@ -31,6 +31,7 @@ import TaskChecklist from './toolkit/TaskChecklist';
 import ScreenCaptureTool from './toolkit/ScreenCaptureTool';
 import CodeVisualizerTool from './toolkit/CodeVisualizerTool';
 import ImageEditorTool from './toolkit/ImageEditorTool';
+import MemoryAidTool from './toolkit/MemoryAidTool';
 
 
 // Command card flash overlay
@@ -107,6 +108,7 @@ export default function ToolkitPanel() {
           {isToolkitToolVisible('imageEditor') && <ImageEditorTool />}
           {isToolkitToolVisible('commandCards') && <CommandCards />}
           {isToolkitToolVisible('qrCode') && <QRCodeGenerator />}
+          {isToolkitToolVisible('memoryAid') && <MemoryAidTool />}
         </div>
       </div>
     </div>
