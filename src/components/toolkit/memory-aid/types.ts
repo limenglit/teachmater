@@ -3,6 +3,8 @@ export interface CardItem {
   word: string;
   definition: string;
   example?: string;
+  wordImage?: string;       // base64 data URL for front/question image
+  definitionImage?: string;  // base64 data URL for back/answer image
 }
 
 export const DEFAULT_CARDS: CardItem[] = [
@@ -21,4 +23,14 @@ export function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/** Convert a File to a base64 data URL */
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

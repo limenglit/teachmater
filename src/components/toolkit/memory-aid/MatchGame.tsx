@@ -12,6 +12,7 @@ interface Tile {
   id: string;
   cardId: string;
   text: string;
+  image?: string;
   type: 'word' | 'definition';
 }
 
@@ -32,8 +33,8 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     const subset = shuffle([...cards]).slice(0, count);
     const t: Tile[] = [];
     subset.forEach(c => {
-      t.push({ id: `w-${c.id}`, cardId: c.id, text: c.word, type: 'word' });
-      t.push({ id: `d-${c.id}`, cardId: c.id, text: c.definition, type: 'definition' });
+      t.push({ id: `w-${c.id}`, cardId: c.id, text: c.word, image: c.wordImage, type: 'word' });
+      t.push({ id: `d-${c.id}`, cardId: c.id, text: c.definition, image: c.definitionImage, type: 'definition' });
     });
     return shuffle(t);
   };
@@ -97,10 +98,8 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const totalTiles = tiles.length;
   const cols = totalTiles <= 8 ? 4 : totalTiles <= 12 ? 4 : 6;
 
-  // Generate pair count options
-  const maxPairs = cards.length;
   const pairOptions: number[] = [];
-  for (let i = 2; i <= Math.min(maxPairs, 20); i++) {
+  for (let i = 2; i <= Math.min(cards.length, 20); i++) {
     pairOptions.push(i);
   }
 
@@ -137,12 +136,13 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
         {tiles.map(tile => {
           const isFlipped = flipped.has(tile.id) || matched.has(tile.id);
           const isMatched = matched.has(tile.id);
+          const hasImage = !!tile.image;
 
           return (
             <motion.button
               key={tile.id}
               onClick={() => handleClick(tile.id)}
-              className={`relative aspect-square rounded-xl border-2 text-xs font-medium p-1.5 transition-all duration-200 flex items-center justify-center text-center leading-tight overflow-hidden
+              className={`relative aspect-square rounded-xl border-2 text-xs font-medium p-1 transition-all duration-200 flex items-center justify-center text-center leading-tight overflow-hidden
                 ${isMatched
                   ? 'border-primary/30 bg-primary/10 text-primary opacity-60 cursor-default'
                   : isFlipped
@@ -156,7 +156,14 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
               transition={{ duration: 0.3 }}
             >
               {isFlipped ? (
-                <span className="break-words">{tile.text}</span>
+                <div className="flex flex-col items-center gap-0.5 w-full h-full justify-center">
+                  {hasImage && (
+                    <img src={tile.image} alt="" className="max-h-[60%] max-w-[90%] object-contain rounded" />
+                  )}
+                  {tile.text && (
+                    <span className={`break-words ${hasImage ? 'text-[10px]' : 'text-xs'}`}>{tile.text}</span>
+                  )}
+                </div>
               ) : (
                 <span className="text-lg">❓</span>
               )}

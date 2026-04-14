@@ -58,13 +58,16 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
       if (e.key === 'ArrowLeft') go(-1);
       else if (e.key === 'ArrowRight') go(1);
       else if (e.key === ' ') { e.preventDefault(); setShowBack(s => !s); }
-      else if (e.key === 'Escape') return; // handled by parent
+      else if (e.key === 'Escape') return;
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [go]);
 
   if (!card) return null;
+
+  const hasFrontImage = !!card.wordImage;
+  const hasBackImage = !!card.definitionImage;
 
   return (
     <div className="space-y-4">
@@ -80,19 +83,31 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
           animate={{ rotateY: showBack ? 180 : 0 }}
           transition={{ duration: 0.5 }}
         >
+          {/* Front */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center p-4 backface-hidden"
+            className="absolute inset-0 flex flex-col items-center justify-center p-4"
             style={{ backfaceVisibility: 'hidden' }}
           >
             <span className="text-xs text-muted-foreground mb-1">{t('memory.front')}</span>
-            <span className="font-bold text-foreground text-center text-2xl">{card.word}</span>
+            {hasFrontImage && (
+              <img src={card.wordImage} alt="" className="max-h-28 max-w-full object-contain rounded-lg mb-2" />
+            )}
+            {card.word && (
+              <span className={`font-bold text-foreground text-center ${hasFrontImage ? 'text-lg' : 'text-2xl'}`}>{card.word}</span>
+            )}
           </div>
+          {/* Back */}
           <div
             className="absolute inset-0 flex flex-col items-center justify-center p-4"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
             <span className="text-xs text-muted-foreground mb-1">{t('memory.back')}</span>
-            <span className="font-semibold text-foreground text-center text-lg">{card.definition}</span>
+            {hasBackImage && (
+              <img src={card.definitionImage} alt="" className="max-h-28 max-w-full object-contain rounded-lg mb-2" />
+            )}
+            {card.definition && (
+              <span className={`font-semibold text-foreground text-center ${hasBackImage ? 'text-base' : 'text-lg'}`}>{card.definition}</span>
+            )}
             {card.example && (
               <span className="text-xs text-muted-foreground mt-2 italic text-center">"{card.example}"</span>
             )}
