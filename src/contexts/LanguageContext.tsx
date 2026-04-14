@@ -513,6 +513,12 @@ const translations: Record<LangCode, Record<string, string>> = {
     'memory.importEmpty': '未找到有效词条，请检查文件格式',
     'memory.importError': '导入失败，请检查文件格式',
     'memory.pairCount': '配对数',
+    'memory.addImage': '图片',
+    'memory.frontLabel': '题干（正面）',
+    'memory.backLabel': '答案（背面）',
+    'memory.imageOnly': '仅支持图片文件',
+    'memory.imageTooLarge': '图片不能超过5MB',
+    'memory.imageCard': '[图片]',
     // Command Cards
     'cmd.title': '📢 课堂指令卡',
     'cmd.inputPlaceholder': '输入课堂指令主题，如：小组辩论',
