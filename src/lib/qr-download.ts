@@ -1,4 +1,6 @@
-export function downloadQrPng(containerRef: React.RefObject<HTMLDivElement | null>, filename: string) {
+import type { RefObject } from 'react';
+
+export function downloadQrPng(containerRef: RefObject<HTMLDivElement | null>, filename: string) {
   const svg = containerRef.current?.querySelector('svg');
   if (!svg) return;
   downloadSvgAsPng(svg, `${filename}.png`);
