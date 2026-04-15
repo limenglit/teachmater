@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExportButtons from '@/components/ExportButtons';
+import TeamShareQR from '@/components/teamwork/TeamShareQR';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastTeams, saveLastTeams } from '@/lib/teamwork-local';
@@ -203,6 +204,7 @@ export default function TeamBuilder() {
                   </Button>
                 )}
                 <ExportButtons targetRef={printRef} filename={t('team.exportName')} />
+                <TeamShareQR teams={teams} type="teams" />
               </>
             )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
