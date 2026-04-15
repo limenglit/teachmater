@@ -1152,6 +1152,36 @@ export type Database = {
         }
         Relationships: []
       }
+      teamwork_sessions: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          status: string
+          student_count: number
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          status?: string
+          student_count?: number
+          title?: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          status?: string
+          student_count?: number
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       user_ai_limits: {
         Row: {
           daily_limit: number
