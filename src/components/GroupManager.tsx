@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import ExportButtons from '@/components/ExportButtons';
+import TeamShareQR from '@/components/teamwork/TeamShareQR';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastGroups, saveLastGroups } from '@/lib/teamwork-local';
@@ -216,6 +217,7 @@ export default function GroupManager() {
                   </Button>
                 )}
                 <ExportButtons targetRef={printRef} filename={t('group.exportName')} />
+                <TeamShareQR teams={teams} type="groups" />
               </>
             )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
