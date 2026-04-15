@@ -15,6 +15,7 @@ export interface PersistedTeamMember {
   id: string;
   name: string;
   isCaptain?: boolean;
+  isViceCaptain?: boolean;
 }
 
 export interface PersistedTeam {
@@ -209,7 +210,7 @@ export function loadLastGroups(): PersistedGroup[] {
       name: group.name,
       members: group.members
         .filter(member => member && typeof member.name === 'string' && typeof member.id === 'string')
-        .map(member => ({ id: member.id, name: member.name, isLeader: !!member.isLeader })),
+        .map(member => ({ id: member.id, name: member.name, isLeader: !!member.isLeader, isViceLeader: !!(member as any).isViceLeader })),
     }))
     .filter(group => group.members.length > 0);
 }
@@ -228,7 +229,7 @@ export function loadLastTeams(): PersistedTeam[] {
       name: team.name,
       members: team.members
         .filter(member => member && typeof member.name === 'string' && typeof member.id === 'string')
-        .map(member => ({ id: member.id, name: member.name, isCaptain: !!member.isCaptain })),
+        .map(member => ({ id: member.id, name: member.name, isCaptain: !!member.isCaptain, isViceCaptain: !!(member as any).isViceCaptain })),
     }))
     .filter(team => team.members.length > 0);
 }
