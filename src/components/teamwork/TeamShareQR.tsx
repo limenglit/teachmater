@@ -7,11 +7,14 @@ import { toast } from 'sonner';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { downloadQrPng } from '@/lib/qr-download';
 
-interface TeamMember { id: string; name: string; isCaptain: boolean }
-interface Team { id: string; name: string; members: TeamMember[] }
+interface GenericTeam {
+  id: string;
+  name: string;
+  members: { id: string; name: string; isCaptain?: boolean; isLeader?: boolean }[];
+}
 
 interface TeamShareQRProps {
-  teams: Team[];
+  teams: GenericTeam[];
   type: 'teams' | 'groups';
 }
 
