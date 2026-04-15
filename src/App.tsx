@@ -24,6 +24,7 @@ const QuizSubmitPage = lazyRetry(() => import("./pages/QuizSubmitPage"));
 const PollVotePage = lazyRetry(() => import("./pages/PollVotePage"));
 const TaskSubmitPage = lazyRetry(() => import("./pages/TaskSubmitPage"));
 const CollabBoardPage = lazyRetry(() => import("./pages/CollabBoardPage"));
+const TeamLookupPage = lazyRetry(() => import("./pages/TeamLookupPage"));
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => (
                 <Route path="/quiz/:sessionId" element={<Suspense fallback={<Loading />}><QuizSubmitPage /></Suspense>} />
                 <Route path="/poll/:pollId" element={<Suspense fallback={<Loading />}><PollVotePage /></Suspense>} />
                 <Route path="/task/:sessionId" element={<Suspense fallback={<Loading />}><TaskSubmitPage /></Suspense>} />
+                <Route path="/team-lookup/:sessionId" element={<Suspense fallback={<Loading />}><TeamLookupPage /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>

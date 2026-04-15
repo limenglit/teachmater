@@ -1,3 +1,9 @@
+export function downloadQrPng(containerRef: React.RefObject<HTMLDivElement | null>, filename: string) {
+  const svg = containerRef.current?.querySelector('svg');
+  if (!svg) return;
+  downloadSvgAsPng(svg, `${filename}.png`);
+}
+
 export async function downloadSvgAsPng(svgElement: SVGSVGElement, filename: string) {
   const widthAttr = Number(svgElement.getAttribute('width'));
   const heightAttr = Number(svgElement.getAttribute('height'));
