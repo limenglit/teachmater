@@ -217,7 +217,7 @@ export default function GroupManager() {
                   </Button>
                 )}
                 <ExportButtons targetRef={printRef} filename={t('group.exportName')} />
-                <TeamShareQR teams={teams} type="groups" />
+                <TeamShareQR teams={groups} type="groups" />
               </>
             )}
             <label className="flex items-center gap-2 text-sm text-muted-foreground">
