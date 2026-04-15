@@ -370,7 +370,7 @@ export default function TeamBuilder() {
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleCaptain(team.id, member.id)}
                               title={member.isCaptain ? '队长 → 点击设为副队长' : member.isViceCaptain ? '副队长 → 点击取消' : '点击设为队长'}
-                              className={`transition-all ${
+                              className={`relative transition-all ${
                                 member.isCaptain
                                   ? 'text-warning opacity-100'
                                   : member.isViceCaptain

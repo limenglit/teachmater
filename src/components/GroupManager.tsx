@@ -377,7 +377,7 @@ export default function GroupManager() {
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleLeader(group.id, member.id)}
                               title={member.isLeader ? '组长 → 点击设为副组长' : member.isViceLeader ? '副组长 → 点击取消' : '点击设为组长'}
-                              className={`transition-all ${
+                              className={`relative transition-all ${
                                 member.isLeader
                                   ? 'text-warning opacity-100'
                                   : member.isViceLeader
