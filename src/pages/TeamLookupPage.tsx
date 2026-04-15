@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Crown, Users, Search } from 'lucide-react';
 
-interface TeamMember { id: string; name: string; isCaptain: boolean }
+interface TeamMember { id: string; name: string; isCaptain: boolean; isViceCaptain?: boolean }
 interface Team { id: string; name: string; members: TeamMember[] }
 
 export default function TeamLookupPage() {
@@ -110,13 +110,25 @@ export default function TeamLookupPage() {
             </div>
 
             {myTeam.members.some(m => m.isCaptain) && (
-              <div className="flex items-center gap-2 mb-3 text-sm">
+              <div className="flex items-center gap-2 mb-2 text-sm">
                 <Crown className="w-4 h-4 text-warning" fill="currentColor" />
                 <span className="text-muted-foreground">
                   {type === 'teams' ? '队长' : '组长'}：
                 </span>
                 <span className="font-medium text-foreground">
                   {myTeam.members.find(m => m.isCaptain)?.name}
+                </span>
+              </div>
+            )}
+
+            {myTeam.members.some(m => m.isViceCaptain) && (
+              <div className="flex items-center gap-2 mb-3 text-sm">
+                <Crown className="w-4 h-4 text-blue-500" fill="currentColor" />
+                <span className="text-muted-foreground">
+                  副{type === 'teams' ? '队长' : '组长'}：
+                </span>
+                <span className="font-medium text-foreground">
+                  {myTeam.members.filter(m => m.isViceCaptain).map(m => m.name).join('、')}
                 </span>
               </div>
             )}
@@ -134,10 +146,13 @@ export default function TeamLookupPage() {
                         ? 'bg-primary text-primary-foreground border-primary font-semibold'
                         : m.isCaptain
                           ? 'bg-warning/10 text-warning border-warning/30'
-                          : 'bg-muted text-foreground border-border'
+                          : m.isViceCaptain
+                            ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
+                            : 'bg-muted text-foreground border-border'
                     }`}
                   >
                     {m.isCaptain && <Crown className="w-3 h-3" fill="currentColor" />}
+                    {m.isViceCaptain && <Crown className="w-3 h-3 text-blue-500" />}
                     {m.name}
                   </span>
                 ))}
