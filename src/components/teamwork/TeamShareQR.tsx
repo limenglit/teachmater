@@ -32,9 +32,17 @@ export default function TeamShareQR({ teams, type }: TeamShareQRProps) {
       try {
         const studentCount = teams.reduce((s, t) => s + t.members.length, 0);
         const title = `${teams.length}个${type === 'teams' ? '队' : '组'} · ${new Date().toLocaleDateString()}`;
+        const normalized = teams.map(t => ({
+          ...t,
+          members: t.members.map(m => ({
+            id: m.id,
+            name: m.name,
+            isCaptain: !!(m.isCaptain || m.isLeader),
+          })),
+        }));
         const { data, error } = await supabase
           .from('teamwork_sessions')
-          .insert([{ type, title, data: teams as any, student_count: studentCount }])
+          .insert([{ type, title, data: normalized as any, student_count: studentCount }])
           .select('id')
           .single();
         if (error) throw error;
