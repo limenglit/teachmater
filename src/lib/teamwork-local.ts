@@ -2,6 +2,7 @@ export interface PersistedGroupMember {
   id: string;
   name: string;
   isLeader?: boolean;
+  isViceLeader?: boolean;
 }
 
 export interface PersistedGroup {
