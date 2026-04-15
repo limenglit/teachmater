@@ -20,7 +20,7 @@ import {
   type TeamingPreset,
 } from '@/lib/teaming-presets';
 
-interface TeamMember { id: string; name: string; isCaptain: boolean }
+interface TeamMember { id: string; name: string; isCaptain: boolean; isViceCaptain?: boolean }
 interface Team { id: string; name: string; members: TeamMember[] }
 
 const TEAM_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','十'];
@@ -73,7 +73,7 @@ export default function TeamBuilder() {
     const newTeams: Team[] = Array.from({ length: teamCount }, (_, i) => ({
       id: `t_${i}`,
       name: t('team.namePrefix').replace('{0}', TEAM_NAMES_ZH[i] || String(i + 1)),
-      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isCaptain: false })) ?? [],
+      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isCaptain: false, isViceCaptain: false })) ?? [],
     }));
     setTeams(newTeams);
   }, [students, membersPerTeam, teamStrategy, customPrimaryDimension, customBalanceDimensions, t]);
@@ -130,7 +130,25 @@ export default function TeamBuilder() {
   const toggleCaptain = (teamId: string, memberId: string) => {
     setTeams(prev => prev.map(t => {
       if (t.id !== teamId) return t;
-      return { ...t, members: t.members.map(m => ({ ...m, isCaptain: m.id === memberId ? !m.isCaptain : false })) };
+      return {
+        ...t,
+        members: t.members.map(m => {
+          if (m.id !== memberId) {
+            // If this member was captain and we're promoting someone else, keep them
+            return m;
+          }
+          // Cycle: none → captain → vice captain → none
+          if (!m.isCaptain && !m.isViceCaptain) {
+            // Clear existing captain in this team, set this as captain
+            return { ...m, isCaptain: true, isViceCaptain: false };
+          }
+          if (m.isCaptain) {
+            return { ...m, isCaptain: false, isViceCaptain: true };
+          }
+          // isViceCaptain → none
+          return { ...m, isCaptain: false, isViceCaptain: false };
+        }),
+      };
     }));
   };
 
@@ -351,8 +369,16 @@ export default function TeamBuilder() {
                             <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleCaptain(team.id, member.id)}
-                              className={`transition-all ${member.isCaptain ? 'text-warning opacity-100' : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'}`}>
-                              <Crown className="w-4 h-4" fill={member.isCaptain ? 'currentColor' : 'none'} />
+                              title={member.isCaptain ? '队长 → 点击设为副队长' : member.isViceCaptain ? '副队长 → 点击取消' : '点击设为队长'}
+                              className={`transition-all ${
+                                member.isCaptain
+                                  ? 'text-warning opacity-100'
+                                  : member.isViceCaptain
+                                    ? 'text-blue-500 opacity-100'
+                                    : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'
+                              }`}>
+                              <Crown className="w-4 h-4" fill={member.isCaptain || member.isViceCaptain ? 'currentColor' : 'none'} />
+                              {member.isViceCaptain && <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold">副</span>}
                             </button>
                           </div>
                         </div>

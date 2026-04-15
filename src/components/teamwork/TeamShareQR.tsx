@@ -10,7 +10,7 @@ import { downloadQrPng } from '@/lib/qr-download';
 interface GenericTeam {
   id: string;
   name: string;
-  members: { id: string; name: string; isCaptain?: boolean; isLeader?: boolean }[];
+  members: { id: string; name: string; isCaptain?: boolean; isLeader?: boolean; isViceCaptain?: boolean; isViceLeader?: boolean }[];
 }
 
 interface TeamShareQRProps {
@@ -38,6 +38,7 @@ export default function TeamShareQR({ teams, type }: TeamShareQRProps) {
             id: m.id,
             name: m.name,
             isCaptain: !!(m.isCaptain || m.isLeader),
+            isViceCaptain: !!(m.isViceCaptain || m.isViceLeader),
           })),
         }));
         const { data, error } = await supabase

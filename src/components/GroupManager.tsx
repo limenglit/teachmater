@@ -20,7 +20,7 @@ import {
   type TeamingPreset,
 } from '@/lib/teaming-presets';
 
-interface GroupMember { id: string; name: string; isLeader: boolean }
+interface GroupMember { id: string; name: string; isLeader: boolean; isViceLeader?: boolean }
 interface Group { id: string; name: string; members: GroupMember[] }
 
 const GROUP_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','十'];
@@ -72,7 +72,7 @@ export default function GroupManager() {
     const newGroups: Group[] = Array.from({ length: groupCount }, (_, i) => ({
       id: `g_${i}`,
       name: t('group.namePrefix').replace('{0}', GROUP_NAMES_ZH[i] || String(i + 1)),
-      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isLeader: false })) ?? [],
+      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isLeader: false, isViceLeader: false })) ?? [],
     }));
     setGroups(newGroups);
   }, [students, groupCount, groupStrategy, customPrimaryDimension, customBalanceDimensions, t]);
@@ -129,7 +129,19 @@ export default function GroupManager() {
   const toggleLeader = (groupId: string, memberId: string) => {
     setGroups(prev => prev.map(g => {
       if (g.id !== groupId) return g;
-      return { ...g, members: g.members.map(m => ({ ...m, isLeader: m.id === memberId ? !m.isLeader : false })) };
+      return {
+        ...g,
+        members: g.members.map(m => {
+          if (m.id !== memberId) return m;
+          if (!m.isLeader && !m.isViceLeader) {
+            return { ...m, isLeader: true, isViceLeader: false };
+          }
+          if (m.isLeader) {
+            return { ...m, isLeader: false, isViceLeader: true };
+          }
+          return { ...m, isLeader: false, isViceLeader: false };
+        }),
+      };
     }));
   };
 
@@ -364,8 +376,16 @@ export default function GroupManager() {
                             <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleLeader(group.id, member.id)}
-                              className={`transition-all ${member.isLeader ? 'text-warning opacity-100' : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'}`}>
-                              <Star className="w-4 h-4" fill={member.isLeader ? 'currentColor' : 'none'} />
+                              title={member.isLeader ? '组长 → 点击设为副组长' : member.isViceLeader ? '副组长 → 点击取消' : '点击设为组长'}
+                              className={`transition-all ${
+                                member.isLeader
+                                  ? 'text-warning opacity-100'
+                                  : member.isViceLeader
+                                    ? 'text-blue-500 opacity-100'
+                                    : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'
+                              }`}>
+                              <Star className="w-4 h-4" fill={member.isLeader || member.isViceLeader ? 'currentColor' : 'none'} />
+                              {member.isViceLeader && <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold">副</span>}
                             </button>
                           </div>
                         </div>
