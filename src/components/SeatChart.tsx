@@ -13,7 +13,7 @@ import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 import ArtStudio from '@/components/seating/ArtStudio';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
-import ZoomControls from '@/components/seating/ZoomControls';
+import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { toast } from 'sonner';
 import {
