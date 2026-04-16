@@ -44,6 +44,7 @@ export function useSceneZoom({ contentWidth, contentHeight, min = 0.3, max = 2, 
 
 interface UseZoomGesturesOptions {
   setScale: Dispatch<SetStateAction<number>>;
+  targetRef: React.RefObject<HTMLElement>;
   min?: number;
   max?: number;
   enabled?: boolean;
@@ -51,11 +52,8 @@ interface UseZoomGesturesOptions {
 
 /**
  * Attach Ctrl+wheel and pinch-to-zoom gestures to a scroll container.
- * Returns a ref to attach to the target element.
  */
-export function useZoomGestures({ setScale, min = 0.3, max = 2, enabled = true }: UseZoomGesturesOptions) {
-  const targetRef = useRef<HTMLDivElement | null>(null);
-
+export function useZoomGestures({ setScale, targetRef, min = 0.3, max = 2, enabled = true }: UseZoomGesturesOptions) {
   useEffect(() => {
     const el = targetRef.current;
     if (!el || !enabled) return;
