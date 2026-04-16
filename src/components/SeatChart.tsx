@@ -590,6 +590,25 @@ export default function SeatChart() {
   const isExamMode = mode === 'exam';
   const isClassroomScene = scene === 'classroom';
   const printRef = useRef<HTMLDivElement>(null);
+  const seatScrollRef = useRef<HTMLDivElement>(null);
+  const seatContentRef = useRef<HTMLDivElement>(null);
+  const [seatScale, setSeatScale] = useState(1);
+  const seatZoomIn = useCallback(() => setSeatScale(s => Math.min(2, Number((s + 0.1).toFixed(3)))), []);
+  const seatZoomOut = useCallback(() => setSeatScale(s => Math.max(0.3, Number((s - 0.1).toFixed(3)))), []);
+  const seatZoomReset = useCallback(() => setSeatScale(1), []);
+  const seatZoomFit = useCallback(() => {
+    const wrap = seatScrollRef.current;
+    const content = seatContentRef.current;
+    if (!wrap || !content) return;
+    // get unscaled content size
+    const baseW = content.scrollWidth / seatScale;
+    const baseH = content.scrollHeight / seatScale;
+    const cw = wrap.clientWidth - 16;
+    const ch = wrap.clientHeight - 16;
+    if (baseW <= 0 || baseH <= 0 || cw <= 0 || ch <= 0) return;
+    const next = Math.min(cw / baseW, ch / baseH, 1);
+    setSeatScale(Math.max(0.3, Math.min(2, Number(next.toFixed(3)))));
+  }, [seatScale]);
   const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
