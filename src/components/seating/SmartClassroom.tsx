@@ -1149,6 +1149,8 @@ export default function SmartClassroom({
                   {assignment.map((people, i) => renderRoundTable(i, people))}
                 </div>
               </div>
+                </div>
+              </div>
             </div>
           </div>
         ) : (
