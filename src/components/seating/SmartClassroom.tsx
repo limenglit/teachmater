@@ -1050,9 +1050,9 @@ export default function SmartClassroom({
 
       <div ref={printRef}>
         {assignment.length > 0 ? (
-          <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <div className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
             <div
-              className="relative rounded-xl border border-border bg-card/40"
+              className="relative rounded-xl border border-border bg-card/40 mx-auto"
               style={{ width: roomWidth, height: roomHeight }}
             >
               {refVisible.screen && (

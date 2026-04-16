@@ -1195,8 +1195,8 @@ export default function SeatChart() {
                 </div>
               </div>
               {seats.length > 0 ? (
-                <div className="overflow-auto pb-2">
-                  <div className="flex justify-center">
+                <div className="overflow-auto pb-2 max-h-[75vh]">
+                  <div className="mx-auto w-fit">
                     <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
                       <div className="flex items-center shrink-0">
                         <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">

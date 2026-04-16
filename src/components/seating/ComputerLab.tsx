@@ -698,8 +698,8 @@ export default function ComputerLab({ students }: Props) {
 
       <div ref={printRef}>
         {seated ? (
-          <div className="flex justify-center overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-            <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight }}>
+          <div className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
+            <div className="relative rounded-xl border border-border bg-card/40 mx-auto" style={{ width: roomWidth, height: roomHeight }}>
               {refVisible.blackboard && (
                 <div className={refBadgeClass} style={{ left: refPositions.blackboard.x, top: refPositions.blackboard.y }} onMouseDown={e => startRefDrag(e, 'blackboard')}>
                   <span className={refIconClass}>🖥️</span>
