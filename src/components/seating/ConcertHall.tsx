@@ -5,6 +5,7 @@ import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import ZoomControls, { useSceneZoom } from './ZoomControls';
 import { toast } from 'sonner';
 import {
   loadConcertHallSnapshot,
