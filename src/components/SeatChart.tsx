@@ -609,6 +609,7 @@ export default function SeatChart() {
     const next = Math.min(cw / baseW, ch / baseH, 1);
     setSeatScale(Math.max(0.3, Math.min(2, Number(next.toFixed(3)))));
   }, [seatScale]);
+  useZoomGestures({ setScale: setSeatScale, targetRef: seatScrollRef });
   const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
