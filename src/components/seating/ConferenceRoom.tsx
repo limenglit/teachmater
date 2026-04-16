@@ -103,6 +103,7 @@ export default function ConferenceRoom({ students }: Props) {
 
   const roomWidth = Math.max(920, contentWidth + 160);
   const roomHeight = Math.max(640, contentHeight + 220);
+  const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   const exportSceneConfig = {
     seatsPerSide,
     companionRows: showCompanionSeats ? companionRows : 0,
