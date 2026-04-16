@@ -6,6 +6,7 @@ import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import ZoomControls, { useSceneZoom } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
@@ -102,6 +103,7 @@ export default function ConferenceRoom({ students }: Props) {
 
   const roomWidth = Math.max(920, contentWidth + 160);
   const roomHeight = Math.max(640, contentHeight + 220);
+  const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   const exportSceneConfig = {
     seatsPerSide,
     companionRows: showCompanionSeats ? companionRows : 0,
@@ -878,8 +880,13 @@ export default function ConferenceRoom({ students }: Props) {
 
       <div ref={printRef}>
         {seated ? (
-          <div className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
-            <div className="relative rounded-xl border border-border bg-card/40 mx-auto" style={{ width: roomWidth, height: roomHeight }}>
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <ZoomControls scale={zoom.scale} onZoomIn={zoom.zoomIn} onZoomOut={zoom.zoomOut} onFit={zoom.fitToScreen} onReset={zoom.reset} />
+            </div>
+            <div ref={zoom.containerRef} className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
+              <div className="mx-auto" style={{ width: roomWidth * zoom.scale, height: roomHeight * zoom.scale }}>
+                <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight, transform: `scale(${zoom.scale})`, transformOrigin: 'top left' }}>
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>🖥️</span>
@@ -956,8 +963,10 @@ export default function ConferenceRoom({ students }: Props) {
                   会议桌
                 </text>
               </svg>
+              </div>
             </div>
           </div>
+        </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>

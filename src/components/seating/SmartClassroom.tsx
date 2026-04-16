@@ -8,6 +8,7 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
+import ZoomControls, { useSceneZoom } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
@@ -526,6 +527,7 @@ export default function SmartClassroom({
 
   const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
   const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
+  const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   const exportSceneConfig = { seatsPerTable, tableCount, tableCols, tableRows };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
@@ -1050,11 +1052,16 @@ export default function SmartClassroom({
 
       <div ref={printRef}>
         {assignment.length > 0 ? (
-          <div className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
-            <div
-              className="relative rounded-xl border border-border bg-card/40 mx-auto"
-              style={{ width: roomWidth, height: roomHeight }}
-            >
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <ZoomControls scale={zoom.scale} onZoomIn={zoom.zoomIn} onZoomOut={zoom.zoomOut} onFit={zoom.fitToScreen} onReset={zoom.reset} />
+            </div>
+            <div ref={zoom.containerRef} className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
+              <div className="mx-auto" style={{ width: roomWidth * zoom.scale, height: roomHeight * zoom.scale }}>
+                <div
+                  className="relative rounded-xl border border-border bg-card/40"
+                  style={{ width: roomWidth, height: roomHeight, transform: `scale(${zoom.scale})`, transformOrigin: 'top left' }}
+                >
               {refVisible.screen && (
                 <div
                   className={refBadgeClass}
@@ -1142,6 +1149,8 @@ export default function SmartClassroom({
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
                   {assignment.map((people, i) => renderRoundTable(i, people))}
+                </div>
+              </div>
                 </div>
               </div>
             </div>

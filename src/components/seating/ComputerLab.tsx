@@ -5,6 +5,7 @@ import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import ZoomControls, { useSceneZoom } from './ZoomControls';
 import { toast } from 'sonner';
 import {
   loadComputerLabSnapshot,
@@ -95,6 +96,7 @@ export default function ComputerLab({ students }: Props) {
 
   const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220);
   const roomHeight = Math.max(760, maxRows * rowGap + 220);
+  const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 760));
 
@@ -698,8 +700,13 @@ export default function ComputerLab({ students }: Props) {
 
       <div ref={printRef}>
         {seated ? (
-          <div className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
-            <div className="relative rounded-xl border border-border bg-card/40 mx-auto" style={{ width: roomWidth, height: roomHeight }}>
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <ZoomControls scale={zoom.scale} onZoomIn={zoom.zoomIn} onZoomOut={zoom.zoomOut} onFit={zoom.fitToScreen} onReset={zoom.reset} />
+            </div>
+            <div ref={zoom.containerRef} className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
+              <div className="mx-auto" style={{ width: roomWidth * zoom.scale, height: roomHeight * zoom.scale }}>
+                <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight, transform: `scale(${zoom.scale})`, transformOrigin: 'top left' }}>
               {refVisible.blackboard && (
                 <div className={refBadgeClass} style={{ left: refPositions.blackboard.x, top: refPositions.blackboard.y }} onMouseDown={e => startRefDrag(e, 'blackboard')}>
                   <span className={refIconClass}>🖥️</span>
@@ -784,8 +791,10 @@ export default function ComputerLab({ students }: Props) {
                   );
                 })}
               </svg>
+              </div>
             </div>
           </div>
+        </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>

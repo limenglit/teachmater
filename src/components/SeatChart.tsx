@@ -13,6 +13,7 @@ import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 import ArtStudio from '@/components/seating/ArtStudio';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
+import ZoomControls from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { toast } from 'sonner';
 import {
@@ -589,6 +590,25 @@ export default function SeatChart() {
   const isExamMode = mode === 'exam';
   const isClassroomScene = scene === 'classroom';
   const printRef = useRef<HTMLDivElement>(null);
+  const seatScrollRef = useRef<HTMLDivElement>(null);
+  const seatContentRef = useRef<HTMLDivElement>(null);
+  const [seatScale, setSeatScale] = useState(1);
+  const seatZoomIn = useCallback(() => setSeatScale(s => Math.min(2, Number((s + 0.1).toFixed(3)))), []);
+  const seatZoomOut = useCallback(() => setSeatScale(s => Math.max(0.3, Number((s - 0.1).toFixed(3)))), []);
+  const seatZoomReset = useCallback(() => setSeatScale(1), []);
+  const seatZoomFit = useCallback(() => {
+    const wrap = seatScrollRef.current;
+    const content = seatContentRef.current;
+    if (!wrap || !content) return;
+    // get unscaled content size
+    const baseW = content.scrollWidth / seatScale;
+    const baseH = content.scrollHeight / seatScale;
+    const cw = wrap.clientWidth - 16;
+    const ch = wrap.clientHeight - 16;
+    if (baseW <= 0 || baseH <= 0 || cw <= 0 || ch <= 0) return;
+    const next = Math.min(cw / baseW, ch / baseH, 1);
+    setSeatScale(Math.max(0.3, Math.min(2, Number(next.toFixed(3)))));
+  }, [seatScale]);
   const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
@@ -1195,20 +1215,25 @@ export default function SeatChart() {
                 </div>
               </div>
               {seats.length > 0 ? (
-                <div className="overflow-auto pb-2 max-h-[75vh]">
-                  <div className="mx-auto w-fit">
-                    <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
-                      <div className="flex items-center shrink-0">
-                        <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
-                          <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>
-                          <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.windowSide') : t('seat.doorSide')}</span>
+                <div className="space-y-2">
+                  <div className="flex justify-end">
+                    <ZoomControls scale={seatScale} onZoomIn={seatZoomIn} onZoomOut={seatZoomOut} onFit={seatZoomFit} onReset={seatZoomReset} />
+                  </div>
+                  <div ref={seatScrollRef} className="overflow-auto pb-2 max-h-[75vh]">
+                    <div ref={seatContentRef} className="mx-auto w-fit" style={{ transform: `scale(${seatScale})`, transformOrigin: 'top left' }}>
+                      <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
+                        <div className="flex items-center shrink-0">
+                          <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                            <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>
+                            <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.windowSide') : t('seat.doorSide')}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="shrink-0">{buildVisualGrid()}</div>
-                      <div className="flex items-center shrink-0">
-                        <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
-                          <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
-                          <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
+                        <div className="shrink-0">{buildVisualGrid()}</div>
+                        <div className="flex items-center shrink-0">
+                          <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                            <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
+                            <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
