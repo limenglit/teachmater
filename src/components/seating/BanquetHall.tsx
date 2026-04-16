@@ -155,6 +155,7 @@ export default function BanquetHall({ students }: Props) {
   const roomWidth = Math.max(980, tableCols * 180 + Math.max(0, tableCols - 1) * tableGap + 260);
   const roomHeight = Math.max(720, tableRows * 180 + Math.max(0, tableRows - 1) * tableGap + 280);
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
+  useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
 
   const tStageTopWidth = Math.max(320, Math.min(roomWidth * 0.56, tableCols * 180));
   const tStageTopY = 116;
