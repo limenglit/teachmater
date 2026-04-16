@@ -123,9 +123,7 @@ export function useZoomGestures({ setScale, targetRef, min = 0.3, max = 2, enabl
       el.removeEventListener('pointercancel', onPointerEnd);
       el.removeEventListener('pointerleave', onPointerEnd);
     };
-  }, [setScale, min, max, enabled]);
-
-  return targetRef;
+  }, [setScale, min, max, enabled, targetRef]);
 }
 
 interface ZoomControlsProps {
