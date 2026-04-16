@@ -880,8 +880,13 @@ export default function ConferenceRoom({ students }: Props) {
 
       <div ref={printRef}>
         {seated ? (
-          <div className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
-            <div className="relative rounded-xl border border-border bg-card/40 mx-auto" style={{ width: roomWidth, height: roomHeight }}>
+          <div className="space-y-2">
+            <div className="flex justify-end">
+              <ZoomControls scale={zoom.scale} onZoomIn={zoom.zoomIn} onZoomOut={zoom.zoomOut} onFit={zoom.fitToScreen} onReset={zoom.reset} />
+            </div>
+            <div ref={zoom.containerRef} className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
+              <div className="mx-auto" style={{ width: roomWidth * zoom.scale, height: roomHeight * zoom.scale }}>
+                <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight, transform: `scale(${zoom.scale})`, transformOrigin: 'top left' }}>
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>🖥️</span>
