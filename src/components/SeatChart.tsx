@@ -1215,20 +1215,25 @@ export default function SeatChart() {
                 </div>
               </div>
               {seats.length > 0 ? (
-                <div className="overflow-auto pb-2 max-h-[75vh]">
-                  <div className="mx-auto w-fit">
-                    <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
-                      <div className="flex items-center shrink-0">
-                        <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
-                          <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>
-                          <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.windowSide') : t('seat.doorSide')}</span>
+                <div className="space-y-2">
+                  <div className="flex justify-end">
+                    <ZoomControls scale={seatScale} onZoomIn={seatZoomIn} onZoomOut={seatZoomOut} onFit={seatZoomFit} onReset={seatZoomReset} />
+                  </div>
+                  <div ref={seatScrollRef} className="overflow-auto pb-2 max-h-[75vh]">
+                    <div ref={seatContentRef} className="mx-auto w-fit" style={{ transform: `scale(${seatScale})`, transformOrigin: 'top left' }}>
+                      <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
+                        <div className="flex items-center shrink-0">
+                          <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                            <span className={sideMarkerIconClass}>{windowOnLeft ? '🪟' : '🚪'}</span>
+                            <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.windowSide') : t('seat.doorSide')}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="shrink-0">{buildVisualGrid()}</div>
-                      <div className="flex items-center shrink-0">
-                        <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
-                          <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
-                          <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
+                        <div className="shrink-0">{buildVisualGrid()}</div>
+                        <div className="flex items-center shrink-0">
+                          <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
+                            <span className={sideMarkerIconClass}>{windowOnLeft ? '🚪' : '🪟'}</span>
+                            <span className="writing-vertical tracking-widest">{windowOnLeft ? t('seat.doorSide') : t('seat.windowSide')}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
