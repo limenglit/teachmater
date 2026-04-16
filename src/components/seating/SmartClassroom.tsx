@@ -528,6 +528,7 @@ export default function SmartClassroom({
   const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
   const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
+  useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const exportSceneConfig = { seatsPerTable, tableCount, tableCols, tableRows };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
