@@ -194,6 +194,7 @@ export default function ConcertHall({ students }: Props) {
   const lowestSeatY = stageY + 20 + maxRadius + seatR;
   const roomHeight = Math.max(700, Math.round(lowestSeatY + 100));
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
+  useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const exportSceneConfig = { seatsPerRow, rowCount };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
