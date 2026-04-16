@@ -791,8 +791,10 @@ export default function ComputerLab({ students }: Props) {
                   );
                 })}
               </svg>
+              </div>
             </div>
           </div>
+        </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">点击「自动排座」开始安排</p>
