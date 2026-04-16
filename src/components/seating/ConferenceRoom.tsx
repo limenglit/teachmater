@@ -6,7 +6,7 @@ import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useSeatExportQr } from './useSeatExportQr';
-import ZoomControls, { useSceneZoom } from './ZoomControls';
+import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
@@ -104,6 +104,7 @@ export default function ConferenceRoom({ students }: Props) {
   const roomWidth = Math.max(920, contentWidth + 160);
   const roomHeight = Math.max(640, contentHeight + 220);
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
+  useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const exportSceneConfig = {
     seatsPerSide,
     companionRows: showCompanionSeats ? companionRows : 0,

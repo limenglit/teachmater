@@ -13,7 +13,7 @@ import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 import ArtStudio from '@/components/seating/ArtStudio';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
-import ZoomControls from '@/components/seating/ZoomControls';
+import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { toast } from 'sonner';
 import {
@@ -609,6 +609,7 @@ export default function SeatChart() {
     const next = Math.min(cw / baseW, ch / baseH, 1);
     setSeatScale(Math.max(0.3, Math.min(2, Number(next.toFixed(3)))));
   }, [seatScale]);
+  useZoomGestures({ setScale: setSeatScale, targetRef: seatScrollRef });
   const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,

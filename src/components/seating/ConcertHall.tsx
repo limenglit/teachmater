@@ -5,7 +5,7 @@ import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
-import ZoomControls, { useSceneZoom } from './ZoomControls';
+import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import {
   loadConcertHallSnapshot,
@@ -194,6 +194,7 @@ export default function ConcertHall({ students }: Props) {
   const lowestSeatY = stageY + 20 + maxRadius + seatR;
   const roomHeight = Math.max(700, Math.round(lowestSeatY + 100));
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
+  useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const exportSceneConfig = { seatsPerRow, rowCount };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
