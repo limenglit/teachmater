@@ -105,18 +105,6 @@ export default function ConferenceRoom({ students }: Props) {
   const roomHeight = Math.max(640, contentHeight + 220);
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
-  const exportSceneConfig = {
-    seatsPerSide,
-    companionRows: showCompanionSeats ? companionRows : 0,
-  };
-  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
-    seatData: assignment,
-    studentNames: students.map(s => s.name),
-    seatAssignmentReady: seated,
-    sceneConfig: exportSceneConfig,
-    sceneType: 'conference',
-  });
-
   const tableX = (roomWidth - tableW) / 2;
   const tableY = (roomHeight - tableH) / 2;
 
@@ -128,6 +116,22 @@ export default function ConferenceRoom({ students }: Props) {
   const [refPositions, setRefPositions] = useState<RefPositions>(() =>
     buildDefaultRefPositions(920, 640)
   );
+
+  const exportSceneConfig = {
+    seatsPerSide,
+    companionRows: showCompanionSeats ? companionRows : 0,
+    roomWidth,
+    roomHeight,
+    frontDoor: refVisible.frontDoor ? refPositions.frontDoor : null,
+    backDoor: refVisible.backDoor ? refPositions.backDoor : null,
+  };
+  const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: assignment,
+    studentNames: students.map(s => s.name),
+    seatAssignmentReady: seated,
+    sceneConfig: exportSceneConfig,
+    sceneType: 'conference',
+  });
 
   const refBadgeClass =
     'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
