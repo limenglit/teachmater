@@ -108,6 +108,10 @@ export default function ConferenceRoom({ students }: Props) {
   const exportSceneConfig = {
     seatsPerSide,
     companionRows: showCompanionSeats ? companionRows : 0,
+    roomWidth,
+    roomHeight,
+    frontDoor: refVisible.frontDoor ? refPositions.frontDoor : null,
+    backDoor: refVisible.backDoor ? refPositions.backDoor : null,
   };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,

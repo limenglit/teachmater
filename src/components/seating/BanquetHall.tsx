@@ -164,7 +164,12 @@ export default function BanquetHall({ students }: Props) {
   const tStageRunwayBottom = roomHeight - 64;
   const tStageRunwayHeight = Math.max(120, tStageRunwayBottom - tStageRunwayTop);
 
-  const exportSceneConfig = { seatsPerTable, tableCount, tableCols, tableRows };
+  const exportSceneConfig = {
+    seatsPerTable, tableCount, tableCols, tableRows,
+    roomWidth, roomHeight,
+    frontDoor: refVisible.frontDoor ? refPositions.frontDoor : null,
+    backDoor: refVisible.backDoor ? refPositions.backDoor : null,
+  };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
