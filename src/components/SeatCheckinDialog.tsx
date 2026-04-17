@@ -265,6 +265,7 @@ export default function SeatCheckinDialog({
           nextSceneConfig.entryDoorPosition = 'top';
         }
       }
+      console.log('[SeatCheckin] Publishing session with sceneConfig:', nextSceneConfig);
       const created = await createSeatCheckinSession({
         seatData,
         studentNames,
