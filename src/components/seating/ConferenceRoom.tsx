@@ -105,6 +105,18 @@ export default function ConferenceRoom({ students }: Props) {
   const roomHeight = Math.max(640, contentHeight + 220);
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
+  const tableX = (roomWidth - tableW) / 2;
+  const tableY = (roomHeight - tableH) / 2;
+
+  const defaultRefPositions = useMemo(
+    () => buildDefaultRefPositions(roomWidth, roomHeight),
+    [roomWidth, roomHeight]
+  );
+
+  const [refPositions, setRefPositions] = useState<RefPositions>(() =>
+    buildDefaultRefPositions(920, 640)
+  );
+
   const exportSceneConfig = {
     seatsPerSide,
     companionRows: showCompanionSeats ? companionRows : 0,
@@ -120,18 +132,6 @@ export default function ConferenceRoom({ students }: Props) {
     sceneConfig: exportSceneConfig,
     sceneType: 'conference',
   });
-
-  const tableX = (roomWidth - tableW) / 2;
-  const tableY = (roomHeight - tableH) / 2;
-
-  const defaultRefPositions = useMemo(
-    () => buildDefaultRefPositions(roomWidth, roomHeight),
-    [roomWidth, roomHeight]
-  );
-
-  const [refPositions, setRefPositions] = useState<RefPositions>(() =>
-    buildDefaultRefPositions(920, 640)
-  );
 
   const refBadgeClass =
     'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
