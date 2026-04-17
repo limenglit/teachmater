@@ -257,13 +257,21 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 const y = roomOy + seatY(r);
                 const name = seats[r]?.[c] ?? null;
                 const isMine = myPosition.r === r && myPosition.c === c;
+                const isDisabled = disabledSeatSet.has(`${r}-${c}`) && !isMine;
                 return (
                   <g key={`s-${r}-${c}`} data-my-seat={isMine ? 'true' : undefined}>
                     <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                       className={isMine ? 'fill-primary stroke-primary'
+                        : isDisabled ? 'fill-muted/60 stroke-muted-foreground/40'
                         : name ? 'fill-card stroke-border'
                         : 'fill-muted/30 stroke-border/30'}
-                      strokeWidth={isMine ? 2.5 : 1} />
+                      strokeWidth={isMine ? 2.5 : 1}
+                      strokeDasharray={isDisabled ? '2 2' : undefined}
+                    />
+                    {isDisabled && (
+                      <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+                        className="fill-muted-foreground/70 text-[9px]">✕</text>
+                    )}
                     {isMine && (
                       <circle cx={x + seatW / 2} cy={y - 6} r={4} className="fill-primary">
                         <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
