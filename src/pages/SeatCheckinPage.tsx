@@ -212,6 +212,7 @@ export default function SeatCheckinPage() {
     seat_data: unknown;
     student_names: string[];
     scene_type: string;
+    scene_config?: Record<string, unknown>;
   }, targetName: string, includeCurrentAsGuest: boolean) => {
     const normalized = targetName.trim();
     const registeredSet = new Set(sessionData.student_names);
@@ -247,12 +248,31 @@ export default function SeatCheckinPage() {
       seen.add(normalized);
     }
 
-    const capacity = countEmptySeatSlots(sessionData.seat_data);
+    const disabledSeats = Array.isArray(sessionData.scene_config?.disabledSeats)
+      ? (sessionData.scene_config!.disabledSeats as string[])
+      : [];
+
+    // For classroom, capacity excludes disabled seats.
+    let capacity = countEmptySeatSlots(sessionData.seat_data);
+    if (sessionData.scene_type === 'classroom' && Array.isArray(sessionData.seat_data)) {
+      const disabledKeys = new Set(disabledSeats);
+      const grid = sessionData.seat_data as (string | null)[][];
+      capacity = 0;
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          if (disabledKeys.has(`${r}-${c}`)) continue;
+          if (isSeatEmptyValue(grid[r][c])) capacity += 1;
+        }
+      }
+    }
     if (includeCurrentAsGuest && guestNames.length > capacity) {
       throw new Error('NO_SEAT_FOR_GUEST');
     }
 
-    const assignedSeatData = cloneSeatDataWithGuestAssignments(sessionData.seat_data, guestNames);
+    const assignedSeatData = cloneSeatDataWithGuestAssignments(sessionData.seat_data, guestNames, {
+      sceneType: sessionData.scene_type,
+      disabledSeats,
+    });
     const hint = buildSeatHint(sessionData.scene_type, assignedSeatData, normalized);
     return { seatData: assignedSeatData, guestAssigned: true, hint };
   };
