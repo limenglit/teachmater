@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,15 +12,29 @@ interface Props {
   sceneType: string;
 }
 
+type DoorSide = 'top' | 'bottom' | 'left' | 'right';
+interface DoorInfo { side: DoorSide; label: string; }
+
+/** Convert a (x,y) room-canvas coordinate to its nearest perimeter side. */
+function classifyDoorSide(door: { x: number; y: number } | null | undefined, roomW: number, roomH: number): DoorSide | null {
+  if (!door) return null;
+  const dLeft = door.x;
+  const dRight = roomW - door.x;
+  const dTop = door.y;
+  const dBottom = roomH - door.y;
+  const min = Math.min(dLeft, dRight, dTop, dBottom);
+  if (min === dLeft) return 'left';
+  if (min === dRight) return 'right';
+  if (min === dTop) return 'top';
+  return 'bottom';
+}
+
 export default function RoundTableCheckinView({ seatData, sceneConfig, studentName, sceneType }: Props) {
   const tables = seatData as string[][];
   const seatsPerTable = (sceneConfig.seatsPerTable as number) || tables[0]?.length || 6;
   const tableCols = (sceneConfig.tableCols as number) || Math.ceil(Math.sqrt(tables.length));
+  const tableRows = Math.ceil(tables.length / tableCols);
   const isMobile = useIsMobile();
-  const [zoomMyTable, setZoomMyTable] = useState(false);
-  const lastTapTsRef = useRef(0);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [pathSvgData, setPathSvgData] = useState<{ w: number; h: number; d: string } | null>(null);
 
   const myPos = useMemo(() => {
     for (let t = 0; t < tables.length; t++) {
@@ -31,147 +45,127 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
     return null;
   }, [tables, studentName]);
 
-  // 支持自定义门口数组 entryDoors: [{row, col, label}]
-  type EntryDoor = { row: number; col: number; label: string };
-  let entryDoors: EntryDoor[] = [];
-  if (Array.isArray(sceneConfig.entryDoors) && sceneConfig.entryDoors.length > 0) {
-    entryDoors = (sceneConfig.entryDoors as EntryDoor[]).map(d => ({
-      row: typeof d.row === 'number' ? d.row : 0,
-      col: typeof d.col === 'number' ? d.col : 0,
-      label: d.label || '门口',
-    }));
-  } else {
-    const entryDoorPosition = (sceneConfig.entryDoorPosition as string) || 'top';
-    let entryDoorLabel = '门口';
-    let entryDoorRow = 0;
-    let entryDoorCol = 0;
-    if (entryDoorPosition === 'top') {
-      entryDoorRow = 0;
-      entryDoorCol = Math.floor(tableCols / 2);
-      entryDoorLabel = '前门';
-    } else if (entryDoorPosition === 'bottom') {
-      entryDoorRow = Math.ceil(tables.length / tableCols) - 1;
-      entryDoorCol = Math.floor(tableCols / 2);
-      entryDoorLabel = '后门';
-    } else if (entryDoorPosition === 'left') {
-      entryDoorRow = Math.floor(tables.length / 2 / tableCols);
-      entryDoorCol = 0;
-      entryDoorLabel = '左门';
-    } else if (entryDoorPosition === 'right') {
-      entryDoorRow = Math.floor(tables.length / 2 / tableCols);
-      entryDoorCol = tableCols - 1;
-      entryDoorLabel = '右门';
-    } else if (entryDoorPosition === 'center') {
-      entryDoorRow = Math.floor((tables.length / tableCols) / 2);
-      entryDoorCol = Math.floor(tableCols / 2);
-      entryDoorLabel = '门口';
+  // Resolve doors: prefer pixel coords (frontDoor/backDoor with roomWidth/roomHeight),
+  // fall back to legacy entryDoorPosition / entryDoors.
+  const roomW = sceneConfig.roomWidth as number | undefined;
+  const roomH = sceneConfig.roomHeight as number | undefined;
+  const frontDoorRaw = sceneConfig.frontDoor as { x: number; y: number } | null | undefined;
+  const backDoorRaw = sceneConfig.backDoor as { x: number; y: number } | null | undefined;
+
+  const doors: DoorInfo[] = useMemo(() => {
+    const list: DoorInfo[] = [];
+    if (roomW && roomH) {
+      const fs = classifyDoorSide(frontDoorRaw, roomW, roomH);
+      if (fs) list.push({ side: fs, label: '前门' });
+      const bs = classifyDoorSide(backDoorRaw, roomW, roomH);
+      if (bs) list.push({ side: bs, label: '后门' });
     }
-    entryDoors = [{ row: entryDoorRow, col: entryDoorCol, label: entryDoorLabel }];
-  }
-
-  // 计算我的桌子在 grid 的位置
-  const tableRow = myPos ? Math.floor(myPos.table / tableCols) : 0;
-  const tableCol = myPos ? myPos.table % tableCols : 0;
-
-  // 计算所有门到我的桌子的曼哈顿距离，选择最近的门
-  const doorDistances = entryDoors.map(door => ({
-    ...door,
-    distance: Math.abs(tableRow - door.row) + Math.abs(tableCol - door.col)
-  }));
-  const sortedDoors = [...doorDistances].sort((a, b) => a.distance - b.distance);
-  const nearestDoor = sortedDoors[0];
-  const minDistance = nearestDoor?.distance ?? 0;
-
-  // 路径：门口到桌的曼哈顿路径（含终点桌）
-  const pathCells: Array<{ row: number; col: number }> = [];
-  if (nearestDoor && myPos) {
-    let r = nearestDoor.row;
-    let c = nearestDoor.col;
-    pathCells.push({ row: r, col: c });
-    while (r !== tableRow || c !== tableCol) {
-      if (r < tableRow) r++;
-      else if (r > tableRow) r--;
-      else if (c < tableCol) c++;
-      else if (c > tableCol) c--;
-      pathCells.push({ row: r, col: c });
+    if (list.length === 0) {
+      // legacy
+      const pos = (sceneConfig.entryDoorPosition as DoorSide) || 'top';
+      const labelMap: Record<DoorSide, string> = { top: '前门', bottom: '后门', left: '左门', right: '右门' };
+      list.push({ side: pos, label: labelMap[pos] });
     }
-  }
+    return list;
+  }, [roomW, roomH, frontDoorRaw, backDoorRaw, sceneConfig.entryDoorPosition]);
 
-  const label = sceneType === 'banquet' ? '宴会厅' : '智能教室';
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
-  const svgSize = isMobile ? 120 : 160;
-  const cx = svgSize / 2;
-  const cy = svgSize / 2;
-  const tableRadius = isMobile ? 24 : 34;
-  const seatOrbitRadius = isMobile ? 38 : 50;
-  const seatRadius = isMobile ? 11 : 15;
 
-  const toggleZoomMyTable = () => {
-    if (!isMobile) return;
-    setZoomMyTable(prev => !prev);
-  };
+  // SVG layout for tables in a grid
+  const tableSvgSize = isMobile ? 110 : 150;
+  const aisleGap = isMobile ? 26 : 36;
+  const tableRadius = isMobile ? 22 : 32;
+  const seatOrbitRadius = isMobile ? 36 : 48;
+  const seatRadius = isMobile ? 10 : 14;
 
-  const handleMyTableTouchEnd = () => {
-    if (!isMobile) return;
-    const now = Date.now();
-    if (now - lastTapTsRef.current <= 280) {
-      toggleZoomMyTable();
-      lastTapTsRef.current = 0;
-      return;
-    }
-    lastTapTsRef.current = now;
-  };
+  const cellW = tableSvgSize + aisleGap;
+  const cellH = tableSvgSize + aisleGap;
+  const innerLeft = aisleGap;
+  const innerTop = aisleGap;
+  const innerRight = innerLeft + tableCols * cellW;
+  const innerBottom = innerTop + tableRows * cellH;
 
-  // Compute SVG overlay path after layout
-  const computeOverlayPath = useCallback(() => {
-    const grid = gridRef.current;
-    if (!grid || pathCells.length < 2 || !myPos) return;
+  const outsideMargin = 40;
+  const svgW = innerRight + aisleGap + outsideMargin * 2;
+  const svgH = innerBottom + aisleGap + outsideMargin * 2;
 
-    const gridRect = grid.getBoundingClientRect();
-    const children = Array.from(grid.children) as HTMLElement[];
-
-    const getCellCenter = (row: number, col: number) => {
-      const idx = row * tableCols + col;
-      const el = children[idx];
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return {
-        x: r.left + r.width / 2 - gridRect.left + grid.scrollLeft,
-        y: r.top + r.height / 2 - gridRect.top + grid.scrollTop,
-      };
+  const tableCenter = (tIdx: number) => {
+    const r = Math.floor(tIdx / tableCols);
+    const c = tIdx % tableCols;
+    return {
+      x: outsideMargin + innerLeft + c * cellW + tableSvgSize / 2,
+      y: outsideMargin + innerTop + r * cellH + tableSvgSize / 2,
     };
+  };
 
-    const points = pathCells.map(c => getCellCenter(c.row, c.col)).filter(Boolean) as { x: number; y: number }[];
-    if (points.length < 2) return;
-
-    const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-    setPathSvgData({
-      w: grid.scrollWidth,
-      h: grid.scrollHeight,
-      d,
-    });
-  }, [pathCells, tableCols, myPos]);
-
-  useEffect(() => {
-    const timer = setTimeout(computeOverlayPath, 150);
-    return () => clearTimeout(timer);
-  }, [computeOverlayPath]);
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat]);
 
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
-  // Navigation direction text
-  const getNavDirections = () => {
-    if (!nearestDoor) return '';
-    const rowDiff = tableRow - nearestDoor.row;
-    const colDiff = tableCol - nearestDoor.col;
-    const parts: string[] = [];
-    if (rowDiff > 0) parts.push(`向下走${rowDiff}排`);
-    else if (rowDiff < 0) parts.push(`向上走${Math.abs(rowDiff)}排`);
-    if (colDiff > 0) parts.push(`向右走${colDiff}列`);
-    else if (colDiff < 0) parts.push(`向左走${Math.abs(colDiff)}列`);
-    return parts.join('，然后');
+  const myCenter = tableCenter(myPos.table);
+  const myRow = Math.floor(myPos.table / tableCols);
+  const myCol = myPos.table % tableCols;
+
+  // Door anchor on the wall
+  const doorAnchor = (side: DoorSide) => {
+    switch (side) {
+      case 'top':    return { x: myCenter.x, y: outsideMargin - 4 };
+      case 'bottom': return { x: myCenter.x, y: outsideMargin + innerBottom + aisleGap + 4 };
+      case 'left':   return { x: outsideMargin - 4, y: myCenter.y };
+      case 'right':  return { x: outsideMargin + innerRight + aisleGap + 4, y: myCenter.y };
+    }
   };
+
+  // Pick closest door
+  let activeDoor: DoorInfo | null = null;
+  {
+    let min = Infinity;
+    for (const d of doors) {
+      const a = doorAnchor(d.side);
+      const dist = Math.abs(a.x - myCenter.x) + Math.abs(a.y - myCenter.y);
+      if (dist < min) { min = dist; activeDoor = d; }
+    }
+  }
+
+  // L-shaped path through aisles between tables
+  const buildPath = (side: DoorSide) => {
+    const anchor = doorAnchor(side);
+    const points: { x: number; y: number }[] = [anchor];
+
+    // Aisle X coordinate just left of my column (between my column and the previous one)
+    const aisleColX = outsideMargin + innerLeft + myCol * cellW - aisleGap / 2;
+    // Aisle Y just above my row
+    const aisleRowY = outsideMargin + innerTop + myRow * cellH - aisleGap / 2;
+
+    if (side === 'top' || side === 'bottom') {
+      const aisleY = side === 'top'
+        ? outsideMargin + innerTop - aisleGap / 2
+        : outsideMargin + innerBottom + aisleGap / 2;
+      points.push({ x: anchor.x, y: aisleY });
+      // walk along outer aisle to my column-aisle
+      points.push({ x: aisleColX, y: aisleY });
+      // walk down/up along column-aisle to my row level
+      points.push({ x: aisleColX, y: myCenter.y });
+    } else {
+      const aisleX = side === 'left'
+        ? outsideMargin + innerLeft - aisleGap / 2
+        : outsideMargin + innerRight + aisleGap / 2;
+      points.push({ x: aisleX, y: anchor.y });
+      points.push({ x: aisleX, y: aisleRowY });
+      points.push({ x: myCenter.x, y: aisleRowY });
+    }
+    points.push(myCenter);
+    return points;
+  };
+
+  const navPath = activeDoor ? buildPath(activeDoor.side) : [];
+  const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+
+  const label = sceneType === 'banquet' ? '宴会厅' : '智能教室';
+  const sideText: Record<DoorSide, string> = { top: '上', bottom: '下', left: '左', right: '右' };
+  const dirHint = activeDoor
+    ? `从 ${activeDoor.label}（${sideText[activeDoor.side]}侧）进入，沿走廊抵达 第 ${myPos.table + 1} 桌`
+    : '';
 
   return (
     <>
@@ -181,14 +175,12 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary/20 border border-primary/40 inline-block" /> 你的桌子</span>
-        {entryDoors.map((d, idx) => (
-          <span key={idx} className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-green-400/60 border border-green-600/30 inline-block" /> {d.label}</span>
-        ))}
+        <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> 入口</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
       </div>
 
       <div className="text-center text-xs text-muted-foreground mb-2">
-        <div className="inline-block bg-primary/10 text-primary px-4 py-1 rounded-lg text-xs font-medium border border-primary/20 mb-3">
+        <div className="inline-block bg-primary/10 text-primary px-4 py-1 rounded-lg text-xs font-medium border border-primary/20 mb-2">
           {label}
         </div>
         {isMobile && (
@@ -199,104 +191,100 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
       <div className="text-center text-xs text-primary font-medium mb-2 flex items-center justify-center gap-1">
         <Navigation className="w-3 h-3" />
-        <span>从<strong>{nearestDoor.label}</strong>出发，{getNavDirections()}到第 <strong>{myPos.table + 1}</strong> 桌</span>
+        <span>{dirHint}</span>
       </div>
 
-      <div ref={seatContainerRef} className="seat-checkin-surface -mx-2 px-2 flex justify-start sm:justify-center overflow-hidden pb-4">
-        <div ref={pinchRef} style={transformStyle} className="relative touch-none">
-          {/* SVG overlay for animated path */}
-          {pathSvgData && (
-            <svg
-              width={pathSvgData.w}
-              height={pathSvgData.h}
-              className="absolute inset-0 pointer-events-none z-10"
-              style={{ overflow: 'visible' }}
-            >
-              <path d={pathSvgData.d} fill="none" className="stroke-primary/60" strokeWidth={3}
-                strokeDasharray="8 5" strokeLinecap="round" strokeLinejoin="round">
-                <animate attributeName="stroke-dashoffset" from="26" to="0" dur="1.5s" repeatCount="indefinite" />
-              </path>
-            </svg>
-          )}
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+        <div ref={pinchRef} style={transformStyle} className="touch-none">
+          <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[640px]" style={{ minWidth: Math.min(svgW, 320) }}>
+            {/* Room outline */}
+            <rect x={outsideMargin / 2} y={outsideMargin / 2}
+              width={svgW - outsideMargin} height={svgH - outsideMargin}
+              rx={12} className="fill-muted/15 stroke-border" strokeWidth={1.5} />
 
-          <div ref={gridRef} className="inline-grid w-max gap-1 sm:gap-4" style={{ gridTemplateColumns: `repeat(${tableCols}, max-content)` }}>
-            {tables.map((people, ti) => {
-              const isMyTable = ti === myPos.table;
-              const isZoomedMyTable = isMyTable && zoomMyTable;
-              const thisRow = Math.floor(ti / tableCols);
-              const thisCol = ti % tableCols;
-              const isEntryDoor = entryDoors.some(d => d.row === thisRow && d.col === thisCol);
-              const doorLabel = isEntryDoor ? (entryDoors.find(d => d.row === thisRow && d.col === thisCol)?.label || '门口') : '';
-              const isPathCell = pathCells.some(cell => cell.row === thisRow && cell.col === thisCol);
+            {/* Navigation path */}
+            {navPath.length > 1 && (
+              <path d={pathD} fill="none" className="stroke-primary/60" strokeWidth={2.5}
+                strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round">
+                <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite" />
+              </path>
+            )}
+
+            {/* Doors */}
+            {doors.map((d, i) => {
+              const a = doorAnchor(d.side);
+              const isActive = activeDoor?.side === d.side && activeDoor?.label === d.label;
               return (
-                <div
-                  key={ti}
-                  onDoubleClick={isMyTable ? toggleZoomMyTable : undefined}
-                  onTouchEnd={isMyTable ? handleMyTableTouchEnd : undefined}
-                  className={`flex flex-col items-center transition-all duration-200 ease-out ${
-                    isMyTable ? 'ring-2 ring-primary/40 rounded-xl p-1' : ''
-                  } ${
-                    zoomMyTable && !isMyTable ? 'opacity-40 scale-95' : ''
-                  } ${
-                    isZoomedMyTable ? 'z-20 scale-125 sm:scale-110 shadow-xl bg-background/70 rounded-xl' : ''
-                  } ${
-                    isEntryDoor ? 'border-2 border-green-400 shadow-green-200 shadow' : ''
-                  } ${
-                    isPathCell && !isMyTable && !isEntryDoor ? 'border-2 border-yellow-400/60 shadow-yellow-200 shadow' : ''
-                  }`}
-                >
-                  <svg width={svgSize} height={svgSize} viewBox={`0 0 ${svgSize} ${svgSize}`} className="overflow-visible">
-                    <circle cx={cx} cy={cy} r={tableRadius}
-                      className={isMyTable ? 'fill-primary/15 stroke-primary/50' : isEntryDoor ? 'fill-green-200/60 stroke-green-600/40' : isPathCell ? 'fill-yellow-200/60 stroke-yellow-600/40' : 'fill-primary/5 stroke-primary/20'}
-                      strokeWidth={isMyTable || isEntryDoor || isPathCell ? 2.5 : 1.5}
-                    />
-                    <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle"
-                      className={`text-xs font-medium ${isMyTable ? 'fill-primary' : isEntryDoor ? 'fill-green-700' : isPathCell ? 'fill-yellow-700' : 'fill-muted-foreground'}`}>
-                      {isEntryDoor ? doorLabel : `${ti + 1}桌`}
-                    </text>
-                    {Array.from({ length: seatsPerTable }).map((_, si) => {
-                      const angle = (2 * Math.PI * si) / seatsPerTable - Math.PI / 2;
-                      const sx = cx + seatOrbitRadius * Math.cos(angle);
-                      const sy = cy + seatOrbitRadius * Math.sin(angle);
-                      const seatName = people[si] || '';
-                      const isMine = ti === myPos.table && si === myPos.seat;
-                      return (
-                        <g key={si} data-my-seat={isMine ? 'true' : undefined}>
-                          <circle cx={sx} cy={sy} r={seatRadius}
-                            className={isMine
-                              ? 'fill-primary stroke-primary'
-                              : isMyTable && seatName
-                                ? 'fill-card stroke-primary/30'
-                                : seatName ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'
-                            }
-                            strokeWidth={isMine ? 2.5 : 1.5}
-                          />
-                          {isMine && (
-                            <circle cx={sx} cy={sy - seatRadius - 4} r={3} className="fill-primary">
-                              <animate attributeName="r" values="2;4;2" dur="1.2s" repeatCount="indefinite" />
-                            </circle>
-                          )}
-                          {seatName && (
-                            <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
-                              textLength={seatName.length >= 5 ? 22 : undefined}
-                              lengthAdjust={seatName.length >= 5 ? 'spacingAndGlyphs' : undefined}
-                              className={`${seatName.length >= 5 ? 'text-[6.5px]' : seatName.length >= 4 ? 'text-[7px]' : 'text-[9px]'} pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-                              {seatName}
-                            </text>
-                          )}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                </div>
+                <g key={`door-${i}`}>
+                  <circle cx={a.x} cy={a.y} r={11}
+                    className={isActive ? 'fill-accent stroke-primary' : 'fill-card stroke-border'}
+                    strokeWidth={1.5} />
+                  <text x={a.x} y={a.y + 1} textAnchor="middle" dominantBaseline="middle" className="text-[10px]">🚪</text>
+                  <text x={a.x} y={a.y + 22} textAnchor="middle" dominantBaseline="middle"
+                    className={`text-[8px] ${isActive ? 'fill-primary font-bold' : 'fill-muted-foreground'}`}>
+                    {d.label}
+                  </text>
+                </g>
               );
             })}
-          </div>
+
+            {/* Turning points */}
+            {navPath.slice(1, -1).map((p, i) => (
+              <circle key={`tp-${i}`} cx={p.x} cy={p.y} r={2.5} className="fill-primary/40 stroke-primary/60" strokeWidth={1} />
+            ))}
+
+            {/* Tables */}
+            {tables.map((people, ti) => {
+              const center = tableCenter(ti);
+              const isMyTable = ti === myPos.table;
+              return (
+                <g key={`tbl-${ti}`} data-my-seat={isMyTable ? 'true' : undefined}>
+                  <circle cx={center.x} cy={center.y} r={tableRadius}
+                    className={isMyTable ? 'fill-primary/15 stroke-primary/60' : 'fill-primary/5 stroke-primary/25'}
+                    strokeWidth={isMyTable ? 2.5 : 1.5} />
+                  <text x={center.x} y={center.y + 1} textAnchor="middle" dominantBaseline="middle"
+                    className={`text-[10px] font-medium ${isMyTable ? 'fill-primary' : 'fill-muted-foreground'}`}>
+                    {ti + 1}桌
+                  </text>
+                  {Array.from({ length: seatsPerTable }).map((_, si) => {
+                    const angle = (2 * Math.PI * si) / seatsPerTable - Math.PI / 2;
+                    const sx = center.x + seatOrbitRadius * Math.cos(angle);
+                    const sy = center.y + seatOrbitRadius * Math.sin(angle);
+                    const seatName = people[si] || '';
+                    const isMine = ti === myPos.table && si === myPos.seat;
+                    return (
+                      <g key={si}>
+                        <circle cx={sx} cy={sy} r={seatRadius}
+                          className={isMine
+                            ? 'fill-primary stroke-primary'
+                            : isMyTable && seatName ? 'fill-card stroke-primary/40'
+                            : seatName ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
+                          strokeWidth={isMine ? 2.5 : 1.2} />
+                        {isMine && (
+                          <circle cx={sx} cy={sy - seatRadius - 4} r={3} className="fill-primary">
+                            <animate attributeName="r" values="2;4;2" dur="1.2s" repeatCount="indefinite" />
+                          </circle>
+                        )}
+                        {seatName && (
+                          <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
+                            textLength={seatName.length >= 5 ? 20 : undefined}
+                            lengthAdjust={seatName.length >= 5 ? 'spacingAndGlyphs' : undefined}
+                            className={`${seatName.length >= 5 ? 'text-[6px]' : seatName.length >= 4 ? 'text-[7px]' : 'text-[8.5px]'} pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+                            {seatName}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })}
+          </svg>
         </div>
       </div>
 
       <div className="text-center text-xs text-muted-foreground space-y-1">
-        <p>📍 找到第 <strong>{myPos.table + 1}</strong> 桌（第{tableRow + 1}行第{tableCol + 1}列位置）</p>
+        <p>📍 找到第 <strong>{myPos.table + 1}</strong> 桌（第{myRow + 1}行第{myCol + 1}列位置）</p>
         <p>🪑 坐在第 <strong>{myPos.seat + 1}</strong> 号座位（从顶部12点钟方向顺时针数）</p>
       </div>
     </>
