@@ -78,17 +78,60 @@ async function renderQrBadge(container: HTMLElement, qrCode: ExportQrCodeOptions
 
 async function captureWithHeaderFooter(element: HTMLElement, title: string, options?: ExportCaptureOptions) {
   const clone = element.cloneNode(true) as HTMLElement;
-  const width = Math.max(element.scrollWidth, element.clientWidth, 900);
+
+  // Neutralize zoom transforms and remove scroll clipping on the clone subtree
+  // so the export captures the full content centered, regardless of on-screen scale.
+  const neutralize = (root: HTMLElement) => {
+    const all = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
+    for (const el of all) {
+      const s = el.style;
+      // Reset transform/scale that might shrink content for screen zoom
+      if (s.transform) s.transform = 'none';
+      if (s.zoom) s.zoom = '';
+      // Allow internal scroll containers to expand to full natural size
+      const overflow = s.overflow || s.overflowX || s.overflowY;
+      if (overflow && overflow !== 'visible') {
+        s.overflow = 'visible';
+        s.overflowX = 'visible';
+        s.overflowY = 'visible';
+      }
+      // Drop fixed max-height/height constraints used for on-screen viewport
+      if (s.maxHeight) s.maxHeight = 'none';
+      if (s.maxWidth) s.maxWidth = 'none';
+    }
+    // Also strip Tailwind classes like max-h-[80vh] / overflow-auto via style override above isn't enough — add inline overrides via attribute
+    root.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="max-h"]').forEach(el => {
+      el.style.overflow = 'visible';
+      el.style.overflowX = 'visible';
+      el.style.overflowY = 'visible';
+      el.style.maxHeight = 'none';
+      el.style.transform = 'none';
+    });
+  };
+  neutralize(clone);
+
+  // First, measure natural content size by mounting clone off-screen at auto width
+  const sizer = document.createElement('div');
+  sizer.style.position = 'fixed';
+  sizer.style.left = '-100000px';
+  sizer.style.top = '0';
+  sizer.style.visibility = 'hidden';
+  sizer.style.display = 'inline-block';
+  sizer.appendChild(clone);
+  document.body.appendChild(sizer);
+  const naturalWidth = Math.max(clone.scrollWidth, clone.offsetWidth, 900);
+  document.body.removeChild(sizer);
+
+  const width = Math.max(naturalWidth, element.scrollWidth, element.clientWidth, 900);
 
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
   wrapper.style.left = '-100000px';
   wrapper.style.top = '0';
   wrapper.style.background = '#ffffff';
-  wrapper.style.width = `${width}px`;
+  wrapper.style.width = `${width + 40}px`;
   wrapper.style.padding = '22px 20px 16px';
   wrapper.style.boxSizing = 'border-box';
-  wrapper.style.position = 'fixed';
 
   const heading = document.createElement('div');
   heading.textContent = title;
@@ -104,7 +147,13 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string, opti
   content.style.display = 'flex';
   content.style.justifyContent = 'center';
   content.style.alignItems = 'flex-start';
-  content.appendChild(clone);
+  content.style.width = '100%';
+  // Inner box constrained to natural width centered via flex
+  const innerBox = document.createElement('div');
+  innerBox.style.display = 'inline-block';
+  innerBox.style.margin = '0 auto';
+  innerBox.appendChild(clone);
+  content.appendChild(innerBox);
 
   const footer = document.createElement('div');
   footer.textContent = COPYRIGHT_TEXT;
