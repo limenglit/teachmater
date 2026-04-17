@@ -28,7 +28,12 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     entryDoorMode?: 'front' | 'back' | 'both';
     frontDoorPosition?: DoorSide;
     backDoorPosition?: DoorSide;
+    disabledSeats?: string[];
   };
+  const disabledSeatSet = useMemo(
+    () => new Set(Array.isArray(config.disabledSeats) ? config.disabledSeats : []),
+    [config.disabledSeats]
+  );
 
   const myPosition = useMemo(() => {
     for (let r = 0; r < seats.length; r++) {
@@ -185,10 +190,13 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
       <p className="text-sm text-muted-foreground text-center">
         {studentName}，你的座位在 <strong>第{myPosition.r + 1}排 第{myPosition.c + 1}列</strong>
       </p>
-      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
         <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> 入口</span>
+        {disabledSeatSet.size > 0 && (
+          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-muted/60 border border-dashed border-muted-foreground/40 inline-block" /> 关闭座位</span>
+        )}
       </div>
       <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
@@ -252,13 +260,21 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 const y = roomOy + seatY(r);
                 const name = seats[r]?.[c] ?? null;
                 const isMine = myPosition.r === r && myPosition.c === c;
+                const isDisabled = disabledSeatSet.has(`${r}-${c}`) && !isMine;
                 return (
                   <g key={`s-${r}-${c}`} data-my-seat={isMine ? 'true' : undefined}>
                     <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                       className={isMine ? 'fill-primary stroke-primary'
+                        : isDisabled ? 'fill-muted/60 stroke-muted-foreground/40'
                         : name ? 'fill-card stroke-border'
                         : 'fill-muted/30 stroke-border/30'}
-                      strokeWidth={isMine ? 2.5 : 1} />
+                      strokeWidth={isMine ? 2.5 : 1}
+                      strokeDasharray={isDisabled ? '2 2' : undefined}
+                    />
+                    {isDisabled && (
+                      <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+                        className="fill-muted-foreground/70 text-[9px]">✕</text>
+                    )}
                     {isMine && (
                       <circle cx={x + seatW / 2} cy={y - 6} r={4} className="fill-primary">
                         <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />

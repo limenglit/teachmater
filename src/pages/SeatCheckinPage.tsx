@@ -57,14 +57,57 @@ const countEmptySeatSlots = (node: unknown): number => {
   return isSeatEmptyValue(node) ? 1 : 0;
 };
 
-const cloneSeatDataWithGuestAssignments = (seatData: unknown, guestNames: string[]) => {
-  let cursor = 0;
+/**
+ * Build classroom guest seat priority: front rows first, center columns first,
+ * skipping disabled seats and seats already taken.
+ */
+const buildClassroomGuestSlots = (
+  grid: (string | null)[][],
+  disabledKeys: Set<string>
+): Array<{ r: number; c: number }> => {
+  const rows = grid.length;
+  if (rows === 0) return [];
+  const cols = grid[0]?.length ?? 0;
+  const centerC = (cols - 1) / 2;
+  const slots: Array<{ r: number; c: number; score: number }> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (disabledKeys.has(`${r}-${c}`)) continue;
+      if (!isSeatEmptyValue(grid[r][c])) continue;
+      // Lower score = higher priority. Front row first (heavy), then center.
+      const score = r * 100 + Math.abs(c - centerC);
+      slots.push({ r, c, score });
+    }
+  }
+  slots.sort((a, b) => a.score - b.score);
+  return slots.map(({ r, c }) => ({ r, c }));
+};
 
+const cloneSeatDataWithGuestAssignments = (
+  seatData: unknown,
+  guestNames: string[],
+  options: { sceneType?: string; disabledSeats?: string[] } = {}
+) => {
+  if (guestNames.length === 0) return seatData;
+
+  // Classroom: smart front-center placement that respects disabled seats.
+  if (options.sceneType === 'classroom' && Array.isArray(seatData)) {
+    const grid = (seatData as (string | null)[][]).map(row => [...row]);
+    const disabledKeys = new Set(options.disabledSeats || []);
+    const slots = buildClassroomGuestSlots(grid, disabledKeys);
+    for (let i = 0; i < guestNames.length && i < slots.length; i++) {
+      const { r, c } = slots[i];
+      grid[r][c] = guestNames[i];
+    }
+    return grid;
+  }
+
+  // Other scenes: sequential fill of empty slots (preserve existing behavior).
+  let cursor = 0;
   const assign = (node: unknown): unknown => {
     if (Array.isArray(node)) {
       return node.map(item => assign(item));
     }
-
     if (node && typeof node === 'object') {
       const next: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
@@ -72,16 +115,13 @@ const cloneSeatDataWithGuestAssignments = (seatData: unknown, guestNames: string
       }
       return next;
     }
-
     if (isSeatEmptyValue(node) && cursor < guestNames.length) {
       const assigned = guestNames[cursor];
       cursor += 1;
       return assigned;
     }
-
     return node;
   };
-
   return assign(seatData);
 };
 
@@ -172,6 +212,7 @@ export default function SeatCheckinPage() {
     seat_data: unknown;
     student_names: string[];
     scene_type: string;
+    scene_config?: Record<string, unknown>;
   }, targetName: string, includeCurrentAsGuest: boolean) => {
     const normalized = targetName.trim();
     const registeredSet = new Set(sessionData.student_names);
@@ -207,12 +248,31 @@ export default function SeatCheckinPage() {
       seen.add(normalized);
     }
 
-    const capacity = countEmptySeatSlots(sessionData.seat_data);
+    const disabledSeats = Array.isArray(sessionData.scene_config?.disabledSeats)
+      ? (sessionData.scene_config!.disabledSeats as string[])
+      : [];
+
+    // For classroom, capacity excludes disabled seats.
+    let capacity = countEmptySeatSlots(sessionData.seat_data);
+    if (sessionData.scene_type === 'classroom' && Array.isArray(sessionData.seat_data)) {
+      const disabledKeys = new Set(disabledSeats);
+      const grid = sessionData.seat_data as (string | null)[][];
+      capacity = 0;
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          if (disabledKeys.has(`${r}-${c}`)) continue;
+          if (isSeatEmptyValue(grid[r][c])) capacity += 1;
+        }
+      }
+    }
     if (includeCurrentAsGuest && guestNames.length > capacity) {
       throw new Error('NO_SEAT_FOR_GUEST');
     }
 
-    const assignedSeatData = cloneSeatDataWithGuestAssignments(sessionData.seat_data, guestNames);
+    const assignedSeatData = cloneSeatDataWithGuestAssignments(sessionData.seat_data, guestNames, {
+      sceneType: sessionData.scene_type,
+      disabledSeats,
+    });
     const hint = buildSeatHint(sessionData.scene_type, assignedSeatData, normalized);
     return { seatData: assignedSeatData, guestAssigned: true, hint };
   };
