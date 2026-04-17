@@ -164,6 +164,9 @@ export default function BanquetHall({ students }: Props) {
   const tStageRunwayBottom = roomHeight - 64;
   const tStageRunwayHeight = Math.max(120, tStageRunwayBottom - tStageRunwayTop);
 
+  const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
+  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 720));
+
   const exportSceneConfig = {
     seatsPerTable, tableCount, tableCols, tableRows,
     roomWidth, roomHeight,
@@ -176,9 +179,6 @@ export default function BanquetHall({ students }: Props) {
     sceneConfig: exportSceneConfig,
     sceneType: 'banquet',
   });
-
-  const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
-  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 720));
   const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
