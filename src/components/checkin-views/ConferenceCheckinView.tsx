@@ -172,17 +172,15 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   };
 
   // Pick the closest door (Manhattan distance)
-  const activeDoor = useMemo(() => {
-    let best: DoorInfo | null = null;
+  let activeDoor: DoorInfo | null = null;
+  {
     let min = Infinity;
     for (const d of doors) {
       const a = doorAnchor(d.side);
       const dist = Math.abs(a.x - mySeatCenter.x) + Math.abs(a.y - mySeatCenter.y);
-      if (dist < min) { min = dist; best = d; }
+      if (dist < min) { min = dist; activeDoor = d; }
     }
-    return best;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doors, mySeatCenter.x, mySeatCenter.y]);
+  }
 
   // Build L-shaped path: door → aisle along wall → into row/col → seat
   const buildPath = (side: DoorSide) => {
