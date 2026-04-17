@@ -200,25 +200,57 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
   const imgW = canvas.width;
   const imgH = canvas.height;
 
-  // A4 dimensions in mm
-  const pdfW = 210;
-  const pdfH = (imgH * pdfW) / imgW;
+  // A4 sizes in mm
+  const A4_PORTRAIT = { w: 210, h: 297 };
+  const A4_LANDSCAPE = { w: 297, h: 210 };
+  const margin = 10;
 
-  const pdf = new jsPDF({
-    orientation: pdfH > 297 ? 'portrait' : (imgW > imgH ? 'landscape' : 'portrait'),
-    unit: 'mm',
-    format: 'a4',
-  });
+  // Pick orientation: prefer one that fits content on a single page, else minimizes pages
+  const aspect = imgW / imgH;
+  const orientation: 'portrait' | 'landscape' = aspect >= 1 ? 'landscape' : 'portrait';
+  const page = orientation === 'landscape' ? A4_LANDSCAPE : A4_PORTRAIT;
 
-  const pageH = pdf.internal.pageSize.getHeight();
-  const pageW = pdf.internal.pageSize.getWidth();
-  const ratio = Math.min(pageW / imgW, pageH / imgH) * 0.95;
-  const w = imgW * ratio;
-  const h = imgH * ratio;
-  const x = (pageW - w) / 2;
-  const y = 10;
+  const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+  const pageW = page.w;
+  const pageH = page.h;
+  const usableW = pageW - margin * 2;
+  const usableH = pageH - margin * 2;
 
-  pdf.addImage(imgData, 'PNG', x, y, w, h);
+  // Scale so that content width fits page width
+  const scale = usableW / imgW;
+  const scaledTotalH = imgH * scale; // total height in mm at usable width
+
+  if (scaledTotalH <= usableH + 0.5) {
+    // Single page: center vertically
+    const y = (pageH - scaledTotalH) / 2;
+    pdf.addImage(imgData, 'PNG', margin, y, usableW, scaledTotalH);
+  } else {
+    // Multi-page: slice the source canvas vertically
+    const sliceHeightPx = Math.floor((usableH / scale)); // px of source per page
+    const totalPages = Math.ceil(imgH / sliceHeightPx);
+
+    const sliceCanvas = document.createElement('canvas');
+    sliceCanvas.width = imgW;
+    const ctx = sliceCanvas.getContext('2d');
+
+    for (let i = 0; i < totalPages; i++) {
+      const sy = i * sliceHeightPx;
+      const sh = Math.min(sliceHeightPx, imgH - sy);
+      sliceCanvas.height = sh;
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, imgW, sh);
+        ctx.drawImage(canvas, 0, sy, imgW, sh, 0, 0, imgW, sh);
+      }
+      const sliceData = sliceCanvas.toDataURL('image/png');
+      const sliceMmH = sh * scale;
+      if (i > 0) pdf.addPage('a4', orientation);
+      // Center vertically when last slice is short
+      const y = sliceMmH < usableH ? (pageH - sliceMmH) / 2 : margin;
+      pdf.addImage(sliceData, 'PNG', margin, y, usableW, sliceMmH);
+    }
+  }
+
   pdf.save(`${filename}.pdf`);
 }
 
