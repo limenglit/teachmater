@@ -28,7 +28,12 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     entryDoorMode?: 'front' | 'back' | 'both';
     frontDoorPosition?: DoorSide;
     backDoorPosition?: DoorSide;
+    disabledSeats?: string[];
   };
+  const disabledSeatSet = useMemo(
+    () => new Set(Array.isArray(config.disabledSeats) ? config.disabledSeats : []),
+    [config.disabledSeats]
+  );
 
   const myPosition = useMemo(() => {
     for (let r = 0; r < seats.length; r++) {
