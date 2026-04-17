@@ -190,10 +190,13 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
       <p className="text-sm text-muted-foreground text-center">
         {studentName}，你的座位在 <strong>第{myPosition.r + 1}排 第{myPosition.c + 1}列</strong>
       </p>
-      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
         <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
         <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> 入口</span>
+        {disabledSeatSet.size > 0 && (
+          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-muted/60 border border-dashed border-muted-foreground/40 inline-block" /> 关闭座位</span>
+        )}
       </div>
       <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
