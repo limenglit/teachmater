@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle } from 'lucide-react';
+import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
@@ -21,6 +21,12 @@ import {
   isSeatAssignmentComplete,
 } from '@/lib/seat-checkin-policy';
 
+interface MergeGuestEntry {
+  name: string;
+  assignedKey?: string;
+  seatHint: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,6 +38,7 @@ interface Props {
   className?: string;
   pngFileName?: string;
   onSessionCreated?: (payload: { sessionId: string; checkinUrl: string }) => void;
+  onMergeGuests?: (guests: MergeGuestEntry[]) => void;
 }
 
 const isSeatEmptyValue = (value: unknown) => value === null || value === '';
@@ -237,6 +244,7 @@ export default function SeatCheckinDialog({
   className,
   pngFileName,
   onSessionCreated,
+  onMergeGuests,
 }: Props) {
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
   const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
@@ -513,6 +521,66 @@ export default function SeatCheckinDialog({
     toast({ title: `已为 ${entry.name} 重新指派座位` });
   };
 
+  const [merging, setMerging] = useState(false);
+  const handleMergeGuests = async () => {
+    if (!currentSession || guestSeatAssignments.length === 0) return;
+    if (!onMergeGuests) {
+      toast({ title: '当前场景暂不支持一键合并', variant: 'destructive' });
+      return;
+    }
+    setMerging(true);
+    try {
+      // 1) Update parent (local seat chart + roster)
+      const entries: MergeGuestEntry[] = guestSeatAssignments.map(g => ({
+        name: g.name,
+        assignedKey: g.assignedKey,
+        seatHint: g.seatHint,
+      }));
+      onMergeGuests(entries);
+
+      // 2) Persist to current session so student-facing page also reflects merged data
+      const baseSeatData = sessionSeatData ?? seatData;
+      let nextSeatData: unknown = baseSeatData;
+      if (currentSession.scene_type === 'classroom' && Array.isArray(baseSeatData)) {
+        const grid = (baseSeatData as (string | null)[][]).map(row => [...row]);
+        for (const e of entries) {
+          if (!e.assignedKey) continue;
+          const [rs, cs] = e.assignedKey.split('-');
+          const r = Number(rs); const c = Number(cs);
+          if (Number.isFinite(r) && Number.isFinite(c) && grid[r] && grid[r][c] === null) {
+            grid[r][c] = e.name;
+          }
+        }
+        nextSeatData = grid;
+      } else {
+        nextSeatData = cloneSeatDataSequential(baseSeatData, entries.map(e => e.name));
+      }
+      const mergedNames = Array.from(new Set([...currentStudentNames, ...entries.map(e => e.name)]));
+      const { error } = await supabase.rpc('merge_seat_checkin_guests', {
+        p_session_id: currentSession.id,
+        p_seat_data: nextSeatData as never,
+        p_student_names: mergedNames as never,
+      });
+      if (error) throw error;
+
+      setSessionSeatData(nextSeatData);
+      setCurrentSession(prev => prev ? { ...prev, student_names: mergedNames } : prev);
+      // Clear guest overrides since they're now merged
+      const all = readGuestOverrides();
+      delete all[currentSession.id];
+      writeGuestOverrides(all);
+      setGuestConfirmed({});
+      setGuestRotateOffsets({});
+
+      toast({ title: '已合并', description: `已将 ${entries.length} 位临时学生写入名单与座位表` });
+    } catch (err) {
+      const description = err instanceof Error ? err.message : undefined;
+      toast({ title: '合并失败', description, variant: 'destructive' });
+    } finally {
+      setMerging(false);
+    }
+  };
+
   const formatTimeLeft = (seconds: number) => {
     if (seconds === -1) return '不限时长';
     const minutes = Math.floor(seconds / 60);
@@ -757,6 +825,18 @@ export default function SeatCheckinDialog({
               <p className="text-[11px] text-muted-foreground mt-2">
                 临时座位优先安排在前排居中，自动跳过关闭座位与已占用座位。点击"重派"可循环切换至下一个可用座位。
               </p>
+              {guestSeatAssignments.length > 0 && onMergeGuests && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full mt-2 h-8 text-xs gap-1"
+                  onClick={() => void handleMergeGuests()}
+                  disabled={merging}
+                >
+                  <UsersRound className="w-3.5 h-3.5" />
+                  {merging ? '合并中...' : `一键合并 ${guestSeatAssignments.length} 位临时学生到名单与座位表`}
+                </Button>
+              )}
             </div>
 
 

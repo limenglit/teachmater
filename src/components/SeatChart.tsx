@@ -50,7 +50,7 @@ const ORGANIZATION_COLOR_CLASSES = [
 ];
 
 export default function SeatChart() {
-  const { students } = useStudents();
+  const { students, addStudent } = useStudents();
   const { t } = useLanguage();
   const [structureOpen, setStructureOpen] = useState(true);
   const [strategyOpen, setStrategyOpen] = useState(true);
@@ -1251,7 +1251,28 @@ export default function SeatChart() {
               <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
             )}
             <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
-              sceneConfig={exportSceneConfig} className={recordName.trim() || exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)} />
+              sceneConfig={exportSceneConfig} className={recordName.trim() || exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
+              onMergeGuests={(guests) => {
+                // Update local seat grid in-place
+                setSeats(prev => {
+                  const next = prev.map(row => [...row]);
+                  for (const g of guests) {
+                    if (!g.assignedKey) continue;
+                    const [rs, cs] = g.assignedKey.split('-');
+                    const r = Number(rs); const c = Number(cs);
+                    if (Number.isFinite(r) && Number.isFinite(c) && next[r] && next[r][c] === null) {
+                      next[r][c] = g.name;
+                    }
+                  }
+                  return next;
+                });
+                // Add to official roster (skip duplicates)
+                const existing = new Set(students.map(s => s.name));
+                for (const g of guests) {
+                  if (!existing.has(g.name)) addStudent(g.name);
+                }
+              }}
+            />
           </>
         )}
 
