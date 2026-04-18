@@ -244,6 +244,7 @@ export default function SeatCheckinDialog({
   className,
   pngFileName,
   onSessionCreated,
+  onMergeGuests,
 }: Props) {
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
   const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
