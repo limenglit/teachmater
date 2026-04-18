@@ -521,7 +521,65 @@ export default function SeatCheckinDialog({
     toast({ title: `已为 ${entry.name} 重新指派座位` });
   };
 
-  const formatTimeLeft = (seconds: number) => {
+  const [merging, setMerging] = useState(false);
+  const handleMergeGuests = async () => {
+    if (!currentSession || guestSeatAssignments.length === 0) return;
+    if (!onMergeGuests) {
+      toast({ title: '当前场景暂不支持一键合并', variant: 'destructive' });
+      return;
+    }
+    setMerging(true);
+    try {
+      // 1) Update parent (local seat chart + roster)
+      const entries: MergeGuestEntry[] = guestSeatAssignments.map(g => ({
+        name: g.name,
+        assignedKey: g.assignedKey,
+        seatHint: g.seatHint,
+      }));
+      onMergeGuests(entries);
+
+      // 2) Persist to current session so student-facing page also reflects merged data
+      const baseSeatData = sessionSeatData ?? seatData;
+      let nextSeatData: unknown = baseSeatData;
+      if (currentSession.scene_type === 'classroom' && Array.isArray(baseSeatData)) {
+        const grid = (baseSeatData as (string | null)[][]).map(row => [...row]);
+        for (const e of entries) {
+          if (!e.assignedKey) continue;
+          const [rs, cs] = e.assignedKey.split('-');
+          const r = Number(rs); const c = Number(cs);
+          if (Number.isFinite(r) && Number.isFinite(c) && grid[r] && grid[r][c] === null) {
+            grid[r][c] = e.name;
+          }
+        }
+        nextSeatData = grid;
+      } else {
+        nextSeatData = cloneSeatDataSequential(baseSeatData, entries.map(e => e.name));
+      }
+      const mergedNames = Array.from(new Set([...currentStudentNames, ...entries.map(e => e.name)]));
+      const { error } = await supabase.rpc('merge_seat_checkin_guests', {
+        p_session_id: currentSession.id,
+        p_seat_data: nextSeatData as never,
+        p_student_names: mergedNames as never,
+      });
+      if (error) throw error;
+
+      setSessionSeatData(nextSeatData);
+      setCurrentSession(prev => prev ? { ...prev, student_names: mergedNames } : prev);
+      // Clear guest overrides since they're now merged
+      const all = readGuestOverrides();
+      delete all[currentSession.id];
+      writeGuestOverrides(all);
+      setGuestConfirmed({});
+      setGuestRotateOffsets({});
+
+      toast({ title: '已合并', description: `已将 ${entries.length} 位临时学生写入名单与座位表` });
+    } catch (err) {
+      const description = err instanceof Error ? err.message : undefined;
+      toast({ title: '合并失败', description, variant: 'destructive' });
+    } finally {
+      setMerging(false);
+    }
+  };
     if (seconds === -1) return '不限时长';
     const minutes = Math.floor(seconds / 60);
     const remainder = seconds % 60;
