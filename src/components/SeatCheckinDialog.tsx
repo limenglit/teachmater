@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, X } from 'lucide-react';
+import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
