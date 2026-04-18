@@ -580,6 +580,8 @@ export default function SeatCheckinDialog({
       setMerging(false);
     }
   };
+
+  const formatTimeLeft = (seconds: number) => {
     if (seconds === -1) return '不限时长';
     const minutes = Math.floor(seconds / 60);
     const remainder = seconds % 60;
