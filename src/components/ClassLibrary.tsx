@@ -11,13 +11,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from '@/hooks/use-toast';
 import {
   Building2, GraduationCap, Plus, Trash2, Edit2, Upload, Download, Check, X,
-  ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen
+  ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen, ArrowUpToLine, GripVertical
 } from 'lucide-react';
 import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
 import { setActiveClassName } from '@/lib/class-context';
 
-interface College { id: string; name: string; user_id: string; }
-interface ClassItem { id: string; college_id: string; name: string; user_id: string; }
+interface College { id: string; name: string; user_id: string; sort_order?: number; }
+interface ClassItem { id: string; college_id: string; name: string; user_id: string; sort_order?: number; }
 interface ClassStudent { id: string; class_id: string; name: string; student_number: string; user_id: string; }
 interface PreviewRow { college: string; className: string; studentNumber: string; name: string; }
 
