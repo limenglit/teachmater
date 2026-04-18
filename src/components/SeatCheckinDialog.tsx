@@ -36,31 +36,130 @@ interface Props {
 
 const isSeatEmptyValue = (value: unknown) => value === null || value === '';
 
-const cloneSeatDataWithGuestAssignments = (seatData: unknown, guestNames: string[]) => {
-  let cursor = 0;
+const SEAT_CHECKIN_GUEST_OVERRIDE_KEY = 'teachmate-seat-checkin-guest-overrides-v1';
 
-  const assign = (node: unknown): unknown => {
-    if (Array.isArray(node)) {
-      return node.map(item => assign(item));
+type GuestOverrideMap = Record<string, Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }>>;
+
+const readGuestOverrides = (): GuestOverrideMap => {
+  try {
+    return JSON.parse(localStorage.getItem(SEAT_CHECKIN_GUEST_OVERRIDE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+const writeGuestOverrides = (next: GuestOverrideMap) => {
+  localStorage.setItem(SEAT_CHECKIN_GUEST_OVERRIDE_KEY, JSON.stringify(next));
+};
+const getSessionGuestOverrides = (sessionId: string) => readGuestOverrides()[sessionId] || {};
+const setSessionGuestOverride = (sessionId: string, name: string, value: { seatHint: string; assignedKey?: string; confirmed?: boolean }) => {
+  const all = readGuestOverrides();
+  const current = all[sessionId] || {};
+  current[name] = value;
+  all[sessionId] = current;
+  writeGuestOverrides(all);
+};
+
+/** Classroom front-center priority slot order, skipping disabled seats. */
+const buildClassroomGuestSlots = (
+  grid: (string | null)[][],
+  disabledKeys: Set<string>,
+): Array<{ r: number; c: number; key: string }> => {
+  const rows = grid.length;
+  if (rows === 0) return [];
+  const cols = grid[0]?.length ?? 0;
+  const centerC = (cols - 1) / 2;
+  const slots: Array<{ r: number; c: number; key: string; score: number }> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${r}-${c}`;
+      if (disabledKeys.has(key)) continue;
+      if (!isSeatEmptyValue(grid[r][c])) continue;
+      slots.push({ r, c, key, score: r * 100 + Math.abs(c - centerC) });
     }
+  }
+  slots.sort((a, b) => a.score - b.score);
+  return slots.map(({ r, c, key }) => ({ r, c, key }));
+};
 
+interface GuestAssignmentEntry {
+  name: string;
+  seatHint: string;
+  assignedKey?: string;
+  confirmed?: boolean;
+}
+
+const computeGuestAssignments = (params: {
+  sceneType: string;
+  seatData: unknown;
+  guestNames: string[];
+  disabledSeats?: string[];
+  overrides: Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }>;
+  rotateOffsets: Record<string, number>;
+}): GuestAssignmentEntry[] => {
+  const { sceneType, seatData, guestNames, disabledSeats = [], overrides, rotateOffsets } = params;
+  if (guestNames.length === 0) return [];
+
+  if (sceneType === 'classroom' && Array.isArray(seatData)) {
+    const grid = (seatData as (string | null)[][]).map(row => [...row]);
+    const disabledKeys = new Set(disabledSeats);
+    const slots = buildClassroomGuestSlots(grid, disabledKeys);
+    const used = new Set<string>();
+    const result: GuestAssignmentEntry[] = [];
+    for (const name of guestNames) {
+      const override = overrides[name];
+      // Find first available slot (respect rotate offset for re-assignment)
+      const offset = rotateOffsets[name] || 0;
+      let chosen: { r: number; c: number; key: string } | null = null;
+      let counter = 0;
+      for (const slot of slots) {
+        if (used.has(slot.key)) continue;
+        if (counter === offset) { chosen = slot; break; }
+        counter++;
+      }
+      // If offset overflows, fall back to next available
+      if (!chosen) {
+        chosen = slots.find(s => !used.has(s.key)) || null;
+      }
+      if (chosen) {
+        used.add(chosen.key);
+        result.push({
+          name,
+          seatHint: `第${chosen.r + 1}排第${chosen.c + 1}列`,
+          assignedKey: chosen.key,
+          confirmed: override?.confirmed,
+        });
+      } else {
+        result.push({ name, seatHint: '待老师现场确认', confirmed: override?.confirmed });
+      }
+    }
+    return result;
+  }
+
+  // Sequential fill for other scenes
+  const cloned = cloneSeatDataSequential(seatData, guestNames);
+  return guestNames.map(name => ({
+    name,
+    seatHint: buildSeatHint(sceneType, cloned, name) || '待老师现场确认',
+    confirmed: overrides[name]?.confirmed,
+  }));
+};
+
+const cloneSeatDataSequential = (seatData: unknown, guestNames: string[]) => {
+  let cursor = 0;
+  const assign = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(item => assign(item));
     if (node && typeof node === 'object') {
       const next: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
-        next[key] = assign(value);
-      }
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) next[key] = assign(value);
       return next;
     }
-
     if (isSeatEmptyValue(node) && cursor < guestNames.length) {
       const assigned = guestNames[cursor];
       cursor += 1;
       return assigned;
     }
-
     return node;
   };
-
   return assign(seatData);
 };
 
