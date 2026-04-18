@@ -50,7 +50,7 @@ const ORGANIZATION_COLOR_CLASSES = [
 ];
 
 export default function SeatChart() {
-  const { students } = useStudents();
+  const { students, addStudent } = useStudents();
   const { t } = useLanguage();
   const [structureOpen, setStructureOpen] = useState(true);
   const [strategyOpen, setStrategyOpen] = useState(true);
