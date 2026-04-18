@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw } from 'lucide-react';
+import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
@@ -36,31 +36,130 @@ interface Props {
 
 const isSeatEmptyValue = (value: unknown) => value === null || value === '';
 
-const cloneSeatDataWithGuestAssignments = (seatData: unknown, guestNames: string[]) => {
-  let cursor = 0;
+const SEAT_CHECKIN_GUEST_OVERRIDE_KEY = 'teachmate-seat-checkin-guest-overrides-v1';
 
-  const assign = (node: unknown): unknown => {
-    if (Array.isArray(node)) {
-      return node.map(item => assign(item));
+type GuestOverrideMap = Record<string, Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }>>;
+
+const readGuestOverrides = (): GuestOverrideMap => {
+  try {
+    return JSON.parse(localStorage.getItem(SEAT_CHECKIN_GUEST_OVERRIDE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+const writeGuestOverrides = (next: GuestOverrideMap) => {
+  localStorage.setItem(SEAT_CHECKIN_GUEST_OVERRIDE_KEY, JSON.stringify(next));
+};
+const getSessionGuestOverrides = (sessionId: string) => readGuestOverrides()[sessionId] || {};
+const setSessionGuestOverride = (sessionId: string, name: string, value: { seatHint: string; assignedKey?: string; confirmed?: boolean }) => {
+  const all = readGuestOverrides();
+  const current = all[sessionId] || {};
+  current[name] = value;
+  all[sessionId] = current;
+  writeGuestOverrides(all);
+};
+
+/** Classroom front-center priority slot order, skipping disabled seats. */
+const buildClassroomGuestSlots = (
+  grid: (string | null)[][],
+  disabledKeys: Set<string>,
+): Array<{ r: number; c: number; key: string }> => {
+  const rows = grid.length;
+  if (rows === 0) return [];
+  const cols = grid[0]?.length ?? 0;
+  const centerC = (cols - 1) / 2;
+  const slots: Array<{ r: number; c: number; key: string; score: number }> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${r}-${c}`;
+      if (disabledKeys.has(key)) continue;
+      if (!isSeatEmptyValue(grid[r][c])) continue;
+      slots.push({ r, c, key, score: r * 100 + Math.abs(c - centerC) });
     }
+  }
+  slots.sort((a, b) => a.score - b.score);
+  return slots.map(({ r, c, key }) => ({ r, c, key }));
+};
 
+interface GuestAssignmentEntry {
+  name: string;
+  seatHint: string;
+  assignedKey?: string;
+  confirmed?: boolean;
+}
+
+const computeGuestAssignments = (params: {
+  sceneType: string;
+  seatData: unknown;
+  guestNames: string[];
+  disabledSeats?: string[];
+  overrides: Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }>;
+  rotateOffsets: Record<string, number>;
+}): GuestAssignmentEntry[] => {
+  const { sceneType, seatData, guestNames, disabledSeats = [], overrides, rotateOffsets } = params;
+  if (guestNames.length === 0) return [];
+
+  if (sceneType === 'classroom' && Array.isArray(seatData)) {
+    const grid = (seatData as (string | null)[][]).map(row => [...row]);
+    const disabledKeys = new Set(disabledSeats);
+    const slots = buildClassroomGuestSlots(grid, disabledKeys);
+    const used = new Set<string>();
+    const result: GuestAssignmentEntry[] = [];
+    for (const name of guestNames) {
+      const override = overrides[name];
+      // Find first available slot (respect rotate offset for re-assignment)
+      const offset = rotateOffsets[name] || 0;
+      let chosen: { r: number; c: number; key: string } | null = null;
+      let counter = 0;
+      for (const slot of slots) {
+        if (used.has(slot.key)) continue;
+        if (counter === offset) { chosen = slot; break; }
+        counter++;
+      }
+      // If offset overflows, fall back to next available
+      if (!chosen) {
+        chosen = slots.find(s => !used.has(s.key)) || null;
+      }
+      if (chosen) {
+        used.add(chosen.key);
+        result.push({
+          name,
+          seatHint: `第${chosen.r + 1}排第${chosen.c + 1}列`,
+          assignedKey: chosen.key,
+          confirmed: override?.confirmed,
+        });
+      } else {
+        result.push({ name, seatHint: '待老师现场确认', confirmed: override?.confirmed });
+      }
+    }
+    return result;
+  }
+
+  // Sequential fill for other scenes
+  const cloned = cloneSeatDataSequential(seatData, guestNames);
+  return guestNames.map(name => ({
+    name,
+    seatHint: buildSeatHint(sceneType, cloned, name) || '待老师现场确认',
+    confirmed: overrides[name]?.confirmed,
+  }));
+};
+
+const cloneSeatDataSequential = (seatData: unknown, guestNames: string[]) => {
+  let cursor = 0;
+  const assign = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(item => assign(item));
     if (node && typeof node === 'object') {
       const next: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
-        next[key] = assign(value);
-      }
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) next[key] = assign(value);
       return next;
     }
-
     if (isSeatEmptyValue(node) && cursor < guestNames.length) {
       const assigned = guestNames[cursor];
       cursor += 1;
       return assigned;
     }
-
     return node;
   };
-
   return assign(seatData);
 };
 
@@ -330,11 +429,30 @@ export default function SeatCheckinDialog({
   const checkedInNames = useMemo(() => Array.from(new Set(records.map(record => record.student_name.trim()))), [records]);
   const currentStudentNames = currentSession?.student_names ?? studentNames;
   const uncheckedNames = currentStudentNames.filter(name => !checkedInNames.includes(name.trim()));
-  const guestSeatAssignments = useMemo(() => {
-    if (!currentSession) return [] as Array<{ name: string; seatHint: string }>;
 
+  // Manual override state for guest students
+  const [guestRotateOffsets, setGuestRotateOffsets] = useState<Record<string, number>>({});
+  const [guestConfirmed, setGuestConfirmed] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!currentSession) {
+      setGuestRotateOffsets({});
+      setGuestConfirmed({});
+      return;
+    }
+    const stored = getSessionGuestOverrides(currentSession.id);
+    const confirmed: Record<string, boolean> = {};
+    for (const [name, value] of Object.entries(stored)) {
+      if (value.confirmed) confirmed[name] = true;
+    }
+    setGuestRotateOffsets({});
+    setGuestConfirmed(confirmed);
+  }, [currentSession?.id]);
+
+  const guestSeatAssignments = useMemo<GuestAssignmentEntry[]>(() => {
+    if (!currentSession) return [];
     const baseSeatData = sessionSeatData ?? seatData;
-    if (!baseSeatData) return [] as Array<{ name: string; seatHint: string }>;
+    if (!baseSeatData) return [];
 
     const registeredSet = new Set(currentStudentNames.map(item => item.trim()));
     const guestNames: string[] = [];
@@ -345,16 +463,55 @@ export default function SeatCheckinDialog({
       seen.add(checkedName);
       guestNames.push(checkedName);
     }
+    if (guestNames.length === 0) return [];
 
-    if (guestNames.length === 0) return [] as Array<{ name: string; seatHint: string }>;
+    const sessionSceneConfig = (currentSession as unknown as { scene_config?: Record<string, unknown> }).scene_config || sceneConfig;
+    const disabledSeats = Array.isArray(sessionSceneConfig?.disabledSeats)
+      ? (sessionSceneConfig!.disabledSeats as string[])
+      : [];
 
-    const assignedSeatData = cloneSeatDataWithGuestAssignments(baseSeatData, guestNames);
-    return guestNames
-      .map(name => ({
-        name,
-        seatHint: buildSeatHint(currentSession.scene_type, assignedSeatData, name) || '待老师现场确认',
-      }));
-  }, [currentSession, currentStudentNames, records, seatData, sessionSeatData]);
+    const overridesObj: Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }> = {};
+    for (const name of guestNames) {
+      if (guestConfirmed[name]) overridesObj[name] = { seatHint: '', confirmed: true };
+    }
+
+    return computeGuestAssignments({
+      sceneType: currentSession.scene_type,
+      seatData: baseSeatData,
+      guestNames,
+      disabledSeats,
+      overrides: overridesObj,
+      rotateOffsets: guestRotateOffsets,
+    });
+  }, [currentSession, currentStudentNames, records, seatData, sessionSeatData, sceneConfig, guestRotateOffsets, guestConfirmed]);
+
+  const handleConfirmGuest = (entry: GuestAssignmentEntry) => {
+    if (!currentSession) return;
+    setGuestConfirmed(prev => ({ ...prev, [entry.name]: true }));
+    setSessionGuestOverride(currentSession.id, entry.name, {
+      seatHint: entry.seatHint,
+      assignedKey: entry.assignedKey,
+      confirmed: true,
+    });
+    toast({ title: `已确认 ${entry.name} 的座位`, description: entry.seatHint });
+  };
+
+  const handleReassignGuest = (entry: GuestAssignmentEntry) => {
+    setGuestRotateOffsets(prev => ({ ...prev, [entry.name]: (prev[entry.name] || 0) + 1 }));
+    setGuestConfirmed(prev => {
+      const next = { ...prev };
+      delete next[entry.name];
+      return next;
+    });
+    if (currentSession) {
+      const all = readGuestOverrides();
+      if (all[currentSession.id]) {
+        delete all[currentSession.id][entry.name];
+        writeGuestOverrides(all);
+      }
+    }
+    toast({ title: `已为 ${entry.name} 重新指派座位` });
+  };
 
   const formatTimeLeft = (seconds: number) => {
     if (seconds === -1) return '不限时长';
@@ -518,40 +675,90 @@ export default function SeatCheckinDialog({
             />
 
             <div className="w-full border-t border-border pt-3">
-              <p className="text-sm font-medium mb-2">
-                已签到: {checkedInNames.length} / {currentStudentNames.length}
-              </p>
-              <div className="flex flex-wrap gap-1.5 max-h-40 overflow-auto">
-                {currentStudentNames.map(name => (
-                  <span
-                    key={name}
-                    className={`text-xs px-2 py-1 rounded-full border ${
-                      checkedInNames.includes(name)
-                        ? 'bg-primary/10 border-primary/30 text-primary'
-                        : 'bg-muted border-border text-muted-foreground'
-                    }`}
-                  >
-                    {name}
-                  </span>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">
+                  当前已签到 <span className="text-primary">{checkedInNames.length + guestSeatAssignments.length}</span> 人
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  名单内 {checkedInNames.filter(n => currentStudentNames.includes(n)).length} · 名单外 {guestSeatAssignments.length}
+                </p>
+              </div>
+
+              {/* 名单内 */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <UserCheck className="w-3 h-3" /> 名单内（{currentStudentNames.length} 人，已签 {checkedInNames.filter(n => currentStudentNames.includes(n)).length}）
+                </p>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto">
+                  {currentStudentNames.map(name => (
+                    <span
+                      key={name}
+                      className={`text-xs px-2 py-1 rounded-full border ${
+                        checkedInNames.includes(name)
+                          ? 'bg-primary/10 border-primary/30 text-primary'
+                          : 'bg-muted border-border text-muted-foreground'
+                      }`}
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
-              <p className="font-medium text-foreground mb-2">未注册临时座位名单</p>
+            {/* 名单外（临时分配） */}
+            <div className="w-full rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5">
+                <span className="inline-flex w-2 h-2 rounded-full bg-amber-500" />
+                名单外（临时分配座位） · {guestSeatAssignments.length} 人
+              </p>
               {guestSeatAssignments.length === 0 ? (
                 <p className="text-xs text-muted-foreground">暂无未注册签到人员</p>
               ) : (
-                <div className="max-h-36 overflow-auto space-y-1.5 pr-1">
+                <div className="max-h-44 overflow-auto space-y-1.5 pr-1">
                   {guestSeatAssignments.map(item => (
-                    <div key={item.name} className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background px-2 py-1.5">
-                      <span className="text-xs text-foreground truncate">{item.name}</span>
-                      <span className="text-xs text-primary whitespace-nowrap">{item.seatHint}</span>
+                    <div
+                      key={item.name}
+                      className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 ${
+                        item.confirmed ? 'border-primary/40 bg-primary/5' : 'border-border/60 bg-background'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-xs font-medium text-foreground truncate">{item.name}</span>
+                        <span className="text-xs text-primary whitespace-nowrap">{item.seatHint}</span>
+                        {item.confirmed && <Check className="w-3 h-3 text-primary shrink-0" />}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!item.confirmed && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs gap-1"
+                            onClick={() => handleConfirmGuest(item)}
+                          >
+                            <Check className="w-3 h-3" /> 确认
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs gap-1"
+                          onClick={() => handleReassignGuest(item)}
+                          disabled={item.assignedKey === undefined && currentSession.scene_type === 'classroom'}
+                          title="重新指派至下一个可用座位"
+                        >
+                          <Shuffle className="w-3 h-3" /> 重派
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+              <p className="text-[11px] text-muted-foreground mt-2">
+                临时座位优先安排在前排居中，自动跳过关闭座位与已占用座位。点击"重派"可循环切换至下一个可用座位。
+              </p>
             </div>
+
 
             {currentSession.status === 'ended' && (
               <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
