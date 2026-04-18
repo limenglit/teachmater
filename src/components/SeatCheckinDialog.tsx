@@ -21,6 +21,12 @@ import {
   isSeatAssignmentComplete,
 } from '@/lib/seat-checkin-policy';
 
+interface MergeGuestEntry {
+  name: string;
+  assignedKey?: string;
+  seatHint: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -32,6 +38,7 @@ interface Props {
   className?: string;
   pngFileName?: string;
   onSessionCreated?: (payload: { sessionId: string; checkinUrl: string }) => void;
+  onMergeGuests?: (guests: MergeGuestEntry[]) => void;
 }
 
 const isSeatEmptyValue = (value: unknown) => value === null || value === '';
