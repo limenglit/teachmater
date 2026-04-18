@@ -825,6 +825,18 @@ export default function SeatCheckinDialog({
               <p className="text-[11px] text-muted-foreground mt-2">
                 临时座位优先安排在前排居中，自动跳过关闭座位与已占用座位。点击"重派"可循环切换至下一个可用座位。
               </p>
+              {guestSeatAssignments.length > 0 && onMergeGuests && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full mt-2 h-8 text-xs gap-1"
+                  onClick={() => void handleMergeGuests()}
+                  disabled={merging}
+                >
+                  <UsersRound className="w-3.5 h-3.5" />
+                  {merging ? '合并中...' : `一键合并 ${guestSeatAssignments.length} 位临时学生到名单与座位表`}
+                </Button>
+              )}
             </div>
 
 
