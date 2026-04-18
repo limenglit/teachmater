@@ -590,10 +590,18 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
           {colleges.map(college => (
             <div key={college.id}>
               <div
+                draggable
+                onDragStart={e => { setDraggingCollegeId(college.id); e.dataTransfer.effectAllowed = 'move'; }}
+                onDragOver={e => { if (draggingCollegeId && draggingCollegeId !== college.id) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+                onDrop={e => { e.preventDefault(); void handleCollegeDrop(college.id); }}
+                onDragEnd={() => setDraggingCollegeId(null)}
                 className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm
-                  ${selectedCollege === college.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-foreground'}`}
+                  ${selectedCollege === college.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-foreground'}
+                  ${draggingCollegeId === college.id ? 'opacity-50' : ''}`}
                 onClick={() => { setSelectedCollege(college.id); setSelectedClass(null); toggleExpand(college.id); }}
+                title="拖动可调整顺序"
               >
+                <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
                 {expandedColleges.has(college.id) ? <ChevronDown className="w-3 h-3 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 flex-shrink-0" />}
                 <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
                 {editingCollege === college.id ? (
@@ -604,6 +612,9 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                   <span className="flex-1 truncate">{college.name}</span>
                 )}
                 <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
+                  <button onClick={e => { e.stopPropagation(); void pinCollege(college.id); }} title="置顶">
+                    <ArrowUpToLine className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                  </button>
                   <button onClick={e => { e.stopPropagation(); setEditingCollege(college.id); setEditName(college.name); }}>
                     <Edit2 className="w-3 h-3 text-muted-foreground hover:text-foreground" />
                   </button>
@@ -616,10 +627,18 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                 <div className="ml-4 space-y-0.5">
                   {classes.filter(c => c.college_id === college.id).map(cls => (
                     <div key={cls.id}
+                      draggable
+                      onDragStart={e => { setDraggingClass({ id: cls.id, collegeId: college.id }); e.dataTransfer.effectAllowed = 'move'; e.stopPropagation(); }}
+                      onDragOver={e => { if (draggingClass && draggingClass.collegeId === college.id && draggingClass.id !== cls.id) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+                      onDrop={e => { e.preventDefault(); e.stopPropagation(); void handleClassDrop(cls.id, college.id); }}
+                      onDragEnd={() => setDraggingClass(null)}
                       className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-sm transition-colors
-                        ${selectedClass === cls.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}`}
+                        ${selectedClass === cls.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}
+                        ${draggingClass?.id === cls.id ? 'opacity-50' : ''}`}
                       onClick={() => { setSelectedCollege(college.id); setSelectedClass(cls.id); }}
+                      title="拖动可调整顺序"
                     >
+                      <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
                       <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
                       {editingClass === cls.id ? (
                         <Input value={editName} onChange={e => setEditName(e.target.value)}
@@ -632,6 +651,9 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                         {students.filter(s => s.class_id === cls.id).length}
                       </span>
                       <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
+                        <button onClick={e => { e.stopPropagation(); void pinClass(cls.id); }} title="置顶">
+                          <ArrowUpToLine className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                        </button>
                         <button onClick={e => { e.stopPropagation(); setEditingClass(cls.id); setEditName(cls.name); }}>
                           <Edit2 className="w-3 h-3 text-muted-foreground hover:text-foreground" />
                         </button>
