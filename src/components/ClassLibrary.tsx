@@ -11,13 +11,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { toast } from '@/hooks/use-toast';
 import {
   Building2, GraduationCap, Plus, Trash2, Edit2, Upload, Download, Check, X,
-  ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen
+  ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen, ArrowUpToLine, GripVertical
 } from 'lucide-react';
 import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
 import { setActiveClassName } from '@/lib/class-context';
 
-interface College { id: string; name: string; user_id: string; }
-interface ClassItem { id: string; college_id: string; name: string; user_id: string; }
+interface College { id: string; name: string; user_id: string; sort_order?: number; }
+interface ClassItem { id: string; college_id: string; name: string; user_id: string; sort_order?: number; }
 interface ClassStudent { id: string; class_id: string; name: string; student_number: string; user_id: string; }
 interface PreviewRow { college: string; className: string; studentNumber: string; name: string; }
 
@@ -74,8 +74,8 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const loadAll = async () => {
     setLoading(true);
     const [c1, c2, c3] = await Promise.all([
-      supabase.from('colleges').select('*').order('name'),
-      supabase.from('classes').select('*').order('name'),
+      supabase.from('colleges').select('*').order('sort_order' as never, { ascending: true }).order('name'),
+      supabase.from('classes').select('*').order('sort_order' as never, { ascending: true }).order('name'),
       supabase.from('class_students').select('*').order('name'),
     ]);
     if (c1.data) setColleges(c1.data as College[]);
@@ -86,7 +86,8 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
   const addCollege = async () => {
     if (!newCollegeName.trim() || !userId) return;
-    const { data, error } = await supabase.from('colleges').insert({ name: newCollegeName.trim(), user_id: userId }).select().single();
+    const maxOrder = colleges.reduce((m, c) => Math.max(m, c.sort_order ?? 0), 0);
+    const { data, error } = await supabase.from('colleges').insert({ name: newCollegeName.trim(), user_id: userId, sort_order: maxOrder + 1 } as never).select().single();
     if (data) { setColleges(prev => [...prev, data as College]); setNewCollegeName(''); }
     if (error) toast({ title: t('library.addFailed'), variant: 'destructive' });
   };
@@ -107,8 +108,72 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
   const addClass = async () => {
     if (!newClassName.trim() || !selectedCollege || !userId) return;
-    const { data } = await supabase.from('classes').insert({ name: newClassName.trim(), college_id: selectedCollege, user_id: userId }).select().single();
+    const siblingMax = classes.filter(c => c.college_id === selectedCollege).reduce((m, c) => Math.max(m, c.sort_order ?? 0), 0);
+    const { data } = await supabase.from('classes').insert({ name: newClassName.trim(), college_id: selectedCollege, user_id: userId, sort_order: siblingMax + 1 } as never).select().single();
     if (data) { setClasses(prev => [...prev, data as ClassItem]); setNewClassName(''); }
+  };
+
+  // ===== Reorder helpers (pin-to-top + drag) =====
+  const persistCollegeOrder = async (ordered: College[]) => {
+    setColleges(ordered);
+    await Promise.all(
+      ordered.map((c, idx) => supabase.from('colleges').update({ sort_order: idx + 1 } as never).eq('id', c.id)),
+    );
+  };
+
+  const persistClassOrder = async (collegeId: string, ordered: ClassItem[]) => {
+    setClasses(prev => {
+      const others = prev.filter(c => c.college_id !== collegeId);
+      return [...others, ...ordered];
+    });
+    await Promise.all(
+      ordered.map((c, idx) => supabase.from('classes').update({ sort_order: idx + 1 } as never).eq('id', c.id)),
+    );
+  };
+
+  const pinCollege = async (id: string) => {
+    const target = colleges.find(c => c.id === id);
+    if (!target) return;
+    const next = [target, ...colleges.filter(c => c.id !== id)];
+    await persistCollegeOrder(next);
+    toast({ title: '已置顶学院', description: target.name });
+  };
+
+  const pinClass = async (id: string) => {
+    const target = classes.find(c => c.id === id);
+    if (!target) return;
+    const siblings = classes.filter(c => c.college_id === target.college_id);
+    const next = [target, ...siblings.filter(c => c.id !== id)];
+    await persistClassOrder(target.college_id, next);
+    toast({ title: '已置顶班级', description: target.name });
+  };
+
+  const [draggingCollegeId, setDraggingCollegeId] = useState<string | null>(null);
+  const [draggingClass, setDraggingClass] = useState<{ id: string; collegeId: string } | null>(null);
+
+  const handleCollegeDrop = async (targetId: string) => {
+    if (!draggingCollegeId || draggingCollegeId === targetId) { setDraggingCollegeId(null); return; }
+    const fromIdx = colleges.findIndex(c => c.id === draggingCollegeId);
+    const toIdx = colleges.findIndex(c => c.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) { setDraggingCollegeId(null); return; }
+    const next = [...colleges];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setDraggingCollegeId(null);
+    await persistCollegeOrder(next);
+  };
+
+  const handleClassDrop = async (targetId: string, collegeId: string) => {
+    if (!draggingClass || draggingClass.collegeId !== collegeId || draggingClass.id === targetId) { setDraggingClass(null); return; }
+    const siblings = classes.filter(c => c.college_id === collegeId);
+    const fromIdx = siblings.findIndex(c => c.id === draggingClass.id);
+    const toIdx = siblings.findIndex(c => c.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) { setDraggingClass(null); return; }
+    const next = [...siblings];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setDraggingClass(null);
+    await persistClassOrder(collegeId, next);
   };
 
   const deleteClass = async (id: string) => {
@@ -525,10 +590,18 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
           {colleges.map(college => (
             <div key={college.id}>
               <div
+                draggable
+                onDragStart={e => { setDraggingCollegeId(college.id); e.dataTransfer.effectAllowed = 'move'; }}
+                onDragOver={e => { if (draggingCollegeId && draggingCollegeId !== college.id) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+                onDrop={e => { e.preventDefault(); void handleCollegeDrop(college.id); }}
+                onDragEnd={() => setDraggingCollegeId(null)}
                 className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm
-                  ${selectedCollege === college.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-foreground'}`}
+                  ${selectedCollege === college.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-foreground'}
+                  ${draggingCollegeId === college.id ? 'opacity-50' : ''}`}
                 onClick={() => { setSelectedCollege(college.id); setSelectedClass(null); toggleExpand(college.id); }}
+                title="拖动可调整顺序"
               >
+                <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
                 {expandedColleges.has(college.id) ? <ChevronDown className="w-3 h-3 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 flex-shrink-0" />}
                 <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
                 {editingCollege === college.id ? (
@@ -539,6 +612,9 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                   <span className="flex-1 truncate">{college.name}</span>
                 )}
                 <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
+                  <button onClick={e => { e.stopPropagation(); void pinCollege(college.id); }} title="置顶">
+                    <ArrowUpToLine className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                  </button>
                   <button onClick={e => { e.stopPropagation(); setEditingCollege(college.id); setEditName(college.name); }}>
                     <Edit2 className="w-3 h-3 text-muted-foreground hover:text-foreground" />
                   </button>
@@ -551,10 +627,18 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                 <div className="ml-4 space-y-0.5">
                   {classes.filter(c => c.college_id === college.id).map(cls => (
                     <div key={cls.id}
+                      draggable
+                      onDragStart={e => { setDraggingClass({ id: cls.id, collegeId: college.id }); e.dataTransfer.effectAllowed = 'move'; e.stopPropagation(); }}
+                      onDragOver={e => { if (draggingClass && draggingClass.collegeId === college.id && draggingClass.id !== cls.id) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
+                      onDrop={e => { e.preventDefault(); e.stopPropagation(); void handleClassDrop(cls.id, college.id); }}
+                      onDragEnd={() => setDraggingClass(null)}
                       className={`group flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer text-sm transition-colors
-                        ${selectedClass === cls.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}`}
+                        ${selectedClass === cls.id ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted text-foreground'}
+                        ${draggingClass?.id === cls.id ? 'opacity-50' : ''}`}
                       onClick={() => { setSelectedCollege(college.id); setSelectedClass(cls.id); }}
+                      title="拖动可调整顺序"
                     >
+                      <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
                       <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
                       {editingClass === cls.id ? (
                         <Input value={editName} onChange={e => setEditName(e.target.value)}
@@ -567,6 +651,9 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                         {students.filter(s => s.class_id === cls.id).length}
                       </span>
                       <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">
+                        <button onClick={e => { e.stopPropagation(); void pinClass(cls.id); }} title="置顶">
+                          <ArrowUpToLine className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                        </button>
                         <button onClick={e => { e.stopPropagation(); setEditingClass(cls.id); setEditName(cls.name); }}>
                           <Edit2 className="w-3 h-3 text-muted-foreground hover:text-foreground" />
                         </button>
