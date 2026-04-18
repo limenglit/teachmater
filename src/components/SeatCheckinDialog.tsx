@@ -675,40 +675,90 @@ export default function SeatCheckinDialog({
             />
 
             <div className="w-full border-t border-border pt-3">
-              <p className="text-sm font-medium mb-2">
-                已签到: {checkedInNames.length} / {currentStudentNames.length}
-              </p>
-              <div className="flex flex-wrap gap-1.5 max-h-40 overflow-auto">
-                {currentStudentNames.map(name => (
-                  <span
-                    key={name}
-                    className={`text-xs px-2 py-1 rounded-full border ${
-                      checkedInNames.includes(name)
-                        ? 'bg-primary/10 border-primary/30 text-primary'
-                        : 'bg-muted border-border text-muted-foreground'
-                    }`}
-                  >
-                    {name}
-                  </span>
-                ))}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">
+                  当前已签到 <span className="text-primary">{checkedInNames.length + guestSeatAssignments.length}</span> 人
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  名单内 {checkedInNames.filter(n => currentStudentNames.includes(n)).length} · 名单外 {guestSeatAssignments.length}
+                </p>
+              </div>
+
+              {/* 名单内 */}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <UserCheck className="w-3 h-3" /> 名单内（{currentStudentNames.length} 人，已签 {checkedInNames.filter(n => currentStudentNames.includes(n)).length}）
+                </p>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto">
+                  {currentStudentNames.map(name => (
+                    <span
+                      key={name}
+                      className={`text-xs px-2 py-1 rounded-full border ${
+                        checkedInNames.includes(name)
+                          ? 'bg-primary/10 border-primary/30 text-primary'
+                          : 'bg-muted border-border text-muted-foreground'
+                      }`}
+                    >
+                      {name}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
-              <p className="font-medium text-foreground mb-2">未注册临时座位名单</p>
+            {/* 名单外（临时分配） */}
+            <div className="w-full rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5">
+                <span className="inline-flex w-2 h-2 rounded-full bg-amber-500" />
+                名单外（临时分配座位） · {guestSeatAssignments.length} 人
+              </p>
               {guestSeatAssignments.length === 0 ? (
                 <p className="text-xs text-muted-foreground">暂无未注册签到人员</p>
               ) : (
-                <div className="max-h-36 overflow-auto space-y-1.5 pr-1">
+                <div className="max-h-44 overflow-auto space-y-1.5 pr-1">
                   {guestSeatAssignments.map(item => (
-                    <div key={item.name} className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background px-2 py-1.5">
-                      <span className="text-xs text-foreground truncate">{item.name}</span>
-                      <span className="text-xs text-primary whitespace-nowrap">{item.seatHint}</span>
+                    <div
+                      key={item.name}
+                      className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 ${
+                        item.confirmed ? 'border-primary/40 bg-primary/5' : 'border-border/60 bg-background'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-xs font-medium text-foreground truncate">{item.name}</span>
+                        <span className="text-xs text-primary whitespace-nowrap">{item.seatHint}</span>
+                        {item.confirmed && <Check className="w-3 h-3 text-primary shrink-0" />}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!item.confirmed && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs gap-1"
+                            onClick={() => handleConfirmGuest(item)}
+                          >
+                            <Check className="w-3 h-3" /> 确认
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs gap-1"
+                          onClick={() => handleReassignGuest(item)}
+                          disabled={item.assignedKey === undefined && currentSession.scene_type === 'classroom'}
+                          title="重新指派至下一个可用座位"
+                        >
+                          <Shuffle className="w-3 h-3" /> 重派
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+              <p className="text-[11px] text-muted-foreground mt-2">
+                临时座位优先安排在前排居中，自动跳过关闭座位与已占用座位。点击"重派"可循环切换至下一个可用座位。
+              </p>
             </div>
+
 
             {currentSession.status === 'ended' && (
               <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
