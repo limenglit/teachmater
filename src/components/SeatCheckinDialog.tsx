@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound } from 'lucide-react';
+import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
@@ -839,6 +839,50 @@ export default function SeatCheckinDialog({
               )}
             </div>
 
+
+            {/* 签到流水（按时间排序） */}
+            <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
+              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5">
+                <History className="w-4 h-4" /> 签到流水（按时间排序） · {records.length} 条
+              </p>
+              {records.length === 0 ? (
+                <p className="text-xs text-muted-foreground">暂无签到记录</p>
+              ) : (
+                <div className="max-h-52 overflow-auto space-y-1 pr-1">
+                  {[...records]
+                    .sort((a, b) => new Date(b.checked_in_at).getTime() - new Date(a.checked_in_at).getTime())
+                    .map((record, idx) => {
+                      const trimmed = record.student_name.trim();
+                      const isInList = currentStudentNames.map(n => n.trim()).includes(trimmed);
+                      const time = new Date(record.checked_in_at);
+                      const timeLabel = time.toLocaleTimeString('zh-CN', { hour12: false });
+                      return (
+                        <div
+                          key={record.id}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border/60 bg-background"
+                        >
+                          <span className="text-[11px] text-muted-foreground tabular-nums w-7 shrink-0">
+                            #{records.length - idx}
+                          </span>
+                          <span className="text-xs font-medium text-foreground truncate flex-1">{trimmed}</span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${
+                              isInList
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                            }`}
+                          >
+                            {isInList ? '名单内' : '名单外'}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
+                            {timeLabel}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
 
             {currentSession.status === 'ended' && (
               <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
