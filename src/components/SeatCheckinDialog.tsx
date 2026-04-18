@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History } from 'lucide-react';
+import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
@@ -842,9 +842,52 @@ export default function SeatCheckinDialog({
 
             {/* 签到流水（按时间排序） */}
             <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
-              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5">
-                <History className="w-4 h-4" /> 签到流水（按时间排序） · {records.length} 条
-              </p>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="font-medium text-foreground flex items-center gap-1.5">
+                  <History className="w-4 h-4" /> 签到流水（按时间排序） · {records.length} 条
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1"
+                  disabled={records.length === 0}
+                  onClick={() => {
+                    const sorted = [...records].sort(
+                      (a, b) => new Date(a.checked_in_at).getTime() - new Date(b.checked_in_at).getTime(),
+                    );
+                    const inListSet = new Set(currentStudentNames.map(n => n.trim()));
+                    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+                    const rows = [
+                      ['序号', '姓名', '名单内/外', '签到时间'],
+                      ...sorted.map((r, i) => {
+                        const name = r.student_name.trim();
+                        return [
+                          String(i + 1),
+                          name,
+                          inListSet.has(name) ? '名单内' : '名单外',
+                          new Date(r.checked_in_at).toLocaleString('zh-CN', { hour12: false }),
+                        ];
+                      }),
+                    ];
+                    const csv = rows.map(row => row.map(escape).join(',')).join('\r\n');
+                    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const today = new Date();
+                    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                    const safeName = (resolvedThemeTitle || '座位签到').replace(/[\\/:*?"<>|]/g, '_');
+                    a.href = url;
+                    a.download = `${safeName}_签到流水_${dateStr}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast({ title: '已导出签到流水 CSV' });
+                  }}
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> 导出CSV
+                </Button>
+              </div>
               {records.length === 0 ? (
                 <p className="text-xs text-muted-foreground">暂无签到记录</p>
               ) : (
