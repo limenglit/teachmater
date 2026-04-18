@@ -429,11 +429,30 @@ export default function SeatCheckinDialog({
   const checkedInNames = useMemo(() => Array.from(new Set(records.map(record => record.student_name.trim()))), [records]);
   const currentStudentNames = currentSession?.student_names ?? studentNames;
   const uncheckedNames = currentStudentNames.filter(name => !checkedInNames.includes(name.trim()));
-  const guestSeatAssignments = useMemo(() => {
-    if (!currentSession) return [] as Array<{ name: string; seatHint: string }>;
 
+  // Manual override state for guest students
+  const [guestRotateOffsets, setGuestRotateOffsets] = useState<Record<string, number>>({});
+  const [guestConfirmed, setGuestConfirmed] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!currentSession) {
+      setGuestRotateOffsets({});
+      setGuestConfirmed({});
+      return;
+    }
+    const stored = getSessionGuestOverrides(currentSession.id);
+    const confirmed: Record<string, boolean> = {};
+    for (const [name, value] of Object.entries(stored)) {
+      if (value.confirmed) confirmed[name] = true;
+    }
+    setGuestRotateOffsets({});
+    setGuestConfirmed(confirmed);
+  }, [currentSession?.id]);
+
+  const guestSeatAssignments = useMemo<GuestAssignmentEntry[]>(() => {
+    if (!currentSession) return [];
     const baseSeatData = sessionSeatData ?? seatData;
-    if (!baseSeatData) return [] as Array<{ name: string; seatHint: string }>;
+    if (!baseSeatData) return [];
 
     const registeredSet = new Set(currentStudentNames.map(item => item.trim()));
     const guestNames: string[] = [];
@@ -444,16 +463,55 @@ export default function SeatCheckinDialog({
       seen.add(checkedName);
       guestNames.push(checkedName);
     }
+    if (guestNames.length === 0) return [];
 
-    if (guestNames.length === 0) return [] as Array<{ name: string; seatHint: string }>;
+    const sessionSceneConfig = (currentSession as unknown as { scene_config?: Record<string, unknown> }).scene_config || sceneConfig;
+    const disabledSeats = Array.isArray(sessionSceneConfig?.disabledSeats)
+      ? (sessionSceneConfig!.disabledSeats as string[])
+      : [];
 
-    const assignedSeatData = cloneSeatDataWithGuestAssignments(baseSeatData, guestNames);
-    return guestNames
-      .map(name => ({
-        name,
-        seatHint: buildSeatHint(currentSession.scene_type, assignedSeatData, name) || '待老师现场确认',
-      }));
-  }, [currentSession, currentStudentNames, records, seatData, sessionSeatData]);
+    const overridesObj: Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }> = {};
+    for (const name of guestNames) {
+      if (guestConfirmed[name]) overridesObj[name] = { seatHint: '', confirmed: true };
+    }
+
+    return computeGuestAssignments({
+      sceneType: currentSession.scene_type,
+      seatData: baseSeatData,
+      guestNames,
+      disabledSeats,
+      overrides: overridesObj,
+      rotateOffsets: guestRotateOffsets,
+    });
+  }, [currentSession, currentStudentNames, records, seatData, sessionSeatData, sceneConfig, guestRotateOffsets, guestConfirmed]);
+
+  const handleConfirmGuest = (entry: GuestAssignmentEntry) => {
+    if (!currentSession) return;
+    setGuestConfirmed(prev => ({ ...prev, [entry.name]: true }));
+    setSessionGuestOverride(currentSession.id, entry.name, {
+      seatHint: entry.seatHint,
+      assignedKey: entry.assignedKey,
+      confirmed: true,
+    });
+    toast({ title: `已确认 ${entry.name} 的座位`, description: entry.seatHint });
+  };
+
+  const handleReassignGuest = (entry: GuestAssignmentEntry) => {
+    setGuestRotateOffsets(prev => ({ ...prev, [entry.name]: (prev[entry.name] || 0) + 1 }));
+    setGuestConfirmed(prev => {
+      const next = { ...prev };
+      delete next[entry.name];
+      return next;
+    });
+    if (currentSession) {
+      const all = readGuestOverrides();
+      if (all[currentSession.id]) {
+        delete all[currentSession.id][entry.name];
+        writeGuestOverrides(all);
+      }
+    }
+    toast({ title: `已为 ${entry.name} 重新指派座位` });
+  };
 
   const formatTimeLeft = (seconds: number) => {
     if (seconds === -1) return '不限时长';
