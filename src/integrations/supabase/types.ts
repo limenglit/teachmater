@@ -1311,6 +1311,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      merge_seat_checkin_guests: {
+        Args: { p_seat_data: Json; p_session_id: string; p_student_names: Json }
+        Returns: undefined
+      }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
       submit_quiz_answers: {
         Args: { p_answers: Json; p_session_id: string; p_student_name: string }
