@@ -14,6 +14,7 @@ import {
   saveConcertHallHistory,
   type ConcertHallHistoryItem,
 } from '@/lib/teamwork-local';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce } from '@/lib/seat-history-cloud';
 import type { StudentGender } from '@/hooks/useStudentStore';
 
 interface Props {
@@ -223,6 +224,11 @@ export default function ConcertHall({ students }: Props) {
 
   useEffect(() => {
     setHistoryItems(loadConcertHallHistory());
+    (async () => {
+      await migrateLocalToCloudOnce('concert');
+      const cloud = await fetchCloudSeatHistory<ConcertHallHistoryItem['snapshot']>('concert');
+      if (cloud) setHistoryItems(cloud.map(r => ({ id: r.id, name: r.name, createdAt: r.createdAt, snapshot: r.snapshot })) as ConcertHallHistoryItem[]);
+    })();
   }, []);
 
   useEffect(() => {
@@ -500,19 +506,22 @@ export default function ConcertHall({ students }: Props) {
     );
   };
 
-  const saveToHistory = () => {
+  const saveToHistory = async () => {
     if (assignment.length === 0) {
       toast.error('请先完成排座再保存');
       return;
     }
     const name = recordName.trim() || `音乐厅-${new Date().toLocaleString()}`;
     const item = saveConcertHallHistory(name, buildSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
+    let savedItem: ConcertHallHistoryItem = item;
+    const cloud = await saveCloudSeatHistory('concert', name, item.snapshot);
+    if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as ConcertHallHistoryItem;
+    const nextItems = [savedItem, ...historyItems].slice(0, 50);
     setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
+    setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveConcertHallSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
+    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
   };
 
   const restoreFromHistory = () => {
