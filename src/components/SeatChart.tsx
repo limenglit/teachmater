@@ -25,6 +25,7 @@ import {
   loadLastTeams,
   type ClassroomHistoryItem,
 } from '@/lib/teamwork-local';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce } from '@/lib/seat-history-cloud';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
