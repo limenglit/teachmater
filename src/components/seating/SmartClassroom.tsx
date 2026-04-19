@@ -22,6 +22,7 @@ import {
   saveSmartClassroomHistory,
   SmartClassroomHistoryItem,
 } from '@/lib/teamwork-local';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
@@ -471,19 +472,22 @@ export default function SmartClassroom({
     updatedAt: new Date().toISOString(),
   });
 
-  const saveToHistory = () => {
+  const saveToHistory = async () => {
     if (assignment.length === 0) {
       toast.error('请先完成排座再保存');
       return;
     }
     const name = recordName.trim() || `智慧教室-${new Date().toLocaleString()}`;
     const item = saveSmartClassroomHistory(name, buildSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
+    let savedItem: SmartClassroomHistoryItem = item;
+    const cloud = await saveCloudSeatHistory('smart_classroom', name, item.snapshot);
+    if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as SmartClassroomHistoryItem;
+    const nextItems = [savedItem, ...historyItems].slice(0, 50);
     setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
+    setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveSmartClassroomSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
+    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
   };
 
   const restoreFromHistory = () => {
@@ -586,6 +590,11 @@ export default function SmartClassroom({
 
   useEffect(() => {
     setHistoryItems(loadSmartClassroomHistory());
+    (async () => {
+      await migrateLocalToCloudOnce('smart_classroom');
+      const cloud = await fetchCloudSeatHistory<SmartClassroomHistoryItem['snapshot']>('smart_classroom');
+      if (cloud) setHistoryItems(cloud.map(r => ({ id: r.id, name: r.name, createdAt: r.createdAt, snapshot: r.snapshot })) as SmartClassroomHistoryItem[]);
+    })();
   }, []);
 
   useEffect(() => {

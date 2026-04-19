@@ -18,6 +18,7 @@ import {
   type ConferenceRoomAssignment,
   type ConferenceRoomHistoryItem,
 } from '@/lib/teamwork-local';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
@@ -509,19 +510,22 @@ export default function ConferenceRoom({ students }: Props) {
     updatedAt: new Date().toISOString(),
   });
 
-  const saveToHistory = () => {
+  const saveToHistory = async () => {
     if (!seated) {
       toast.error('请先完成排座再保存');
       return;
     }
     const name = recordName.trim() || `会议室-${new Date().toLocaleString()}`;
     const item = saveConferenceRoomHistory(name, buildSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
+    let savedItem: ConferenceRoomHistoryItem = item;
+    const cloud = await saveCloudSeatHistory('conference', name, item.snapshot);
+    if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as ConferenceRoomHistoryItem;
+    const nextItems = [savedItem, ...historyItems].slice(0, 50);
     setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
+    setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveConferenceRoomSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
+    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
   };
 
   const restoreFromHistory = () => {
@@ -558,6 +562,11 @@ export default function ConferenceRoom({ students }: Props) {
 
   useEffect(() => {
     setHistoryItems(loadConferenceRoomHistory());
+    (async () => {
+      await migrateLocalToCloudOnce('conference');
+      const cloud = await fetchCloudSeatHistory<ConferenceRoomHistoryItem['snapshot']>('conference');
+      if (cloud) setHistoryItems(cloud.map(r => ({ id: r.id, name: r.name, createdAt: r.createdAt, snapshot: r.snapshot })) as ConferenceRoomHistoryItem[]);
+    })();
   }, []);
 
   useEffect(() => {

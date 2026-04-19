@@ -15,6 +15,7 @@ import {
   type ComputerLabHistoryItem,
   type ComputerLabRowAssignment,
 } from '@/lib/teamwork-local';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -291,19 +292,22 @@ export default function ComputerLab({ students }: Props) {
     return output;
   };
 
-  const saveToHistory = () => {
+  const saveToHistory = async () => {
     if (!seated) {
       toast.error('请先完成排座再保存');
       return;
     }
     const name = recordName.trim() || `机房-${new Date().toLocaleString()}`;
     const item = saveComputerLabHistory(name, buildSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
+    let savedItem: ComputerLabHistoryItem = item;
+    const cloud = await saveCloudSeatHistory('computer_lab', name, item.snapshot);
+    if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as ComputerLabHistoryItem;
+    const nextItems = [savedItem, ...historyItems].slice(0, 50);
     setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
+    setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveComputerLabSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
+    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
   };
 
   const restoreFromHistory = () => {
@@ -353,6 +357,11 @@ export default function ComputerLab({ students }: Props) {
 
   useEffect(() => {
     setHistoryItems(loadComputerLabHistory());
+    (async () => {
+      await migrateLocalToCloudOnce('computer_lab');
+      const cloud = await fetchCloudSeatHistory<ComputerLabHistoryItem['snapshot']>('computer_lab');
+      if (cloud) setHistoryItems(cloud.map(r => ({ id: r.id, name: r.name, createdAt: r.createdAt, snapshot: r.snapshot })) as ComputerLabHistoryItem[]);
+    })();
   }, []);
 
   useEffect(() => {

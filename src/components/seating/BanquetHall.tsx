@@ -22,6 +22,7 @@ import {
   type BanquetHallHistoryItem,
   type BanquetHallSnapshot,
 } from '@/lib/teamwork-local';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
@@ -505,19 +506,22 @@ export default function BanquetHall({ students }: Props) {
     setAssignment(tables);
   };
 
-  const saveToHistory = () => {
+  const saveToHistory = async () => {
     if (assignment.length === 0) {
       toast.error('请先生成座位，再保存到历史。');
       return;
     }
     const name = recordName.trim() || `宴会厅-${new Date().toLocaleString()}`;
     const item = saveBanquetHallHistory(name, buildSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
+    let savedItem: BanquetHallHistoryItem = item;
+    const cloud = await saveCloudSeatHistory('banquet', name, item.snapshot);
+    if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as BanquetHallHistoryItem;
+    const nextItems = [savedItem, ...historyItems].slice(0, 50);
     setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
+    setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveBanquetHallSnapshot(item.snapshot);
-    toast.success('已保存到宴会厅历史记录。');
+    toast.success(cloud ? '已保存到宴会厅历史记录（云端）。' : '已保存到宴会厅历史记录。');
   };
 
   const restoreFromHistory = () => {
@@ -604,6 +608,11 @@ export default function BanquetHall({ students }: Props) {
 
   useEffect(() => {
     setHistoryItems(loadBanquetHallHistory());
+    (async () => {
+      await migrateLocalToCloudOnce('banquet');
+      const cloud = await fetchCloudSeatHistory<BanquetHallHistoryItem['snapshot']>('banquet');
+      if (cloud) setHistoryItems(cloud.map(r => ({ id: r.id, name: r.name, createdAt: r.createdAt, snapshot: r.snapshot })) as BanquetHallHistoryItem[]);
+    })();
   }, []);
 
   useEffect(() => {
