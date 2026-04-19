@@ -14,8 +14,9 @@ import {
   saveComputerLabHistory,
   type ComputerLabHistoryItem,
   type ComputerLabRowAssignment,
+  deleteSeatHistoryLocal,
 } from '@/lib/teamwork-local';
-import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce } from '@/lib/seat-history-cloud';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -660,6 +661,25 @@ export default function ComputerLab({ students }: Props) {
           </select>
           <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
             <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            disabled={!selectedHistoryId}
+            title="删除该历史记录"
+            onClick={async () => {
+              const id = selectedHistoryId;
+              if (!id) return;
+              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              await deleteCloudSeatHistory(id);
+              deleteSeatHistoryLocal('computer_lab', id);
+              setHistoryItems(prev => prev.filter(h => h.id !== id));
+              setSelectedHistoryId('');
+              toast.success('已删除该历史记录');
+            }}
+          >
+            <Trash2 className="w-4 h-4" />
           </Button>
         </div>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
