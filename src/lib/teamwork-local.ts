@@ -439,6 +439,31 @@ export function saveConcertHallHistory(name: string, snapshot: ConcertHallSnapsh
   return item;
 }
 
+export type SeatHistoryScene =
+  | 'classroom'
+  | 'smart_classroom'
+  | 'banquet'
+  | 'conference'
+  | 'computer_lab'
+  | 'concert';
+
+const SCENE_HISTORY_KEYS: Record<SeatHistoryScene, string> = {
+  classroom: CLASSROOM_HISTORY_KEY,
+  smart_classroom: SMART_CLASSROOM_HISTORY_KEY,
+  banquet: BANQUET_HALL_HISTORY_KEY,
+  conference: CONFERENCE_ROOM_HISTORY_KEY,
+  computer_lab: COMPUTER_LAB_HISTORY_KEY,
+  concert: CONCERT_HALL_HISTORY_KEY,
+};
+
+export function deleteSeatHistoryLocal(scene: SeatHistoryScene, id: string) {
+  const key = SCENE_HISTORY_KEYS[scene];
+  const parsed = safeParse<{ id: string }[]>(localStorage.getItem(key));
+  if (!Array.isArray(parsed)) return;
+  const next = parsed.filter(item => item && item.id !== id);
+  localStorage.setItem(key, JSON.stringify(next));
+}
+
 export function groupsFromSeatAssignment(
   assignment: string[][],
   existingNames: string[] = []
