@@ -656,19 +656,22 @@ export default function SeatChart() {
     updatedAt: new Date().toISOString(),
   });
 
-  const saveClassroomToHistory = () => {
+  const saveClassroomToHistory = async () => {
     if (seats.length === 0) {
       toast.error('请先完成排座再保存');
       return;
     }
     const name = recordName.trim() || `教室-${new Date().toLocaleString()}`;
     const item = saveClassroomHistory(name, buildClassroomSnapshot());
-    const nextItems = [item, ...historyItems].slice(0, 50);
+    let savedItem = item;
+    const cloud = await saveCloudSeatHistory('classroom', name, item.snapshot);
+    if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as any;
+    const nextItems = [savedItem, ...historyItems].slice(0, 50);
     setHistoryItems(nextItems);
-    setSelectedHistoryId(item.id);
+    setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveClassroomSnapshot(item.snapshot);
-    toast.success('已保存到历史记录');
+    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
   };
 
   const restoreClassroomFromHistory = () => {
