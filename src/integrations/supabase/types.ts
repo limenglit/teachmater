@@ -980,6 +980,33 @@ export type Database = {
         }
         Relationships: []
       }
+      seat_history: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          scene_type: string
+          snapshot: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          scene_type: string
+          snapshot?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          scene_type?: string
+          snapshot?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       student_badges: {
         Row: {
           badge_id: string
