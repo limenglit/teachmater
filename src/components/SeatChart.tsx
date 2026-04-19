@@ -715,6 +715,13 @@ export default function SeatChart() {
 
   useEffect(() => {
     setHistoryItems(loadClassroomHistory());
+    (async () => {
+      await migrateLocalToCloudOnce('classroom');
+      const cloud = await fetchCloudSeatHistory<ClassroomHistoryItem['snapshot']>('classroom');
+      if (cloud) {
+        setHistoryItems(cloud.map(r => ({ id: r.id, name: r.name, createdAt: r.createdAt, snapshot: r.snapshot })) as any);
+      }
+    })();
   }, []);
 
   useEffect(() => {
