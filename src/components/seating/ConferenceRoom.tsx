@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2 } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowRightLeft } from 'lucide-react';
-import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users, Trash2 } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
