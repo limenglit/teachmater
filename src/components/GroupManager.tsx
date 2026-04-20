@@ -12,6 +12,7 @@ import TeamShareQR from '@/components/teamwork/TeamShareQR';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastGroups, saveLastGroups } from '@/lib/teamwork-local';
+import { migrateTeamworkLastOnce, saveLastGroupsCloud } from '@/lib/teamwork-cloud';
 import { buildTeamBuckets, type TeamingDimension, type TeamingStrategy } from '@/lib/team-assignment';
 import {
   deleteCustomTeamingPreset,
@@ -46,7 +47,15 @@ export default function GroupManager() {
     if (cached.length > 0) {
       setGroups(cached as Group[]);
     }
-  }, []);
+    // For logged-in users: pull cross-device draft / first-time upload local.
+    if (user) {
+      migrateTeamworkLastOnce('groups').then(resolved => {
+        if (resolved && resolved.length > 0) {
+          setGroups(resolved as Group[]);
+        }
+      }).catch(err => console.error('[GroupManager] cloud sync error', err));
+    }
+  }, [user]);
 
   useEffect(() => {
     const loaded = loadTeamingPresets('groups');
@@ -59,7 +68,13 @@ export default function GroupManager() {
   useEffect(() => {
     if (groups.length === 0) return;
     saveLastGroups(groups);
-  }, [groups]);
+    if (user) {
+      // Fire-and-forget cloud sync of latest working draft.
+      saveLastGroupsCloud(groups as any).catch(err =>
+        console.error('[GroupManager] cloud save error', err)
+      );
+    }
+  }, [groups, user]);
 
   const autoGroup = useCallback(() => {
     if (students.length === 0) return;
