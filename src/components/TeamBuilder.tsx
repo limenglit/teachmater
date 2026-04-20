@@ -12,6 +12,7 @@ import TeamShareQR from '@/components/teamwork/TeamShareQR';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastTeams, saveLastTeams } from '@/lib/teamwork-local';
+import { migrateTeamworkLastOnce, saveLastTeamsCloud } from '@/lib/teamwork-cloud';
 import { buildTeamBuckets, type TeamingDimension, type TeamingStrategy } from '@/lib/team-assignment';
 import {
   deleteCustomTeamingPreset,
@@ -46,7 +47,14 @@ export default function TeamBuilder() {
     if (cached.length > 0) {
       setTeams(cached as Team[]);
     }
-  }, []);
+    if (user) {
+      migrateTeamworkLastOnce('teams').then(resolved => {
+        if (resolved && resolved.length > 0) {
+          setTeams(resolved as Team[]);
+        }
+      }).catch(err => console.error('[TeamBuilder] cloud sync error', err));
+    }
+  }, [user]);
 
   useEffect(() => {
     const loaded = loadTeamingPresets('teams');
@@ -59,7 +67,12 @@ export default function TeamBuilder() {
   useEffect(() => {
     if (teams.length === 0) return;
     saveLastTeams(teams);
-  }, [teams]);
+    if (user) {
+      saveLastTeamsCloud(teams as any).catch(err =>
+        console.error('[TeamBuilder] cloud save error', err)
+      );
+    }
+  }, [teams, user]);
 
   const autoTeam = useCallback(() => {
     if (students.length === 0) return;
