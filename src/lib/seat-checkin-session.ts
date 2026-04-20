@@ -217,7 +217,7 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
     .map(item => ({
       id: item.id,
       created_at: item.created_at,
-      duration_minutes: item.duration_minutes ?? 5,
+      duration_minutes: item.duration_minutes ?? 99999,
       status: item.status ?? 'active',
       ended_at: item.ended_at,
       scene_type: item.scene_type ?? sceneType ?? 'classroom',
