@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ArrowRightLeft } from 'lucide-react';
-import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users, Trash2 } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users, Trash2, Pencil } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
@@ -22,8 +22,9 @@ import {
   saveSmartClassroomHistory,
   SmartClassroomHistoryItem,
   deleteSeatHistoryLocal,
+  renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
-import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2 } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2, Pencil } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
@@ -15,8 +15,9 @@ import {
   type ComputerLabHistoryItem,
   type ComputerLabRowAssignment,
   deleteSeatHistoryLocal,
+  renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
-import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string }[];
