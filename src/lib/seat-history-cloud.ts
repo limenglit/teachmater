@@ -99,6 +99,21 @@ export async function deleteCloudSeatHistory(id: string): Promise<boolean> {
   return true;
 }
 
+export async function renameCloudSeatHistory(id: string, name: string): Promise<boolean> {
+  const userId = await getUserId();
+  if (!userId) return false;
+  const { error } = await supabase
+    .from('seat_history')
+    .update({ name })
+    .eq('id', id)
+    .eq('user_id', userId);
+  if (error) {
+    console.error('[seat-history] rename error', error);
+    return false;
+  }
+  return true;
+}
+
 // One-time migration: upload local history to cloud after first login per scene per user.
 const MIGRATION_FLAG_PREFIX = 'teachmate_seat_history_migrated_';
 

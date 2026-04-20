@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2 } from 'lucide-react';
+import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2, Pencil } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
@@ -15,8 +15,9 @@ import {
   type ComputerLabHistoryItem,
   type ComputerLabRowAssignment,
   deleteSeatHistoryLocal,
+  renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
-import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
 
 interface Props {
   students: { id: string; name: string }[];
@@ -661,6 +662,26 @@ export default function ComputerLab({ students }: Props) {
           </select>
           <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
             <RotateCcw className="w-4 h-4" /> 恢复历史
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
+            disabled={!selectedHistoryId}
+            title="重命名该历史记录"
+            onClick={async () => {
+              const id = selectedHistoryId;
+              const current = historyItems.find(h => h.id === id);
+              if (!id || !current) return;
+              const next = window.prompt('请输入新名称', current.name)?.trim();
+              if (!next || next === current.name) return;
+              await renameCloudSeatHistory(id, next);
+              renameSeatHistoryLocal('computer_lab', id, next);
+              setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
+              toast.success('已重命名');
+            }}
+          >
+            <Pencil className="w-4 h-4" />
           </Button>
           <Button
             variant="outline"

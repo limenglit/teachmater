@@ -464,6 +464,14 @@ export function deleteSeatHistoryLocal(scene: SeatHistoryScene, id: string) {
   localStorage.setItem(key, JSON.stringify(next));
 }
 
+export function renameSeatHistoryLocal(scene: SeatHistoryScene, id: string, name: string) {
+  const key = SCENE_HISTORY_KEYS[scene];
+  const parsed = safeParse<{ id: string; name: string }[]>(localStorage.getItem(key));
+  if (!Array.isArray(parsed)) return;
+  const next = parsed.map(item => (item && item.id === id ? { ...item, name } : item));
+  localStorage.setItem(key, JSON.stringify(next));
+}
+
 export function groupsFromSeatAssignment(
   assignment: string[][],
   existingNames: string[] = []

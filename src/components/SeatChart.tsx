@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2 } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SmartClassroom from '@/components/seating/SmartClassroom';
@@ -25,8 +25,8 @@ import {
   loadLastTeams,
   type ClassroomHistoryItem,
 } from '@/lib/teamwork-local';
-import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory } from '@/lib/seat-history-cloud';
-import { deleteSeatHistoryLocal } from '@/lib/teamwork-local';
+import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { deleteSeatHistoryLocal, renameSeatHistoryLocal } from '@/lib/teamwork-local';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -1180,6 +1180,26 @@ export default function SeatChart() {
               </select>
               <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2">
                 <RotateCcw className="w-4 h-4" /> 恢复历史
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!selectedHistoryId}
+                title="重命名该历史记录"
+                onClick={async () => {
+                  const id = selectedHistoryId;
+                  const current = historyItems.find(h => h.id === id);
+                  if (!id || !current) return;
+                  const next = window.prompt('请输入新名称', current.name)?.trim();
+                  if (!next || next === current.name) return;
+                  await renameCloudSeatHistory(id, next);
+                  renameSeatHistoryLocal('classroom', id, next);
+                  setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
+                  toast.success('已重命名');
+                }}
+              >
+                <Pencil className="w-4 h-4" />
               </Button>
               <Button
                 variant="outline"
