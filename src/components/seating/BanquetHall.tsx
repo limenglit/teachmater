@@ -953,6 +953,26 @@ export default function BanquetHall({ students }: Props) {
           <Button
             variant="outline"
             size="icon"
+            className="h-8 w-8"
+            disabled={!selectedHistoryId}
+            title="重命名该历史记录"
+            onClick={async () => {
+              const id = selectedHistoryId;
+              const current = historyItems.find(h => h.id === id);
+              if (!id || !current) return;
+              const next = window.prompt('请输入新名称', current.name)?.trim();
+              if (!next || next === current.name) return;
+              await renameCloudSeatHistory(id, next);
+              renameSeatHistoryLocal('banquet', id, next);
+              setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
+              toast.success('已重命名');
+            }}
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             disabled={!selectedHistoryId}
             title="删除该历史记录"
