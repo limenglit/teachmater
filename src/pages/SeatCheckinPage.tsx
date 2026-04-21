@@ -207,6 +207,11 @@ export default function SeatCheckinPage() {
   const [displaySeatData, setDisplaySeatData] = useState<unknown | null>(null);
   const [isGuestAssigned, setIsGuestAssigned] = useState(false);
   const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
+  const [recenterSignal, setRecenterSignal] = useState(0);
+
+  const handleRecenter = useCallback(() => {
+    setRecenterSignal(s => s + 1);
+  }, []);
 
   const resolveSeatDataForName = async (sessionData: {
     seat_data: unknown;
