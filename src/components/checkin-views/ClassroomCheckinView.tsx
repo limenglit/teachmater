@@ -304,12 +304,12 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
         </div>
       </div>
 
-      <div className="text-center text-xs text-muted-foreground space-y-1">
-        <p className="flex items-center justify-center gap-1">
-          <Navigation className="w-3 h-3 text-primary" />
+      <div className="rounded-xl bg-muted/40 border border-border/60 px-3 py-2.5 text-xs text-foreground/80 space-y-1">
+        <p className="flex items-center gap-1.5 font-medium text-primary">
+          <Navigation className="w-3.5 h-3.5" />
           从 <strong>{activeDoor?.label || '入口'}</strong> 进入
         </p>
-        {dirHint && <p>🚶 {dirHint}</p>}
+        {dirHint && <p className="text-muted-foreground leading-relaxed pl-5">🚶 {dirHint}</p>}
       </div>
     </>
   );
