@@ -11,9 +11,10 @@ interface Props {
   seatData: unknown;
   sceneConfig: Record<string, unknown>;
   studentName: string;
+  recenterSignal?: number;
 }
 
-export default function ConcertCheckinView({ seatData, sceneConfig, studentName }: Props) {
+export default function ConcertCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
   const rows = seatData as string[][];
   const seatsPerRow = (sceneConfig.seatsPerRow as number) || 12;
   const rowCount = rows.length;
@@ -62,8 +63,8 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName 
   const startRadius = 80;
   const radiusStep = 44;
   const seatR = 15;
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPos.row, myPos.col]);
-  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos.row, myPos.col, recenterSignal]);
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
   // 门窗坐标
   const doorPos = (side: EntryDoor['side']) => {
