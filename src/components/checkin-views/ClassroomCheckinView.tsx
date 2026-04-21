@@ -8,6 +8,7 @@ interface Props {
   seatData: unknown;
   sceneConfig: Record<string, unknown>;
   studentName: string;
+  recenterSignal?: number;
 }
 
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
@@ -20,7 +21,7 @@ interface Door {
   col: number;
 }
 
-export default function ClassroomCheckinView({ seatData, sceneConfig, studentName }: Props) {
+export default function ClassroomCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
   const seats = seatData as (string | null)[][];
   const config = sceneConfig as {
     rows: number; cols: number; windowOnLeft: boolean;
@@ -87,8 +88,8 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     return best;
   }, [doors, myPosition]);
 
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPosition?.r, myPosition?.c]);
-  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPosition?.r, myPosition?.c, recenterSignal]);
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
   if (!myPosition) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
