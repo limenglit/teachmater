@@ -927,7 +927,22 @@ export default function ConferenceRoom({ students }: Props) {
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
           </Button>
-          <Button variant="outline" onClick={() => setAssignment([])} className="gap-2" title="清空所有座位安排">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setAssignment(prev => ({
+                headLeft: '',
+                headRight: '',
+                mainTop: prev.mainTop.map(() => ''),
+                mainBottom: prev.mainBottom.map(() => ''),
+                companionTop: prev.companionTop.map(row => row.map(() => '')),
+                companionBottom: prev.companionBottom.map(row => row.map(() => '')),
+              }));
+              setSeated(false);
+            }}
+            className="gap-2"
+            title="清空所有座位安排"
+          >
             <Trash2 className="w-4 h-4" /> 清空
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
