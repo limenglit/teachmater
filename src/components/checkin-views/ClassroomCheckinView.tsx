@@ -188,18 +188,15 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
 
   return (
     <>
-      <p className="text-sm text-muted-foreground text-center">
-        {studentName}，你的座位在 <strong>第{myPosition.r + 1}排 第{myPosition.c + 1}列</strong>
-      </p>
-      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
-        <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> 入口</span>
+      {/* Compact legend (2 rows on mobile, 1 row on tablet+) */}
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground px-1">
+        <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-primary inline-block shrink-0" /> 我的座位</span>
+        <span className="flex items-center gap-1.5"><span className="w-3.5 h-0.5 bg-primary/60 inline-block shrink-0" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
+        <span className="flex items-center gap-1.5"><span className="text-sm leading-none shrink-0">🚪</span> 入口</span>
         {disabledSeatSet.size > 0 && (
-          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-muted/60 border border-dashed border-muted-foreground/40 inline-block" /> 关闭座位</span>
+          <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-muted/60 border border-dashed border-muted-foreground/40 inline-block shrink-0" /> 关闭座位</span>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
