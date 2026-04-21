@@ -1100,7 +1100,15 @@ export default function SmartClassroom({
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
           </Button>
-          <Button variant="outline" onClick={() => { if (window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) setAssignment([]); }} className="gap-2" title="清空所有座位安排">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              setAssignment(Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => '')));
+            }}
+            className="gap-2"
+            title="清空所有座位（保留教室容量）"
+          >
             <Trash2 className="w-4 h-4" /> 清空
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
