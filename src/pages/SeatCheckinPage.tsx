@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, CheckCircle2 } from 'lucide-react';
+import { MapPin, CheckCircle2, Crosshair, ScanLine, User2 } from 'lucide-react';
 import ClassroomCheckinView from '@/components/checkin-views/ClassroomCheckinView';
 import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinView';
 import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
