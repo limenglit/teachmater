@@ -402,37 +402,65 @@ export default function SeatCheckinPage() {
 
   if (!checkedIn) {
     return (
-      <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
-        <div className="w-full max-w-sm space-y-6 mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="text-center space-y-2">
-            <MapPin className="w-12 h-12 mx-auto text-primary" />
-            <h1 className="text-xl font-bold text-foreground">{t('seatCheckin.title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('seatCheckin.desc')}</p>
+      <div className="min-h-[100dvh] bg-gradient-to-b from-primary/5 via-background to-background overflow-y-auto px-5 py-[max(1rem,env(safe-area-inset-top))]">
+        <div className="w-full max-w-sm mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          {/* Hero */}
+          <div className="text-center space-y-3 mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mx-auto">
+              <MapPin className="w-8 h-8" strokeWidth={2.2} />
+            </div>
+            <div className="space-y-1.5">
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">{t('seatCheckin.title')}</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed px-4">{t('seatCheckin.desc')}</p>
+            </div>
+            <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/80 bg-muted/40 px-3 py-1 rounded-full">
+              <ScanLine className="w-3 h-3" />
+              已通过扫码进入签到页
+            </div>
             {session.status !== 'active' && (
-              <p className="text-sm text-destructive">签到已结束，仅已签到同学可查看座位。</p>
-            )}
-          </div>
-          <div className="relative">
-            <Input
-              value={name}
-              onChange={e => handleNameInput(e.target.value)}
-              placeholder={t('seatCheckin.namePlaceholder')}
-              className="text-center text-lg h-12"
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
-            {suggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-lg shadow-lg">
-                {suggestions.map(s => (
-                  <button key={s} onClick={() => { setName(s); setSuggestions([]); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors">
-                    {s}
-                  </button>
-                ))}
+              <div className="mt-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                ⚠️ 签到已结束，仅已签到同学可查看座位
               </div>
             )}
           </div>
-          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-12 text-base">
-            {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
-          </Button>
+
+          {/* Form card */}
+          <div className="bg-card border border-border rounded-2xl shadow-sm p-5 space-y-4">
+            <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <User2 className="w-3.5 h-3.5" />
+              你的姓名
+            </label>
+            <div className="relative">
+              <Input
+                value={name}
+                onChange={e => handleNameInput(e.target.value)}
+                placeholder={t('seatCheckin.namePlaceholder')}
+                className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary"
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                autoFocus
+                autoComplete="name"
+              />
+              {suggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-xl shadow-xl">
+                  {suggestions.map(s => (
+                    <button key={s} onClick={() => { setName(s); setSuggestions([]); }} className="w-full text-left px-4 py-3 text-sm hover:bg-muted active:bg-muted/80 transition-colors border-b border-border/40 last:border-0">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={handleSubmit}
+              disabled={!name.trim() || submitting}
+              className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"
+            >
+              {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
+            </Button>
+            <p className="text-[11px] text-center text-muted-foreground/70 leading-relaxed">
+              💡 输入姓名时会自动匹配名单，未在名单中的同学将获得临时座位
+            </p>
+          </div>
         </div>
       </div>
     );
