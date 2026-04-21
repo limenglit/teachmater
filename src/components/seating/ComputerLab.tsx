@@ -743,6 +743,9 @@ export default function ComputerLab({ students }: Props) {
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
           </Button>
+          <Button variant="outline" onClick={() => setAssignment([])} className="gap-2" title="清空所有座位安排">
+            <Trash2 className="w-4 h-4" /> 清空
+          </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
             <LayoutGrid className="w-4 h-4" /> 自动排座
           </Button>
