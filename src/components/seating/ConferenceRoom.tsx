@@ -930,6 +930,7 @@ export default function ConferenceRoom({ students }: Props) {
           <Button
             variant="outline"
             onClick={() => {
+              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
               setAssignment(prev => ({
                 headLeft: '',
                 headRight: '',
