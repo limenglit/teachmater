@@ -469,41 +469,80 @@ export default function SeatCheckinPage() {
   const sceneType = session.scene_type;
   const studentName = name.trim();
   const effectiveSeatData = displaySeatData ?? session.seat_data;
+  // Resolve a clean seat-position label even if the assignedSeatHint is missing
+  const seatLabel = assignedSeatHint
+    || buildSeatHint(sceneType, effectiveSeatData, studentName)
+    || '请在地图上查看你的位置';
 
   return (
-    <div className="min-h-[100dvh] bg-background overflow-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
-      <div className="max-w-2xl mx-auto space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="text-center space-y-1">
-          <div className="flex items-center justify-center gap-2 text-primary">
-            <CheckCircle2 className="w-6 h-6" />
-            <span className="text-lg font-bold">{t('seatCheckin.success')}</span>
+    <div className="min-h-[100dvh] bg-background overflow-auto pb-[max(5rem,env(safe-area-inset-bottom))]">
+      {/* Sticky "我的座位" info card */}
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/60 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+        <div className="max-w-2xl mx-auto">
+          <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-primary/5 border border-primary/25 px-4 py-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="shrink-0 w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary/80 uppercase tracking-wide">
+                    <span>{t('seatCheckin.success')}</span>
+                    {alreadyCheckedIn && (
+                      <span className="text-[10px] bg-primary/15 text-primary/90 px-1.5 py-0.5 rounded normal-case">已签到</span>
+                    )}
+                  </div>
+                  <div className="text-base font-bold text-foreground truncate">
+                    {studentName} <span className="text-primary">·</span> <span className="text-primary">{seatLabel}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleRecenter}
+                className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 active:bg-primary/20 px-3 py-2 rounded-lg border border-primary/20 transition-colors"
+                aria-label="回到我的座位"
+              >
+                <Crosshair className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">回到我的座位</span>
+                <span className="inline xs:hidden">居中</span>
+              </button>
+            </div>
+            {isGuestAssigned && (
+              <div className="mt-2 text-xs text-foreground/80 bg-card/60 rounded-lg px-2.5 py-1.5 border border-primary/15">
+                💡 你不在预设名单中，已自动为你分配临时座位，请按下方引导入座
+              </div>
+            )}
           </div>
-          {isGuestAssigned && (
-            <p className="text-sm text-amber-600">
-              您没提前注册，已为您分配临时座位{assignedSeatHint ? `（${assignedSeatHint}）` : ''}，请按引导入座。
-            </p>
-          )}
-          {alreadyCheckedIn && (
-            <p className="text-sm text-muted-foreground">已经完成签到，以下为你的座位信息。</p>
-          )}
         </div>
+      </div>
 
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {sceneType === 'classroom' && (
-          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {(sceneType === 'smartClassroom' || sceneType === 'banquet') && (
-          <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} />
+          <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'conference' && (
-          <ConferenceCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ConferenceCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'concertHall' && (
-          <ConcertCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ConcertCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'computerLab' && (
-          <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
       </div>
+
+      {/* Floating "回到我的座位" FAB - mobile-friendly fallback */}
+      <button
+        onClick={handleRecenter}
+        className="md:hidden fixed right-4 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
+        style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        aria-label="回到我的座位"
+      >
+        <Crosshair className="w-5 h-5" />
+      </button>
     </div>
   );
 }
