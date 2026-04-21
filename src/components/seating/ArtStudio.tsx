@@ -506,7 +506,7 @@ export default function ArtStudio({ students }: Props) {
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => autoSeat(true)}>
             <Shuffle className="w-3.5 h-3.5" /> 随机排座
           </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={clearAll}>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => { if (window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) clearAll(); }}>
             清空
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => regeneratePositions(true)}>

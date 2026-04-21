@@ -1157,6 +1157,7 @@ export default function SeatChart() {
                 variant="outline"
                 className="gap-2"
                 onClick={() => {
+                  if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
                   setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
                 }}
                 title="清空所有座位"
