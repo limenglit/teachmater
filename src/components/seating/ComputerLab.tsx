@@ -743,7 +743,21 @@ export default function ComputerLab({ students }: Props) {
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
             <Shuffle className="w-4 h-4" /> 随机排座
           </Button>
-          <Button variant="outline" onClick={() => { if (window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) setAssignment([]); }} className="gap-2" title="清空所有座位安排">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              const blank: typeof assignment = [];
+              for (let r = 0; r < rowCount; r++) {
+                blank.push({ rowIndex: r, side: 'top', students: Array.from({ length: totalSeatsPerSide }, () => '') });
+                blank.push({ rowIndex: r, side: 'bottom', students: Array.from({ length: totalSeatsPerSide }, () => '') });
+              }
+              setAssignment(blank);
+              setSeated(true);
+            }}
+            className="gap-2"
+            title="清空所有座位（保留机房容量）"
+          >
             <Trash2 className="w-4 h-4" /> 清空
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">

@@ -939,7 +939,7 @@ export default function ConferenceRoom({ students }: Props) {
                 companionTop: prev.companionTop.map(row => row.map(() => '')),
                 companionBottom: prev.companionBottom.map(row => row.map(() => '')),
               }));
-              setSeated(false);
+              setSeated(true);
             }}
             className="gap-2"
             title="清空所有座位安排"
