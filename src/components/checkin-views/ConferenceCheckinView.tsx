@@ -8,6 +8,7 @@ interface Props {
   seatData: unknown;
   sceneConfig: Record<string, unknown>;
   studentName: string;
+  recenterSignal?: number;
 }
 
 type SeatPosition = {
@@ -34,7 +35,7 @@ function classifyDoorSide(door: { x: number; y: number } | null, roomW: number, 
   return 'bottom';
 }
 
-export default function ConferenceCheckinView({ seatData, sceneConfig, studentName }: Props) {
+export default function ConferenceCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
   const raw = seatData as Record<string, unknown>;
   const valid = raw && typeof raw === 'object'
     && ((Array.isArray(raw.top) && Array.isArray(raw.bottom))
@@ -90,8 +91,8 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
     return null;
   }, [data, studentName]);
 
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index]);
-  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index, recenterSignal]);
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
   if (!valid || !data) {
     return (

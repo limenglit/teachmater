@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, DependencyList } from 'react';
 
 interface PinchZoomState {
   scale: number;
@@ -10,7 +10,7 @@ interface PinchZoomState {
  * Hook that adds pinch-to-zoom and drag-to-pan on a container element.
  * Returns a ref to attach to the zoomable wrapper and the current transform style.
  */
-export function usePinchZoom(minScale = 0.5, maxScale = 4) {
+export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: DependencyList = []) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<PinchZoomState>({ scale: 1, translateX: 0, translateY: 0 });
 
@@ -126,5 +126,17 @@ export function usePinchZoom(minScale = 0.5, maxScale = 4) {
     transition: gestureRef.current.isPinching || gestureRef.current.isPanning ? 'none' : 'transform 0.2s ease-out',
   };
 
-  return { containerRef, transformStyle, scale: state.scale, resetZoom: () => setState({ scale: 1, translateX: 0, translateY: 0 }) };
+  const resetZoom = useCallback(
+    () => setState({ scale: 1, translateX: 0, translateY: 0 }),
+    []
+  );
+
+  // External reset trigger (e.g. "Back to my seat" FAB)
+  useEffect(() => {
+    if (resetDeps.length === 0) return;
+    resetZoom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, resetDeps);
+
+  return { containerRef, transformStyle, scale: state.scale, resetZoom };
 }

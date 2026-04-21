@@ -8,6 +8,7 @@ interface Props {
   seatData: unknown;
   sceneConfig: Record<string, unknown>;
   studentName: string;
+  recenterSignal?: number;
 }
 
 interface LabRow {
@@ -71,7 +72,7 @@ function computeNavPath(
   return points;
 }
 
-export default function ComputerLabCheckinView({ seatData, sceneConfig, studentName }: Props) {
+export default function ComputerLabCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
   const labRows = seatData as LabRow[];
   const rowCount = (sceneConfig.rowCount as number) || 5;
   const seatsPerSide = (sceneConfig.seatsPerSide as number) || 8;
@@ -98,8 +99,8 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const svgW = allTableW + 60;
   const svgH = rowCount * rowH + 40;
   const tableColIdx = myPos ? Math.floor(myPos.col / seatsPerSide) : 0;
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.rowIndex, myPos?.side, myPos?.col]);
-  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.rowIndex, myPos?.side, myPos?.col, recenterSignal]);
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
   const navPath = useMemo(() => {
     if (!myPos) return [];

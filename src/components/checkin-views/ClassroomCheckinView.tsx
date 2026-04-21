@@ -8,6 +8,7 @@ interface Props {
   seatData: unknown;
   sceneConfig: Record<string, unknown>;
   studentName: string;
+  recenterSignal?: number;
 }
 
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
@@ -20,7 +21,7 @@ interface Door {
   col: number;
 }
 
-export default function ClassroomCheckinView({ seatData, sceneConfig, studentName }: Props) {
+export default function ClassroomCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
   const seats = seatData as (string | null)[][];
   const config = sceneConfig as {
     rows: number; cols: number; windowOnLeft: boolean;
@@ -87,8 +88,8 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     return best;
   }, [doors, myPosition]);
 
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPosition?.r, myPosition?.c]);
-  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPosition?.r, myPosition?.c, recenterSignal]);
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
   if (!myPosition) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
@@ -187,18 +188,15 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
 
   return (
     <>
-      <p className="text-sm text-muted-foreground text-center">
-        {studentName}，你的座位在 <strong>第{myPosition.r + 1}排 第{myPosition.c + 1}列</strong>
-      </p>
-      <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
-        <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> 入口</span>
+      {/* Compact legend (2 rows on mobile, 1 row on tablet+) */}
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground px-1">
+        <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-primary inline-block shrink-0" /> 我的座位</span>
+        <span className="flex items-center gap-1.5"><span className="w-3.5 h-0.5 bg-primary/60 inline-block shrink-0" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
+        <span className="flex items-center gap-1.5"><span className="text-sm leading-none shrink-0">🚪</span> 入口</span>
         {disabledSeatSet.size > 0 && (
-          <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-muted/60 border border-dashed border-muted-foreground/40 inline-block" /> 关闭座位</span>
+          <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-muted/60 border border-dashed border-muted-foreground/40 inline-block shrink-0" /> 关闭座位</span>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
@@ -306,12 +304,12 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
         </div>
       </div>
 
-      <div className="text-center text-xs text-muted-foreground space-y-1">
-        <p className="flex items-center justify-center gap-1">
-          <Navigation className="w-3 h-3 text-primary" />
+      <div className="rounded-xl bg-muted/40 border border-border/60 px-3 py-2.5 text-xs text-foreground/80 space-y-1">
+        <p className="flex items-center gap-1.5 font-medium text-primary">
+          <Navigation className="w-3.5 h-3.5" />
           从 <strong>{activeDoor?.label || '入口'}</strong> 进入
         </p>
-        {dirHint && <p>🚶 {dirHint}</p>}
+        {dirHint && <p className="text-muted-foreground leading-relaxed pl-5">🚶 {dirHint}</p>}
       </div>
     </>
   );

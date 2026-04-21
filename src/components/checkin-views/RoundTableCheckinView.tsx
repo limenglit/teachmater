@@ -10,6 +10,7 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   studentName: string;
   sceneType: string;
+  recenterSignal?: number;
 }
 
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
@@ -29,7 +30,7 @@ function classifyDoorSide(door: { x: number; y: number } | null | undefined, roo
   return 'bottom';
 }
 
-export default function RoundTableCheckinView({ seatData, sceneConfig, studentName, sceneType }: Props) {
+export default function RoundTableCheckinView({ seatData, sceneConfig, studentName, sceneType, recenterSignal = 0 }: Props) {
   const tables = seatData as string[][];
   const seatsPerTable = (sceneConfig.seatsPerTable as number) || tables[0]?.length || 6;
   const tableCols = (sceneConfig.tableCols as number) || Math.ceil(Math.sqrt(tables.length));
@@ -69,7 +70,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
     return list;
   }, [roomW, roomH, frontDoorRaw, backDoorRaw, sceneConfig.entryDoorPosition]);
 
-  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom();
+  const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
   // SVG layout for tables in a grid
   const tableSvgSize = isMobile ? 110 : 150;
@@ -98,7 +99,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
     };
   };
 
-  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat]);
+  const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat, recenterSignal]);
 
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 

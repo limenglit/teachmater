@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, CheckCircle2 } from 'lucide-react';
+import { MapPin, CheckCircle2, Crosshair, ScanLine, User2 } from 'lucide-react';
 import ClassroomCheckinView from '@/components/checkin-views/ClassroomCheckinView';
 import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinView';
 import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
@@ -207,6 +207,11 @@ export default function SeatCheckinPage() {
   const [displaySeatData, setDisplaySeatData] = useState<unknown | null>(null);
   const [isGuestAssigned, setIsGuestAssigned] = useState(false);
   const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
+  const [recenterSignal, setRecenterSignal] = useState(0);
+
+  const handleRecenter = useCallback(() => {
+    setRecenterSignal(s => s + 1);
+  }, []);
 
   const resolveSeatDataForName = async (sessionData: {
     seat_data: unknown;
@@ -397,37 +402,65 @@ export default function SeatCheckinPage() {
 
   if (!checkedIn) {
     return (
-      <div className="min-h-[100dvh] bg-background overflow-y-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
-        <div className="w-full max-w-sm space-y-6 mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
-          <div className="text-center space-y-2">
-            <MapPin className="w-12 h-12 mx-auto text-primary" />
-            <h1 className="text-xl font-bold text-foreground">{t('seatCheckin.title')}</h1>
-            <p className="text-sm text-muted-foreground">{t('seatCheckin.desc')}</p>
+      <div className="min-h-[100dvh] bg-gradient-to-b from-primary/5 via-background to-background overflow-y-auto px-5 py-[max(1rem,env(safe-area-inset-top))]">
+        <div className="w-full max-w-sm mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+          {/* Hero */}
+          <div className="text-center space-y-3 mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mx-auto">
+              <MapPin className="w-8 h-8" strokeWidth={2.2} />
+            </div>
+            <div className="space-y-1.5">
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">{t('seatCheckin.title')}</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed px-4">{t('seatCheckin.desc')}</p>
+            </div>
+            <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/80 bg-muted/40 px-3 py-1 rounded-full">
+              <ScanLine className="w-3 h-3" />
+              已通过扫码进入签到页
+            </div>
             {session.status !== 'active' && (
-              <p className="text-sm text-destructive">签到已结束，仅已签到同学可查看座位。</p>
-            )}
-          </div>
-          <div className="relative">
-            <Input
-              value={name}
-              onChange={e => handleNameInput(e.target.value)}
-              placeholder={t('seatCheckin.namePlaceholder')}
-              className="text-center text-lg h-12"
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
-            {suggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-lg shadow-lg">
-                {suggestions.map(s => (
-                  <button key={s} onClick={() => { setName(s); setSuggestions([]); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-muted transition-colors">
-                    {s}
-                  </button>
-                ))}
+              <div className="mt-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
+                ⚠️ 签到已结束，仅已签到同学可查看座位
               </div>
             )}
           </div>
-          <Button onClick={handleSubmit} disabled={!name.trim() || submitting} className="w-full h-12 text-base">
-            {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
-          </Button>
+
+          {/* Form card */}
+          <div className="bg-card border border-border rounded-2xl shadow-sm p-5 space-y-4">
+            <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <User2 className="w-3.5 h-3.5" />
+              你的姓名
+            </label>
+            <div className="relative">
+              <Input
+                value={name}
+                onChange={e => handleNameInput(e.target.value)}
+                placeholder={t('seatCheckin.namePlaceholder')}
+                className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary"
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                autoFocus
+                autoComplete="name"
+              />
+              {suggestions.length > 0 && (
+                <div className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-xl shadow-xl">
+                  {suggestions.map(s => (
+                    <button key={s} onClick={() => { setName(s); setSuggestions([]); }} className="w-full text-left px-4 py-3 text-sm hover:bg-muted active:bg-muted/80 transition-colors border-b border-border/40 last:border-0">
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={handleSubmit}
+              disabled={!name.trim() || submitting}
+              className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"
+            >
+              {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
+            </Button>
+            <p className="text-[11px] text-center text-muted-foreground/70 leading-relaxed">
+              💡 输入姓名时会自动匹配名单，未在名单中的同学将获得临时座位
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -436,41 +469,80 @@ export default function SeatCheckinPage() {
   const sceneType = session.scene_type;
   const studentName = name.trim();
   const effectiveSeatData = displaySeatData ?? session.seat_data;
+  // Resolve a clean seat-position label even if the assignedSeatHint is missing
+  const seatLabel = assignedSeatHint
+    || buildSeatHint(sceneType, effectiveSeatData, studentName)
+    || '请在地图上查看你的位置';
 
   return (
-    <div className="min-h-[100dvh] bg-background overflow-auto px-4 py-[max(1rem,env(safe-area-inset-top))]">
-      <div className="max-w-2xl mx-auto space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="text-center space-y-1">
-          <div className="flex items-center justify-center gap-2 text-primary">
-            <CheckCircle2 className="w-6 h-6" />
-            <span className="text-lg font-bold">{t('seatCheckin.success')}</span>
+    <div className="min-h-[100dvh] bg-background overflow-auto pb-[max(5rem,env(safe-area-inset-bottom))]">
+      {/* Sticky "我的座位" info card */}
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/60 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+        <div className="max-w-2xl mx-auto">
+          <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-primary/5 border border-primary/25 px-4 py-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="shrink-0 w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary/80 uppercase tracking-wide">
+                    <span>{t('seatCheckin.success')}</span>
+                    {alreadyCheckedIn && (
+                      <span className="text-[10px] bg-primary/15 text-primary/90 px-1.5 py-0.5 rounded normal-case">已签到</span>
+                    )}
+                  </div>
+                  <div className="text-base font-bold text-foreground truncate">
+                    {studentName} <span className="text-primary">·</span> <span className="text-primary">{seatLabel}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleRecenter}
+                className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 active:bg-primary/20 px-3 py-2 rounded-lg border border-primary/20 transition-colors"
+                aria-label="回到我的座位"
+              >
+                <Crosshair className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">回到我的座位</span>
+                <span className="inline xs:hidden">居中</span>
+              </button>
+            </div>
+            {isGuestAssigned && (
+              <div className="mt-2 text-xs text-foreground/80 bg-card/60 rounded-lg px-2.5 py-1.5 border border-primary/15">
+                💡 你不在预设名单中，已自动为你分配临时座位，请按下方引导入座
+              </div>
+            )}
           </div>
-          {isGuestAssigned && (
-            <p className="text-sm text-amber-600">
-              您没提前注册，已为您分配临时座位{assignedSeatHint ? `（${assignedSeatHint}）` : ''}，请按引导入座。
-            </p>
-          )}
-          {alreadyCheckedIn && (
-            <p className="text-sm text-muted-foreground">已经完成签到，以下为你的座位信息。</p>
-          )}
         </div>
+      </div>
 
+      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {sceneType === 'classroom' && (
-          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {(sceneType === 'smartClassroom' || sceneType === 'banquet') && (
-          <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} />
+          <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'conference' && (
-          <ConferenceCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ConferenceCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'concertHall' && (
-          <ConcertCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ConcertCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'computerLab' && (
-          <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} />
+          <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
       </div>
+
+      {/* Floating "回到我的座位" FAB - mobile-friendly fallback */}
+      <button
+        onClick={handleRecenter}
+        className="md:hidden fixed right-4 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
+        style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        aria-label="回到我的座位"
+      >
+        <Crosshair className="w-5 h-5" />
+      </button>
     </div>
   );
 }
