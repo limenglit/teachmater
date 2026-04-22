@@ -1257,6 +1257,95 @@ export type Database = {
         }
         Relationships: []
       }
+      vocab_cards: {
+        Row: {
+          created_at: string
+          definition: string
+          definition_image: string
+          example: string
+          id: string
+          set_id: string
+          sort_order: number
+          word: string
+          word_image: string
+        }
+        Insert: {
+          created_at?: string
+          definition?: string
+          definition_image?: string
+          example?: string
+          id?: string
+          set_id: string
+          sort_order?: number
+          word?: string
+          word_image?: string
+        }
+        Update: {
+          created_at?: string
+          definition?: string
+          definition_image?: string
+          example?: string
+          id?: string
+          set_id?: string
+          sort_order?: number
+          word?: string
+          word_image?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocab_cards_set_id_fkey"
+            columns: ["set_id"]
+            isOneToOne: false
+            referencedRelation: "vocab_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vocab_sets: {
+        Row: {
+          approved_at: string | null
+          audience: string
+          author_name: string
+          created_at: string
+          description: string
+          id: string
+          is_system: boolean
+          reject_reason: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          audience?: string
+          author_name?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_system?: boolean
+          reject_reason?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          audience?: string
+          author_name?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_system?: boolean
+          reject_reason?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1272,11 +1361,25 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_list_pending_vocab_sets: {
+        Args: never
+        Returns: {
+          audience: string
+          author_email: string
+          author_name: string
+          card_count: number
+          created_at: string
+          description: string
+          id: string
+          title: string
+        }[]
+      }
       admin_set_ai_limits: {
         Args: { p_daily_limit: number; p_user_ids: string[] }
         Returns: undefined
       }
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
+      approve_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
       clear_board_strokes: {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
@@ -1349,10 +1452,15 @@ export type Database = {
         Returns: undefined
       }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
+      reject_vocab_set: {
+        Args: { p_reason: string; p_set_id: string }
+        Returns: undefined
+      }
       submit_quiz_answers: {
         Args: { p_answers: Json; p_session_id: string; p_student_name: string }
         Returns: undefined
       }
+      submit_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
       update_board:
         | {
             Args: {
@@ -1419,6 +1527,7 @@ export type Database = {
         Args: { p_title: string; p_token: string; p_topic_id: string }
         Returns: undefined
       }
+      withdraw_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
