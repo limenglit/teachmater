@@ -36,6 +36,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.visual': '可视化',
     'tab.achieve': '积分',
     'tab.community': '社区',
+    'tab.vocab': '词库',
     // Visualization
     'visual.title': '文本可视化',
     'visual.subtitle': '输入文本，AI 提炼核心，自动生成信息图与数据图',
@@ -1685,6 +1686,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'tab.visual': 'Visualize',
     'tab.achieve': 'Points',
     'tab.community': 'Community',
+    'tab.vocab': 'Vocab',
     'visual.title': 'Text Visualization',
     'visual.subtitle': 'Input text, AI extracts key info, auto-generates infographics & charts',
     'visual.inputTitle': 'Input Content',
