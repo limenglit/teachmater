@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminConfigPanel from '@/components/AdminConfigPanel';
 import AdminAIQuotaPanel from '@/components/AdminAIQuotaPanel';
+import AdminVocabReview from '@/components/AdminVocabReview';
 
 interface PendingUser {
   user_id: string;
@@ -30,7 +31,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchActing, setBatchActing] = useState(false);
-  const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai' | 'vocab'>('users');
 
   useEffect(() => {
     if (!user) {
@@ -263,12 +264,22 @@ export default function AdminPage() {
           >
             <Cpu className="w-3.5 h-3.5" /> {t('admin.tabAIQuota')}
           </Button>
+          <Button
+            size="sm"
+            variant={adminTab === 'vocab' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('vocab')}
+          >
+            <BookOpen className="w-3.5 h-3.5" /> 词库审核
+          </Button>
         </div>
 
         {adminTab === 'config' ? (
           <AdminConfigPanel />
         ) : adminTab === 'ai' ? (
           <AdminAIQuotaPanel />
+        ) : adminTab === 'vocab' ? (
+          <AdminVocabReview />
         ) : (
         <>
         <div className="flex flex-col sm:flex-row gap-2">
