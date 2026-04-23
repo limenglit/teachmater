@@ -68,7 +68,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const lockRef = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const tileRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [lines, setLines] = useState<Array<{ cardId: string; x1: number; y1: number; x2: number; y2: number; color: string }>>([]);
+  const [lines, setLines] = useState<Array<{ cardId: string; pairKey: string; x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; color: string; curved: boolean }>>([]);
   const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
   const [lastMatchedCardId, setLastMatchedCardId] = useState<string | null>(null);
 
