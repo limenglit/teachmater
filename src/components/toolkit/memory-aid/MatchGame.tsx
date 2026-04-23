@@ -356,11 +356,13 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
         </div>
       </div>
 
-      <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-      >
-        {tiles.map(tile => {
+      <div className="relative">
+        <div
+          ref={gridRef}
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+        >
+          {tiles.map(tile => {
           const isFlipped = flipped.has(tile.id) || matched.has(tile.id);
           const isMatched = matched.has(tile.id);
           const hasImage = !!tile.image;
