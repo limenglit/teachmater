@@ -379,6 +379,10 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
           return (
             <motion.button
               key={tile.id}
+              ref={(el) => {
+                if (el) tileRefs.current.set(tile.id, el);
+                else tileRefs.current.delete(tile.id);
+              }}
               onClick={() => handleClick(tile.id)}
               className={`relative aspect-square rounded-xl border-2 font-medium p-1 transition-all duration-200 flex items-center justify-center text-center leading-tight overflow-hidden
                 ${isMatched
