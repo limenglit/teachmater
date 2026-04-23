@@ -6,10 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Check, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Check, Loader2, Sparkles } from 'lucide-react';
 import { AUDIENCE_OPTIONS, createSet, loadCards, updateSet, type VocabAudience, type VocabSet } from '@/lib/vocab-cloud';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -36,6 +37,10 @@ export default function VocabSetWizard({ open, onOpenChange, editing, onSaved }:
   const [publishMode, setPublishMode] = useState<'private' | 'submit'>('private');
   const [saving, setSaving] = useState(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiCount, setAiCount] = useState(10);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMode, setAiMode] = useState<'append' | 'replace'>('append');
 
   useEffect(() => {
     if (!open) return;
