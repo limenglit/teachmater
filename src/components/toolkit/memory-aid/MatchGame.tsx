@@ -481,24 +481,29 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 </filter>
               ))}
             </defs>
-            {lines.map((ln, i) => (
-              <g key={`${ln.cardId}-${i}`}>
-                <line
-                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
-                  stroke={ln.color} strokeWidth={8} strokeLinecap="round"
-                  opacity={0.18}
-                />
-                <line
-                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
-                  stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
-                  strokeDasharray="6 4"
-                  filter={`url(#glow-${i})`}
-                  style={{ animation: 'matchDash 1.2s linear infinite' }}
-                />
-                <circle cx={ln.x1} cy={ln.y1} r={4} fill={ln.color} opacity={0.9} />
-                <circle cx={ln.x2} cy={ln.y2} r={4} fill={ln.color} opacity={0.9} />
-              </g>
-            ))}
+            {lines.map((ln, i) => {
+              const isNew = ln.cardId === lastMatchedCardId;
+              const animate = settings.animateNewOnly ? isNew : true;
+              return (
+                <g key={`${ln.cardId}-${i}`}>
+                  <line
+                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                    stroke={ln.color} strokeWidth={8} strokeLinecap="round"
+                    opacity={animate ? 0.18 : 0.12}
+                  />
+                  <line
+                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                    stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
+                    strokeDasharray={animate ? '6 4' : undefined}
+                    filter={animate ? `url(#glow-${i})` : undefined}
+                    opacity={animate ? 1 : 0.7}
+                    style={animate ? { animation: 'matchDash 1.2s linear infinite' } : undefined}
+                  />
+                  <circle cx={ln.x1} cy={ln.y1} r={4} fill={ln.color} opacity={animate ? 0.9 : 0.7} />
+                  <circle cx={ln.x2} cy={ln.y2} r={4} fill={ln.color} opacity={animate ? 0.9 : 0.7} />
+                </g>
+              );
+            })}
             <style>{`
               @keyframes matchDash {
                 from { stroke-dashoffset: 0; }
