@@ -243,6 +243,53 @@ export default function VocabSetWizard({ open, onOpenChange, editing, onSaved }:
 
             {step === 2 && (
               <>
+                {/* AI generation panel */}
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <Sparkles className="w-3.5 h-3.5 text-primary" /> AI 一键生成卡片
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    例如：「元素周期表前 20 号元素：英文缩写 ↔ 中文名称」「常见英语不规则动词原形 ↔ 过去式」
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      value={aiTopic}
+                      onChange={e => setAiTopic(e.target.value)}
+                      placeholder={`主题（留空则使用：${title || '词库名称'}）`}
+                      className="h-8 text-sm flex-1"
+                      disabled={aiLoading}
+                    />
+                    <Select value={String(aiCount)} onValueChange={v => setAiCount(Number(v))} disabled={aiLoading}>
+                      <SelectTrigger className="h-8 w-24 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[5, 10, 15, 20, 30].map(n => (
+                          <SelectItem key={n} value={String(n)} className="text-xs">{n} 张</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={aiMode} onValueChange={v => setAiMode(v as 'append' | 'replace')} disabled={aiLoading}>
+                      <SelectTrigger className="h-8 w-24 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="append" className="text-xs">追加</SelectItem>
+                        <SelectItem value="replace" className="text-xs">替换</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      onClick={handleAIGenerate}
+                      disabled={aiLoading}
+                      className="h-8 text-xs gap-1"
+                    >
+                      {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                      生成
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">至少 2 个知识点（已填 {validCards.length}）</span>
                   <Button size="sm" variant="outline" onClick={addCard} className="h-7 text-xs gap-1">
