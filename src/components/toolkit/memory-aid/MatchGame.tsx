@@ -64,6 +64,10 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const lockRef = useRef(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const tileRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [lines, setLines] = useState<Array<{ cardId: string; x1: number; y1: number; x2: number; y2: number; color: string }>>([]);
+  const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
 
   const effectivePairCount = Math.min(pairCount, cards.length);
 
