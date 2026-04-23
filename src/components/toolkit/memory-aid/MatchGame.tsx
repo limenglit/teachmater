@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RotateCcw } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
+import { RotateCcw, Settings2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import type { CardItem } from './types';
@@ -16,6 +19,38 @@ interface Tile {
   type: 'word' | 'definition';
 }
 
+// Distinct, accessible colors for matched-pair badges (work in light/dark)
+const PAIR_COLORS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4',
+  '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#a855f7',
+  '#f59e0b', '#10b981', '#6366f1', '#d946ef', '#84cc16',
+  '#0ea5e9', '#f43f5e', '#64748b', '#dc2626', '#7c3aed',
+];
+
+interface Settings {
+  fontScale: number;       // 0.7 – 2.0
+  matchedColor: string;    // hex or 'auto' (use pair color)
+  showPairBadge: boolean;  // show numeric/color badge to indicate the matched pair
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  fontScale: 1,
+  matchedColor: 'auto',
+  showPairBadge: true,
+};
+
+const SETTINGS_KEY = 'memory-match-settings-v1';
+
+function loadSettings(): Settings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
 export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const { t } = useLanguage();
   const [pairCount, setPairCount] = useState<number>(Math.min(6, cards.length));
@@ -25,9 +60,27 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [attempts, setAttempts] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [settings, setSettings] = useState<Settings>(loadSettings);
   const lockRef = useRef(false);
 
   const effectivePairCount = Math.min(pairCount, cards.length);
+
+  // Persist settings
+  useEffect(() => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* noop */ }
+  }, [settings]);
+
+  // Map cardId -> pair index (deterministic per round, used for badge color/number)
+  const pairIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    let i = 0;
+    tiles.forEach(t => {
+      if (!map.has(t.cardId)) {
+        map.set(t.cardId, i++);
+      }
+    });
+    return map;
+  }, [tiles]);
 
   const buildTiles = (count: number) => {
     const subset = shuffle([...cards]).slice(0, count);
@@ -123,6 +176,79 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
               </SelectContent>
             </Select>
           </div>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                <Settings2 className="w-3 h-3" /> 设置
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 space-y-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">字号缩放</Label>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {Math.round(settings.fontScale * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  min={0.7}
+                  max={2}
+                  step={0.05}
+                  value={[settings.fontScale]}
+                  onValueChange={v => setSettings(s => ({ ...s, fontScale: v[0] }))}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">配对成功后字色</Label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSettings(s => ({ ...s, matchedColor: 'auto' }))}
+                    className={`px-2 py-1 rounded text-xs border ${
+                      settings.matchedColor === 'auto'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border text-muted-foreground'
+                    }`}
+                  >
+                    跟随配对色
+                  </button>
+                  <input
+                    type="color"
+                    value={settings.matchedColor === 'auto' ? '#16a34a' : settings.matchedColor}
+                    onChange={e => setSettings(s => ({ ...s, matchedColor: e.target.value }))}
+                    className="h-7 w-10 rounded cursor-pointer border border-border bg-transparent"
+                    aria-label="自定义颜色"
+                  />
+                  <span className="text-xs text-muted-foreground">自定义</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label className="text-xs cursor-pointer" htmlFor="show-pair-badge">
+                  显示配对编号徽标
+                </Label>
+                <input
+                  id="show-pair-badge"
+                  type="checkbox"
+                  checked={settings.showPairBadge}
+                  onChange={e => setSettings(s => ({ ...s, showPairBadge: e.target.checked }))}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                />
+              </div>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setSettings(DEFAULT_SETTINGS)}
+                className="w-full h-7 text-xs"
+              >
+                恢复默认
+              </Button>
+            </PopoverContent>
+          </Popover>
+
           <Button size="sm" variant="outline" onClick={restart} className="h-7 text-xs gap-1">
             <RotateCcw className="w-3 h-3" /> {t('memory.restart')}
           </Button>
@@ -137,31 +263,82 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
           const isFlipped = flipped.has(tile.id) || matched.has(tile.id);
           const isMatched = matched.has(tile.id);
           const hasImage = !!tile.image;
+          const pairIdx = pairIndexMap.get(tile.cardId) ?? 0;
+          const pairColor = PAIR_COLORS[pairIdx % PAIR_COLORS.length];
+          const matchedTextColor =
+            settings.matchedColor === 'auto' ? pairColor : settings.matchedColor;
+
+          // Auto-fit: scale by base font (text-xs ~12px) * user scale; shrink slightly when image present
+          const baseFontPx = (hasImage ? 11 : 13) * settings.fontScale;
+
+          const showBadge = settings.showPairBadge && isMatched;
 
           return (
             <motion.button
               key={tile.id}
               onClick={() => handleClick(tile.id)}
-              className={`relative aspect-square rounded-xl border-2 text-xs font-medium p-1 transition-all duration-200 flex items-center justify-center text-center leading-tight overflow-hidden
+              className={`relative aspect-square rounded-xl border-2 font-medium p-1 transition-all duration-200 flex items-center justify-center text-center leading-tight overflow-hidden
                 ${isMatched
-                  ? 'border-primary/30 bg-primary/10 text-primary opacity-60 cursor-default'
+                  ? 'cursor-default'
                   : isFlipped
                     ? tile.type === 'word'
                       ? 'border-primary bg-primary/5 text-foreground'
                       : 'border-accent-foreground/30 bg-accent text-foreground'
-                    : 'border-border bg-muted hover:border-primary/40 cursor-pointer hover:bg-accent/50'
+                    : 'border-border bg-muted hover:border-primary/40 cursor-pointer hover:bg-accent/50 text-foreground'
                 }`}
+              style={
+                isMatched
+                  ? {
+                      borderColor: pairColor,
+                      backgroundColor: `${pairColor}1a`, // ~10% opacity
+                      boxShadow: `0 0 0 2px ${pairColor}33, 0 4px 14px -4px ${pairColor}66`,
+                      color: matchedTextColor,
+                    }
+                  : undefined
+              }
               whileTap={!isFlipped && !isMatched ? { scale: 0.95 } : {}}
               animate={isMatched ? { scale: [1, 1.08, 1] } : {}}
               transition={{ duration: 0.3 }}
             >
+              {/* Pair-relationship badge */}
+              {showBadge && (
+                <span
+                  className="absolute top-1 left-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white shadow"
+                  style={{ backgroundColor: pairColor }}
+                  aria-label={`配对 #${pairIdx + 1}`}
+                >
+                  {pairIdx + 1}
+                </span>
+              )}
+
+              {/* Type indicator (word/definition) on matched tiles */}
+              {isMatched && (
+                <span
+                  className="absolute top-1 right-1 text-[9px] font-semibold px-1 rounded"
+                  style={{ color: pairColor, backgroundColor: 'hsl(var(--background) / 0.85)' }}
+                >
+                  {tile.type === 'word' ? 'A' : 'B'}
+                </span>
+              )}
+
               {isFlipped ? (
-                <div className="flex flex-col items-center gap-0.5 w-full h-full justify-center">
+                <div className="flex flex-col items-center gap-0.5 w-full h-full justify-center px-1">
                   {hasImage && (
-                    <img src={tile.image} alt="" className="max-h-[60%] max-w-[90%] object-contain rounded" />
+                    <img src={tile.image} alt="" className="max-h-[55%] max-w-[90%] object-contain rounded" />
                   )}
                   {tile.text && (
-                    <span className={`break-words ${hasImage ? 'text-[10px]' : 'text-xs'}`}>{tile.text}</span>
+                    <span
+                      className="break-words w-full"
+                      style={{
+                        fontSize: `${baseFontPx}px`,
+                        lineHeight: 1.15,
+                        // Auto-fit hint: long text shrinks a touch
+                        ...(tile.text.length > 14 ? { fontSize: `${baseFontPx * 0.85}px` } : null),
+                        ...(tile.text.length > 24 ? { fontSize: `${baseFontPx * 0.7}px` } : null),
+                      }}
+                    >
+                      {tile.text}
+                    </span>
                   )}
                 </div>
               ) : (
