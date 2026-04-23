@@ -32,6 +32,7 @@ interface Settings {
   matchedColor: string;    // hex or 'auto' (use pair color)
   showPairBadge: boolean;  // show numeric/color badge to indicate the matched pair
   showConnections: boolean; // draw SVG line between matched pair centers
+  animateNewOnly: boolean; // animate only the newly matched pair; older pairs render static
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS: Settings = {
   matchedColor: 'auto',
   showPairBadge: true,
   showConnections: true,
+  animateNewOnly: true,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
