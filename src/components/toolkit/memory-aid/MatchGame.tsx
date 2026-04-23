@@ -68,7 +68,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const lockRef = useRef(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const tileRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const [lines, setLines] = useState<Array<{ cardId: string; x1: number; y1: number; x2: number; y2: number; color: string }>>([]);
+  const [lines, setLines] = useState<Array<{ cardId: string; pairKey: string; x1: number; y1: number; x2: number; y2: number; cx: number; cy: number; color: string; curved: boolean }>>([]);
   const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
   const [lastMatchedCardId, setLastMatchedCardId] = useState<string | null>(null);
 
@@ -91,85 +91,105 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     return map;
   }, [tiles]);
 
-  // Recompute connection lines whenever matched set or layout changes
-  useLayoutEffect(() => {
-    if (!settings.showConnections) { setLines([]); return; }
+  // Compute connection lines: pair tiles by position-order per cardId so the
+  // same card appearing multiple times produces independent lines. When two
+  // lines share both endpoints (parallel/overlapping), curve them outward by
+  // an alternating offset so they stay visually distinct.
+  const computeLines = (): typeof lines => {
     const grid = gridRef.current;
-    if (!grid) return;
+    if (!grid) return [];
     const gridRect = grid.getBoundingClientRect();
     setGridSize({ w: gridRect.width, h: gridRect.height });
 
-    // Group matched tiles by cardId
-    const byCard = new Map<string, string[]>();
-    matched.forEach(tileId => {
-      const tile = tiles.find(t => t.id === tileId);
-      if (!tile) return;
-      const arr = byCard.get(tile.cardId) ?? [];
-      arr.push(tileId);
-      byCard.set(tile.cardId, arr);
+    const wordsByCard = new Map<string, string[]>();
+    const defsByCard = new Map<string, string[]>();
+    tiles.forEach(tile => {
+      if (!matched.has(tile.id)) return;
+      const bucket = tile.type === 'word' ? wordsByCard : defsByCard;
+      const arr = bucket.get(tile.cardId) ?? [];
+      arr.push(tile.id);
+      bucket.set(tile.cardId, arr);
     });
 
-    const newLines: typeof lines = [];
-    byCard.forEach((ids, cardId) => {
-      if (ids.length < 2) return;
-      const a = tileRefs.current.get(ids[0]);
-      const b = tileRefs.current.get(ids[1]);
-      if (!a || !b) return;
-      const ra = a.getBoundingClientRect();
-      const rb = b.getBoundingClientRect();
+    type Raw = { cardId: string; pairKey: string; ax: number; ay: number; bx: number; by: number; color: string };
+    const raw: Raw[] = [];
+
+    wordsByCard.forEach((words, cardId) => {
+      const defs = defsByCard.get(cardId) ?? [];
+      const n = Math.min(words.length, defs.length);
       const pairIdx = pairIndexMap.get(cardId) ?? 0;
-      newLines.push({
-        cardId,
-        x1: ra.left + ra.width / 2 - gridRect.left,
-        y1: ra.top + ra.height / 2 - gridRect.top,
-        x2: rb.left + rb.width / 2 - gridRect.left,
-        y2: rb.top + rb.height / 2 - gridRect.top,
-        color: PAIR_COLORS[pairIdx % PAIR_COLORS.length],
-      });
+      const color = PAIR_COLORS[pairIdx % PAIR_COLORS.length];
+      for (let i = 0; i < n; i++) {
+        const a = tileRefs.current.get(words[i]);
+        const b = tileRefs.current.get(defs[i]);
+        if (!a || !b) continue;
+        const ra = a.getBoundingClientRect();
+        const rb = b.getBoundingClientRect();
+        raw.push({
+          cardId,
+          pairKey: `${cardId}#${i}`,
+          ax: ra.left + ra.width / 2 - gridRect.left,
+          ay: ra.top + ra.height / 2 - gridRect.top,
+          bx: rb.left + rb.width / 2 - gridRect.left,
+          by: rb.top + rb.height / 2 - gridRect.top,
+          color,
+        });
+      }
     });
-    setLines(newLines);
+
+    // Bucket parallel/overlapping pairs (order-independent endpoint signature)
+    // and assign each a centered perpendicular offset slot.
+    const sigOf = (r: Raw) => {
+      const q = (n: number) => Math.round(n / 8) * 8;
+      const a = `${q(r.ax)},${q(r.ay)}`;
+      const b = `${q(r.bx)},${q(r.by)}`;
+      return a < b ? `${a}|${b}` : `${b}|${a}`;
+    };
+    const sigCounts = new Map<string, number>();
+    const sigSlot = new Map<string, number>();
+    raw.forEach(r => sigCounts.set(sigOf(r), (sigCounts.get(sigOf(r)) ?? 0) + 1));
+
+    return raw.map(r => {
+      const sig = sigOf(r);
+      const total = sigCounts.get(sig) ?? 1;
+      const slot = sigSlot.get(sig) ?? 0;
+      sigSlot.set(sig, slot + 1);
+
+      const offsetIdx = slot - (total - 1) / 2; // centered: 1->[0]; 2->[-.5,.5]; 3->[-1,0,1]
+      const dx = r.bx - r.ax;
+      const dy = r.by - r.ay;
+      const len = Math.hypot(dx, dy) || 1;
+      const px = -dy / len;
+      const py = dx / len;
+      const STEP = 18; // px between parallel curves
+      const off = offsetIdx * STEP;
+      const cx = (r.ax + r.bx) / 2 + px * off * 2;
+      const cy = (r.ay + r.by) / 2 + py * off * 2;
+
+      return {
+        cardId: r.cardId,
+        pairKey: r.pairKey,
+        x1: r.ax, y1: r.ay,
+        x2: r.bx, y2: r.by,
+        cx, cy,
+        color: r.color,
+        curved: total > 1,
+      };
+    });
+  };
+
+  useLayoutEffect(() => {
+    if (!settings.showConnections) { setLines([]); return; }
+    setLines(computeLines());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale]);
 
-  // Recompute on resize
   useEffect(() => {
     if (!settings.showConnections) return;
-    const handler = () => {
-      const grid = gridRef.current;
-      if (!grid) return;
-      const gridRect = grid.getBoundingClientRect();
-      setGridSize({ w: gridRect.width, h: gridRect.height });
-      setLines(prev => {
-        const next: typeof prev = [];
-        const byCard = new Map<string, string[]>();
-        matched.forEach(tileId => {
-          const tile = tiles.find(t => t.id === tileId);
-          if (!tile) return;
-          const arr = byCard.get(tile.cardId) ?? [];
-          arr.push(tileId);
-          byCard.set(tile.cardId, arr);
-        });
-        byCard.forEach((ids, cardId) => {
-          if (ids.length < 2) return;
-          const a = tileRefs.current.get(ids[0]);
-          const b = tileRefs.current.get(ids[1]);
-          if (!a || !b) return;
-          const ra = a.getBoundingClientRect();
-          const rb = b.getBoundingClientRect();
-          const pairIdx = pairIndexMap.get(cardId) ?? 0;
-          next.push({
-            cardId,
-            x1: ra.left + ra.width / 2 - gridRect.left,
-            y1: ra.top + ra.height / 2 - gridRect.top,
-            x2: rb.left + rb.width / 2 - gridRect.left,
-            y2: rb.top + rb.height / 2 - gridRect.top,
-            color: PAIR_COLORS[pairIdx % PAIR_COLORS.length],
-          });
-        });
-        return next;
-      });
-    };
+    const handler = () => setLines(computeLines());
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matched, tiles, pairIndexMap, settings.showConnections]);
 
 
@@ -497,15 +517,18 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
             {lines.map((ln, i) => {
               const isNew = ln.cardId === lastMatchedCardId;
               const animate = settings.animateNewOnly ? isNew : true;
+              const d = ln.curved
+                ? `M ${ln.x1} ${ln.y1} Q ${ln.cx} ${ln.cy} ${ln.x2} ${ln.y2}`
+                : `M ${ln.x1} ${ln.y1} L ${ln.x2} ${ln.y2}`;
               return (
-                <g key={`${ln.cardId}-${i}`}>
-                  <line
-                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                <g key={ln.pairKey ?? `${ln.cardId}-${i}`}>
+                  <path
+                    d={d} fill="none"
                     stroke={ln.color} strokeWidth={8} strokeLinecap="round"
                     opacity={animate ? 0.18 : 0.12}
                   />
-                  <line
-                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                  <path
+                    d={d} fill="none"
                     stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
                     strokeDasharray={animate ? '6 4' : undefined}
                     filter={animate ? `url(#glow-${i})` : undefined}
