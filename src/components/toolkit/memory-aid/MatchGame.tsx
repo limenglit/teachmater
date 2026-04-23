@@ -213,6 +213,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
       if (t1.cardId === t2.cardId && t1.type !== t2.type) {
         setTimeout(() => {
           setMatched(prev => new Set([...prev, next[0], next[1]]));
+          setLastMatchedCardId(t1.cardId);
           setSelected([]);
           lockRef.current = false;
 
