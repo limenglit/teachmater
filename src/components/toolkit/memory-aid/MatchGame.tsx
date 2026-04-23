@@ -517,15 +517,18 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
             {lines.map((ln, i) => {
               const isNew = ln.cardId === lastMatchedCardId;
               const animate = settings.animateNewOnly ? isNew : true;
+              const d = ln.curved
+                ? `M ${ln.x1} ${ln.y1} Q ${ln.cx} ${ln.cy} ${ln.x2} ${ln.y2}`
+                : `M ${ln.x1} ${ln.y1} L ${ln.x2} ${ln.y2}`;
               return (
-                <g key={`${ln.cardId}-${i}`}>
-                  <line
-                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                <g key={ln.pairKey ?? `${ln.cardId}-${i}`}>
+                  <path
+                    d={d} fill="none"
                     stroke={ln.color} strokeWidth={8} strokeLinecap="round"
                     opacity={animate ? 0.18 : 0.12}
                   />
-                  <line
-                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                  <path
+                    d={d} fill="none"
                     stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
                     strokeDasharray={animate ? '6 4' : undefined}
                     filter={animate ? `url(#glow-${i})` : undefined}
