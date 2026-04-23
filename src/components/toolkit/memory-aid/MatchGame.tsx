@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,12 +31,14 @@ interface Settings {
   fontScale: number;       // 0.7 – 2.0
   matchedColor: string;    // hex or 'auto' (use pair color)
   showPairBadge: boolean;  // show numeric/color badge to indicate the matched pair
+  showConnections: boolean; // draw SVG line between matched pair centers
 }
 
 const DEFAULT_SETTINGS: Settings = {
   fontScale: 1,
   matchedColor: 'auto',
   showPairBadge: true,
+  showConnections: true,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
@@ -62,6 +64,10 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const lockRef = useRef(false);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const tileRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const [lines, setLines] = useState<Array<{ cardId: string; x1: number; y1: number; x2: number; y2: number; color: string }>>([]);
+  const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
 
   const effectivePairCount = Math.min(pairCount, cards.length);
 
@@ -81,6 +87,88 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     });
     return map;
   }, [tiles]);
+
+  // Recompute connection lines whenever matched set or layout changes
+  useLayoutEffect(() => {
+    if (!settings.showConnections) { setLines([]); return; }
+    const grid = gridRef.current;
+    if (!grid) return;
+    const gridRect = grid.getBoundingClientRect();
+    setGridSize({ w: gridRect.width, h: gridRect.height });
+
+    // Group matched tiles by cardId
+    const byCard = new Map<string, string[]>();
+    matched.forEach(tileId => {
+      const tile = tiles.find(t => t.id === tileId);
+      if (!tile) return;
+      const arr = byCard.get(tile.cardId) ?? [];
+      arr.push(tileId);
+      byCard.set(tile.cardId, arr);
+    });
+
+    const newLines: typeof lines = [];
+    byCard.forEach((ids, cardId) => {
+      if (ids.length < 2) return;
+      const a = tileRefs.current.get(ids[0]);
+      const b = tileRefs.current.get(ids[1]);
+      if (!a || !b) return;
+      const ra = a.getBoundingClientRect();
+      const rb = b.getBoundingClientRect();
+      const pairIdx = pairIndexMap.get(cardId) ?? 0;
+      newLines.push({
+        cardId,
+        x1: ra.left + ra.width / 2 - gridRect.left,
+        y1: ra.top + ra.height / 2 - gridRect.top,
+        x2: rb.left + rb.width / 2 - gridRect.left,
+        y2: rb.top + rb.height / 2 - gridRect.top,
+        color: PAIR_COLORS[pairIdx % PAIR_COLORS.length],
+      });
+    });
+    setLines(newLines);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale]);
+
+  // Recompute on resize
+  useEffect(() => {
+    if (!settings.showConnections) return;
+    const handler = () => {
+      const grid = gridRef.current;
+      if (!grid) return;
+      const gridRect = grid.getBoundingClientRect();
+      setGridSize({ w: gridRect.width, h: gridRect.height });
+      setLines(prev => {
+        const next: typeof prev = [];
+        const byCard = new Map<string, string[]>();
+        matched.forEach(tileId => {
+          const tile = tiles.find(t => t.id === tileId);
+          if (!tile) return;
+          const arr = byCard.get(tile.cardId) ?? [];
+          arr.push(tileId);
+          byCard.set(tile.cardId, arr);
+        });
+        byCard.forEach((ids, cardId) => {
+          if (ids.length < 2) return;
+          const a = tileRefs.current.get(ids[0]);
+          const b = tileRefs.current.get(ids[1]);
+          if (!a || !b) return;
+          const ra = a.getBoundingClientRect();
+          const rb = b.getBoundingClientRect();
+          const pairIdx = pairIndexMap.get(cardId) ?? 0;
+          next.push({
+            cardId,
+            x1: ra.left + ra.width / 2 - gridRect.left,
+            y1: ra.top + ra.height / 2 - gridRect.top,
+            x2: rb.left + rb.width / 2 - gridRect.left,
+            y2: rb.top + rb.height / 2 - gridRect.top,
+            color: PAIR_COLORS[pairIdx % PAIR_COLORS.length],
+          });
+        });
+        return next;
+      });
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [matched, tiles, pairIndexMap, settings.showConnections]);
+
 
   const buildTiles = (count: number) => {
     const subset = shuffle([...cards]).slice(0, count);
@@ -238,6 +326,19 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 />
               </div>
 
+              <div className="flex items-center justify-between">
+                <Label className="text-xs cursor-pointer" htmlFor="show-connections">
+                  显示配对连线
+                </Label>
+                <input
+                  id="show-connections"
+                  type="checkbox"
+                  checked={settings.showConnections}
+                  onChange={e => setSettings(s => ({ ...s, showConnections: e.target.checked }))}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                />
+              </div>
+
               <Button
                 size="sm"
                 variant="ghost"
@@ -255,11 +356,13 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
         </div>
       </div>
 
-      <div
-        className="grid gap-2"
-        style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-      >
-        {tiles.map(tile => {
+      <div className="relative">
+        <div
+          ref={gridRef}
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+        >
+          {tiles.map(tile => {
           const isFlipped = flipped.has(tile.id) || matched.has(tile.id);
           const isMatched = matched.has(tile.id);
           const hasImage = !!tile.image;
@@ -276,6 +379,10 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
           return (
             <motion.button
               key={tile.id}
+              ref={(el) => {
+                if (el) tileRefs.current.set(tile.id, el);
+                else tileRefs.current.delete(tile.id);
+              }}
               onClick={() => handleClick(tile.id)}
               className={`relative aspect-square rounded-xl border-2 font-medium p-1 transition-all duration-200 flex items-center justify-center text-center leading-tight overflow-hidden
                 ${isMatched
@@ -347,6 +454,54 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
             </motion.button>
           );
         })}
+        </div>
+
+        {/* Connection lines overlay between matched pair centers */}
+        {settings.showConnections && lines.length > 0 && gridSize.w > 0 && (
+          <svg
+            className="absolute inset-0 pointer-events-none"
+            width={gridSize.w}
+            height={gridSize.h}
+            style={{ overflow: 'visible' }}
+            aria-hidden
+          >
+            <defs>
+              {lines.map((_, i) => (
+                <filter key={`f-${i}`} id={`glow-${i}`} x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              ))}
+            </defs>
+            {lines.map((ln, i) => (
+              <g key={`${ln.cardId}-${i}`}>
+                <line
+                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                  stroke={ln.color} strokeWidth={8} strokeLinecap="round"
+                  opacity={0.18}
+                />
+                <line
+                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                  stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
+                  strokeDasharray="6 4"
+                  filter={`url(#glow-${i})`}
+                  style={{ animation: 'matchDash 1.2s linear infinite' }}
+                />
+                <circle cx={ln.x1} cy={ln.y1} r={4} fill={ln.color} opacity={0.9} />
+                <circle cx={ln.x2} cy={ln.y2} r={4} fill={ln.color} opacity={0.9} />
+              </g>
+            ))}
+            <style>{`
+              @keyframes matchDash {
+                from { stroke-dashoffset: 0; }
+                to { stroke-dashoffset: -20; }
+              }
+            `}</style>
+          </svg>
+        )}
       </div>
     </div>
   );
