@@ -454,6 +454,54 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
             </motion.button>
           );
         })}
+        </div>
+
+        {/* Connection lines overlay between matched pair centers */}
+        {settings.showConnections && lines.length > 0 && gridSize.w > 0 && (
+          <svg
+            className="absolute inset-0 pointer-events-none"
+            width={gridSize.w}
+            height={gridSize.h}
+            style={{ overflow: 'visible' }}
+            aria-hidden
+          >
+            <defs>
+              {lines.map((_, i) => (
+                <filter key={`f-${i}`} id={`glow-${i}`} x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              ))}
+            </defs>
+            {lines.map((ln, i) => (
+              <g key={`${ln.cardId}-${i}`}>
+                <line
+                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                  stroke={ln.color} strokeWidth={8} strokeLinecap="round"
+                  opacity={0.18}
+                />
+                <line
+                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                  stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
+                  strokeDasharray="6 4"
+                  filter={`url(#glow-${i})`}
+                  style={{ animation: 'matchDash 1.2s linear infinite' }}
+                />
+                <circle cx={ln.x1} cy={ln.y1} r={4} fill={ln.color} opacity={0.9} />
+                <circle cx={ln.x2} cy={ln.y2} r={4} fill={ln.color} opacity={0.9} />
+              </g>
+            ))}
+            <style>{`
+              @keyframes matchDash {
+                from { stroke-dashoffset: 0; }
+                to { stroke-dashoffset: -20; }
+              }
+            `}</style>
+          </svg>
+        )}
       </div>
     </div>
   );
