@@ -31,12 +31,14 @@ interface Settings {
   fontScale: number;       // 0.7 – 2.0
   matchedColor: string;    // hex or 'auto' (use pair color)
   showPairBadge: boolean;  // show numeric/color badge to indicate the matched pair
+  showConnections: boolean; // draw SVG line between matched pair centers
 }
 
 const DEFAULT_SETTINGS: Settings = {
   fontScale: 1,
   matchedColor: 'auto',
   showPairBadge: true,
+  showConnections: true,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
