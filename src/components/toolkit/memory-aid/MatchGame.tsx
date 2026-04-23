@@ -344,6 +344,19 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 />
               </div>
 
+              <div className={`flex items-center justify-between ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <Label className="text-xs cursor-pointer" htmlFor="animate-new-only">
+                  仅动画新匹配的连线
+                </Label>
+                <input
+                  id="animate-new-only"
+                  type="checkbox"
+                  checked={settings.animateNewOnly}
+                  onChange={e => setSettings(s => ({ ...s, animateNewOnly: e.target.checked }))}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                />
+              </div>
+
               <Button
                 size="sm"
                 variant="ghost"
