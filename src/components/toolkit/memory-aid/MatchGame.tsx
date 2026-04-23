@@ -326,6 +326,19 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 />
               </div>
 
+              <div className="flex items-center justify-between">
+                <Label className="text-xs cursor-pointer" htmlFor="show-connections">
+                  显示配对连线
+                </Label>
+                <input
+                  id="show-connections"
+                  type="checkbox"
+                  checked={settings.showConnections}
+                  onChange={e => setSettings(s => ({ ...s, showConnections: e.target.checked }))}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                />
+              </div>
+
               <Button
                 size="sm"
                 variant="ghost"
