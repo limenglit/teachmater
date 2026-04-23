@@ -190,6 +190,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     setSelected([]);
     setAttempts(0);
     setStartTime(Date.now());
+    setLastMatchedCardId(null);
     lockRef.current = false;
   };
 
