@@ -87,6 +87,40 @@ export default function VocabSetWizard({ open, onOpenChange, editing, onSaved }:
   const validCards = cards.filter(c => c.word.trim() && c.definition.trim());
   const validStep2 = validCards.length >= 2;
 
+  const handleAIGenerate = async () => {
+    const topic = aiTopic.trim() || title.trim();
+    if (!topic) {
+      toast.error('请输入要生成的主题（或先填写词库名称）');
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const audienceLabel = AUDIENCE_OPTIONS.find(o => o.value === audience)?.label;
+      const { data, error } = await supabase.functions.invoke('generate-vocab-cards', {
+        body: { topic, count: aiCount, audience: audienceLabel },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const generated = ((data as any)?.cards || []) as { word: string; definition: string; example?: string }[];
+      if (!generated.length) throw new Error('未返回任何卡片');
+      const newCards: CardDraft[] = generated.map(c => ({
+        word: c.word, definition: c.definition, example: c.example || '',
+      }));
+      if (aiMode === 'replace') {
+        setCards(newCards);
+      } else {
+        // Append, dropping any leading empty placeholders
+        const filtered = cards.filter(c => c.word.trim() || c.definition.trim());
+        setCards([...filtered, ...newCards]);
+      }
+      toast.success(`已生成 ${newCards.length} 张卡片`);
+    } catch (e: any) {
+      toast.error('AI 生成失败：' + (e?.message || ''));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const next = () => {
     if (step === 1 && !validStep1) {
       toast.error('请填写词库名称');
