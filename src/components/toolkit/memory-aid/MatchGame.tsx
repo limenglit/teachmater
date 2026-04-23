@@ -32,6 +32,7 @@ interface Settings {
   matchedColor: string;    // hex or 'auto' (use pair color)
   showPairBadge: boolean;  // show numeric/color badge to indicate the matched pair
   showConnections: boolean; // draw SVG line between matched pair centers
+  animateNewOnly: boolean; // animate only the newly matched pair; older pairs render static
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -39,6 +40,7 @@ const DEFAULT_SETTINGS: Settings = {
   matchedColor: 'auto',
   showPairBadge: true,
   showConnections: true,
+  animateNewOnly: true,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
@@ -68,6 +70,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
   const tileRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const [lines, setLines] = useState<Array<{ cardId: string; x1: number; y1: number; x2: number; y2: number; color: string }>>([]);
   const [gridSize, setGridSize] = useState({ w: 0, h: 0 });
+  const [lastMatchedCardId, setLastMatchedCardId] = useState<string | null>(null);
 
   const effectivePairCount = Math.min(pairCount, cards.length);
 
@@ -187,6 +190,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     setSelected([]);
     setAttempts(0);
     setStartTime(Date.now());
+    setLastMatchedCardId(null);
     lockRef.current = false;
   };
 
@@ -209,6 +213,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
       if (t1.cardId === t2.cardId && t1.type !== t2.type) {
         setTimeout(() => {
           setMatched(prev => new Set([...prev, next[0], next[1]]));
+          setLastMatchedCardId(t1.cardId);
           setSelected([]);
           lockRef.current = false;
 
@@ -335,6 +340,19 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                   type="checkbox"
                   checked={settings.showConnections}
                   onChange={e => setSettings(s => ({ ...s, showConnections: e.target.checked }))}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                />
+              </div>
+
+              <div className={`flex items-center justify-between ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <Label className="text-xs cursor-pointer" htmlFor="animate-new-only">
+                  仅动画新匹配的连线
+                </Label>
+                <input
+                  id="animate-new-only"
+                  type="checkbox"
+                  checked={settings.animateNewOnly}
+                  onChange={e => setSettings(s => ({ ...s, animateNewOnly: e.target.checked }))}
                   className="h-4 w-4 cursor-pointer accent-primary"
                 />
               </div>
@@ -476,24 +494,29 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 </filter>
               ))}
             </defs>
-            {lines.map((ln, i) => (
-              <g key={`${ln.cardId}-${i}`}>
-                <line
-                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
-                  stroke={ln.color} strokeWidth={8} strokeLinecap="round"
-                  opacity={0.18}
-                />
-                <line
-                  x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
-                  stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
-                  strokeDasharray="6 4"
-                  filter={`url(#glow-${i})`}
-                  style={{ animation: 'matchDash 1.2s linear infinite' }}
-                />
-                <circle cx={ln.x1} cy={ln.y1} r={4} fill={ln.color} opacity={0.9} />
-                <circle cx={ln.x2} cy={ln.y2} r={4} fill={ln.color} opacity={0.9} />
-              </g>
-            ))}
+            {lines.map((ln, i) => {
+              const isNew = ln.cardId === lastMatchedCardId;
+              const animate = settings.animateNewOnly ? isNew : true;
+              return (
+                <g key={`${ln.cardId}-${i}`}>
+                  <line
+                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                    stroke={ln.color} strokeWidth={8} strokeLinecap="round"
+                    opacity={animate ? 0.18 : 0.12}
+                  />
+                  <line
+                    x1={ln.x1} y1={ln.y1} x2={ln.x2} y2={ln.y2}
+                    stroke={ln.color} strokeWidth={2.5} strokeLinecap="round"
+                    strokeDasharray={animate ? '6 4' : undefined}
+                    filter={animate ? `url(#glow-${i})` : undefined}
+                    opacity={animate ? 1 : 0.7}
+                    style={animate ? { animation: 'matchDash 1.2s linear infinite' } : undefined}
+                  />
+                  <circle cx={ln.x1} cy={ln.y1} r={4} fill={ln.color} opacity={animate ? 0.9 : 0.7} />
+                  <circle cx={ln.x2} cy={ln.y2} r={4} fill={ln.color} opacity={animate ? 0.9 : 0.7} />
+                </g>
+              );
+            })}
             <style>{`
               @keyframes matchDash {
                 from { stroke-dashoffset: 0; }
