@@ -88,6 +88,88 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     return map;
   }, [tiles]);
 
+  // Recompute connection lines whenever matched set or layout changes
+  useLayoutEffect(() => {
+    if (!settings.showConnections) { setLines([]); return; }
+    const grid = gridRef.current;
+    if (!grid) return;
+    const gridRect = grid.getBoundingClientRect();
+    setGridSize({ w: gridRect.width, h: gridRect.height });
+
+    // Group matched tiles by cardId
+    const byCard = new Map<string, string[]>();
+    matched.forEach(tileId => {
+      const tile = tiles.find(t => t.id === tileId);
+      if (!tile) return;
+      const arr = byCard.get(tile.cardId) ?? [];
+      arr.push(tileId);
+      byCard.set(tile.cardId, arr);
+    });
+
+    const newLines: typeof lines = [];
+    byCard.forEach((ids, cardId) => {
+      if (ids.length < 2) return;
+      const a = tileRefs.current.get(ids[0]);
+      const b = tileRefs.current.get(ids[1]);
+      if (!a || !b) return;
+      const ra = a.getBoundingClientRect();
+      const rb = b.getBoundingClientRect();
+      const pairIdx = pairIndexMap.get(cardId) ?? 0;
+      newLines.push({
+        cardId,
+        x1: ra.left + ra.width / 2 - gridRect.left,
+        y1: ra.top + ra.height / 2 - gridRect.top,
+        x2: rb.left + rb.width / 2 - gridRect.left,
+        y2: rb.top + rb.height / 2 - gridRect.top,
+        color: PAIR_COLORS[pairIdx % PAIR_COLORS.length],
+      });
+    });
+    setLines(newLines);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale]);
+
+  // Recompute on resize
+  useEffect(() => {
+    if (!settings.showConnections) return;
+    const handler = () => {
+      const grid = gridRef.current;
+      if (!grid) return;
+      const gridRect = grid.getBoundingClientRect();
+      setGridSize({ w: gridRect.width, h: gridRect.height });
+      setLines(prev => {
+        const next: typeof prev = [];
+        const byCard = new Map<string, string[]>();
+        matched.forEach(tileId => {
+          const tile = tiles.find(t => t.id === tileId);
+          if (!tile) return;
+          const arr = byCard.get(tile.cardId) ?? [];
+          arr.push(tileId);
+          byCard.set(tile.cardId, arr);
+        });
+        byCard.forEach((ids, cardId) => {
+          if (ids.length < 2) return;
+          const a = tileRefs.current.get(ids[0]);
+          const b = tileRefs.current.get(ids[1]);
+          if (!a || !b) return;
+          const ra = a.getBoundingClientRect();
+          const rb = b.getBoundingClientRect();
+          const pairIdx = pairIndexMap.get(cardId) ?? 0;
+          next.push({
+            cardId,
+            x1: ra.left + ra.width / 2 - gridRect.left,
+            y1: ra.top + ra.height / 2 - gridRect.top,
+            x2: rb.left + rb.width / 2 - gridRect.left,
+            y2: rb.top + rb.height / 2 - gridRect.top,
+            color: PAIR_COLORS[pairIdx % PAIR_COLORS.length],
+          });
+        });
+        return next;
+      });
+    };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [matched, tiles, pairIndexMap, settings.showConnections]);
+
+
   const buildTiles = (count: number) => {
     const subset = shuffle([...cards]).slice(0, count);
     const t: Tile[] = [];
