@@ -113,6 +113,13 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
       bucket.set(tile.cardId, arr);
     });
 
+    // Stable pairing: sort each bucket by tile.id so the i-th word always pairs
+    // with the i-th definition for a given cardId regardless of shuffle order.
+    if (settings.stablePairing) {
+      wordsByCard.forEach((arr) => arr.sort());
+      defsByCard.forEach((arr) => arr.sort());
+    }
+
     type Raw = { cardId: string; pairKey: string; ax: number; ay: number; bx: number; by: number; color: string };
     const raw: Raw[] = [];
 
