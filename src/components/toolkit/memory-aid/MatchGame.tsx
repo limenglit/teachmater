@@ -33,6 +33,7 @@ interface Settings {
   showPairBadge: boolean;  // show numeric/color badge to indicate the matched pair
   showConnections: boolean; // draw SVG line between matched pair centers
   animateNewOnly: boolean; // animate only the newly matched pair; older pairs render static
+  stablePairing: boolean; // keep word/definition pair indexes stable across reshuffles
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +42,7 @@ const DEFAULT_SETTINGS: Settings = {
   showPairBadge: true,
   showConnections: true,
   animateNewOnly: true,
+  stablePairing: true,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
