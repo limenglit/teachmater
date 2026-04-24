@@ -196,7 +196,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     if (!settings.showConnections) { setLines([]); return; }
     setLines(computeLines());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale, settings.stablePairing]);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale, settings.stablePairing, settings.curveStrength, settings.parallelSpacing]);
 
   useEffect(() => {
     if (!settings.showConnections) return;
@@ -204,7 +204,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.stablePairing]);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.stablePairing, settings.curveStrength, settings.parallelSpacing]);
 
 
   const buildTiles = (count: number) => {
