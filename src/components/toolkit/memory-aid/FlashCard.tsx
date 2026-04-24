@@ -1,13 +1,74 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   ChevronLeft, ChevronRight, Shuffle, Dices,
-  Eye, CheckCircle2, XCircle, RotateCcw
+  Eye, CheckCircle2, XCircle, RotateCcw, Settings2
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { CardItem } from './types';
 import { shuffle } from './types';
+
+interface FlashSettings {
+  cardWidth: number;       // 280 - 720 px
+  cardHeight: number;      // 180 - 520 px
+  fontScale: number;       // 0.7 - 2.2
+  fontFamily: string;      // css font-family
+  textColor: string;       // hex
+  frontBg: string;         // hex
+  backBg: string;          // hex
+  borderColor: string;     // hex
+  schemeId: string;        // preset id
+}
+
+const FONT_OPTIONS = [
+  { id: 'sans', name: '无衬线', value: '"Noto Sans SC", system-ui, sans-serif' },
+  { id: 'serif', name: '衬线', value: '"Noto Serif SC", Georgia, serif' },
+  { id: 'mono', name: '等宽', value: '"JetBrains Mono", "Fira Code", monospace' },
+  { id: 'kai', name: '楷体', value: '"KaiTi", "STKaiti", serif' },
+  { id: 'rounded', name: '圆体', value: '"M PLUS Rounded 1c", "Hiragino Maru Gothic", sans-serif' },
+];
+
+const COLOR_SCHEMES: Array<{
+  id: string; name: string; frontBg: string; backBg: string; textColor: string; borderColor: string;
+}> = [
+  { id: 'classic',  name: '经典白', frontBg: '#ffffff', backBg: '#fafafa', textColor: '#0f172a', borderColor: '#e2e8f0' },
+  { id: 'cream',    name: '米黄',  frontBg: '#fdf6e3', backBg: '#f5e9c8', textColor: '#3b2e1a', borderColor: '#e8d9b0' },
+  { id: 'mint',     name: '薄荷绿', frontBg: '#ecfdf5', backBg: '#d1fae5', textColor: '#064e3b', borderColor: '#a7f3d0' },
+  { id: 'sky',      name: '天空蓝', frontBg: '#eff6ff', backBg: '#dbeafe', textColor: '#0c4a6e', borderColor: '#bfdbfe' },
+  { id: 'rose',     name: '玫瑰粉', frontBg: '#fff1f2', backBg: '#ffe4e6', textColor: '#881337', borderColor: '#fecdd3' },
+  { id: 'lavender', name: '薰衣草', frontBg: '#f5f3ff', backBg: '#ede9fe', textColor: '#4c1d95', borderColor: '#ddd6fe' },
+  { id: 'dark',     name: '深夜',  frontBg: '#1e293b', backBg: '#0f172a', textColor: '#f1f5f9', borderColor: '#334155' },
+  { id: 'paper',    name: '牛皮纸', frontBg: '#f4ecd8', backBg: '#e8dcc0', textColor: '#3d2f17', borderColor: '#c9b88a' },
+];
+
+const DEFAULT_SETTINGS: FlashSettings = {
+  cardWidth: 480,
+  cardHeight: 260,
+  fontScale: 1,
+  fontFamily: FONT_OPTIONS[0].value,
+  textColor: COLOR_SCHEMES[0].textColor,
+  frontBg: COLOR_SCHEMES[0].frontBg,
+  backBg: COLOR_SCHEMES[0].backBg,
+  borderColor: COLOR_SCHEMES[0].borderColor,
+  schemeId: 'classic',
+};
+
+const SETTINGS_KEY = 'memory-flashcard-settings-v1';
+
+function loadSettings(): FlashSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
 
 export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const { t } = useLanguage();
@@ -16,6 +77,11 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const [showBack, setShowBack] = useState(false);
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
+  const [settings, setSettings] = useState<FlashSettings>(loadSettings);
+
+  useEffect(() => {
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
+  }, [settings]);
 
   useEffect(() => {
     setCards([...rawCards]);
@@ -64,52 +130,190 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [go]);
 
+  const applyScheme = (id: string) => {
+    const s = COLOR_SCHEMES.find(x => x.id === id);
+    if (!s) return;
+    setSettings(prev => ({
+      ...prev,
+      schemeId: s.id,
+      frontBg: s.frontBg,
+      backBg: s.backBg,
+      textColor: s.textColor,
+      borderColor: s.borderColor,
+    }));
+  };
+
+  const resetSettings = () => setSettings(DEFAULT_SETTINGS);
+
   if (!card) return null;
 
   const hasFrontImage = !!card.wordImage;
   const hasBackImage = !!card.definitionImage;
+  const fs = settings.fontScale;
 
   return (
     <div className="space-y-4">
+      {/* Top bar with settings */}
+      <div className="flex items-center justify-end">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+              <Settings2 className="w-3 h-3" /> {t('memory.settings') || '设置'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 space-y-4 z-[200] max-h-[80vh] overflow-y-auto">
+            {/* Color scheme */}
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.colorScheme') || '配色方案'}</Label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {COLOR_SCHEMES.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => applyScheme(s.id)}
+                    className={`relative h-12 rounded-md border-2 overflow-hidden transition-all ${settings.schemeId === s.id ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary/50'}`}
+                    style={{ background: `linear-gradient(135deg, ${s.frontBg} 50%, ${s.backBg} 50%)` }}
+                    title={s.name}
+                  >
+                    <span className="absolute bottom-0 inset-x-0 text-[9px] py-0.5 text-center bg-black/40 text-white">{s.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Card size */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.cardWidth') || '卡片宽度'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.cardWidth}px</span>
+              </div>
+              <Slider min={280} max={720} step={10} value={[settings.cardWidth]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, cardWidth: v }))} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.cardHeight') || '卡片高度'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.cardHeight}px</span>
+              </div>
+              <Slider min={180} max={520} step={10} value={[settings.cardHeight]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, cardHeight: v }))} />
+            </div>
+
+            {/* Font family */}
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.fontFamily') || '字体'}</Label>
+              <Select value={settings.fontFamily} onValueChange={v => setSettings(s => ({ ...s, fontFamily: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="z-[200]">
+                  {FONT_OPTIONS.map(f => (
+                    <SelectItem key={f.id} value={f.value}>
+                      <span style={{ fontFamily: f.value }}>{f.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Font scale */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.fontSize') || '字号'}</Label>
+                <span className="text-xs text-muted-foreground">{Math.round(settings.fontScale * 100)}%</span>
+              </div>
+              <Slider min={0.7} max={2.2} step={0.05} value={[settings.fontScale]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, fontScale: v }))} />
+            </div>
+
+            {/* Custom colors */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[11px]">{t('memory.textColor') || '文字颜色'}</Label>
+                <input type="color" value={settings.textColor}
+                  onChange={e => setSettings(s => ({ ...s, textColor: e.target.value, schemeId: 'custom' }))}
+                  className="w-full h-8 rounded border border-border cursor-pointer" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">{t('memory.borderColor') || '边框颜色'}</Label>
+                <input type="color" value={settings.borderColor}
+                  onChange={e => setSettings(s => ({ ...s, borderColor: e.target.value, schemeId: 'custom' }))}
+                  className="w-full h-8 rounded border border-border cursor-pointer" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">{t('memory.frontBg') || '正面颜色'}</Label>
+                <input type="color" value={settings.frontBg}
+                  onChange={e => setSettings(s => ({ ...s, frontBg: e.target.value, schemeId: 'custom' }))}
+                  className="w-full h-8 rounded border border-border cursor-pointer" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[11px]">{t('memory.backBg') || '背面颜色'}</Label>
+                <input type="color" value={settings.backBg}
+                  onChange={e => setSettings(s => ({ ...s, backBg: e.target.value, schemeId: 'custom' }))}
+                  className="w-full h-8 rounded border border-border cursor-pointer" />
+              </div>
+            </div>
+
+            <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
+              <RotateCcw className="w-3 h-3" /> {t('memory.resetSettings') || '恢复默认'}
+            </Button>
+          </PopoverContent>
+        </Popover>
+      </div>
+
       {/* Card */}
       <div
         className="relative cursor-pointer mx-auto"
-        style={{ perspective: 800, width: '100%', maxWidth: 480 }}
+        style={{ perspective: 800, width: '100%', maxWidth: settings.cardWidth }}
         onClick={() => setShowBack(s => !s)}
       >
         <motion.div
-          className="relative w-full rounded-xl border-2 border-border bg-card shadow-sm"
-          style={{ minHeight: 220, transformStyle: 'preserve-3d' }}
+          className="relative w-full rounded-xl border-2 shadow-sm"
+          style={{
+            minHeight: settings.cardHeight,
+            transformStyle: 'preserve-3d',
+            borderColor: settings.borderColor,
+            fontFamily: settings.fontFamily,
+          }}
           animate={{ rotateY: showBack ? 180 : 0 }}
           transition={{ duration: 0.5 }}
         >
           {/* Front */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center p-4"
-            style={{ backfaceVisibility: 'hidden' }}
+            className="absolute inset-0 flex flex-col items-center justify-center p-4 rounded-xl"
+            style={{ backfaceVisibility: 'hidden', backgroundColor: settings.frontBg, color: settings.textColor }}
           >
-            <span className="text-xs text-muted-foreground mb-1">{t('memory.front')}</span>
+            <span className="text-xs opacity-60 mb-1">{t('memory.front')}</span>
             {hasFrontImage && (
               <img src={card.wordImage} alt="" className="max-h-28 max-w-full object-contain rounded-lg mb-2" />
             )}
             {card.word && (
-              <span className={`font-bold text-foreground text-center ${hasFrontImage ? 'text-lg' : 'text-2xl'}`}>{card.word}</span>
+              <span
+                className="font-bold text-center"
+                style={{ fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`, color: settings.textColor }}
+              >
+                {card.word}
+              </span>
             )}
           </div>
           {/* Back */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center p-4"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+            className="absolute inset-0 flex flex-col items-center justify-center p-4 rounded-xl"
+            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', backgroundColor: settings.backBg, color: settings.textColor }}
           >
-            <span className="text-xs text-muted-foreground mb-1">{t('memory.back')}</span>
+            <span className="text-xs opacity-60 mb-1">{t('memory.back')}</span>
             {hasBackImage && (
               <img src={card.definitionImage} alt="" className="max-h-28 max-w-full object-contain rounded-lg mb-2" />
             )}
             {card.definition && (
-              <span className={`font-semibold text-foreground text-center ${hasBackImage ? 'text-base' : 'text-lg'}`}>{card.definition}</span>
+              <span
+                className="font-semibold text-center"
+                style={{ fontSize: `${(hasBackImage ? 16 : 20) * fs}px`, color: settings.textColor }}
+              >
+                {card.definition}
+              </span>
             )}
             {card.example && (
-              <span className="text-xs text-muted-foreground mt-2 italic text-center">"{card.example}"</span>
+              <span className="opacity-70 mt-2 italic text-center" style={{ fontSize: `${12 * fs}px` }}>
+                "{card.example}"
+              </span>
             )}
           </div>
         </motion.div>
