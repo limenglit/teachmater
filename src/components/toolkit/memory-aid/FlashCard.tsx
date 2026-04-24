@@ -323,8 +323,16 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
         >
           {/* Front */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center p-4 rounded-xl"
-            style={{ backfaceVisibility: 'hidden', backgroundColor: settings.frontBg, color: settings.textColor }}
+            className="absolute inset-0 flex flex-col rounded-xl"
+            style={{
+              backfaceVisibility: 'hidden',
+              backgroundColor: settings.frontBg,
+              color: settings.textColor,
+              padding: settings.padding,
+              alignItems: settings.alignH === 'start' ? 'flex-start' : settings.alignH === 'end' ? 'flex-end' : 'center',
+              justifyContent: settings.alignV === 'start' ? 'flex-start' : settings.alignV === 'end' ? 'flex-end' : 'center',
+              textAlign: settings.alignH === 'start' ? 'left' : settings.alignH === 'end' ? 'right' : 'center',
+            }}
           >
             <span className="text-xs opacity-60 mb-1">{t('memory.front')}</span>
             {hasFrontImage && (
@@ -332,7 +340,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.word && (
               <span
-                className="font-bold text-center"
+                className="font-bold"
                 style={{ fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`, color: settings.textColor }}
               >
                 {card.word}
@@ -341,8 +349,17 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
           </div>
           {/* Back */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center p-4 rounded-xl"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', backgroundColor: settings.backBg, color: settings.textColor }}
+            className="absolute inset-0 flex flex-col rounded-xl"
+            style={{
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              backgroundColor: settings.backBg,
+              color: settings.textColor,
+              padding: settings.padding,
+              alignItems: settings.alignH === 'start' ? 'flex-start' : settings.alignH === 'end' ? 'flex-end' : 'center',
+              justifyContent: settings.alignV === 'start' ? 'flex-start' : settings.alignV === 'end' ? 'flex-end' : 'center',
+              textAlign: settings.alignH === 'start' ? 'left' : settings.alignH === 'end' ? 'right' : 'center',
+            }}
           >
             <span className="text-xs opacity-60 mb-1">{t('memory.back')}</span>
             {hasBackImage && (
@@ -350,14 +367,14 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.definition && (
               <span
-                className="font-semibold text-center"
+                className="font-semibold"
                 style={{ fontSize: `${(hasBackImage ? 16 : 20) * fs}px`, color: settings.textColor }}
               >
                 {card.definition}
               </span>
             )}
             {card.example && (
-              <span className="opacity-70 mt-2 italic text-center" style={{ fontSize: `${12 * fs}px` }}>
+              <span className="opacity-70 mt-2 italic" style={{ fontSize: `${12 * fs}px` }}>
                 "{card.example}"
               </span>
             )}
