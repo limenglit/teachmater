@@ -34,6 +34,8 @@ interface Settings {
   showConnections: boolean; // draw SVG line between matched pair centers
   animateNewOnly: boolean; // animate only the newly matched pair; older pairs render static
   stablePairing: boolean; // keep word/definition pair indexes stable across reshuffles
+  curveStrength: number; // 0 – 3, multiplier on bezier perpendicular offset
+  parallelSpacing: number; // 4 – 40 px, base spacing between parallel curves
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -43,6 +45,8 @@ const DEFAULT_SETTINGS: Settings = {
   showConnections: true,
   animateNewOnly: true,
   stablePairing: true,
+  curveStrength: 1,
+  parallelSpacing: 18,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
@@ -170,10 +174,11 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
       const len = Math.hypot(dx, dy) || 1;
       const px = -dy / len;
       const py = dx / len;
-      const STEP = 18; // px between parallel curves
+      const STEP = settings.parallelSpacing; // px between parallel curves
       const off = offsetIdx * STEP;
-      const cx = (r.ax + r.bx) / 2 + px * off * 2;
-      const cy = (r.ay + r.by) / 2 + py * off * 2;
+      const k = settings.curveStrength * 2;
+      const cx = (r.ax + r.bx) / 2 + px * off * k;
+      const cy = (r.ay + r.by) / 2 + py * off * k;
 
       return {
         cardId: r.cardId,
@@ -191,7 +196,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     if (!settings.showConnections) { setLines([]); return; }
     setLines(computeLines());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale, settings.stablePairing]);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale, settings.stablePairing, settings.curveStrength, settings.parallelSpacing]);
 
   useEffect(() => {
     if (!settings.showConnections) return;
@@ -199,7 +204,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.stablePairing]);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.stablePairing, settings.curveStrength, settings.parallelSpacing]);
 
 
   const buildTiles = (count: number) => {
@@ -402,6 +407,40 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                   onChange={e => setSettings(s => ({ ...s, stablePairing: e.target.checked }))}
                   className="h-4 w-4 cursor-pointer accent-primary"
                 />
+              </div>
+
+              <div className={`space-y-1.5 ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">连线曲率强度</Label>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {settings.curveStrength.toFixed(1)}×
+                  </span>
+                </div>
+                <Slider
+                  min={0}
+                  max={3}
+                  step={0.1}
+                  value={[settings.curveStrength]}
+                  onValueChange={v => setSettings(s => ({ ...s, curveStrength: v[0] }))}
+                />
+                <span className="text-[10px] text-muted-foreground">0 = 直线，越大曲线越弯</span>
+              </div>
+
+              <div className={`space-y-1.5 ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">并行连线间距</Label>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {settings.parallelSpacing}px
+                  </span>
+                </div>
+                <Slider
+                  min={4}
+                  max={40}
+                  step={1}
+                  value={[settings.parallelSpacing]}
+                  onValueChange={v => setSettings(s => ({ ...s, parallelSpacing: v[0] }))}
+                />
+                <span className="text-[10px] text-muted-foreground">同端点重叠时相邻曲线的分离距离</span>
               </div>
 
               <Button
