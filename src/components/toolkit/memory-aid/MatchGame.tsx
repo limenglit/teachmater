@@ -296,7 +296,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
               <SelectTrigger className="h-7 w-16 text-xs">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[200]">
                 {pairOptions.map(n => (
                   <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
                 ))}
@@ -310,7 +310,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 <Settings2 className="w-3 h-3" /> 设置
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 space-y-3">
+            <PopoverContent align="end" className="w-72 space-y-3 z-[200] max-h-[80vh] overflow-y-auto">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs">字号缩放</Label>
