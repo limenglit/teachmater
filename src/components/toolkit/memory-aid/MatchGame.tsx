@@ -386,6 +386,24 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 />
               </div>
 
+              <div className={`flex items-center justify-between ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex flex-col">
+                  <Label className="text-xs cursor-pointer" htmlFor="stable-pairing">
+                    稳定配对模式
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    重新洗牌时连线对应关系保持不变
+                  </span>
+                </div>
+                <input
+                  id="stable-pairing"
+                  type="checkbox"
+                  checked={settings.stablePairing}
+                  onChange={e => setSettings(s => ({ ...s, stablePairing: e.target.checked }))}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                />
+              </div>
+
               <Button
                 size="sm"
                 variant="ghost"
