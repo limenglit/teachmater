@@ -23,6 +23,9 @@ interface FlashSettings {
   backBg: string;          // hex
   borderColor: string;     // hex
   schemeId: string;        // preset id
+  alignH: 'start' | 'center' | 'end';  // horizontal alignment
+  alignV: 'start' | 'center' | 'end';  // vertical alignment
+  padding: number;         // 8 - 64 px
 }
 
 const FONT_OPTIONS = [
@@ -56,6 +59,9 @@ const DEFAULT_SETTINGS: FlashSettings = {
   backBg: COLOR_SCHEMES[0].backBg,
   borderColor: COLOR_SCHEMES[0].borderColor,
   schemeId: 'classic',
+  alignH: 'center',
+  alignV: 'center',
+  padding: 16,
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
@@ -251,6 +257,46 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
               </div>
             </div>
 
+            {/* Alignment */}
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.alignH') || '水平对齐'}</Label>
+              <div className="grid grid-cols-3 gap-1">
+                {(['start', 'center', 'end'] as const).map(a => (
+                  <button
+                    key={a}
+                    onClick={() => setSettings(s => ({ ...s, alignH: a }))}
+                    className={`h-7 text-xs rounded border transition-all ${settings.alignH === a ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'}`}
+                  >
+                    {a === 'start' ? (t('memory.alignLeft') || '左') : a === 'center' ? (t('memory.alignCenter') || '中') : (t('memory.alignRight') || '右')}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.alignV') || '垂直对齐'}</Label>
+              <div className="grid grid-cols-3 gap-1">
+                {(['start', 'center', 'end'] as const).map(a => (
+                  <button
+                    key={a}
+                    onClick={() => setSettings(s => ({ ...s, alignV: a }))}
+                    className={`h-7 text-xs rounded border transition-all ${settings.alignV === a ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'}`}
+                  >
+                    {a === 'start' ? (t('memory.alignTop') || '上') : a === 'center' ? (t('memory.alignMiddle') || '中') : (t('memory.alignBottom') || '下')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Padding */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.padding') || '内边距'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.padding}px</span>
+              </div>
+              <Slider min={8} max={64} step={2} value={[settings.padding]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, padding: v }))} />
+            </div>
+
             <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
               <RotateCcw className="w-3 h-3" /> {t('memory.resetSettings') || '恢复默认'}
             </Button>
@@ -277,8 +323,16 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
         >
           {/* Front */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center p-4 rounded-xl"
-            style={{ backfaceVisibility: 'hidden', backgroundColor: settings.frontBg, color: settings.textColor }}
+            className="absolute inset-0 flex flex-col rounded-xl"
+            style={{
+              backfaceVisibility: 'hidden',
+              backgroundColor: settings.frontBg,
+              color: settings.textColor,
+              padding: settings.padding,
+              alignItems: settings.alignH === 'start' ? 'flex-start' : settings.alignH === 'end' ? 'flex-end' : 'center',
+              justifyContent: settings.alignV === 'start' ? 'flex-start' : settings.alignV === 'end' ? 'flex-end' : 'center',
+              textAlign: settings.alignH === 'start' ? 'left' : settings.alignH === 'end' ? 'right' : 'center',
+            }}
           >
             <span className="text-xs opacity-60 mb-1">{t('memory.front')}</span>
             {hasFrontImage && (
@@ -286,7 +340,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.word && (
               <span
-                className="font-bold text-center"
+                className="font-bold"
                 style={{ fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`, color: settings.textColor }}
               >
                 {card.word}
@@ -295,8 +349,17 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
           </div>
           {/* Back */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center p-4 rounded-xl"
-            style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)', backgroundColor: settings.backBg, color: settings.textColor }}
+            className="absolute inset-0 flex flex-col rounded-xl"
+            style={{
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              backgroundColor: settings.backBg,
+              color: settings.textColor,
+              padding: settings.padding,
+              alignItems: settings.alignH === 'start' ? 'flex-start' : settings.alignH === 'end' ? 'flex-end' : 'center',
+              justifyContent: settings.alignV === 'start' ? 'flex-start' : settings.alignV === 'end' ? 'flex-end' : 'center',
+              textAlign: settings.alignH === 'start' ? 'left' : settings.alignH === 'end' ? 'right' : 'center',
+            }}
           >
             <span className="text-xs opacity-60 mb-1">{t('memory.back')}</span>
             {hasBackImage && (
@@ -304,14 +367,14 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.definition && (
               <span
-                className="font-semibold text-center"
+                className="font-semibold"
                 style={{ fontSize: `${(hasBackImage ? 16 : 20) * fs}px`, color: settings.textColor }}
               >
                 {card.definition}
               </span>
             )}
             {card.example && (
-              <span className="opacity-70 mt-2 italic text-center" style={{ fontSize: `${12 * fs}px` }}>
+              <span className="opacity-70 mt-2 italic" style={{ fontSize: `${12 * fs}px` }}>
                 "{card.example}"
               </span>
             )}
