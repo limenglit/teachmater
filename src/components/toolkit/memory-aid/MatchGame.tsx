@@ -174,10 +174,11 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
       const len = Math.hypot(dx, dy) || 1;
       const px = -dy / len;
       const py = dx / len;
-      const STEP = 18; // px between parallel curves
+      const STEP = settings.parallelSpacing; // px between parallel curves
       const off = offsetIdx * STEP;
-      const cx = (r.ax + r.bx) / 2 + px * off * 2;
-      const cy = (r.ay + r.by) / 2 + py * off * 2;
+      const k = settings.curveStrength * 2;
+      const cx = (r.ax + r.bx) / 2 + px * off * k;
+      const cy = (r.ay + r.by) / 2 + py * off * k;
 
       return {
         cardId: r.cardId,
