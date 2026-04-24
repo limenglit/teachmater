@@ -23,6 +23,9 @@ interface FlashSettings {
   backBg: string;          // hex
   borderColor: string;     // hex
   schemeId: string;        // preset id
+  alignH: 'start' | 'center' | 'end';  // horizontal alignment
+  alignV: 'start' | 'center' | 'end';  // vertical alignment
+  padding: number;         // 8 - 64 px
 }
 
 const FONT_OPTIONS = [
@@ -56,6 +59,9 @@ const DEFAULT_SETTINGS: FlashSettings = {
   backBg: COLOR_SCHEMES[0].backBg,
   borderColor: COLOR_SCHEMES[0].borderColor,
   schemeId: 'classic',
+  alignH: 'center',
+  alignV: 'center',
+  padding: 16,
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
