@@ -257,6 +257,46 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
               </div>
             </div>
 
+            {/* Alignment */}
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.alignH') || '水平对齐'}</Label>
+              <div className="grid grid-cols-3 gap-1">
+                {(['start', 'center', 'end'] as const).map(a => (
+                  <button
+                    key={a}
+                    onClick={() => setSettings(s => ({ ...s, alignH: a }))}
+                    className={`h-7 text-xs rounded border transition-all ${settings.alignH === a ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'}`}
+                  >
+                    {a === 'start' ? (t('memory.alignLeft') || '左') : a === 'center' ? (t('memory.alignCenter') || '中') : (t('memory.alignRight') || '右')}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.alignV') || '垂直对齐'}</Label>
+              <div className="grid grid-cols-3 gap-1">
+                {(['start', 'center', 'end'] as const).map(a => (
+                  <button
+                    key={a}
+                    onClick={() => setSettings(s => ({ ...s, alignV: a }))}
+                    className={`h-7 text-xs rounded border transition-all ${settings.alignV === a ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'}`}
+                  >
+                    {a === 'start' ? (t('memory.alignTop') || '上') : a === 'center' ? (t('memory.alignMiddle') || '中') : (t('memory.alignBottom') || '下')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Padding */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.padding') || '内边距'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.padding}px</span>
+              </div>
+              <Slider min={8} max={64} step={2} value={[settings.padding]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, padding: v }))} />
+            </div>
+
             <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
               <RotateCcw className="w-3 h-3" /> {t('memory.resetSettings') || '恢复默认'}
             </Button>
