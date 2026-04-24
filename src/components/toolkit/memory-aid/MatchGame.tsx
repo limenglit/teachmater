@@ -409,6 +409,40 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                 />
               </div>
 
+              <div className={`space-y-1.5 ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">连线曲率强度</Label>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {settings.curveStrength.toFixed(1)}×
+                  </span>
+                </div>
+                <Slider
+                  min={0}
+                  max={3}
+                  step={0.1}
+                  value={[settings.curveStrength]}
+                  onValueChange={v => setSettings(s => ({ ...s, curveStrength: v[0] }))}
+                />
+                <span className="text-[10px] text-muted-foreground">0 = 直线，越大曲线越弯</span>
+              </div>
+
+              <div className={`space-y-1.5 ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">并行连线间距</Label>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {settings.parallelSpacing}px
+                  </span>
+                </div>
+                <Slider
+                  min={4}
+                  max={40}
+                  step={1}
+                  value={[settings.parallelSpacing]}
+                  onValueChange={v => setSettings(s => ({ ...s, parallelSpacing: v[0] }))}
+                />
+                <span className="text-[10px] text-muted-foreground">同端点重叠时相邻曲线的分离距离</span>
+              </div>
+
               <Button
                 size="sm"
                 variant="ghost"
