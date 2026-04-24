@@ -33,6 +33,7 @@ interface Settings {
   showPairBadge: boolean;  // show numeric/color badge to indicate the matched pair
   showConnections: boolean; // draw SVG line between matched pair centers
   animateNewOnly: boolean; // animate only the newly matched pair; older pairs render static
+  stablePairing: boolean; // keep word/definition pair indexes stable across reshuffles
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +42,7 @@ const DEFAULT_SETTINGS: Settings = {
   showPairBadge: true,
   showConnections: true,
   animateNewOnly: true,
+  stablePairing: true,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
@@ -110,6 +112,13 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
       arr.push(tile.id);
       bucket.set(tile.cardId, arr);
     });
+
+    // Stable pairing: sort each bucket by tile.id so the i-th word always pairs
+    // with the i-th definition for a given cardId regardless of shuffle order.
+    if (settings.stablePairing) {
+      wordsByCard.forEach((arr) => arr.sort());
+      defsByCard.forEach((arr) => arr.sort());
+    }
 
     type Raw = { cardId: string; pairKey: string; ax: number; ay: number; bx: number; by: number; color: string };
     const raw: Raw[] = [];
@@ -182,7 +191,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     if (!settings.showConnections) { setLines([]); return; }
     setLines(computeLines());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale]);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.fontScale, settings.stablePairing]);
 
   useEffect(() => {
     if (!settings.showConnections) return;
@@ -190,7 +199,7 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matched, tiles, pairIndexMap, settings.showConnections]);
+  }, [matched, tiles, pairIndexMap, settings.showConnections, settings.stablePairing]);
 
 
   const buildTiles = (count: number) => {
@@ -373,6 +382,24 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
                   type="checkbox"
                   checked={settings.animateNewOnly}
                   onChange={e => setSettings(s => ({ ...s, animateNewOnly: e.target.checked }))}
+                  className="h-4 w-4 cursor-pointer accent-primary"
+                />
+              </div>
+
+              <div className={`flex items-center justify-between ${!settings.showConnections ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="flex flex-col">
+                  <Label className="text-xs cursor-pointer" htmlFor="stable-pairing">
+                    稳定配对模式
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    重新洗牌时连线对应关系保持不变
+                  </span>
+                </div>
+                <input
+                  id="stable-pairing"
+                  type="checkbox"
+                  checked={settings.stablePairing}
+                  onChange={e => setSettings(s => ({ ...s, stablePairing: e.target.checked }))}
                   className="h-4 w-4 cursor-pointer accent-primary"
                 />
               </div>
