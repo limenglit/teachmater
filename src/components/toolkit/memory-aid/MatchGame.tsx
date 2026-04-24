@@ -34,6 +34,8 @@ interface Settings {
   showConnections: boolean; // draw SVG line between matched pair centers
   animateNewOnly: boolean; // animate only the newly matched pair; older pairs render static
   stablePairing: boolean; // keep word/definition pair indexes stable across reshuffles
+  curveStrength: number; // 0 – 3, multiplier on bezier perpendicular offset
+  parallelSpacing: number; // 4 – 40 px, base spacing between parallel curves
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -43,6 +45,8 @@ const DEFAULT_SETTINGS: Settings = {
   showConnections: true,
   animateNewOnly: true,
   stablePairing: true,
+  curveStrength: 1,
+  parallelSpacing: 18,
 };
 
 const SETTINGS_KEY = 'memory-match-settings-v1';
