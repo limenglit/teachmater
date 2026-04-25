@@ -16,6 +16,13 @@
     <link rel="preconnect" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" crossorigin />
     <link rel="dns-prefetch" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" />
 
+    <!-- Google Fonts: load non-blocking to avoid delaying FCP. Falls back to system fonts until ready (display=swap). -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" /></noscript>
+
     <!-- Preload the LCP image (header logo) — WebP for modern browsers; PNG fallback handled by <picture> at runtime -->
     <link rel="preload" as="image" href="/logo.webp" type="image/webp" fetchpriority="high" />
 
