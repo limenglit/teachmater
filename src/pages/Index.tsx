@@ -207,7 +207,7 @@ const Index = () => {
 
             <div className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
               {/* 积分面板后，工具箱前插入社区 */}
-              {renderContent()}
+              <Suspense fallback={<PanelFallback />}>{renderContent()}</Suspense>
             </div>
           </div>
         </div>
