@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import {
   ChevronLeft, ChevronRight, Shuffle, Dices,
   Eye, CheckCircle2, XCircle, RotateCcw, Settings2,
-  Save, Trash2, Download, Upload
+  Save, Trash2, Download, Upload, Undo2, GitCompare, X
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { CardItem } from './types';
@@ -134,6 +134,11 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const [presets, setPresets] = useState<FlashPreset[]>(loadPresets);
   const [presetName, setPresetName] = useState('');
   const [activePresetId, setActivePresetId] = useState<string>('');
+  // 加载预设前的快照——用于一键回退/对照差异
+  const [preLoadSnapshot, setPreLoadSnapshot] = useState<{ settings: FlashSettings; presetName: string } | null>(null);
+  // 对照模式：true=显示快照，false=显示已加载的预设
+  const [comparing, setComparing] = useState(false);
+  const [stagedSettings, setStagedSettings] = useState<FlashSettings | null>(null);
 
   useEffect(() => {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
@@ -165,9 +170,42 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const loadPreset = useCallback((id: string) => {
     const p = presets.find(x => x.id === id);
     if (!p) return;
+    // 保存加载前的快照（仅在尚未存在快照、或加载的是不同预设时刷新）
+    setPreLoadSnapshot({ settings, presetName: '当前未保存' });
+    setStagedSettings(settings);
+    setComparing(false);
     setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
     setActivePresetId(id);
-  }, [presets]);
+  }, [presets, settings]);
+
+  const revertToSnapshot = useCallback(() => {
+    if (!preLoadSnapshot) return;
+    setSettings(preLoadSnapshot.settings);
+    setActivePresetId('');
+    setPreLoadSnapshot(null);
+    setStagedSettings(null);
+    setComparing(false);
+  }, [preLoadSnapshot]);
+
+  const toggleCompare = useCallback(() => {
+    if (!preLoadSnapshot || !stagedSettings) return;
+    if (!comparing) {
+      // 切回快照预览
+      setStagedSettings(settings); // 记住当前已加载的预设
+      setSettings(preLoadSnapshot.settings);
+      setComparing(true);
+    } else {
+      // 切回已加载的预设
+      setSettings(stagedSettings);
+      setComparing(false);
+    }
+  }, [comparing, preLoadSnapshot, stagedSettings, settings]);
+
+  const dismissSnapshot = useCallback(() => {
+    setPreLoadSnapshot(null);
+    setStagedSettings(null);
+    setComparing(false);
+  }, []);
 
   const deletePreset = useCallback((id: string) => {
     setPresets(ps => ps.filter(p => p.id !== id));
@@ -556,6 +594,46 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                 </div>
               ) : (
                 <p className="text-[11px] text-muted-foreground">{t('memory.noPresets') || '暂无保存的预设'}</p>
+              )}
+
+              {/* Snapshot / compare bar — visible only after loading a preset */}
+              {preLoadSnapshot && (
+                <div className={`rounded-md border p-2 space-y-1.5 transition-colors ${comparing ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/30' : 'border-primary/40 bg-primary/5'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium">
+                      {comparing
+                        ? (t('memory.viewingSnapshot') || '正在预览：加载前')
+                        : (t('memory.viewingPreset') || '已加载预设')}
+                    </span>
+                    <button
+                      onClick={dismissSnapshot}
+                      className="opacity-50 hover:opacity-100"
+                      title={t('memory.keepCurrent') || '保留当前并关闭'}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={comparing ? 'default' : 'outline'}
+                      onClick={toggleCompare}
+                      className="h-6 text-[11px] gap-1 flex-1 px-2"
+                    >
+                      <GitCompare className="w-3 h-3" />
+                      {comparing ? (t('memory.showLoaded') || '显示新预设') : (t('memory.showSnapshot') || '对照差异')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={revertToSnapshot}
+                      className="h-6 text-[11px] gap-1 flex-1 px-2"
+                    >
+                      <Undo2 className="w-3 h-3" />
+                      {t('memory.revertSnapshot') || '回退'}
+                    </Button>
+                  </div>
+                </div>
               )}
 
               {/* Import / Export */}
