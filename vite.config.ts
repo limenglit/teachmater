@@ -16,6 +16,13 @@ export default defineConfig(({ mode }) => ({
     target: ['es2020', 'chrome80', 'firefox78', 'safari14', 'edge88'],
     cssTarget: ['chrome80', 'firefox78', 'safari14', 'edge88'],
   },
+  optimizeDeps: {
+    // Match build target so dep pre-bundling does not down-level to ES5
+    // (avoids shipping legacy polyfills/transforms in vendor code).
+    esbuildOptions: {
+      target: 'es2020',
+    },
+  },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
     dedupe: ['react', 'react-dom'],
