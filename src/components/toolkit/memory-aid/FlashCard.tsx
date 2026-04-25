@@ -417,6 +417,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                   fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`,
                   color: settings.textColor,
                   lineHeight: settings.lineHeight,
+                  letterSpacing: `${settings.letterSpacing}px`,
                   whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
                   wordBreak: settings.wordBreak,
                   overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
@@ -453,6 +454,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                   fontSize: `${(hasBackImage ? 16 : 20) * fs}px`,
                   color: settings.textColor,
                   lineHeight: settings.lineHeight,
+                  letterSpacing: `${settings.letterSpacing}px`,
                   whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
                   wordBreak: settings.wordBreak,
                   overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
@@ -465,10 +467,12 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.example && (
               <span
-                className="opacity-70 mt-2 italic max-w-full"
+                className="opacity-70 italic max-w-full"
                 style={{
                   fontSize: `${12 * fs}px`,
                   lineHeight: settings.lineHeight,
+                  letterSpacing: `${settings.letterSpacing}px`,
+                  marginTop: settings.paragraphGap,
                   whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
                   wordBreak: settings.wordBreak,
                   overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
