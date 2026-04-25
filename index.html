@@ -16,6 +16,12 @@
     <link rel="preconnect" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" crossorigin />
     <link rel="dns-prefetch" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" />
 
+    <!-- Google Fonts: preconnect + parallel <link> instead of CSS @import to break the request chain -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" /></noscript>
+
     <!-- Preload the LCP image (header logo) so the browser fetches it in parallel with the JS bundle -->
     <link rel="preload" as="image" href="/logo.png" fetchpriority="high" />
 
