@@ -5,9 +5,11 @@ import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   ChevronLeft, ChevronRight, Shuffle, Dices,
-  Eye, CheckCircle2, XCircle, RotateCcw, Settings2
+  Eye, CheckCircle2, XCircle, RotateCcw, Settings2,
+  Save, Trash2, Download, Upload
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { CardItem } from './types';
@@ -75,6 +77,14 @@ const DEFAULT_SETTINGS: FlashSettings = {
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
+const PRESETS_KEY = 'memory-flashcard-presets-v1';
+
+interface FlashPreset {
+  id: string;
+  name: string;
+  settings: FlashSettings;
+  createdAt: number;
+}
 
 function loadSettings(): FlashSettings {
   try {
@@ -83,6 +93,17 @@ function loadSettings(): FlashSettings {
     return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
   } catch {
     return DEFAULT_SETTINGS;
+  }
+}
+
+function loadPresets(): FlashPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
   }
 }
 
