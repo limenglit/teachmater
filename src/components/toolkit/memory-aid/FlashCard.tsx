@@ -76,6 +76,22 @@ const DEFAULT_SETTINGS: FlashSettings = {
   letterSpacing: 0,
 };
 
+// 一键式排版预设：仅影响 行高/段距/字距 三项
+type TypographyPresetId = 'classroom' | 'compact' | 'comfortable' | 'paper';
+const TYPOGRAPHY_PRESETS: Array<{
+  id: TypographyPresetId;
+  name: string;
+  desc: string;
+  lineHeight: number;
+  paragraphGap: number;
+  letterSpacing: number;
+}> = [
+  { id: 'classroom',   name: '课堂默认', desc: '均衡通用', lineHeight: 1.4, paragraphGap: 8,  letterSpacing: 0 },
+  { id: 'compact',     name: '紧凑',     desc: '内容密集', lineHeight: 1.2, paragraphGap: 4,  letterSpacing: 0 },
+  { id: 'comfortable', name: '舒适',     desc: '宽松呼吸', lineHeight: 1.7, paragraphGap: 16, letterSpacing: 0.5 },
+  { id: 'paper',       name: '论文感',   desc: '正式排版', lineHeight: 1.9, paragraphGap: 24, letterSpacing: 1 },
+];
+
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
 const PRESETS_KEY = 'memory-flashcard-presets-v1';
 
@@ -440,6 +456,35 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                     {o.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Typography quick presets */}
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.typographyPreset') || '排版预设'}</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {TYPOGRAPHY_PRESETS.map(p => {
+                  const active =
+                    Math.abs(settings.lineHeight - p.lineHeight) < 0.01 &&
+                    settings.paragraphGap === p.paragraphGap &&
+                    Math.abs(settings.letterSpacing - p.letterSpacing) < 0.01;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setSettings(s => ({
+                        ...s,
+                        lineHeight: p.lineHeight,
+                        paragraphGap: p.paragraphGap,
+                        letterSpacing: p.letterSpacing,
+                      }))}
+                      className={`text-left px-2 py-1.5 rounded-md border transition-all ${active ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                      title={`行高 ${p.lineHeight} · 段距 ${p.paragraphGap}px · 字距 ${p.letterSpacing}px`}
+                    >
+                      <div className={`text-xs font-medium ${active ? 'text-primary' : ''}`}>{p.name}</div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">{p.desc}</div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
