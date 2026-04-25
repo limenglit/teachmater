@@ -5,9 +5,11 @@ import { Slider } from '@/components/ui/slider';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   ChevronLeft, ChevronRight, Shuffle, Dices,
-  Eye, CheckCircle2, XCircle, RotateCcw, Settings2
+  Eye, CheckCircle2, XCircle, RotateCcw, Settings2,
+  Save, Trash2, Download, Upload
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { CardItem } from './types';
@@ -75,6 +77,14 @@ const DEFAULT_SETTINGS: FlashSettings = {
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
+const PRESETS_KEY = 'memory-flashcard-presets-v1';
+
+interface FlashPreset {
+  id: string;
+  name: string;
+  settings: FlashSettings;
+  createdAt: number;
+}
 
 function loadSettings(): FlashSettings {
   try {
@@ -86,6 +96,17 @@ function loadSettings(): FlashSettings {
   }
 }
 
+function loadPresets(): FlashPreset[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const { t } = useLanguage();
   const [cards, setCards] = useState<CardItem[]>([...rawCards]);
@@ -94,10 +115,83 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [settings, setSettings] = useState<FlashSettings>(loadSettings);
+  const [presets, setPresets] = useState<FlashPreset[]>(loadPresets);
+  const [presetName, setPresetName] = useState('');
+  const [activePresetId, setActivePresetId] = useState<string>('');
 
   useEffect(() => {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
   }, [settings]);
+
+  useEffect(() => {
+    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch { /* ignore */ }
+  }, [presets]);
+
+  const savePreset = useCallback(() => {
+    const name = presetName.trim();
+    if (!name) return;
+    const existingIdx = presets.findIndex(p => p.name === name);
+    const preset: FlashPreset = {
+      id: existingIdx >= 0 ? presets[existingIdx].id : `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      settings,
+      createdAt: Date.now(),
+    };
+    if (existingIdx >= 0) {
+      setPresets(ps => ps.map((p, i) => i === existingIdx ? preset : p));
+    } else {
+      setPresets(ps => [...ps, preset]);
+    }
+    setActivePresetId(preset.id);
+    setPresetName('');
+  }, [presetName, presets, settings]);
+
+  const loadPreset = useCallback((id: string) => {
+    const p = presets.find(x => x.id === id);
+    if (!p) return;
+    setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
+    setActivePresetId(id);
+  }, [presets]);
+
+  const deletePreset = useCallback((id: string) => {
+    setPresets(ps => ps.filter(p => p.id !== id));
+    if (activePresetId === id) setActivePresetId('');
+  }, [activePresetId]);
+
+  const exportPresets = useCallback(() => {
+    const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `flashcard-presets-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [presets]);
+
+  const importPresets = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(String(e.target?.result || '[]'));
+        if (!Array.isArray(data)) return;
+        const valid: FlashPreset[] = data
+          .filter(p => p && typeof p.name === 'string' && p.settings)
+          .map(p => ({
+            id: p.id || `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            name: p.name,
+            settings: { ...DEFAULT_SETTINGS, ...p.settings },
+            createdAt: p.createdAt || Date.now(),
+          }));
+        // Merge by name (incoming wins)
+        setPresets(prev => {
+          const map = new Map(prev.map(p => [p.name, p]));
+          valid.forEach(p => map.set(p.name, p));
+          return Array.from(map.values());
+        });
+      } catch { /* ignore */ }
+    };
+    reader.readAsText(file);
+  }, []);
 
   useEffect(() => {
     setCards([...rawCards]);
@@ -367,6 +461,79 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
               </div>
               <Slider min={-1} max={6} step={0.5} value={[settings.letterSpacing]}
                 onValueChange={([v]) => setSettings(s => ({ ...s, letterSpacing: v }))} />
+            </div>
+
+            {/* Presets */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <Label className="text-xs">{t('memory.presets') || '预设方案'}</Label>
+
+              {/* Save row */}
+              <div className="flex gap-1">
+                <Input
+                  value={presetName}
+                  onChange={e => setPresetName(e.target.value)}
+                  placeholder={t('memory.presetNamePlaceholder') || '输入名称…'}
+                  className="h-7 text-xs flex-1"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } }}
+                />
+                <Button size="sm" variant="outline" onClick={savePreset} disabled={!presetName.trim()} className="h-7 text-xs gap-1 px-2">
+                  <Save className="w-3 h-3" /> {t('memory.savePreset') || '保存'}
+                </Button>
+              </div>
+
+              {/* Load select */}
+              {presets.length > 0 ? (
+                <div className="space-y-1">
+                  <Select value={activePresetId} onValueChange={loadPreset}>
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder={t('memory.loadPreset') || '选择预设…'} />
+                    </SelectTrigger>
+                    <SelectContent className="z-[200]">
+                      {presets.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/* Preset chips with delete */}
+                  <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                    {presets.map(p => (
+                      <div
+                        key={p.id}
+                        className={`group flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] transition-all ${activePresetId === p.id ? 'border-primary bg-primary/10 text-primary' : 'border-border'}`}
+                      >
+                        <button onClick={() => loadPreset(p.id)} className="truncate max-w-[100px]">{p.name}</button>
+                        <button onClick={() => deletePreset(p.id)} className="opacity-50 hover:opacity-100 hover:text-destructive" title={t('memory.delete') || '删除'}>
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">{t('memory.noPresets') || '暂无保存的预设'}</p>
+              )}
+
+              {/* Import / Export */}
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" onClick={exportPresets} disabled={presets.length === 0} className="h-7 text-xs gap-1 flex-1">
+                  <Download className="w-3 h-3" /> {t('memory.exportPresets') || '导出'}
+                </Button>
+                <label className="flex-1">
+                  <input
+                    type="file"
+                    accept="application/json"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) importPresets(f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <span className="inline-flex items-center justify-center gap-1 h-7 text-xs w-full rounded-md hover:bg-accent cursor-pointer">
+                    <Upload className="w-3 h-3" /> {t('memory.importPresets') || '导入'}
+                  </span>
+                </label>
+              </div>
             </div>
 
             <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
