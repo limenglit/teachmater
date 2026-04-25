@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { StudentProvider } from '@/contexts/StudentContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,23 +6,32 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import StudentSidebar from '@/components/StudentSidebar';
 import TabNavigation, { TabId } from '@/components/TabNavigation';
 import RandomPicker from '@/components/RandomPicker';
-import TeamworkPanel from '@/components/TeamworkPanel';
-import SeatChart from '@/components/SeatChart';
-import ToolkitPanel from '@/components/ToolkitPanel';
-import BoardPanel from '@/components/BoardPanel';
-import QuizPanel from '@/components/QuizPanel';
-import AchievementPanel from '@/components/AchievementPanel';
-import TeacherCommunity from '@/components/TeacherCommunity';
 import SettingsPanel from '@/components/SettingsPanel';
 import WeChatBanner from '@/components/WeChatBanner';
 import ClassLibrary from '@/components/ClassLibrary';
 import LanguageSelector from '@/components/LanguageSelector';
-import StoryboardPanel from '@/components/StoryboardPanel';
-import PPTPanel from '@/components/PPTPanel';
-import VisualizationPanel from '@/components/VisualizationPanel';
-import VocabPanel from '@/components/VocabPanel';
+import { lazyRetry } from '@/lib/lazy-retry';
+// Lazy-load heavy non-default tab panels to improve LCP on the landing route.
+// The default 'random' tab uses RandomPicker (eager) so first paint is unaffected.
+const TeamworkPanel = lazyRetry(() => import('@/components/TeamworkPanel'));
+const SeatChart = lazyRetry(() => import('@/components/SeatChart'));
+const ToolkitPanel = lazyRetry(() => import('@/components/ToolkitPanel'));
+const BoardPanel = lazyRetry(() => import('@/components/BoardPanel'));
+const QuizPanel = lazyRetry(() => import('@/components/QuizPanel'));
+const AchievementPanel = lazyRetry(() => import('@/components/AchievementPanel'));
+const TeacherCommunity = lazyRetry(() => import('@/components/TeacherCommunity'));
+const StoryboardPanel = lazyRetry(() => import('@/components/StoryboardPanel'));
+const PPTPanel = lazyRetry(() => import('@/components/PPTPanel'));
+const VisualizationPanel = lazyRetry(() => import('@/components/VisualizationPanel'));
+const VocabPanel = lazyRetry(() => import('@/components/VocabPanel'));
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+const PanelFallback = () => (
+  <div className="flex items-center justify-center h-full min-h-[300px] text-sm text-muted-foreground">
+    <div className="w-6 h-6 rounded-full border-2 border-muted border-t-primary animate-spin" />
+  </div>
+);
 
 const Index = () => {
   const { user, approvalStatus, isAdmin } = useAuth();
@@ -198,7 +207,7 @@ const Index = () => {
 
             <div className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
               {/* 积分面板后，工具箱前插入社区 */}
-              {renderContent()}
+              <Suspense fallback={<PanelFallback />}>{renderContent()}</Suspense>
             </div>
           </div>
         </div>
