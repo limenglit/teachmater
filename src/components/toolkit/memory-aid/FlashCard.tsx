@@ -463,6 +463,79 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                 onValueChange={([v]) => setSettings(s => ({ ...s, letterSpacing: v }))} />
             </div>
 
+            {/* Presets */}
+            <div className="space-y-2 pt-2 border-t border-border">
+              <Label className="text-xs">{t('memory.presets') || '预设方案'}</Label>
+
+              {/* Save row */}
+              <div className="flex gap-1">
+                <Input
+                  value={presetName}
+                  onChange={e => setPresetName(e.target.value)}
+                  placeholder={t('memory.presetNamePlaceholder') || '输入名称…'}
+                  className="h-7 text-xs flex-1"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); savePreset(); } }}
+                />
+                <Button size="sm" variant="outline" onClick={savePreset} disabled={!presetName.trim()} className="h-7 text-xs gap-1 px-2">
+                  <Save className="w-3 h-3" /> {t('memory.savePreset') || '保存'}
+                </Button>
+              </div>
+
+              {/* Load select */}
+              {presets.length > 0 ? (
+                <div className="space-y-1">
+                  <Select value={activePresetId} onValueChange={loadPreset}>
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder={t('memory.loadPreset') || '选择预设…'} />
+                    </SelectTrigger>
+                    <SelectContent className="z-[200]">
+                      {presets.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {/* Preset chips with delete */}
+                  <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                    {presets.map(p => (
+                      <div
+                        key={p.id}
+                        className={`group flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] transition-all ${activePresetId === p.id ? 'border-primary bg-primary/10 text-primary' : 'border-border'}`}
+                      >
+                        <button onClick={() => loadPreset(p.id)} className="truncate max-w-[100px]">{p.name}</button>
+                        <button onClick={() => deletePreset(p.id)} className="opacity-50 hover:opacity-100 hover:text-destructive" title={t('memory.delete') || '删除'}>
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground">{t('memory.noPresets') || '暂无保存的预设'}</p>
+              )}
+
+              {/* Import / Export */}
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" onClick={exportPresets} disabled={presets.length === 0} className="h-7 text-xs gap-1 flex-1">
+                  <Download className="w-3 h-3" /> {t('memory.exportPresets') || '导出'}
+                </Button>
+                <label className="flex-1">
+                  <input
+                    type="file"
+                    accept="application/json"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) importPresets(f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <span className="inline-flex items-center justify-center gap-1 h-7 text-xs w-full rounded-md hover:bg-accent cursor-pointer">
+                    <Upload className="w-3 h-3" /> {t('memory.importPresets') || '导入'}
+                  </span>
+                </label>
+              </div>
+            </div>
+
             <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
               <RotateCcw className="w-3 h-3" /> {t('memory.resetSettings') || '恢复默认'}
             </Button>
