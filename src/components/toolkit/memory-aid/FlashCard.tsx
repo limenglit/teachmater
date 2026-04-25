@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import {
   ChevronLeft, ChevronRight, Shuffle, Dices,
   Eye, CheckCircle2, XCircle, RotateCcw, Settings2,
-  Save, Trash2, Download, Upload
+  Save, Trash2, Download, Upload, Undo2, GitCompare, X
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { CardItem } from './types';
