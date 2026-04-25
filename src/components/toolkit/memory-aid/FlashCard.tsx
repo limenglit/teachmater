@@ -371,7 +371,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
         >
           {/* Front */}
           <div
-            className="absolute inset-0 flex flex-col rounded-xl"
+            className="absolute inset-0 flex flex-col rounded-xl overflow-y-auto"
             style={{
               backfaceVisibility: 'hidden',
               backgroundColor: settings.frontBg,
@@ -388,8 +388,17 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.word && (
               <span
-                className="font-bold"
-                style={{ fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`, color: settings.textColor }}
+                className="font-bold max-w-full"
+                style={{
+                  fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`,
+                  color: settings.textColor,
+                  lineHeight: settings.lineHeight,
+                  whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
+                  wordBreak: settings.wordBreak,
+                  overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
+                  overflow: settings.wordWrap ? 'visible' : 'hidden',
+                  textOverflow: settings.wordWrap ? 'clip' : 'ellipsis',
+                }}
               >
                 {card.word}
               </span>
@@ -397,7 +406,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
           </div>
           {/* Back */}
           <div
-            className="absolute inset-0 flex flex-col rounded-xl"
+            className="absolute inset-0 flex flex-col rounded-xl overflow-y-auto"
             style={{
               backfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
@@ -415,14 +424,32 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.definition && (
               <span
-                className="font-semibold"
-                style={{ fontSize: `${(hasBackImage ? 16 : 20) * fs}px`, color: settings.textColor }}
+                className="font-semibold max-w-full"
+                style={{
+                  fontSize: `${(hasBackImage ? 16 : 20) * fs}px`,
+                  color: settings.textColor,
+                  lineHeight: settings.lineHeight,
+                  whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
+                  wordBreak: settings.wordBreak,
+                  overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
+                  overflow: settings.wordWrap ? 'visible' : 'hidden',
+                  textOverflow: settings.wordWrap ? 'clip' : 'ellipsis',
+                }}
               >
                 {card.definition}
               </span>
             )}
             {card.example && (
-              <span className="opacity-70 mt-2 italic" style={{ fontSize: `${12 * fs}px` }}>
+              <span
+                className="opacity-70 mt-2 italic max-w-full"
+                style={{
+                  fontSize: `${12 * fs}px`,
+                  lineHeight: settings.lineHeight,
+                  whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
+                  wordBreak: settings.wordBreak,
+                  overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
+                }}
+              >
                 "{card.example}"
               </span>
             )}
