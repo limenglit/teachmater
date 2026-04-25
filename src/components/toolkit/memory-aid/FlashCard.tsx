@@ -459,6 +459,35 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
               </div>
             </div>
 
+            {/* Typography quick presets */}
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.typographyPreset') || '排版预设'}</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {TYPOGRAPHY_PRESETS.map(p => {
+                  const active =
+                    Math.abs(settings.lineHeight - p.lineHeight) < 0.01 &&
+                    settings.paragraphGap === p.paragraphGap &&
+                    Math.abs(settings.letterSpacing - p.letterSpacing) < 0.01;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => setSettings(s => ({
+                        ...s,
+                        lineHeight: p.lineHeight,
+                        paragraphGap: p.paragraphGap,
+                        letterSpacing: p.letterSpacing,
+                      }))}
+                      className={`text-left px-2 py-1.5 rounded-md border transition-all ${active ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
+                      title={`行高 ${p.lineHeight} · 段距 ${p.paragraphGap}px · 字距 ${p.letterSpacing}px`}
+                    >
+                      <div className={`text-xs font-medium ${active ? 'text-primary' : ''}`}>{p.name}</div>
+                      <div className="text-[10px] text-muted-foreground leading-tight">{p.desc}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Paragraph gap */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
