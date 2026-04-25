@@ -76,6 +76,22 @@ const DEFAULT_SETTINGS: FlashSettings = {
   letterSpacing: 0,
 };
 
+// 一键式排版预设：仅影响 行高/段距/字距 三项
+type TypographyPresetId = 'classroom' | 'compact' | 'comfortable' | 'paper';
+const TYPOGRAPHY_PRESETS: Array<{
+  id: TypographyPresetId;
+  name: string;
+  desc: string;
+  lineHeight: number;
+  paragraphGap: number;
+  letterSpacing: number;
+}> = [
+  { id: 'classroom',   name: '课堂默认', desc: '均衡通用', lineHeight: 1.4, paragraphGap: 8,  letterSpacing: 0 },
+  { id: 'compact',     name: '紧凑',     desc: '内容密集', lineHeight: 1.2, paragraphGap: 4,  letterSpacing: 0 },
+  { id: 'comfortable', name: '舒适',     desc: '宽松呼吸', lineHeight: 1.7, paragraphGap: 16, letterSpacing: 0.5 },
+  { id: 'paper',       name: '论文感',   desc: '正式排版', lineHeight: 1.9, paragraphGap: 24, letterSpacing: 1 },
+];
+
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
 const PRESETS_KEY = 'memory-flashcard-presets-v1';
 
