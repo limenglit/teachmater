@@ -349,6 +349,26 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
               </div>
             </div>
 
+            {/* Paragraph gap */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.paragraphGap') || '段落间距'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.paragraphGap}px</span>
+              </div>
+              <Slider min={0} max={48} step={1} value={[settings.paragraphGap]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, paragraphGap: v }))} />
+            </div>
+
+            {/* Letter spacing */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.letterSpacing') || '字距'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.letterSpacing}px</span>
+              </div>
+              <Slider min={-1} max={6} step={0.5} value={[settings.letterSpacing]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, letterSpacing: v }))} />
+            </div>
+
             <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
               <RotateCcw className="w-3 h-3" /> {t('memory.resetSettings') || '恢复默认'}
             </Button>
