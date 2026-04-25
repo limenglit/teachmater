@@ -134,6 +134,11 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const [presets, setPresets] = useState<FlashPreset[]>(loadPresets);
   const [presetName, setPresetName] = useState('');
   const [activePresetId, setActivePresetId] = useState<string>('');
+  // 加载预设前的快照——用于一键回退/对照差异
+  const [preLoadSnapshot, setPreLoadSnapshot] = useState<{ settings: FlashSettings; presetName: string } | null>(null);
+  // 对照模式：true=显示快照，false=显示已加载的预设
+  const [comparing, setComparing] = useState(false);
+  const [stagedSettings, setStagedSettings] = useState<FlashSettings | null>(null);
 
   useEffect(() => {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
@@ -165,9 +170,42 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const loadPreset = useCallback((id: string) => {
     const p = presets.find(x => x.id === id);
     if (!p) return;
+    // 保存加载前的快照（仅在尚未存在快照、或加载的是不同预设时刷新）
+    setPreLoadSnapshot({ settings, presetName: '当前未保存' });
+    setStagedSettings(settings);
+    setComparing(false);
     setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
     setActivePresetId(id);
-  }, [presets]);
+  }, [presets, settings]);
+
+  const revertToSnapshot = useCallback(() => {
+    if (!preLoadSnapshot) return;
+    setSettings(preLoadSnapshot.settings);
+    setActivePresetId('');
+    setPreLoadSnapshot(null);
+    setStagedSettings(null);
+    setComparing(false);
+  }, [preLoadSnapshot]);
+
+  const toggleCompare = useCallback(() => {
+    if (!preLoadSnapshot || !stagedSettings) return;
+    if (!comparing) {
+      // 切回快照预览
+      setStagedSettings(settings); // 记住当前已加载的预设
+      setSettings(preLoadSnapshot.settings);
+      setComparing(true);
+    } else {
+      // 切回已加载的预设
+      setSettings(stagedSettings);
+      setComparing(false);
+    }
+  }, [comparing, preLoadSnapshot, stagedSettings, settings]);
+
+  const dismissSnapshot = useCallback(() => {
+    setPreLoadSnapshot(null);
+    setStagedSettings(null);
+    setComparing(false);
+  }, []);
 
   const deletePreset = useCallback((id: string) => {
     setPresets(ps => ps.filter(p => p.id !== id));
