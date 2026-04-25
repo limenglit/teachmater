@@ -26,6 +26,9 @@ interface FlashSettings {
   alignH: 'start' | 'center' | 'end';  // horizontal alignment
   alignV: 'start' | 'center' | 'end';  // vertical alignment
   padding: number;         // 8 - 64 px
+  wordWrap: boolean;       // 是否自动换行
+  lineHeight: number;      // 1.0 - 2.4 行高
+  wordBreak: 'normal' | 'break-word' | 'break-all'; // 断词策略
 }
 
 const FONT_OPTIONS = [
@@ -62,6 +65,9 @@ const DEFAULT_SETTINGS: FlashSettings = {
   alignH: 'center',
   alignV: 'center',
   padding: 16,
+  wordWrap: true,
+  lineHeight: 1.4,
+  wordBreak: 'break-word',
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
@@ -297,6 +303,48 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                 onValueChange={([v]) => setSettings(s => ({ ...s, padding: v }))} />
             </div>
 
+            {/* Word wrap toggle */}
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">{t('memory.wordWrap') || '自动换行'}</Label>
+              <button
+                onClick={() => setSettings(s => ({ ...s, wordWrap: !s.wordWrap }))}
+                className={`relative h-5 w-9 rounded-full transition-colors ${settings.wordWrap ? 'bg-primary' : 'bg-muted'}`}
+                aria-label="toggle word wrap"
+              >
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-background transition-transform ${settings.wordWrap ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              </button>
+            </div>
+
+            {/* Line height */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.lineHeight') || '行间距'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.lineHeight.toFixed(2)}</span>
+              </div>
+              <Slider min={1} max={2.4} step={0.05} value={[settings.lineHeight]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, lineHeight: v }))} />
+            </div>
+
+            {/* Word break strategy */}
+            <div className="space-y-2">
+              <Label className="text-xs">{t('memory.wordBreak') || '断词方式'}</Label>
+              <div className="grid grid-cols-3 gap-1">
+                {([
+                  { id: 'normal', label: t('memory.wbNormal') || '默认' },
+                  { id: 'break-word', label: t('memory.wbBreakWord') || '按词' },
+                  { id: 'break-all', label: t('memory.wbBreakAll') || '强制' },
+                ] as const).map(o => (
+                  <button
+                    key={o.id}
+                    onClick={() => setSettings(s => ({ ...s, wordBreak: o.id as FlashSettings['wordBreak'] }))}
+                    className={`h-7 text-xs rounded border transition-all ${settings.wordBreak === o.id ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'}`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
               <RotateCcw className="w-3 h-3" /> {t('memory.resetSettings') || '恢复默认'}
             </Button>
@@ -323,7 +371,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
         >
           {/* Front */}
           <div
-            className="absolute inset-0 flex flex-col rounded-xl"
+            className="absolute inset-0 flex flex-col rounded-xl overflow-y-auto"
             style={{
               backfaceVisibility: 'hidden',
               backgroundColor: settings.frontBg,
@@ -340,8 +388,17 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.word && (
               <span
-                className="font-bold"
-                style={{ fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`, color: settings.textColor }}
+                className="font-bold max-w-full"
+                style={{
+                  fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`,
+                  color: settings.textColor,
+                  lineHeight: settings.lineHeight,
+                  whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
+                  wordBreak: settings.wordBreak,
+                  overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
+                  overflow: settings.wordWrap ? 'visible' : 'hidden',
+                  textOverflow: settings.wordWrap ? 'clip' : 'ellipsis',
+                }}
               >
                 {card.word}
               </span>
@@ -349,7 +406,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
           </div>
           {/* Back */}
           <div
-            className="absolute inset-0 flex flex-col rounded-xl"
+            className="absolute inset-0 flex flex-col rounded-xl overflow-y-auto"
             style={{
               backfaceVisibility: 'hidden',
               transform: 'rotateY(180deg)',
@@ -367,14 +424,32 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.definition && (
               <span
-                className="font-semibold"
-                style={{ fontSize: `${(hasBackImage ? 16 : 20) * fs}px`, color: settings.textColor }}
+                className="font-semibold max-w-full"
+                style={{
+                  fontSize: `${(hasBackImage ? 16 : 20) * fs}px`,
+                  color: settings.textColor,
+                  lineHeight: settings.lineHeight,
+                  whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
+                  wordBreak: settings.wordBreak,
+                  overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
+                  overflow: settings.wordWrap ? 'visible' : 'hidden',
+                  textOverflow: settings.wordWrap ? 'clip' : 'ellipsis',
+                }}
               >
                 {card.definition}
               </span>
             )}
             {card.example && (
-              <span className="opacity-70 mt-2 italic" style={{ fontSize: `${12 * fs}px` }}>
+              <span
+                className="opacity-70 mt-2 italic max-w-full"
+                style={{
+                  fontSize: `${12 * fs}px`,
+                  lineHeight: settings.lineHeight,
+                  whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
+                  wordBreak: settings.wordBreak,
+                  overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
+                }}
+              >
                 "{card.example}"
               </span>
             )}
