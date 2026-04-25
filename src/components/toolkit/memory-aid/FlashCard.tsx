@@ -26,6 +26,9 @@ interface FlashSettings {
   alignH: 'start' | 'center' | 'end';  // horizontal alignment
   alignV: 'start' | 'center' | 'end';  // vertical alignment
   padding: number;         // 8 - 64 px
+  wordWrap: boolean;       // 是否自动换行
+  lineHeight: number;      // 1.0 - 2.4 行高
+  wordBreak: 'normal' | 'break-word' | 'break-all'; // 断词策略
 }
 
 const FONT_OPTIONS = [
@@ -62,6 +65,9 @@ const DEFAULT_SETTINGS: FlashSettings = {
   alignH: 'center',
   alignV: 'center',
   padding: 16,
+  wordWrap: true,
+  lineHeight: 1.4,
+  wordBreak: 'break-word',
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
