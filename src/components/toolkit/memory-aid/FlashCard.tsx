@@ -29,6 +29,8 @@ interface FlashSettings {
   wordWrap: boolean;       // 是否自动换行
   lineHeight: number;      // 1.0 - 2.4 行高
   wordBreak: 'normal' | 'break-word' | 'break-all'; // 断词策略
+  paragraphGap: number;    // 0 - 48 px 段落间距（释义/例句之间）
+  letterSpacing: number;   // -1 - 6 px 字距
 }
 
 const FONT_OPTIONS = [
@@ -68,6 +70,8 @@ const DEFAULT_SETTINGS: FlashSettings = {
   wordWrap: true,
   lineHeight: 1.4,
   wordBreak: 'break-word',
+  paragraphGap: 8,
+  letterSpacing: 0,
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
@@ -345,6 +349,26 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
               </div>
             </div>
 
+            {/* Paragraph gap */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.paragraphGap') || '段落间距'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.paragraphGap}px</span>
+              </div>
+              <Slider min={0} max={48} step={1} value={[settings.paragraphGap]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, paragraphGap: v }))} />
+            </div>
+
+            {/* Letter spacing */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">{t('memory.letterSpacing') || '字距'}</Label>
+                <span className="text-xs text-muted-foreground">{settings.letterSpacing}px</span>
+              </div>
+              <Slider min={-1} max={6} step={0.5} value={[settings.letterSpacing]}
+                onValueChange={([v]) => setSettings(s => ({ ...s, letterSpacing: v }))} />
+            </div>
+
             <Button size="sm" variant="ghost" onClick={resetSettings} className="w-full h-7 text-xs gap-1">
               <RotateCcw className="w-3 h-3" /> {t('memory.resetSettings') || '恢复默认'}
             </Button>
@@ -393,6 +417,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                   fontSize: `${(hasFrontImage ? 18 : 28) * fs}px`,
                   color: settings.textColor,
                   lineHeight: settings.lineHeight,
+                  letterSpacing: `${settings.letterSpacing}px`,
                   whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
                   wordBreak: settings.wordBreak,
                   overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
@@ -429,6 +454,7 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                   fontSize: `${(hasBackImage ? 16 : 20) * fs}px`,
                   color: settings.textColor,
                   lineHeight: settings.lineHeight,
+                  letterSpacing: `${settings.letterSpacing}px`,
                   whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
                   wordBreak: settings.wordBreak,
                   overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
@@ -441,10 +467,12 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
             )}
             {card.example && (
               <span
-                className="opacity-70 mt-2 italic max-w-full"
+                className="opacity-70 italic max-w-full"
                 style={{
                   fontSize: `${12 * fs}px`,
                   lineHeight: settings.lineHeight,
+                  letterSpacing: `${settings.letterSpacing}px`,
+                  marginTop: settings.paragraphGap,
                   whiteSpace: settings.wordWrap ? 'pre-wrap' : 'nowrap',
                   wordBreak: settings.wordBreak,
                   overflowWrap: settings.wordBreak === 'break-all' ? 'anywhere' : 'break-word',
