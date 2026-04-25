@@ -29,6 +29,8 @@ interface FlashSettings {
   wordWrap: boolean;       // 是否自动换行
   lineHeight: number;      // 1.0 - 2.4 行高
   wordBreak: 'normal' | 'break-word' | 'break-all'; // 断词策略
+  paragraphGap: number;    // 0 - 48 px 段落间距（释义/例句之间）
+  letterSpacing: number;   // -1 - 6 px 字距
 }
 
 const FONT_OPTIONS = [
@@ -68,6 +70,8 @@ const DEFAULT_SETTINGS: FlashSettings = {
   wordWrap: true,
   lineHeight: 1.4,
   wordBreak: 'break-word',
+  paragraphGap: 8,
+  letterSpacing: 0,
 };
 
 const SETTINGS_KEY = 'memory-flashcard-settings-v1';
