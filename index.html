@@ -1,38 +1,69 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="color-scheme" content="light dark" />
+
     <title>教创搭子 | TeacherMate</title>
     <meta name="description" content="教师的教学创新伙伴">
     <meta name="author" content="Lovable" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
+    <!-- Resource hints to speed up first paint of critical third parties -->
+    <link rel="preconnect" href="https://vtlecaojupfsawcobbid.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://vtlecaojupfsawcobbid.supabase.co" />
+    <link rel="preconnect" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" crossorigin />
+    <link rel="dns-prefetch" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" />
+
+    <!-- Preload the app entry so the browser can start fetching JS in parallel with HTML parsing -->
+    <link rel="modulepreload" href="/src/main.tsx" />
+
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e3ddb04b-31ee-4b15-b98b-e05106dbd03a/id-preview-60a6466f--50abb99d-e699-4e11-920c-db8e0dcc3ffe.lovable.app-1771721532717.png">
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e3ddb04b-31ee-4b15-b98b-e05106dbd03a/id-preview-60a6466f--50abb99d-e699-4e11-920c-db8e0dcc3ffe.lovable.app-1771721532717.png">
-    
-  
-  
-  
-  
-  
-  
-  
-  <meta property="og:title" content="教创搭子 | TeacherMate">
-  <meta name="twitter:title" content="教创搭子 | TeacherMate">
-  <meta property="og:description" content="教师的教学创新伙伴">
-  <meta name="twitter:description" content="教师的教学创新伙伴">
-</head>
+
+    <meta property="og:title" content="教创搭子 | TeacherMate">
+    <meta name="twitter:title" content="教创搭子 | TeacherMate">
+    <meta property="og:description" content="教师的教学创新伙伴">
+    <meta name="twitter:description" content="教师的教学创新伙伴">
+
+    <!-- Critical inline CSS for instant first paint (replaced once React mounts) -->
+    <style>
+      html, body { margin: 0; padding: 0; background: #ffffff; color: #0f172a; -webkit-font-smoothing: antialiased; }
+      body { font-family: "Noto Sans SC", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+      @media (prefers-color-scheme: dark) {
+        html, body { background: #0f172a; color: #f1f5f9; }
+      }
+      #root { min-height: 100dvh; }
+      .app-boot {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        flex-direction: column; gap: 14px; pointer-events: none;
+      }
+      .app-boot__title { font-size: 18px; font-weight: 600; opacity: 0.85; letter-spacing: 0.02em; }
+      .app-boot__spinner {
+        width: 28px; height: 28px; border-radius: 50%;
+        border: 2px solid rgba(15,23,42,0.12); border-top-color: #2563eb;
+        animation: app-boot-spin 0.9s linear infinite;
+      }
+      @media (prefers-color-scheme: dark) {
+        .app-boot__spinner { border-color: rgba(241,245,249,0.18); border-top-color: #60a5fa; }
+      }
+      @keyframes app-boot-spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Boot placeholder paints instantly; React replaces it on mount -->
+      <div class="app-boot" aria-hidden="true">
+        <div class="app-boot__spinner"></div>
+        <div class="app-boot__title">教创搭子 · TeacherMate</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
