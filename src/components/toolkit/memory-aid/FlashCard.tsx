@@ -596,6 +596,46 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
                 <p className="text-[11px] text-muted-foreground">{t('memory.noPresets') || '暂无保存的预设'}</p>
               )}
 
+              {/* Snapshot / compare bar — visible only after loading a preset */}
+              {preLoadSnapshot && (
+                <div className={`rounded-md border p-2 space-y-1.5 transition-colors ${comparing ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/30' : 'border-primary/40 bg-primary/5'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-medium">
+                      {comparing
+                        ? (t('memory.viewingSnapshot') || '正在预览：加载前')
+                        : (t('memory.viewingPreset') || '已加载预设')}
+                    </span>
+                    <button
+                      onClick={dismissSnapshot}
+                      className="opacity-50 hover:opacity-100"
+                      title={t('memory.keepCurrent') || '保留当前并关闭'}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant={comparing ? 'default' : 'outline'}
+                      onClick={toggleCompare}
+                      className="h-6 text-[11px] gap-1 flex-1 px-2"
+                    >
+                      <GitCompare className="w-3 h-3" />
+                      {comparing ? (t('memory.showLoaded') || '显示新预设') : (t('memory.showSnapshot') || '对照差异')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={revertToSnapshot}
+                      className="h-6 text-[11px] gap-1 flex-1 px-2"
+                    >
+                      <Undo2 className="w-3 h-3" />
+                      {t('memory.revertSnapshot') || '回退'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Import / Export */}
               <div className="flex gap-1">
                 <Button size="sm" variant="ghost" onClick={exportPresets} disabled={presets.length === 0} className="h-7 text-xs gap-1 flex-1">
