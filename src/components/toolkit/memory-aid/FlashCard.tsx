@@ -115,10 +115,83 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   const [correct, setCorrect] = useState(0);
   const [wrong, setWrong] = useState(0);
   const [settings, setSettings] = useState<FlashSettings>(loadSettings);
+  const [presets, setPresets] = useState<FlashPreset[]>(loadPresets);
+  const [presetName, setPresetName] = useState('');
+  const [activePresetId, setActivePresetId] = useState<string>('');
 
   useEffect(() => {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch { /* ignore */ }
   }, [settings]);
+
+  useEffect(() => {
+    try { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); } catch { /* ignore */ }
+  }, [presets]);
+
+  const savePreset = useCallback(() => {
+    const name = presetName.trim();
+    if (!name) return;
+    const existingIdx = presets.findIndex(p => p.name === name);
+    const preset: FlashPreset = {
+      id: existingIdx >= 0 ? presets[existingIdx].id : `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      settings,
+      createdAt: Date.now(),
+    };
+    if (existingIdx >= 0) {
+      setPresets(ps => ps.map((p, i) => i === existingIdx ? preset : p));
+    } else {
+      setPresets(ps => [...ps, preset]);
+    }
+    setActivePresetId(preset.id);
+    setPresetName('');
+  }, [presetName, presets, settings]);
+
+  const loadPreset = useCallback((id: string) => {
+    const p = presets.find(x => x.id === id);
+    if (!p) return;
+    setSettings({ ...DEFAULT_SETTINGS, ...p.settings });
+    setActivePresetId(id);
+  }, [presets]);
+
+  const deletePreset = useCallback((id: string) => {
+    setPresets(ps => ps.filter(p => p.id !== id));
+    if (activePresetId === id) setActivePresetId('');
+  }, [activePresetId]);
+
+  const exportPresets = useCallback(() => {
+    const blob = new Blob([JSON.stringify(presets, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `flashcard-presets-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [presets]);
+
+  const importPresets = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(String(e.target?.result || '[]'));
+        if (!Array.isArray(data)) return;
+        const valid: FlashPreset[] = data
+          .filter(p => p && typeof p.name === 'string' && p.settings)
+          .map(p => ({
+            id: p.id || `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            name: p.name,
+            settings: { ...DEFAULT_SETTINGS, ...p.settings },
+            createdAt: p.createdAt || Date.now(),
+          }));
+        // Merge by name (incoming wins)
+        setPresets(prev => {
+          const map = new Map(prev.map(p => [p.name, p]));
+          valid.forEach(p => map.set(p.name, p));
+          return Array.from(map.values());
+        });
+      } catch { /* ignore */ }
+    };
+    reader.readAsText(file);
+  }, []);
 
   useEffect(() => {
     setCards([...rawCards]);
