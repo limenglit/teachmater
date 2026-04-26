@@ -250,25 +250,41 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const navPath = activeDoor ? buildPath(activeDoor.side) : [];
   const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 
-  const renderSeat = (x: number, y: number, w: number, h: number, name: string, isMine: boolean, key: string) => (
-    <g key={key} data-my-seat={isMine ? 'true' : undefined}>
-      <rect x={x} y={y} width={w} height={h} rx={4}
-        className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-        strokeWidth={isMine ? 2.5 : 1}
-      />
-      {isMine && (
-        <circle cx={x + w / 2} cy={y - 6} r={4} className="fill-primary">
-          <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
-        </circle>
-      )}
-      {name && (
-        <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-          className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-          {name}
-        </text>
-      )}
-    </g>
-  );
+  const renderSeat = (x: number, y: number, w: number, h: number, name: string, isMine: boolean, key: string) => {
+    const isRecommended = swipe.recommended?.key === key && !isMine && !name;
+    return (
+      <g key={key} data-my-seat={isMine ? 'true' : undefined}>
+        {isRecommended && (
+          <rect x={x - 3} y={y - 3} width={w + 6} height={h + 6} rx={6}
+            className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
+            <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
+          </rect>
+        )}
+        <rect x={x} y={y} width={w} height={h} rx={4}
+          className={isMine ? 'fill-primary stroke-primary'
+            : isRecommended ? 'fill-accent/60 stroke-accent-foreground'
+            : name ? 'fill-card stroke-border'
+            : 'fill-muted/30 stroke-border/30'}
+          strokeWidth={isMine || isRecommended ? 2.5 : 1}
+        />
+        {isMine && (
+          <circle cx={x + w / 2} cy={y - 6} r={4} className="fill-primary">
+            <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
+          </circle>
+        )}
+        {isRecommended && (
+          <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+            className="fill-accent-foreground text-[7px] font-bold pointer-events-none">推荐</text>
+        )}
+        {name && (
+          <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+            className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+            {name}
+          </text>
+        )}
+      </g>
+    );
+  };
 
   const dirHint = activeDoor
     ? `从 ${activeDoor.label}（${{ top: '上', bottom: '下', left: '左', right: '右' }[activeDoor.side]}侧）进入，沿走廊到达 ${myPos.label}`
