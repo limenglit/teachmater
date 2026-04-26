@@ -503,8 +503,8 @@ export default function SeatCheckinPage() {
                 aria-label="回到我的座位"
               >
                 <Crosshair className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">回到我的座位</span>
-                <span className="inline xs:hidden">居中</span>
+                <span className="hidden sm:inline">回到我的座位</span>
+                <span className="inline sm:hidden">居中</span>
               </button>
             </div>
             {isGuestAssigned && (
