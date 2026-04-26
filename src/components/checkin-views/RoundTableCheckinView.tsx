@@ -3,6 +3,8 @@ import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePinchZoom } from './usePinchZoom';
+import { useSwipeRecommendedSeat, type SeatPoint } from './useSwipeRecommendedSeat';
+import SwipeSeatHint from './SwipeSeatHint';
 import ZoomIndicator from './ZoomIndicator';
 
 interface Props {
@@ -101,6 +103,41 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat, recenterSignal]);
 
+  // ---- Empty-seat swipe recommendation (visual-only) ----
+  const emptySeatPoints: SeatPoint[] = useMemo(() => {
+    const points: SeatPoint[] = [];
+    for (let ti = 0; ti < tables.length; ti++) {
+      const center = tableCenter(ti);
+      for (let si = 0; si < seatsPerTable; si++) {
+        if (tables[ti][si]) continue;
+        if (myPos && ti === myPos.table && si === myPos.seat) continue;
+        const angle = (2 * Math.PI * si) / seatsPerTable - Math.PI / 2;
+        points.push({
+          key: `${ti}-${si}`,
+          x: center.x + seatOrbitRadius * Math.cos(angle),
+          y: center.y + seatOrbitRadius * Math.sin(angle),
+          label: `第 ${ti + 1} 桌第 ${si + 1} 号座`,
+        });
+      }
+    }
+    return points;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tables, seatsPerTable, myPos, tableCols, tableSvgSize, aisleGap]);
+
+  const mySeatPoint: SeatPoint | null = useMemo(() => {
+    if (!myPos) return null;
+    const center = tableCenter(myPos.table);
+    const angle = (2 * Math.PI * myPos.seat) / seatsPerTable - Math.PI / 2;
+    return {
+      key: `${myPos.table}-${myPos.seat}`,
+      x: center.x + seatOrbitRadius * Math.cos(angle),
+      y: center.y + seatOrbitRadius * Math.sin(angle),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myPos, seatsPerTable, tableCols, tableSvgSize, aisleGap]);
+
+  const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
+
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
   const myCenter = tableCenter(myPos.table);
@@ -195,7 +232,21 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
         <span>{dirHint}</span>
       </div>
 
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+      <SwipeSeatHint
+        total={swipe.total}
+        index={swipe.index}
+        label={swipe.recommended?.label}
+        onPrev={swipe.prev}
+        onNext={swipe.next}
+      />
+
+      <div
+        ref={seatContainerRef}
+        className="seat-checkin-surface flex justify-center overflow-hidden pb-4"
+        onTouchStart={swipe.onTouchStart}
+        onTouchMove={swipe.onTouchMove}
+        onTouchEnd={swipe.onTouchEnd}
+      >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
           <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[640px]" style={{ minWidth: Math.min(svgW, 320) }}>
             {/* Room outline */}
@@ -253,18 +304,30 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
                     const sy = center.y + seatOrbitRadius * Math.sin(angle);
                     const seatName = people[si] || '';
                     const isMine = ti === myPos.table && si === myPos.seat;
+                    const isRecommended = swipe.recommended?.key === `${ti}-${si}` && !isMine && !seatName;
                     return (
                       <g key={si}>
+                        {isRecommended && (
+                          <circle cx={sx} cy={sy} r={seatRadius + 4}
+                            className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
+                            <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
+                          </circle>
+                        )}
                         <circle cx={sx} cy={sy} r={seatRadius}
                           className={isMine
                             ? 'fill-primary stroke-primary'
+                            : isRecommended ? 'fill-accent/60 stroke-accent-foreground'
                             : isMyTable && seatName ? 'fill-card stroke-primary/40'
                             : seatName ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                          strokeWidth={isMine ? 2.5 : 1.2} />
+                          strokeWidth={isMine || isRecommended ? 2.5 : 1.2} />
                         {isMine && (
                           <circle cx={sx} cy={sy - seatRadius - 4} r={3} className="fill-primary">
                             <animate attributeName="r" values="2;4;2" dur="1.2s" repeatCount="indefinite" />
                           </circle>
+                        )}
+                        {isRecommended && (
+                          <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
+                            className="fill-accent-foreground text-[7px] font-bold pointer-events-none">推荐</text>
                         )}
                         {seatName && (
                           <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"

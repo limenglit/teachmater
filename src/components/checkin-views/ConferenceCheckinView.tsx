@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
+import { useSwipeRecommendedSeat, type SeatPoint } from './useSwipeRecommendedSeat';
+import SwipeSeatHint from './SwipeSeatHint';
 import ZoomIndicator from './ZoomIndicator';
 
 interface Props {
@@ -94,19 +96,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index, recenterSignal]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
-  if (!valid || !data) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="text-3xl mb-4 text-destructive">⚠️</div>
-        <div className="text-xl font-bold text-destructive mb-2">座位数据异常</div>
-        <div className="text-sm text-muted-foreground">请联系管理员或刷新页面重试</div>
-      </div>
-    );
-  }
-
-  if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
-
-  // Layout constants
+  // ---- Layout constants (declared before any early return so hooks below can use them) ----
   const seatW = 38, seatH = 26, gap = 3;
   const tableW = seatsPerSide * (seatW + gap) + 20;
   const tableH = 16;
@@ -160,6 +150,63 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
     }
   };
 
+  // ---- Empty-seat swipe recommendation (visual-only) ----
+  const emptySeatPoints: SeatPoint[] = useMemo(() => {
+    if (!data) return [];
+    const points: SeatPoint[] = [];
+    const add = (pos: SeatPosition, name: string) => {
+      if (name) return;
+      if (myPos && myPos.side === pos.side && myPos.index === pos.index && myPos.companionRow === pos.companionRow) return;
+      const c = getSeatCenter(pos);
+      const key =
+        pos.side === 'head-left' ? 'head-left'
+        : pos.side === 'head-right' ? 'head-right'
+        : pos.side === 'top' ? `top-${pos.index}`
+        : pos.side === 'bottom' ? `bottom-${pos.index}`
+        : pos.side === 'companion-top' ? `ct-${pos.companionRow}-${pos.index}`
+        : `cb-${pos.companionRow}-${pos.index}`;
+      points.push({ key, x: c.x, y: c.y, label: pos.label });
+    };
+    add({ side: 'head-left', index: 0, label: '左侧主位' }, data.headLeft);
+    add({ side: 'head-right', index: 0, label: '右侧主位' }, data.headRight);
+    data.top.forEach((n, i) => add({ side: 'top', index: i, label: `上方第${i + 1}位` }, n));
+    data.bottom.forEach((n, i) => add({ side: 'bottom', index: i, label: `下方第${i + 1}位` }, n));
+    data.companionTop.forEach((row, cr) => row.forEach((n, i) =>
+      add({ side: 'companion-top', index: i, companionRow: cr, label: `上方随员第${cr + 1}排第${i + 1}位` }, n)));
+    data.companionBottom.forEach((row, cr) => row.forEach((n, i) =>
+      add({ side: 'companion-bottom', index: i, companionRow: cr, label: `下方随员第${cr + 1}排第${i + 1}位` }, n)));
+    return points;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, myPos, seatsPerSide, companionRows]);
+
+  const mySeatPoint: SeatPoint | null = useMemo(() => {
+    if (!myPos) return null;
+    const c = getSeatCenter(myPos);
+    const key =
+      myPos.side === 'head-left' ? 'head-left'
+      : myPos.side === 'head-right' ? 'head-right'
+      : myPos.side === 'top' ? `top-${myPos.index}`
+      : myPos.side === 'bottom' ? `bottom-${myPos.index}`
+      : myPos.side === 'companion-top' ? `ct-${myPos.companionRow}-${myPos.index}`
+      : `cb-${myPos.companionRow}-${myPos.index}`;
+    return { key, x: c.x, y: c.y, label: myPos.label };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myPos, seatsPerSide, companionRows]);
+
+  const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
+
+  if (!valid || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="text-3xl mb-4 text-destructive">⚠️</div>
+        <div className="text-xl font-bold text-destructive mb-2">座位数据异常</div>
+        <div className="text-sm text-muted-foreground">请联系管理员或刷新页面重试</div>
+      </div>
+    );
+  }
+
+  if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
+
   const mySeatCenter = getSeatCenter(myPos);
 
   // Door anchor on the wall (outside seat block) for a side
@@ -203,25 +250,41 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const navPath = activeDoor ? buildPath(activeDoor.side) : [];
   const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 
-  const renderSeat = (x: number, y: number, w: number, h: number, name: string, isMine: boolean, key: string) => (
-    <g key={key} data-my-seat={isMine ? 'true' : undefined}>
-      <rect x={x} y={y} width={w} height={h} rx={4}
-        className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-        strokeWidth={isMine ? 2.5 : 1}
-      />
-      {isMine && (
-        <circle cx={x + w / 2} cy={y - 6} r={4} className="fill-primary">
-          <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
-        </circle>
-      )}
-      {name && (
-        <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-          className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
-          {name}
-        </text>
-      )}
-    </g>
-  );
+  const renderSeat = (x: number, y: number, w: number, h: number, name: string, isMine: boolean, key: string) => {
+    const isRecommended = swipe.recommended?.key === key && !isMine && !name;
+    return (
+      <g key={key} data-my-seat={isMine ? 'true' : undefined}>
+        {isRecommended && (
+          <rect x={x - 3} y={y - 3} width={w + 6} height={h + 6} rx={6}
+            className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
+            <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
+          </rect>
+        )}
+        <rect x={x} y={y} width={w} height={h} rx={4}
+          className={isMine ? 'fill-primary stroke-primary'
+            : isRecommended ? 'fill-accent/60 stroke-accent-foreground'
+            : name ? 'fill-card stroke-border'
+            : 'fill-muted/30 stroke-border/30'}
+          strokeWidth={isMine || isRecommended ? 2.5 : 1}
+        />
+        {isMine && (
+          <circle cx={x + w / 2} cy={y - 6} r={4} className="fill-primary">
+            <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
+          </circle>
+        )}
+        {isRecommended && (
+          <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+            className="fill-accent-foreground text-[7px] font-bold pointer-events-none">推荐</text>
+        )}
+        {name && (
+          <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+            className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+            {name}
+          </text>
+        )}
+      </g>
+    );
+  };
 
   const dirHint = activeDoor
     ? `从 ${activeDoor.label}（${{ top: '上', bottom: '下', left: '左', right: '右' }[activeDoor.side]}侧）进入，沿走廊到达 ${myPos.label}`
@@ -240,7 +303,21 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+      <SwipeSeatHint
+        total={swipe.total}
+        index={swipe.index}
+        label={swipe.recommended?.label}
+        onPrev={swipe.prev}
+        onNext={swipe.next}
+      />
+
+      <div
+        ref={seatContainerRef}
+        className="seat-checkin-surface flex justify-center overflow-hidden pb-4"
+        onTouchStart={swipe.onTouchStart}
+        onTouchMove={swipe.onTouchMove}
+        onTouchEnd={swipe.onTouchEnd}
+      >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
           <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[600px]" style={{ minWidth: Math.min(svgW, 320) }}>
             {/* Room outline */}
