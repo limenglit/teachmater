@@ -48,13 +48,10 @@ export default function RandomPicker() {
     popupTimerRef.current = window.setTimeout(() => setPopupName(null), 3000);
   }, []);
 
-  // Speak name using Web Speech API
+  // Speak name using Web Speech API (mobile-safe via /lib/speech)
   const speakName = useCallback((name: string) => {
     if (!voiceEnabled) return;
-    const utterance = new SpeechSynthesisUtterance(name);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 0.9;
-    speechSynthesis.speak(utterance);
+    speakOut(name, 'zh-CN', 0.9);
   }, [voiceEnabled]);
 
   const finishRoll = useCallback((chosen: { id: string; name: string }) => {
