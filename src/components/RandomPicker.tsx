@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
 import SpinWheel from '@/components/SpinWheel';
 import { playTick, playCelebration } from '@/lib/sounds';
+import { speak as speakOut, unlockSpeech } from '@/lib/speech';
 import { loadLastGroups, loadLastTeams } from '@/lib/teamwork-local';
 
 export default function RandomPicker() {
