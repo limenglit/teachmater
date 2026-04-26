@@ -532,17 +532,12 @@ export default function SeatCheckinPage() {
         {sceneType === 'computerLab' && (
           <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
+        {!['classroom', 'smartClassroom', 'banquet', 'conference', 'concertHall', 'computerLab'].includes(sceneType) && (
+          <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
+            暂不支持该座位场景的可视化展示，请按提示「{seatLabel}」入座。
+          </div>
+        )}
       </div>
-
-      {/* Floating "回到我的座位" FAB - mobile-friendly fallback */}
-      <button
-        onClick={handleRecenter}
-        className="md:hidden fixed right-4 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
-        style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-        aria-label="回到我的座位"
-      >
-        <Crosshair className="w-5 h-5" />
-      </button>
     </div>
   );
 }
