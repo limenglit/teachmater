@@ -103,6 +103,41 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat, recenterSignal]);
 
+  // ---- Empty-seat swipe recommendation (visual-only) ----
+  const emptySeatPoints: SeatPoint[] = useMemo(() => {
+    const points: SeatPoint[] = [];
+    for (let ti = 0; ti < tables.length; ti++) {
+      const center = tableCenter(ti);
+      for (let si = 0; si < seatsPerTable; si++) {
+        if (tables[ti][si]) continue;
+        if (myPos && ti === myPos.table && si === myPos.seat) continue;
+        const angle = (2 * Math.PI * si) / seatsPerTable - Math.PI / 2;
+        points.push({
+          key: `${ti}-${si}`,
+          x: center.x + seatOrbitRadius * Math.cos(angle),
+          y: center.y + seatOrbitRadius * Math.sin(angle),
+          label: `第 ${ti + 1} 桌第 ${si + 1} 号座`,
+        });
+      }
+    }
+    return points;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tables, seatsPerTable, myPos, tableCols, tableSvgSize, aisleGap]);
+
+  const mySeatPoint: SeatPoint | null = useMemo(() => {
+    if (!myPos) return null;
+    const center = tableCenter(myPos.table);
+    const angle = (2 * Math.PI * myPos.seat) / seatsPerTable - Math.PI / 2;
+    return {
+      key: `${myPos.table}-${myPos.seat}`,
+      x: center.x + seatOrbitRadius * Math.cos(angle),
+      y: center.y + seatOrbitRadius * Math.sin(angle),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myPos, seatsPerTable, tableCols, tableSvgSize, aisleGap]);
+
+  const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
+
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
   const myCenter = tableCenter(myPos.table);
