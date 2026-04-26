@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
 import SpinWheel from '@/components/SpinWheel';
 import { playTick, playCelebration } from '@/lib/sounds';
+import { speak as speakOut, unlockSpeech } from '@/lib/speech';
 import { loadLastGroups, loadLastTeams } from '@/lib/teamwork-local';
 
 export default function RandomPicker() {
@@ -47,13 +48,10 @@ export default function RandomPicker() {
     popupTimerRef.current = window.setTimeout(() => setPopupName(null), 3000);
   }, []);
 
-  // Speak name using Web Speech API
+  // Speak name using Web Speech API (mobile-safe via /lib/speech)
   const speakName = useCallback((name: string) => {
     if (!voiceEnabled) return;
-    const utterance = new SpeechSynthesisUtterance(name);
-    utterance.lang = 'zh-CN';
-    utterance.rate = 0.9;
-    speechSynthesis.speak(utterance);
+    speakOut(name, 'zh-CN', 0.9);
   }, [voiceEnabled]);
 
   const finishRoll = useCallback((chosen: { id: string; name: string }) => {
@@ -73,6 +71,7 @@ export default function RandomPicker() {
 
   const startRoll = useCallback(() => {
     if (availableStudents.length === 0 || isRolling) return;
+    if (voiceEnabled) unlockSpeech();
     setIsRolling(true);
     isRollingRef.current = true;
     const rollStartTime = Date.now();
@@ -135,9 +134,10 @@ export default function RandomPicker() {
   const useWheel = students.length <= 20 && students.length > 0;
 
   const handleWheelRollStart = useCallback(() => {
+    if (voiceEnabled) unlockSpeech();
     setIsRolling(true);
     setSelectedStudent(null);
-  }, []);
+  }, [voiceEnabled]);
 
   const handleWheelRollEnd = useCallback((chosen: { id: string; name: string }) => {
     setSelectedStudent(chosen.name);
@@ -459,6 +459,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
 
   const rollDice = useCallback(() => {
     if (availableStudents.length === 0 || isRolling) return;
+    if (voiceEnabled) unlockSpeech();
     setIsRolling(true);
     setResult(null);
 
@@ -496,9 +497,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         if (popupEnabled) showPopup(chosen.name);
 
         if (voiceEnabled) {
-          const utterance = new SpeechSynthesisUtterance(chosen.name);
-          utterance.lang = 'zh-CN';
-          speechSynthesis.speak(utterance);
+          speakOut(chosen.name, 'zh-CN', 0.9);
         }
       }
     }, 80);
