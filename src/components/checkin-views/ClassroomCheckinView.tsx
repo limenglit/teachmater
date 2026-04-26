@@ -112,6 +112,31 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const seatCx = (c: number) => seatX(c) + seatW / 2;
   const seatCy = (r: number) => seatY(r) + seatH / 2;
 
+  // ---- Nearby empty-seat recommendations (visual-only swipe preview) ----
+  const emptySeatPoints: SeatPoint[] = useMemo(() => {
+    const points: SeatPoint[] = [];
+    for (let r = 0; r < seats.length; r++) {
+      for (let c = 0; c < (seats[r]?.length ?? 0); c++) {
+        if (disabledSeatSet.has(`${r}-${c}`)) continue;
+        if (seats[r][c]) continue; // occupied
+        if (myPosition && r === myPosition.r && c === myPosition.c) continue;
+        points.push({
+          key: `${r}-${c}`,
+          x: c * (seatW + gapX),
+          y: r * (seatH + gapY),
+          label: `第 ${r + 1} 排第 ${c + 1} 列`,
+        });
+      }
+    }
+    return points;
+  }, [seats, disabledSeatSet, myPosition]);
+
+  const mySeatPoint: SeatPoint | null = myPosition
+    ? { key: `${myPosition.r}-${myPosition.c}`, x: myPosition.c * (seatW + gapX), y: myPosition.r * (seatH + gapY) }
+    : null;
+
+  const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
+
   // Aisle lines used for the navigation route (just outside the seats)
   const aisleLeftX = padX - 12;
   const aisleRightX = padX + innerW + 12;
