@@ -6,6 +6,8 @@ interface PinchZoomState {
   translateY: number;
 }
 
+const GESTURE_SWIPE_GUARD_MS = 260;
+
 /**
  * Hook that adds pinch-to-zoom and drag-to-pan on a container element.
  * Returns a ref to attach to the zoomable wrapper and the current transform style.
@@ -13,6 +15,7 @@ interface PinchZoomState {
 export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: DependencyList = []) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<PinchZoomState>({ scale: 1, translateX: 0, translateY: 0 });
+  const suppressSwipeUntilRef = useRef(0);
 
   // Refs for gesture tracking (avoid stale closures)
   const gestureRef = useRef({
@@ -34,10 +37,23 @@ export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: Dependency
   const getDistance = (t1: Touch, t2: Touch) =>
     Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
 
+  const isInSwipeGuardWindow = useCallback(() => Date.now() < suppressSwipeUntilRef.current, []);
+
+  const startSwipeGuardWindow = useCallback(() => {
+    suppressSwipeUntilRef.current = Date.now() + GESTURE_SWIPE_GUARD_MS;
+  }, []);
+
   const handleTouchStart = useCallback((e: TouchEvent) => {
+    if (isInSwipeGuardWindow() && e.touches.length === 1) {
+      // Pinch/pan rebound phase: prevent parent swipe handlers from interpreting this touch.
+      e.stopPropagation();
+      return;
+    }
+
     const g = gestureRef.current;
     if (e.touches.length === 2) {
       e.preventDefault();
+      e.stopPropagation();
       g.isPinching = true;
       g.isPanning = false;
       g.initialDistance = getDistance(e.touches[0], e.touches[1]);
@@ -53,12 +69,18 @@ export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: Dependency
       g.panInitTx = state.translateX;
       g.panInitTy = state.translateY;
     }
-  }, [state.scale, state.translateX, state.translateY]);
+  }, [isInSwipeGuardWindow, state.scale, state.translateX, state.translateY]);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
+    if (isInSwipeGuardWindow() && e.touches.length === 1) {
+      e.stopPropagation();
+      return;
+    }
+
     const g = gestureRef.current;
     if (g.isPinching && e.touches.length === 2) {
       e.preventDefault();
+      e.stopPropagation();
       const dist = getDistance(e.touches[0], e.touches[1]);
       const rawScale = g.initialScale * (dist / g.initialDistance);
       const scale = Math.min(maxScale, Math.max(minScale, rawScale));
@@ -70,6 +92,7 @@ export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: Dependency
 
       setState({ scale, translateX, translateY });
     } else if (g.isPanning && e.touches.length === 1) {
+      e.stopPropagation();
       const dx = e.touches[0].clientX - g.panStartX;
       const dy = e.touches[0].clientY - g.panStartY;
       setState(prev => ({
@@ -78,16 +101,25 @@ export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: Dependency
         translateY: g.panInitTy + dy,
       }));
     }
-  }, [minScale, maxScale]);
+  }, [isInSwipeGuardWindow, minScale, maxScale]);
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    const wasGestureActive = gestureRef.current.isPinching || gestureRef.current.isPanning;
+    if (wasGestureActive) {
+      startSwipeGuardWindow();
+      e.stopPropagation();
+    } else if (isInSwipeGuardWindow()) {
+      e.stopPropagation();
+    }
+
     gestureRef.current.isPinching = false;
     gestureRef.current.isPanning = false;
-  }, []);
+  }, [isInSwipeGuardWindow, startSwipeGuardWindow]);
 
   // Double-tap to reset
   const lastTapRef = useRef(0);
   const handleDoubleTapReset = useCallback((e: TouchEvent) => {
+    if (isInSwipeGuardWindow()) return;
     if (e.touches.length !== 1) return;
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
@@ -96,7 +128,7 @@ export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: Dependency
     } else {
       lastTapRef.current = now;
     }
-  }, []);
+  }, [isInSwipeGuardWindow]);
 
   useEffect(() => {
     const el = containerRef.current;
