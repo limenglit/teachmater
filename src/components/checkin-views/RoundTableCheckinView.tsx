@@ -232,7 +232,21 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
         <span>{dirHint}</span>
       </div>
 
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+      <SwipeSeatHint
+        total={swipe.total}
+        index={swipe.index}
+        label={swipe.recommended?.label}
+        onPrev={swipe.prev}
+        onNext={swipe.next}
+      />
+
+      <div
+        ref={seatContainerRef}
+        className="seat-checkin-surface flex justify-center overflow-hidden pb-4"
+        onTouchStart={swipe.onTouchStart}
+        onTouchMove={swipe.onTouchMove}
+        onTouchEnd={swipe.onTouchEnd}
+      >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
           <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[640px]" style={{ minWidth: Math.min(svgW, 320) }}>
             {/* Room outline */}
