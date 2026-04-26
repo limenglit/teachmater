@@ -437,8 +437,9 @@ export default function SeatCheckinPage() {
                 placeholder={t('seatCheckin.namePlaceholder')}
                 className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary"
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                autoFocus
                 autoComplete="name"
+                inputMode="text"
+                enterKeyHint="done"
               />
               {suggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-xl shadow-xl">
@@ -503,8 +504,8 @@ export default function SeatCheckinPage() {
                 aria-label="回到我的座位"
               >
                 <Crosshair className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">回到我的座位</span>
-                <span className="inline xs:hidden">居中</span>
+                <span className="hidden sm:inline">回到我的座位</span>
+                <span className="inline sm:hidden">居中</span>
               </button>
             </div>
             {isGuestAssigned && (
@@ -532,17 +533,12 @@ export default function SeatCheckinPage() {
         {sceneType === 'computerLab' && (
           <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
+        {!['classroom', 'smartClassroom', 'banquet', 'conference', 'concertHall', 'computerLab'].includes(sceneType) && (
+          <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
+            暂不支持该座位场景的可视化展示，请按提示「{seatLabel}」入座。
+          </div>
+        )}
       </div>
-
-      {/* Floating "回到我的座位" FAB - mobile-friendly fallback */}
-      <button
-        onClick={handleRecenter}
-        className="md:hidden fixed right-4 z-40 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform"
-        style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
-        aria-label="回到我的座位"
-      >
-        <Crosshair className="w-5 h-5" />
-      </button>
     </div>
   );
 }
