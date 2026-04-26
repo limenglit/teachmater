@@ -71,6 +71,7 @@ export default function RandomPicker() {
 
   const startRoll = useCallback(() => {
     if (availableStudents.length === 0 || isRolling) return;
+    if (voiceEnabled) unlockSpeech();
     setIsRolling(true);
     isRollingRef.current = true;
     const rollStartTime = Date.now();
