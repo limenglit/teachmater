@@ -497,9 +497,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         if (popupEnabled) showPopup(chosen.name);
 
         if (voiceEnabled) {
-          const utterance = new SpeechSynthesisUtterance(chosen.name);
-          utterance.lang = 'zh-CN';
-          speechSynthesis.speak(utterance);
+          speakOut(chosen.name, 'zh-CN', 0.9);
         }
       }
     }, 80);
