@@ -459,6 +459,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
 
   const rollDice = useCallback(() => {
     if (availableStudents.length === 0 || isRolling) return;
+    if (voiceEnabled) unlockSpeech();
     setIsRolling(true);
     setResult(null);
 
