@@ -2,8 +2,6 @@ import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
-import { useSwipeRecommendedSeat, type SeatPoint } from './useSwipeRecommendedSeat';
-import SwipeSeatHint from './SwipeSeatHint';
 import ZoomIndicator from './ZoomIndicator';
 
 interface Props {
@@ -113,57 +111,6 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
     );
   }, [doorPosition, myPos, rowCount, seatsPerSide, tableCols, seatW, seatH, gap, colGap, tableW, svgPadLeft, rowH]);
 
-  const emptySeatPoints: SeatPoint[] = useMemo(() => {
-    const points: SeatPoint[] = [];
-    for (let ri = 0; ri < rowCount; ri++) {
-      const topRow = labRows.find(r => r.rowIndex === ri && r.side === 'top');
-      const bottomRow = labRows.find(r => r.rowIndex === ri && r.side === 'bottom');
-      for (let globalCol = 0; globalCol < seatsPerSide * tableCols; globalCol++) {
-        const colInTable = globalCol % seatsPerSide;
-        const tableIndex = Math.floor(globalCol / seatsPerSide);
-        const x = tableIndex * (tableW + colGap) + colInTable * (seatW + gap) + seatW / 2;
-
-        if (showTop) {
-          const name = topRow?.students[globalCol] || '';
-          if (!name && !(myPos && myPos.rowIndex === ri && myPos.side === 'top' && myPos.col === globalCol)) {
-            points.push({
-              key: `top-${ri}-${globalCol}`,
-              x,
-              y: ri * rowH + seatH / 2,
-              label: `第 ${ri + 1} 排上侧第 ${(globalCol % seatsPerSide) + 1} 位`,
-            });
-          }
-        }
-
-        if (showBottom) {
-          const name = bottomRow?.students[globalCol] || '';
-          if (!name && !(myPos && myPos.rowIndex === ri && myPos.side === 'bottom' && myPos.col === globalCol)) {
-            points.push({
-              key: `bottom-${ri}-${globalCol}`,
-              x,
-              y: ri * rowH + seatH + 20 + seatH / 2,
-              label: `第 ${ri + 1} 排下侧第 ${(globalCol % seatsPerSide) + 1} 位`,
-            });
-          }
-        }
-      }
-    }
-    return points;
-  }, [labRows, rowCount, seatsPerSide, tableCols, tableW, colGap, seatW, gap, seatH, rowH, showTop, showBottom, myPos]);
-
-  const mySeatPoint: SeatPoint | null = useMemo(() => {
-    if (!myPos) return null;
-    const colInTable = myPos.col % seatsPerSide;
-    const tableIndex = Math.floor(myPos.col / seatsPerSide);
-    return {
-      key: `${myPos.side}-${myPos.rowIndex}-${myPos.col}`,
-      x: tableIndex * (tableW + colGap) + colInTable * (seatW + gap) + seatW / 2,
-      y: myPos.rowIndex * rowH + (myPos.side === 'top' ? seatH / 2 : seatH + 20 + seatH / 2),
-    };
-  }, [myPos, seatsPerSide, tableW, colGap, seatW, gap, rowH, seatH]);
-
-  const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
-
   const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 
   if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
@@ -187,21 +134,8 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
       </div>
       <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
-      <SwipeSeatHint
-        total={swipe.total}
-        index={swipe.index}
-        label={swipe.recommended?.label}
-        onPrev={swipe.prev}
-        onNext={swipe.next}
-      />
 
-      <div
-        ref={seatContainerRef}
-        className="seat-checkin-surface flex justify-center overflow-hidden pb-4"
-        onTouchStart={swipe.onTouchStart}
-        onTouchMove={swipe.onTouchMove}
-        onTouchEnd={swipe.onTouchEnd}
-      >
+      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
         <div ref={pinchRef} style={transformStyle} className="touch-none">
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[600px]" style={{ minWidth: Math.min(svgW, 320) }}>
           {/* Navigation path */}
@@ -246,27 +180,16 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                         const globalCol = seatOffset + ci;
                         const name = topRow?.students[globalCol] || '';
                         const isMine = myPos.rowIndex === ri && myPos.side === 'top' && myPos.col === globalCol;
-                        const isRecommended = swipe.recommended?.key === `top-${ri}-${globalCol}` && !isMine && !name;
                         return (
                           <g key={`t-${globalCol}`} data-my-seat={isMine ? 'true' : undefined}>
-                            {isRecommended && (
-                              <rect x={x - 3} y={y - 3} width={seatW + 6} height={seatH + 6} rx={6}
-                                className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
-                                <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
-                              </rect>
-                            )}
                             <rect x={x} y={y} width={seatW} height={seatH} rx={4}
-                              className={isMine ? 'fill-primary stroke-primary' : isRecommended ? 'fill-accent/60 stroke-accent-foreground' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                              strokeWidth={isMine || isRecommended ? 2.5 : 1}
+                              className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
+                              strokeWidth={isMine ? 2.5 : 1}
                             />
                             {isMine && (
                               <circle cx={x + seatW / 2} cy={y - 6} r={4} className="fill-primary">
                                 <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
                               </circle>
-                            )}
-                            {isRecommended && !name && (
-                              <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                                className="fill-accent-foreground text-[7px] font-bold">推荐</text>
                             )}
                             {name && <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                               className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
@@ -282,27 +205,16 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                         const globalCol = seatOffset + ci;
                         const name = bottomRow?.students[globalCol] || '';
                         const isMine = myPos.rowIndex === ri && myPos.side === 'bottom' && myPos.col === globalCol;
-                        const isRecommended = swipe.recommended?.key === `bottom-${ri}-${globalCol}` && !isMine && !name;
                         return (
                           <g key={`b-${globalCol}`} data-my-seat={isMine ? 'true' : undefined}>
-                            {isRecommended && (
-                              <rect x={x - 3} y={y - 3} width={seatW + 6} height={seatH + 6} rx={6}
-                                className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
-                                <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
-                              </rect>
-                            )}
                             <rect x={x} y={y} width={seatW} height={seatH} rx={4}
-                              className={isMine ? 'fill-primary stroke-primary' : isRecommended ? 'fill-accent/60 stroke-accent-foreground' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                              strokeWidth={isMine || isRecommended ? 2.5 : 1}
+                              className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
+                              strokeWidth={isMine ? 2.5 : 1}
                             />
                             {isMine && (
                               <circle cx={x + seatW / 2} cy={y + seatH + 6} r={4} className="fill-primary">
                                 <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
                               </circle>
-                            )}
-                            {isRecommended && !name && (
-                              <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                                className="fill-accent-foreground text-[7px] font-bold">推荐</text>
                             )}
                             {name && <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                               className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>

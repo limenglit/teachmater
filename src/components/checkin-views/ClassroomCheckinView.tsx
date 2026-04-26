@@ -2,8 +2,6 @@ import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
-import { useSwipeRecommendedSeat, type SeatPoint } from './useSwipeRecommendedSeat';
-import SwipeSeatHint from './SwipeSeatHint';
 import ZoomIndicator from './ZoomIndicator';
 
 interface Props {
@@ -100,34 +98,6 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const gapY = 8;
   const padX = 40; // room interior horizontal padding
   const padY = 36; // room interior vertical padding
-
-  // ---- Nearby empty-seat recommendations (visual-only swipe preview) ----
-  const emptySeatPoints: SeatPoint[] = useMemo(() => {
-    const points: SeatPoint[] = [];
-    for (let r = 0; r < seats.length; r++) {
-      for (let c = 0; c < (seats[r]?.length ?? 0); c++) {
-        if (disabledSeatSet.has(`${r}-${c}`)) continue;
-        if (seats[r][c]) continue; // occupied
-        if (myPosition && r === myPosition.r && c === myPosition.c) continue;
-        points.push({
-          key: `${r}-${c}`,
-          x: c * (seatW + gapX),
-          y: r * (seatH + gapY),
-          label: `第 ${r + 1} 排第 ${c + 1} 列`,
-        });
-      }
-    }
-    return points;
-  }, [seats, disabledSeatSet, myPosition]);
-
-  const mySeatPoint: SeatPoint | null = useMemo(
-    () => (myPosition
-      ? { key: `${myPosition.r}-${myPosition.c}`, x: myPosition.c * (seatW + gapX), y: myPosition.r * (seatH + gapY) }
-      : null),
-    [myPosition]
-  );
-
-  const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
 
   if (!myPosition) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
 
@@ -231,20 +201,9 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
       </div>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
-      <SwipeSeatHint
-        total={swipe.total}
-        index={swipe.index}
-        label={swipe.recommended?.label}
-        onPrev={swipe.prev}
-        onNext={swipe.next}
-      />
-
       <div
         ref={seatContainerRef}
         className="seat-checkin-surface flex justify-center overflow-hidden pb-4"
-        onTouchStart={swipe.onTouchStart}
-        onTouchMove={swipe.onTouchMove}
-        onTouchEnd={swipe.onTouchEnd}
       >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
           <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[600px]" style={{ minWidth: Math.min(svgW, 320) }}>
@@ -305,28 +264,16 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 const name = seats[r]?.[c] ?? null;
                 const isMine = myPosition.r === r && myPosition.c === c;
                 const isDisabled = disabledSeatSet.has(`${r}-${c}`) && !isMine;
-                const isRecommended = swipe.recommended?.key === `${r}-${c}` && !isMine && !isDisabled && !name;
                 return (
                   <g key={`s-${r}-${c}`} data-my-seat={isMine ? 'true' : undefined}>
                     <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                       className={isMine ? 'fill-primary stroke-primary'
-                        : isRecommended ? 'fill-accent/60 stroke-accent-foreground'
                         : isDisabled ? 'fill-muted/60 stroke-muted-foreground/40'
                         : name ? 'fill-card stroke-border'
                         : 'fill-muted/30 stroke-border/30'}
-                      strokeWidth={isMine || isRecommended ? 2.5 : 1}
+                      strokeWidth={isMine ? 2.5 : 1}
                       strokeDasharray={isDisabled ? '2 2' : undefined}
                     />
-                    {isRecommended && (
-                      <>
-                        <rect x={x - 3} y={y - 3} width={seatW + 6} height={seatH + 6} rx={6}
-                          className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
-                          <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
-                        </rect>
-                        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                          className="fill-accent-foreground text-[8px] font-bold">推荐</text>
-                      </>
-                    )}
                     {isDisabled && (
                       <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                         className="fill-muted-foreground/70 text-[9px]">✕</text>
