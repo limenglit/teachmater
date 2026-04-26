@@ -134,9 +134,10 @@ export default function RandomPicker() {
   const useWheel = students.length <= 20 && students.length > 0;
 
   const handleWheelRollStart = useCallback(() => {
+    if (voiceEnabled) unlockSpeech();
     setIsRolling(true);
     setSelectedStudent(null);
-  }, []);
+  }, [voiceEnabled]);
 
   const handleWheelRollEnd = useCallback((chosen: { id: string; name: string }) => {
     setSelectedStudent(chosen.name);
