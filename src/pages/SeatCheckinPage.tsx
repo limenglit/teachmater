@@ -437,8 +437,9 @@ export default function SeatCheckinPage() {
                 placeholder={t('seatCheckin.namePlaceholder')}
                 className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary"
                 onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                autoFocus
                 autoComplete="name"
+                inputMode="text"
+                enterKeyHint="done"
               />
               {suggestions.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 max-h-56 overflow-y-auto bg-card border border-border rounded-xl shadow-xl">
