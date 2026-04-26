@@ -303,7 +303,21 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+      <SwipeSeatHint
+        total={swipe.total}
+        index={swipe.index}
+        label={swipe.recommended?.label}
+        onPrev={swipe.prev}
+        onNext={swipe.next}
+      />
+
+      <div
+        ref={seatContainerRef}
+        className="seat-checkin-surface flex justify-center overflow-hidden pb-4"
+        onTouchStart={swipe.onTouchStart}
+        onTouchMove={swipe.onTouchMove}
+        onTouchEnd={swipe.onTouchEnd}
+      >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
           <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[600px]" style={{ minWidth: Math.min(svgW, 320) }}>
             {/* Room outline */}
