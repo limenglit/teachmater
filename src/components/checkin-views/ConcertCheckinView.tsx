@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
+import { useSwipeRecommendedSeat, type SeatPoint } from './useSwipeRecommendedSeat';
+import SwipeSeatHint from './SwipeSeatHint';
 import ZoomIndicator from './ZoomIndicator';
 
 type EntryDoor = { side: 'front' | 'back'; label: string };
@@ -91,6 +93,37 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
     y: stageY + 15 + mySeatPolar.r * Math.sin(mySeatPolar.angle),
   };
 
+  const emptySeatPoints: SeatPoint[] = useMemo(() => {
+    const points: SeatPoint[] = [];
+    for (let ri = 0; ri < rows.length; ri++) {
+      const row = rows[ri] || [];
+      const seatCount = seatCaps[ri];
+      const totalAngle = Math.min(Math.PI * 0.85, Math.PI * (0.5 + ri * 0.05));
+      const startAngle = Math.PI - (Math.PI - totalAngle) / 2;
+      const endAngle = (Math.PI - totalAngle) / 2;
+      for (let ci = 0; ci < row.length; ci++) {
+        if (row[ci]) continue;
+        if (ri === myPos.row && ci === myPos.col) continue;
+        const frac = seatCount <= 1 ? 0.5 : ci / (seatCount - 1);
+        const angle = startAngle - frac * (startAngle - endAngle);
+        points.push({
+          key: `${ri}-${ci}`,
+          x: cx + (startRadius + ri * radiusStep) * Math.cos(angle),
+          y: stageY + 15 + (startRadius + ri * radiusStep) * Math.sin(angle),
+          label: `第 ${ri + 1} 排第 ${ci + 1} 座`,
+        });
+      }
+    }
+    return points;
+  }, [rows, seatCaps, myPos.row, myPos.col, cx, startRadius, radiusStep, stageY]);
+
+  const mySeatPoint: SeatPoint = {
+    key: `${myPos.row}-${myPos.col}`,
+    x: mySeatPos.x,
+    y: mySeatPos.y,
+  };
+  const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
+
   // 路径：选最近的门口
   const nearestDoor = entryDoors[0];
   const nearestDoorPos = doorPos(nearestDoor.side);
@@ -122,8 +155,21 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
       </div>
       <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
+      <SwipeSeatHint
+        total={swipe.total}
+        index={swipe.index}
+        label={swipe.recommended?.label}
+        onPrev={swipe.prev}
+        onNext={swipe.next}
+      />
 
-      <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
+      <div
+        ref={seatContainerRef}
+        className="seat-checkin-surface flex justify-center overflow-hidden pb-4"
+        onTouchStart={swipe.onTouchStart}
+        onTouchMove={swipe.onTouchMove}
+        onTouchEnd={swipe.onTouchEnd}
+      >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[560px]" style={{ minWidth: Math.min(svgW, 320) }}>
           {/* Door markers */}
@@ -169,13 +215,20 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
               const sx = cx + r * Math.cos(angle);
               const sy = stageY + 15 + r * Math.sin(angle);
               const isMine = ri === myPos.row && ci === myPos.col;
+              const isRecommended = swipe.recommended?.key === `${ri}-${ci}` && !isMine && !name;
               return (
                 <g key={`${ri}-${ci}`} data-my-seat={isMine ? 'true' : undefined}>
+                  {isRecommended && (
+                    <circle cx={sx} cy={sy} r={seatR + 5} className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
+                      <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
+                    </circle>
+                  )}
                   <circle cx={sx} cy={sy} r={seatR}
                     className={isMine
                       ? 'fill-primary stroke-primary shadow-lg'
+                      : isRecommended ? 'fill-accent/60 stroke-accent-foreground'
                       : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                    strokeWidth={isMine ? 2.5 : 1.5}
+                    strokeWidth={isMine || isRecommended ? 2.5 : 1.5}
                     filter={isMine ? 'drop-shadow(0 2px 8px #38bdf8aa)' : undefined}
                   />
                   {isMine && (
@@ -191,6 +244,10 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
                       className={`pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
                       {name.length > 8 ? name.slice(0, 7) + '…' : name}
                     </text>
+                  )}
+                  {isRecommended && !name && (
+                    <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
+                      className="fill-accent-foreground text-[8px] font-bold">推荐</text>
                   )}
                 </g>
               );
