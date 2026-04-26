@@ -304,18 +304,30 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
                     const sy = center.y + seatOrbitRadius * Math.sin(angle);
                     const seatName = people[si] || '';
                     const isMine = ti === myPos.table && si === myPos.seat;
+                    const isRecommended = swipe.recommended?.key === `${ti}-${si}` && !isMine && !seatName;
                     return (
                       <g key={si}>
+                        {isRecommended && (
+                          <circle cx={sx} cy={sy} r={seatRadius + 4}
+                            className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
+                            <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
+                          </circle>
+                        )}
                         <circle cx={sx} cy={sy} r={seatRadius}
                           className={isMine
                             ? 'fill-primary stroke-primary'
+                            : isRecommended ? 'fill-accent/60 stroke-accent-foreground'
                             : isMyTable && seatName ? 'fill-card stroke-primary/40'
                             : seatName ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                          strokeWidth={isMine ? 2.5 : 1.2} />
+                          strokeWidth={isMine || isRecommended ? 2.5 : 1.2} />
                         {isMine && (
                           <circle cx={sx} cy={sy - seatRadius - 4} r={3} className="fill-primary">
                             <animate attributeName="r" values="2;4;2" dur="1.2s" repeatCount="indefinite" />
                           </circle>
+                        )}
+                        {isRecommended && (
+                          <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
+                            className="fill-accent-foreground text-[7px] font-bold pointer-events-none">推荐</text>
                         )}
                         {seatName && (
                           <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
