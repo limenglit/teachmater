@@ -305,16 +305,28 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 const name = seats[r]?.[c] ?? null;
                 const isMine = myPosition.r === r && myPosition.c === c;
                 const isDisabled = disabledSeatSet.has(`${r}-${c}`) && !isMine;
+                const isRecommended = swipe.recommended?.key === `${r}-${c}` && !isMine && !isDisabled && !name;
                 return (
                   <g key={`s-${r}-${c}`} data-my-seat={isMine ? 'true' : undefined}>
                     <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                       className={isMine ? 'fill-primary stroke-primary'
+                        : isRecommended ? 'fill-accent/60 stroke-accent-foreground'
                         : isDisabled ? 'fill-muted/60 stroke-muted-foreground/40'
                         : name ? 'fill-card stroke-border'
                         : 'fill-muted/30 stroke-border/30'}
-                      strokeWidth={isMine ? 2.5 : 1}
+                      strokeWidth={isMine || isRecommended ? 2.5 : 1}
                       strokeDasharray={isDisabled ? '2 2' : undefined}
                     />
+                    {isRecommended && (
+                      <>
+                        <rect x={x - 3} y={y - 3} width={seatW + 6} height={seatH + 6} rx={6}
+                          className="fill-none stroke-accent-foreground" strokeWidth={1.5} strokeDasharray="3 2">
+                          <animate attributeName="stroke-dashoffset" from="0" to="10" dur="1s" repeatCount="indefinite" />
+                        </rect>
+                        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+                          className="fill-accent-foreground text-[8px] font-bold">推荐</text>
+                      </>
+                    )}
                     {isDisabled && (
                       <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                         className="fill-muted-foreground/70 text-[9px]">✕</text>
