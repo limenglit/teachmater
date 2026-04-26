@@ -93,24 +93,13 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const seatContainerRef = useAutoCenterMySeat([studentName, myPosition?.r, myPosition?.c, recenterSignal]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
-  if (!myPosition) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
-
-  // ---- SVG layout (inspired by ComputerLab style) ----
+  // ---- SVG layout constants (declared before any conditional return) ----
   const seatW = 36;
   const seatH = 26;
   const gapX = 6;
   const gapY = 8;
   const padX = 40; // room interior horizontal padding
   const padY = 36; // room interior vertical padding
-  const innerW = cols * seatW + (cols - 1) * gapX;
-  const innerH = rows * seatH + (rows - 1) * gapY;
-  const roomW = innerW + padX * 2;
-  const roomH = innerH + padY * 2;
-
-  const seatX = (c: number) => padX + c * (seatW + gapX);
-  const seatY = (r: number) => padY + r * (seatH + gapY);
-  const seatCx = (c: number) => seatX(c) + seatW / 2;
-  const seatCy = (r: number) => seatY(r) + seatH / 2;
 
   // ---- Nearby empty-seat recommendations (visual-only swipe preview) ----
   const emptySeatPoints: SeatPoint[] = useMemo(() => {
@@ -131,11 +120,27 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     return points;
   }, [seats, disabledSeatSet, myPosition]);
 
-  const mySeatPoint: SeatPoint | null = myPosition
-    ? { key: `${myPosition.r}-${myPosition.c}`, x: myPosition.c * (seatW + gapX), y: myPosition.r * (seatH + gapY) }
-    : null;
+  const mySeatPoint: SeatPoint | null = useMemo(
+    () => (myPosition
+      ? { key: `${myPosition.r}-${myPosition.c}`, x: myPosition.c * (seatW + gapX), y: myPosition.r * (seatH + gapY) }
+      : null),
+    [myPosition]
+  );
 
   const swipe = useSwipeRecommendedSeat(mySeatPoint, emptySeatPoints);
+
+  if (!myPosition) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
+
+  // ---- Derived layout (depends on cols/rows known after guard) ----
+  const innerW = cols * seatW + (cols - 1) * gapX;
+  const innerH = rows * seatH + (rows - 1) * gapY;
+  const roomW = innerW + padX * 2;
+  const roomH = innerH + padY * 2;
+
+  const seatX = (c: number) => padX + c * (seatW + gapX);
+  const seatY = (r: number) => padY + r * (seatH + gapY);
+  const seatCx = (c: number) => seatX(c) + seatW / 2;
+  const seatCy = (r: number) => seatY(r) + seatH / 2;
 
   // Aisle lines used for the navigation route (just outside the seats)
   const aisleLeftX = padX - 12;
