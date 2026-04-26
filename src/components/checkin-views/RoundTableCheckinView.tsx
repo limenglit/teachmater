@@ -3,6 +3,8 @@ import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePinchZoom } from './usePinchZoom';
+import { useSwipeRecommendedSeat, type SeatPoint } from './useSwipeRecommendedSeat';
+import SwipeSeatHint from './SwipeSeatHint';
 import ZoomIndicator from './ZoomIndicator';
 
 interface Props {
