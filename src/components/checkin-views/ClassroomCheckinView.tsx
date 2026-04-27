@@ -23,6 +23,7 @@ interface Door {
 }
 
 export default function ClassroomCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+  const { t } = useLanguage();
   const seats = seatData as (string | null)[][];
   const config = sceneConfig as {
     rows: number; cols: number; windowOnLeft: boolean;
