@@ -3,6 +3,7 @@ import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   seatData: unknown;
@@ -21,7 +22,6 @@ type SeatPosition = {
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
 interface DoorInfo { side: DoorSide; label: string; }
 
-/** Convert a (x,y) room-canvas coordinate to its nearest perimeter side. */
 function classifyDoorSide(door: { x: number; y: number } | null, roomW: number, roomH: number): DoorSide | null {
   if (!door) return null;
   const dLeft = door.x;
@@ -36,6 +36,7 @@ function classifyDoorSide(door: { x: number; y: number } | null, roomW: number, 
 }
 
 export default function ConferenceCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+  const { t } = useLanguage();
   const raw = seatData as Record<string, unknown>;
   const valid = raw && typeof raw === 'object'
     && ((Array.isArray(raw.top) && Array.isArray(raw.bottom))
@@ -65,36 +66,35 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const doors: DoorInfo[] = useMemo(() => {
     const list: DoorInfo[] = [];
     const fs = classifyDoorSide(frontDoorRaw ?? null, roomW, roomH);
-    if (fs) list.push({ side: fs, label: '前门' });
+    if (fs) list.push({ side: fs, label: t('seat.nav.frontDoor') });
     const bs = classifyDoorSide(backDoorRaw ?? null, roomW, roomH);
-    if (bs) list.push({ side: bs, label: '后门' });
-    if (list.length === 0) list.push({ side: 'right', label: '入口' });
+    if (bs) list.push({ side: bs, label: t('seat.nav.backDoor') });
+    if (list.length === 0) list.push({ side: 'right', label: t('seat.nav.entry') });
     return list;
-  }, [frontDoorRaw, backDoorRaw, roomW, roomH]);
+  }, [frontDoorRaw, backDoorRaw, roomW, roomH, t]);
 
   const myPos = useMemo((): SeatPosition | null => {
     if (!data) return null;
-    if (data.headLeft === studentName) return { side: 'head-left', index: 0, label: '左侧主位' };
-    if (data.headRight === studentName) return { side: 'head-right', index: 0, label: '右侧主位' };
+    if (data.headLeft === studentName) return { side: 'head-left', index: 0, label: t('seat.nav.confHeadLeft') };
+    if (data.headRight === studentName) return { side: 'head-right', index: 0, label: t('seat.nav.confHeadRight') };
     const topIdx = data.top.indexOf(studentName);
-    if (topIdx >= 0) return { side: 'top', index: topIdx, label: `上方第${topIdx + 1}位` };
+    if (topIdx >= 0) return { side: 'top', index: topIdx, label: tFormat(t('seat.nav.confTopN'), topIdx + 1) };
     const bottomIdx = data.bottom.indexOf(studentName);
-    if (bottomIdx >= 0) return { side: 'bottom', index: bottomIdx, label: `下方第${bottomIdx + 1}位` };
+    if (bottomIdx >= 0) return { side: 'bottom', index: bottomIdx, label: tFormat(t('seat.nav.confBottomN'), bottomIdx + 1) };
     for (let cr = 0; cr < data.companionTop.length; cr++) {
       const ci = data.companionTop[cr].indexOf(studentName);
-      if (ci >= 0) return { side: 'companion-top', index: ci, companionRow: cr, label: `上方随员第${cr + 1}排第${ci + 1}位` };
+      if (ci >= 0) return { side: 'companion-top', index: ci, companionRow: cr, label: tFormat(t('seat.nav.confCompTopN'), cr + 1, ci + 1) };
     }
     for (let cr = 0; cr < data.companionBottom.length; cr++) {
       const ci = data.companionBottom[cr].indexOf(studentName);
-      if (ci >= 0) return { side: 'companion-bottom', index: ci, companionRow: cr, label: `下方随员第${cr + 1}排第${ci + 1}位` };
+      if (ci >= 0) return { side: 'companion-bottom', index: ci, companionRow: cr, label: tFormat(t('seat.nav.confCompBottomN'), cr + 1, ci + 1) };
     }
     return null;
-  }, [data, studentName]);
+  }, [data, studentName, t]);
 
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index, recenterSignal]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
-  // ---- Layout constants (declared before any early return so hooks below can use them) ----
   const seatW = 38, seatH = 26, gap = 3;
   const tableW = seatsPerSide * (seatW + gap) + 20;
   const tableH = 16;
@@ -113,13 +113,11 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const tableY = outsideMargin + 40 + topCompanionH + seatH + sideGap;
   const headSeatW = 32, headSeatH = tableH;
 
-  // Inner content bounding box (where seats are)
   const innerLeft = tableX - headSeatW - 4;
   const innerRight = tableX + tableW + headSeatW + 4;
   const innerTop = outsideMargin + 40;
   const innerBottom = innerTop + totalH;
 
-  // Aisles around the seat block
   const aisleLeftX = innerLeft - 18;
   const aisleRightX = innerRight + 18;
   const aisleTopY = innerTop - 18;
@@ -152,17 +150,16 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <div className="text-3xl mb-4 text-destructive">⚠️</div>
-        <div className="text-xl font-bold text-destructive mb-2">座位数据异常</div>
-        <div className="text-sm text-muted-foreground">请联系管理员或刷新页面重试</div>
+        <div className="text-xl font-bold text-destructive mb-2">{t('seat.nav.dataError')}</div>
+        <div className="text-sm text-muted-foreground">{t('seat.nav.dataErrorHint')}</div>
       </div>
     );
   }
 
-  if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
+  if (!myPos) return <p className="text-center text-muted-foreground">{t('seat.nav.notFound')}</p>;
 
   const mySeatCenter = getSeatCenter(myPos);
 
-  // Door anchor on the wall (outside seat block) for a side
   const doorAnchor = (side: DoorSide) => {
     switch (side) {
       case 'top':    return { x: mySeatCenter.x, y: aisleTopY - 14 };
@@ -172,7 +169,6 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
     }
   };
 
-  // Pick the closest door (Manhattan distance)
   let activeDoor: DoorInfo | null = null;
   {
     let min = Infinity;
@@ -183,7 +179,6 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
     }
   }
 
-  // Build L-shaped path: door → aisle along wall → into row/col → seat
   const buildPath = (side: DoorSide) => {
     const anchor = doorAnchor(side);
     const points: { x: number; y: number }[] = [anchor];
@@ -227,21 +222,27 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
     );
   };
 
+  const sideTextMap: Record<DoorSide, string> = {
+    top: t('seat.nav.sideTop'),
+    bottom: t('seat.nav.sideBottom'),
+    left: t('seat.nav.sideLeft'),
+    right: t('seat.nav.sideRight'),
+  };
   const dirHint = activeDoor
-    ? `从 ${activeDoor.label}（${{ top: '上', bottom: '下', left: '左', right: '右' }[activeDoor.side]}侧）进入，沿走廊到达 ${myPos.label}`
+    ? tFormat(t('seat.nav.confEnter'), activeDoor.label, sideTextMap[activeDoor.side], myPos.label)
     : '';
 
   return (
     <>
       <p className="text-sm text-muted-foreground text-center">
-        {studentName}，你的座位在 <strong>{myPos.label}</strong>
+        {tFormat(t('seat.nav.youAtSeat'), studentName)} <strong>{myPos.label}</strong>
       </p>
       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
-        <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> 入口</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> {t('seat.nav.mySeat')}</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> {t('seat.nav.navPath')}</span>
+        <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> {t('seat.nav.entry')}</span>
       </div>
-      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
+      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">{t('seat.nav.pinchHint')}</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
       <div
@@ -250,11 +251,9 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
           <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[600px]" style={{ minWidth: Math.min(svgW, 320) }}>
-            {/* Room outline */}
             <rect x={innerLeft - 24} y={innerTop - 24} width={innerRight - innerLeft + 48} height={innerBottom - innerTop + 48}
               rx={10} className="fill-muted/20 stroke-border" strokeWidth={1.5} />
 
-            {/* Navigation path */}
             {navPath.length > 1 && (
               <path d={pathD} fill="none" className="stroke-primary/60" strokeWidth={2.5}
                 strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round">
@@ -262,7 +261,6 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
               </path>
             )}
 
-            {/* Doors */}
             {doors.map((d, i) => {
               const a = doorAnchor(d.side);
               const isActive = activeDoor?.side === d.side && activeDoor?.label === d.label;
@@ -280,24 +278,20 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
               );
             })}
 
-            {/* Turning points */}
             {navPath.slice(1, -1).map((p, i) => (
               <circle key={`tp-${i}`} cx={p.x} cy={p.y} r={2.5} className="fill-primary/40 stroke-primary/60" strokeWidth={1} />
             ))}
 
-            {/* Conference table */}
             <rect x={tableX} y={tableY} width={tableW} height={tableH} rx={6}
               className="fill-primary/10 stroke-primary/30" strokeWidth={2} />
             <text x={tableX + tableW / 2} y={tableY + tableH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-              className="fill-primary text-[9px] font-medium">会议桌</text>
+              className="fill-primary text-[9px] font-medium">{t('seat.nav.meetingTable')}</text>
 
-            {/* Head seats */}
             {renderSeat(tableX - headSeatW - 4, tableY + (tableH - headSeatH) / 2, headSeatW, headSeatH,
               data.headLeft, myPos.side === 'head-left', 'head-left')}
             {renderSeat(tableX + tableW + 4, tableY + (tableH - headSeatH) / 2, headSeatW, headSeatH,
               data.headRight, myPos.side === 'head-right', 'head-right')}
 
-            {/* Main top seats */}
             {data.top.map((name, i) => {
               const x = seatStartX + i * (seatW + gap);
               const y = tableY - sideGap - seatH;
@@ -305,7 +299,6 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
               return renderSeat(x, y, seatW, seatH, name, isMine, `top-${i}`);
             })}
 
-            {/* Main bottom seats */}
             {data.bottom.map((name, i) => {
               const x = seatStartX + i * (seatW + gap);
               const y = tableY + tableH + sideGap;
@@ -313,7 +306,6 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
               return renderSeat(x, y, seatW, seatH, name, isMine, `bottom-${i}`);
             })}
 
-            {/* Companion top rows */}
             {data.companionTop.map((row, cr) => row.map((name, i) => {
               const x = seatStartX + i * (seatW + gap);
               const y = tableY - sideGap - seatH - (cr + 1) * (seatH + companionGap);
@@ -321,7 +313,6 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
               return renderSeat(x, y, seatW, seatH, name, isMine, `ct-${cr}-${i}`);
             }))}
 
-            {/* Companion bottom rows */}
             {data.companionBottom.map((row, cr) => row.map((name, i) => {
               const x = seatStartX + i * (seatW + gap);
               const y = tableY + tableH + sideGap + seatH + (cr + 1) * companionGap + cr * seatH;
@@ -335,7 +326,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
       <div className="text-center text-xs text-muted-foreground space-y-1">
         <p className="flex items-center justify-center gap-1">
           <Navigation className="w-3 h-3 text-primary" />
-          {dirHint || `从入口进入，到达 ${myPos.label}`}
+          {dirHint || tFormat(t('seat.nav.confEnterDefault'), myPos.label)}
         </p>
       </div>
     </>

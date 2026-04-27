@@ -3,6 +3,7 @@ import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   seatData: unknown;
@@ -19,10 +20,6 @@ interface LabRow {
 
 type DoorPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
-/**
- * Compute a navigation path from the door to the student's seat.
- * The path walks along the aisle (left or right edge), then turns into the correct row.
- */
 function computeNavPath(
   doorPos: DoorPosition,
   myRow: number,
@@ -42,7 +39,6 @@ function computeNavPath(
   const tableColIdx = Math.floor(myCol / seatsPerSide);
   const localCol = myCol % seatsPerSide;
 
-  // Seat center position
   const tblX = svgPadLeft + tableColIdx * (tableW + colGap);
   const seatCenterX = tblX + localCol * (seatW + gap) + seatW / 2;
   const baseY = 20 + myRow * rowH;
@@ -60,19 +56,19 @@ function computeNavPath(
   const aisleX = doorOnLeft ? aisleLeft : aisleRight;
   const doorY = doorOnTop ? 8 : 20 + (rowCount - 1) * rowH + seatH + 20 + seatH + 8;
 
-  // Build path: door → walk along aisle to correct row → turn into seat
-  const rowAisleY = baseY + seatH + 10; // center of the table bar area (aisle Y for this row)
+  const rowAisleY = baseY + seatH + 10;
   const points: { x: number; y: number }[] = [
-    { x: aisleX, y: doorY },       // door
-    { x: aisleX, y: rowAisleY },   // walk along aisle to row
-    { x: seatCenterX, y: rowAisleY }, // turn into row
-    { x: seatCenterX, y: seatCenterY }, // arrive at seat
+    { x: aisleX, y: doorY },
+    { x: aisleX, y: rowAisleY },
+    { x: seatCenterX, y: rowAisleY },
+    { x: seatCenterX, y: seatCenterY },
   ];
 
   return points;
 }
 
 export default function ComputerLabCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+  const { t } = useLanguage();
   const labRows = seatData as LabRow[];
   const rowCount = (sceneConfig.rowCount as number) || 5;
   const seatsPerSide = (sceneConfig.seatsPerSide as number) || 8;
@@ -113,49 +109,55 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
 
   const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 
-  if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
+  if (!myPos) return <p className="text-center text-muted-foreground">{t('seat.nav.notFound')}</p>;
 
-  // Navigation text directions
   const doorOnTop = doorPosition.startsWith('top');
   const doorOnLeft = doorPosition.endsWith('left');
-  const doorLabel = `${doorOnTop ? '前' : '后'}门（${doorOnLeft ? '左侧' : '右侧'}）`;
+  const doorLabel = tFormat(
+    t('seat.nav.computerLabDoor'),
+    doorOnTop ? t('seat.nav.computerLabFront') : t('seat.nav.computerLabBack'),
+    doorOnLeft ? t('seat.nav.computerLabLeftSide') : t('seat.nav.computerLabRightSide'),
+  );
   const walkDir = doorOnTop
-    ? (myPos.rowIndex > 0 ? '向下' : '')
-    : (myPos.rowIndex < rowCount - 1 ? '向上' : '');
+    ? (myPos.rowIndex > 0 ? t('seat.nav.computerLabWalkDown') : '')
+    : (myPos.rowIndex < rowCount - 1 ? t('seat.nav.computerLabWalkUp') : '');
+
+  const tablePart = tableCols > 1 ? tFormat(t('seat.nav.computerLabTablePart'), tableColIdx + 1) : '';
+  const sideText = myPos.side === 'top' ? t('seat.nav.computerLabSideTop') : t('seat.nav.computerLabSideBottom');
+
+  const turnDir = doorOnLeft ? t('seat.nav.dirRight') : t('seat.nav.dirLeft');
+  const aisleSide = doorOnLeft ? t('seat.nav.computerLabLeftSide') : t('seat.nav.computerLabRightSide');
 
   return (
     <>
       <p className="text-sm text-muted-foreground text-center">
-        {studentName}，你的位置在 <strong>第{myPos.rowIndex + 1}排 · {tableCols > 1 ? `第${tableColIdx + 1}桌 · ` : ''}{myPos.side === 'top' ? '上方' : '下方'} · 第{(myPos.col % seatsPerSide) + 1}位</strong>
+        {tFormat(t('seat.nav.youAtPosition'), studentName)}{' '}
+        <strong>{tFormat(t('seat.nav.computerLabFull'), myPos.rowIndex + 1, tablePart, sideText, (myPos.col % seatsPerSide) + 1)}</strong>
       </p>
       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> {t('seat.nav.mySeat')}</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> {t('seat.nav.navPath')}</span>
       </div>
-      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">双指缩放查看细节，双击恢复</p>
+      <p className="text-[11px] text-muted-foreground/70 text-center sm:hidden">{t('seat.nav.pinchHint')}</p>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
         <div ref={pinchRef} style={transformStyle} className="touch-none">
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[600px]" style={{ minWidth: Math.min(svgW, 320) }}>
-          {/* Navigation path */}
           <path d={pathD} fill="none" className="stroke-primary/50" strokeWidth={2.5}
             strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round">
             <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite" />
           </path>
 
-          {/* Door marker */}
           <g>
             <circle cx={navPath[0].x} cy={navPath[0].y} r={10} className="fill-accent stroke-accent-foreground/30" strokeWidth={1.5} />
             <text x={navPath[0].x} y={navPath[0].y + 1} textAnchor="middle" dominantBaseline="middle" className="text-[8px] fill-accent-foreground">🚪</text>
           </g>
 
-          {/* Turning points */}
           {navPath.slice(1, -1).map((p, i) => (
             <circle key={i} cx={p.x} cy={p.y} r={3} className="fill-primary/40 stroke-primary/60" strokeWidth={1} />
           ))}
 
-          {/* Rows */}
           {Array.from({ length: rowCount }).map((_, ri) => {
             const baseY = 20 + ri * rowH;
             const topRow = labRows.find(r => r.rowIndex === ri && r.side === 'top');
@@ -164,7 +166,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
             return (
               <g key={ri}>
                 <text x={12} y={baseY + seatH + 10} textAnchor="middle" dominantBaseline="middle"
-                  className="fill-muted-foreground text-[9px]">{ri + 1}排</text>
+                  className="fill-muted-foreground text-[9px]">{ri + 1}{t('seat.nav.rowShort')}</text>
 
                 {Array.from({ length: tableCols }).map((_, tci) => {
                   const tblX = svgPadLeft + tci * (tableW + colGap);
@@ -236,10 +238,16 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
       <div className="text-center text-xs text-muted-foreground space-y-1">
         <p className="flex items-center justify-center gap-1">
           <Navigation className="w-3 h-3 text-primary" />
-          从<strong>{doorLabel}</strong>进入
-          {walkDir && <>，沿{doorOnLeft ? '左' : '右'}侧走廊{walkDir}走到<strong>第 {myPos.rowIndex + 1} 排</strong></>}
+          <span>
+            {tFormat(t('seat.nav.computerLabEnterDoor'), doorLabel)}
+            {walkDir && tFormat(t('seat.nav.computerLabAlongAisle'), aisleSide, walkDir, myPos.rowIndex + 1)}
+          </span>
         </p>
-        <p>🪑 {doorOnLeft ? '向右' : '向左'}转入{tableCols > 1 ? `第 ${tableColIdx + 1} 桌` : '长桌'}，坐在{myPos.side === 'top' ? '上' : '下'}侧从左数第 <strong>{(myPos.col % seatsPerSide) + 1}</strong> 个位置</p>
+        <p>
+          {tableCols > 1
+            ? tFormat(t('seat.nav.computerLabFinalTable'), turnDir, tableColIdx + 1, sideText, (myPos.col % seatsPerSide) + 1)
+            : tFormat(t('seat.nav.computerLabFinalLong'), turnDir, sideText, (myPos.col % seatsPerSide) + 1)}
+        </p>
       </div>
     </>
   );
