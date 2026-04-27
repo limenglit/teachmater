@@ -1,4 +1,5 @@
 import { ZoomIn, RotateCcw } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Props {
   scale: number;
@@ -6,6 +7,7 @@ interface Props {
 }
 
 export default function ZoomIndicator({ scale, onReset }: Props) {
+  const { t } = useLanguage();
   const pct = Math.round(scale * 100);
   const isZoomed = Math.abs(scale - 1) > 0.05;
 
@@ -22,8 +24,9 @@ export default function ZoomIndicator({ scale, onReset }: Props) {
         className="inline-flex items-center gap-1 bg-muted text-muted-foreground text-xs px-2.5 py-1 rounded-full border border-border hover:bg-accent transition-colors"
       >
         <RotateCcw className="w-3 h-3" />
-        复位
+        {t('common.reset') !== 'common.reset' ? t('common.reset') : 'Reset'}
       </button>
     </div>
   );
 }
+

@@ -4,6 +4,7 @@ import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   seatData: unknown;
@@ -16,7 +17,6 @@ interface Props {
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
 interface DoorInfo { side: DoorSide; label: string; }
 
-/** Convert a (x,y) room-canvas coordinate to its nearest perimeter side. */
 function classifyDoorSide(door: { x: number; y: number } | null | undefined, roomW: number, roomH: number): DoorSide | null {
   if (!door) return null;
   const dLeft = door.x;
@@ -31,6 +31,7 @@ function classifyDoorSide(door: { x: number; y: number } | null | undefined, roo
 }
 
 export default function RoundTableCheckinView({ seatData, sceneConfig, studentName, sceneType, recenterSignal = 0 }: Props) {
+  const { t } = useLanguage();
   const tables = seatData as string[][];
   const seatsPerTable = (sceneConfig.seatsPerTable as number) || tables[0]?.length || 6;
   const tableCols = (sceneConfig.tableCols as number) || Math.ceil(Math.sqrt(tables.length));
@@ -38,16 +39,14 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
   const isMobile = useIsMobile();
 
   const myPos = useMemo(() => {
-    for (let t = 0; t < tables.length; t++) {
-      for (let s = 0; s < tables[t].length; s++) {
-        if (tables[t][s] === studentName) return { table: t, seat: s };
+    for (let ti = 0; ti < tables.length; ti++) {
+      for (let s = 0; s < tables[ti].length; s++) {
+        if (tables[ti][s] === studentName) return { table: ti, seat: s };
       }
     }
     return null;
   }, [tables, studentName]);
 
-  // Resolve doors: prefer pixel coords (frontDoor/backDoor with roomWidth/roomHeight),
-  // fall back to legacy entryDoorPosition / entryDoors.
   const roomW = sceneConfig.roomWidth as number | undefined;
   const roomH = sceneConfig.roomHeight as number | undefined;
   const frontDoorRaw = sceneConfig.frontDoor as { x: number; y: number } | null | undefined;
@@ -57,22 +56,25 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
     const list: DoorInfo[] = [];
     if (roomW && roomH) {
       const fs = classifyDoorSide(frontDoorRaw, roomW, roomH);
-      if (fs) list.push({ side: fs, label: '前门' });
+      if (fs) list.push({ side: fs, label: t('seat.nav.frontDoor') });
       const bs = classifyDoorSide(backDoorRaw, roomW, roomH);
-      if (bs) list.push({ side: bs, label: '后门' });
+      if (bs) list.push({ side: bs, label: t('seat.nav.backDoor') });
     }
     if (list.length === 0) {
-      // legacy
       const pos = (sceneConfig.entryDoorPosition as DoorSide) || 'top';
-      const labelMap: Record<DoorSide, string> = { top: '前门', bottom: '后门', left: '左门', right: '右门' };
+      const labelMap: Record<DoorSide, string> = {
+        top: t('seat.nav.frontDoor'),
+        bottom: t('seat.nav.backDoor'),
+        left: t('seat.nav.leftDoor'),
+        right: t('seat.nav.rightDoor'),
+      };
       list.push({ side: pos, label: labelMap[pos] });
     }
     return list;
-  }, [roomW, roomH, frontDoorRaw, backDoorRaw, sceneConfig.entryDoorPosition]);
+  }, [roomW, roomH, frontDoorRaw, backDoorRaw, sceneConfig.entryDoorPosition, t]);
 
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
-  // SVG layout for tables in a grid
   const tableSvgSize = isMobile ? 110 : 150;
   const aisleGap = isMobile ? 26 : 36;
   const tableRadius = isMobile ? 22 : 32;
@@ -101,13 +103,12 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.table, myPos?.seat, recenterSignal]);
 
-  if (!myPos) return <p className="text-center text-muted-foreground">未找到您的座位</p>;
+  if (!myPos) return <p className="text-center text-muted-foreground">{t('seat.nav.notFound')}</p>;
 
   const myCenter = tableCenter(myPos.table);
   const myRow = Math.floor(myPos.table / tableCols);
   const myCol = myPos.table % tableCols;
 
-  // Door anchor on the wall
   const doorAnchor = (side: DoorSide) => {
     switch (side) {
       case 'top':    return { x: myCenter.x, y: outsideMargin - 4 };
@@ -117,7 +118,6 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
     }
   };
 
-  // Pick closest door
   let activeDoor: DoorInfo | null = null;
   {
     let min = Infinity;
@@ -128,24 +128,17 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
     }
   }
 
-  // L-shaped path through aisles between tables
   const buildPath = (side: DoorSide) => {
     const anchor = doorAnchor(side);
     const points: { x: number; y: number }[] = [anchor];
-
-    // Aisle X coordinate just left of my column (between my column and the previous one)
     const aisleColX = outsideMargin + innerLeft + myCol * cellW - aisleGap / 2;
-    // Aisle Y just above my row
     const aisleRowY = outsideMargin + innerTop + myRow * cellH - aisleGap / 2;
-
     if (side === 'top' || side === 'bottom') {
       const aisleY = side === 'top'
         ? outsideMargin + innerTop - aisleGap / 2
         : outsideMargin + innerBottom + aisleGap / 2;
       points.push({ x: anchor.x, y: aisleY });
-      // walk along outer aisle to my column-aisle
       points.push({ x: aisleColX, y: aisleY });
-      // walk down/up along column-aisle to my row level
       points.push({ x: aisleColX, y: myCenter.y });
     } else {
       const aisleX = side === 'left'
@@ -162,30 +155,36 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
   const navPath = activeDoor ? buildPath(activeDoor.side) : [];
   const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 
-  const label = sceneType === 'banquet' ? '宴会厅' : '智能教室';
-  const sideText: Record<DoorSide, string> = { top: '上', bottom: '下', left: '左', right: '右' };
+  const sceneLabel = sceneType === 'banquet' ? t('seat.nav.banquetHall') : t('seat.nav.smartClassroom');
+  const sideText: Record<DoorSide, string> = {
+    top: t('seat.nav.sideTop'),
+    bottom: t('seat.nav.sideBottom'),
+    left: t('seat.nav.sideLeft'),
+    right: t('seat.nav.sideRight'),
+  };
   const dirHint = activeDoor
-    ? `从 ${activeDoor.label}（${sideText[activeDoor.side]}侧）进入，沿走廊抵达 第 ${myPos.table + 1} 桌`
+    ? tFormat(t('seat.nav.roundTableEnter'), activeDoor.label, sideText[activeDoor.side], myPos.table + 1)
     : '';
 
   return (
     <>
       <p className="text-sm text-muted-foreground text-center leading-relaxed px-2">
-        {studentName}，你的位置在 <strong>第{myPos.table + 1}桌 · 第{myPos.seat + 1}号座</strong>
+        {tFormat(t('seat.nav.youAtPosition'), studentName)}{' '}
+        <strong>{tFormat(t('seat.nav.posTableSeat'), myPos.table + 1, myPos.seat + 1)}</strong>
       </p>
       <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> 你的座位</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary/20 border border-primary/40 inline-block" /> 你的桌子</span>
-        <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> 入口</span>
-        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> 导航路径</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary inline-block" /> {t('seat.nav.mySeat')}</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-primary/20 border border-primary/40 inline-block" /> {t('seat.nav.myTable')}</span>
+        <span className="flex items-center gap-1"><span className="text-base leading-none">🚪</span> {t('seat.nav.entry')}</span>
+        <span className="flex items-center gap-1"><span className="w-4 h-0.5 bg-primary/50 inline-block" style={{ borderTop: '2px dashed' }} /> {t('seat.nav.navPath')}</span>
       </div>
 
       <div className="text-center text-xs text-muted-foreground mb-2">
         <div className="inline-block bg-primary/10 text-primary px-4 py-1 rounded-lg text-xs font-medium border border-primary/20 mb-2">
-          {label}
+          {sceneLabel}
         </div>
         {isMobile && (
-          <p className="text-[11px] text-muted-foreground/90">双指缩放查看细节，双击恢复原位</p>
+          <p className="text-[11px] text-muted-foreground/90">{t('seat.nav.pinchHintRecenter')}</p>
         )}
         <ZoomIndicator scale={scale} onReset={resetZoom} />
       </div>
@@ -201,12 +200,10 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
       >
         <div ref={pinchRef} style={transformStyle} className="touch-none">
           <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[640px]" style={{ minWidth: Math.min(svgW, 320) }}>
-            {/* Room outline */}
             <rect x={outsideMargin / 2} y={outsideMargin / 2}
               width={svgW - outsideMargin} height={svgH - outsideMargin}
               rx={12} className="fill-muted/15 stroke-border" strokeWidth={1.5} />
 
-            {/* Navigation path */}
             {navPath.length > 1 && (
               <path d={pathD} fill="none" className="stroke-primary/60" strokeWidth={2.5}
                 strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round">
@@ -214,7 +211,6 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
               </path>
             )}
 
-            {/* Doors */}
             {doors.map((d, i) => {
               const a = doorAnchor(d.side);
               const isActive = activeDoor?.side === d.side && activeDoor?.label === d.label;
@@ -232,12 +228,10 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
               );
             })}
 
-            {/* Turning points */}
             {navPath.slice(1, -1).map((p, i) => (
               <circle key={`tp-${i}`} cx={p.x} cy={p.y} r={2.5} className="fill-primary/40 stroke-primary/60" strokeWidth={1} />
             ))}
 
-            {/* Tables */}
             {tables.map((people, ti) => {
               const center = tableCenter(ti);
               const isMyTable = ti === myPos.table;
@@ -248,7 +242,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
                     strokeWidth={isMyTable ? 2.5 : 1.5} />
                   <text x={center.x} y={center.y + 1} textAnchor="middle" dominantBaseline="middle"
                     className={`text-[10px] font-medium ${isMyTable ? 'fill-primary' : 'fill-muted-foreground'}`}>
-                    {ti + 1}桌
+                    {ti + 1}{t('seat.nav.tableShort')}
                   </text>
                   {Array.from({ length: seatsPerTable }).map((_, si) => {
                     const angle = (2 * Math.PI * si) / seatsPerTable - Math.PI / 2;
@@ -288,8 +282,8 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
       </div>
 
       <div className="text-center text-xs text-muted-foreground space-y-1">
-        <p>📍 找到第 <strong>{myPos.table + 1}</strong> 桌（第{myRow + 1}行第{myCol + 1}列位置）</p>
-        <p>🪑 坐在第 <strong>{myPos.seat + 1}</strong> 号座位（从顶部12点钟方向顺时针数）</p>
+        <p>{tFormat(t('seat.nav.roundTableHint1'), myPos.table + 1, myRow + 1, myCol + 1)}</p>
+        <p>{tFormat(t('seat.nav.roundTableHint2'), myPos.seat + 1)}</p>
       </div>
     </>
   );
