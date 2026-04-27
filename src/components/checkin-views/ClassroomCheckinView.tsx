@@ -289,7 +289,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                     {isMine && (
                       <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                         className="fill-primary-foreground text-[8px] font-bold">
-                        {name || '我'}
+                        {name || t('seat.nav.mySeat')}
                       </text>
                     )}
                   </g>
