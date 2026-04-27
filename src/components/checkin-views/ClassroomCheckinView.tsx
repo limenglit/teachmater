@@ -3,6 +3,7 @@ import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   seatData: unknown;
