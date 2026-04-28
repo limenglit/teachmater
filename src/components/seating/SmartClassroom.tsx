@@ -756,10 +756,10 @@ export default function SmartClassroom({
               strokeWidth={2}
             />
             <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-primary text-[10px] font-medium'}>
-              {tableIndex + 1}桌
+              {tFormat(t('seat.editor.smart.tableNum'), tableIndex + 1)}
             </text>
             <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-muted-foreground text-[10px]'}>
-              {isReservedTable ? '保留' : '开放'}
+              {isReservedTable ? t('seat.editor.common.reserved') : t('seat.editor.common.open')}
             </text>
           </g>
           {Array.from({ length: totalSlots }).map((_, i) => {
@@ -802,7 +802,7 @@ export default function SmartClassroom({
                 />
                 {isClosed && (
                   <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
-                    关
+                    {t('seat.editor.common.off')}
                   </text>
                 )}
                 {name && !isDragging && (
