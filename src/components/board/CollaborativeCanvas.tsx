@@ -11,6 +11,7 @@ import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 type Tool = 'select' | 'pen' | 'eraser' | 'rect' | 'circle' | 'arrow' | 'line' | 'text' | 'image';
 
