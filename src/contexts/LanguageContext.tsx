@@ -2069,6 +2069,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.bullet2': '• 模特台',
     'seat.editor.art.bullet3': '• 可升降',
     'seat.editor.art.startHint': '点击"自动排座"开始。',
+    'seat.editor.smart.capacityHint': '容量 {0} | 学生 {1}',
+    'seat.editor.smart.startHint': '圆形桌智能教室，每桌 {0} 人，共 {1} 桌（{2} 行 × {3} 列）',
+    'seat.editor.smart.dragHint': '点击桌心可切换保留/开放；保留桌自动排座时不安排学生；拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/前后门/窗支持显隐与拖拽',
   },
   en: {
     'app.title': 'TeachMate',
@@ -3961,6 +3964,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.bullet2': '• Model stand',
     'seat.editor.art.bullet3': '• Adjustable',
     'seat.editor.art.startHint': 'Click "Auto arrange" to begin.',
+    'seat.editor.smart.capacityHint': 'Capacity {0} | Students {1}',
+    'seat.editor.smart.startHint': 'Round-table smart classroom: {0} per table, {1} tables ({2} rows × {3} cols)',
+    'seat.editor.smart.dragHint': 'Tap table center to toggle reserved/open; drag names to swap; tap empty seats to toggle; screen/podium/doors/window are toggleable & draggable',
   },
   ru: {
     'app.title': 'TeachMate',
@@ -5226,6 +5232,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.bullet2': '• Подиум модели',
     'seat.editor.art.bullet3': '• Регулируется',
     'seat.editor.art.startHint': 'Нажмите «Авто-рассадка», чтобы начать.',
+    'seat.editor.smart.capacityHint': 'Вместимость {0} | Студенты {1}',
+    'seat.editor.smart.startHint': 'Класс с круглыми столами: {0} мест, {1} столов ({2}×{3})',
+    'seat.editor.smart.dragHint': 'Нажмите центр стола, чтобы зарезервировать; перетаскивайте имена; пустые места — открыть/закрыть; экран/кафедра/двери/окно — скрывать и двигать',
   },
   ja: {
     'app.title': 'TeachMate',
@@ -6464,6 +6473,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.bullet2': '• モデル台',
     'seat.editor.art.bullet3': '• 昇降式',
     'seat.editor.art.startHint': '「自動配置」をクリックして開始。',
+    'seat.editor.smart.capacityHint': '定員 {0} | 学生 {1}',
+    'seat.editor.smart.startHint': '円卓スマート教室：1卓 {0} 名、計 {1} 卓（{2}行 × {3}列）',
+    'seat.editor.smart.dragHint': '卓中心で予約/開放切替、名前ドラッグで交換、空席で開閉、スクリーン/教壇/扉/窓は表示・ドラッグ可',
   },
   ko: {
     'app.title': 'TeachMate',
@@ -7701,6 +7713,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.bullet2': '• 모델 단상',
     'seat.editor.art.bullet3': '• 높이 조절',
     'seat.editor.art.startHint': '"자동 배치"를 눌러 시작하세요.',
+    'seat.editor.smart.capacityHint': '수용 {0} | 학생 {1}',
+    'seat.editor.smart.startHint': '원탁 스마트 교실: 테이블당 {0}명, 총 {1}개({2}행 × {3}열)',
+    'seat.editor.smart.dragHint': '테이블 중심을 눌러 예약/개방 전환, 이름 드래그로 교환, 빈자리 토글, 스크린/교탁/문/창 표시 및 드래그 가능',
   },
   es: {
     'app.title': 'TeachMate',
@@ -9163,6 +9178,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.bullet2': '• Tarima modelo',
     'seat.editor.art.bullet3': '• Altura ajustable',
     'seat.editor.art.startHint': 'Pulsa "Auto-asignar" para empezar.',
+    'seat.editor.smart.capacityHint': 'Aforo {0} | Estudiantes {1}',
+    'seat.editor.smart.startHint': 'Aula con mesas redondas: {0} por mesa, {1} mesas ({2}×{3})',
+    'seat.editor.smart.dragHint': 'Toca el centro de la mesa para reservar/abrir; arrastra nombres; alterna asientos vacíos; pantalla/atril/puertas/ventana se ocultan y mueven',
   },
 };
 
