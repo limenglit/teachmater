@@ -687,7 +687,7 @@ export default function ConferenceRoom({ students }: Props) {
             dominantBaseline="middle"
             className="fill-destructive text-xs"
           >
-            关
+            {t('seat.editor.common.off')}
           </text>
         )}
         {name && !isDragging && (
@@ -719,17 +719,17 @@ export default function ConferenceRoom({ students }: Props) {
     >
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
-          名称
+          {t('seat.editor.common.name')}
           <Input
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
-            placeholder="输入名称（用于保存历史和导出文件名）"
+            placeholder={t('seat.editor.common.namePlaceholder')}
             className="h-8 w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每边主座位数
+          {t('seat.editor.conf.seatsPerSide')}
           <Input
             type="number"
             min={4}
@@ -740,7 +740,7 @@ export default function ConferenceRoom({ students }: Props) {
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          座位间距
+          {t('seat.editor.common.spacing')}
           <Input
             type="number"
             min={2}
@@ -757,11 +757,11 @@ export default function ConferenceRoom({ students }: Props) {
             onChange={e => setShowCompanionSeats(e.target.checked)}
             className="accent-primary"
           />
-          显示陪同人员座位
+          {t('seat.editor.conf.showCompanion')}
         </label>
         {showCompanionSeats && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            陪同座位列数
+            {t('seat.editor.conf.companionCols')}
             <Input
               type="number"
               min={1}
@@ -779,25 +779,25 @@ export default function ConferenceRoom({ students }: Props) {
             onChange={e => setShowOrgColorMark(e.target.checked)}
             className="accent-primary"
           />
-          单位颜色标识
+          {t('seat.editor.common.orgColor')}
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          {t('seat.editor.common.mode')}
           <select
             value={mode}
             onChange={e => setMode(e.target.value as ConferenceSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="balanced">两侧平衡</option>
-            <option value="groupCluster">分组同侧</option>
-            <option value="verticalS">竖S分配</option>
-            <option value="horizontalS">横S分配</option>
-            <option value="orgSideRankCenter">单位同侧+职务居中</option>
+            <option value="balanced">{t('seat.editor.common.modeBalanced')}</option>
+            <option value="groupCluster">{t('seat.editor.common.modeGroupCluster')}</option>
+            <option value="verticalS">{t('seat.editor.common.modeVerticalS')}</option>
+            <option value="horizontalS">{t('seat.editor.common.modeHorizontalS')}</option>
+            <option value="orgSideRankCenter">{t('seat.editor.common.modeOrgSideRankCenter')}</option>
           </select>
         </label>
         {mode === 'groupCluster' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            组数
+            {t('seat.editor.common.groupCount')}
             <Input
               type="number"
               min={2}
@@ -810,14 +810,14 @@ export default function ConferenceRoom({ students }: Props) {
         )}
         <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
           <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={!seated}>
-            <Save className="w-4 h-4" /> 保存历史
+            <Save className="w-4 h-4" /> {t('seat.editor.common.saveHistory')}
           </Button>
           <select
             value={selectedHistoryId}
             onChange={e => setSelectedHistoryId(e.target.value)}
             className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="">选择历史记录</option>
+            <option value="">{t('seat.editor.common.selectHistory')}</option>
             {historyItems.map(item => (
               <option key={item.id} value={item.id}>
                 {item.name}（{new Date(item.createdAt).toLocaleString()}）
@@ -825,24 +825,24 @@ export default function ConferenceRoom({ students }: Props) {
             ))}
           </select>
           <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
-            <RotateCcw className="w-4 h-4" /> 恢复历史
+            <RotateCcw className="w-4 h-4" /> {t('seat.editor.common.restoreHistory')}
           </Button>
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8"
             disabled={!selectedHistoryId}
-            title="重命名该历史记录"
+            title={t('seat.editor.common.renameTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               const current = historyItems.find(h => h.id === id);
               if (!id || !current) return;
-              const next = window.prompt('请输入新名称', current.name)?.trim();
+              const next = window.prompt(t('seat.editor.common.renamePrompt'), current.name)?.trim();
               if (!next || next === current.name) return;
               await renameCloudSeatHistory(id, next);
               renameSeatHistoryLocal('conference', id, next);
               setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-              toast.success('已重命名');
+              toast.success(t('seat.editor.common.renamed'));
             }}
           >
             <Pencil className="w-4 h-4" />
@@ -852,27 +852,27 @@ export default function ConferenceRoom({ students }: Props) {
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             disabled={!selectedHistoryId}
-            title="删除该历史记录"
+            title={t('seat.editor.common.deleteTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               if (!id) return;
-              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm'))) return;
               await deleteCloudSeatHistory(id);
               deleteSeatHistoryLocal('conference', id);
               setHistoryItems(prev => prev.filter(h => h.id !== id));
               setSelectedHistoryId('');
-              toast.success('已删除该历史记录');
+              toast.success(t('seat.editor.common.deleted'));
             }}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
-          重置参照物
+          {t('seat.editor.common.resetReferences')}
         </Button>
         <TitleRankConfigDialog
           value={titleRankRuleText}
-          sceneLabel="会议室"
+          sceneLabel={t('seat.editor.scene.conference')}
           onSave={next => {
             const saved = saveTitleRankRuleText(next, 'conference');
             setTitleRankRuleText(saved);
@@ -880,13 +880,13 @@ export default function ConferenceRoom({ students }: Props) {
         />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> {t('seat.editor.common.screen')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> {t('seat.editor.common.podium')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> {t('seat.editor.common.window')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
             <input
@@ -895,7 +895,7 @@ export default function ConferenceRoom({ students }: Props) {
               onChange={() => toggleRefVisible('frontDoor')}
               className="accent-primary"
             />
-            前门
+            {t('seat.editor.common.frontDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
             <input
@@ -904,16 +904,16 @@ export default function ConferenceRoom({ students }: Props) {
               onChange={() => toggleRefVisible('backDoor')}
               className="accent-primary"
             />
-            后门
+            {t('seat.editor.common.backDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> {t('seat.editor.common.lockReferences')}
           </label>
         </div>
         {seated && (
           <ExportButtons
             targetRef={printRef}
-            filename={recordName.trim() || '会议室座位'}
+            filename={recordName.trim() || t('seat.editor.scene.conferenceFile')}
             resolveQrCode={resolveQrCode}
             titleValue={recordName}
             onTitleChange={setRecordName}
@@ -922,17 +922,17 @@ export default function ConferenceRoom({ students }: Props) {
         )}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" /> 签到
+            <QrCode className="w-4 h-4" /> {t('seat.editor.common.checkin')}
           </Button>
         )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> {t('seat.editor.common.randomSeat')}
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              if (!window.confirm(t('seat.editor.common.clearConfirm'))) return;
               setAssignment(prev => ({
                 headLeft: '',
                 headRight: '',
@@ -944,12 +944,12 @@ export default function ConferenceRoom({ students }: Props) {
               setSeated(true);
             }}
             className="gap-2"
-            title="清空所有座位安排"
+            title={t('seat.editor.common.clearTitle')}
           >
-            <Trash2 className="w-4 h-4" /> 清空
+            <Trash2 className="w-4 h-4" /> {t('seat.editor.common.clear')}
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> {t('seat.editor.common.autoSeat')}
           </Button>
         </div>
       </div>
@@ -966,31 +966,31 @@ export default function ConferenceRoom({ students }: Props) {
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>🖥️</span>
-                  <span className={refTextClass}>幕布</span>
+                  <span className={refTextClass}>{t('seat.editor.common.screen')}</span>
                 </div>
               )}
               {refVisible.podium && (
                 <div className={refBadgeClass} style={{ left: refPositions.podium.x, top: refPositions.podium.y }} onMouseDown={e => startRefDrag(e, 'podium')}>
                   <span className={refIconClass}>🏫</span>
-                  <span className={refTextClass}>讲台</span>
+                  <span className={refTextClass}>{t('seat.editor.common.podium')}</span>
                 </div>
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗</span>
+                  <span className={refTextClass}>{t('seat.editor.common.window')}</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>前门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.frontDoor')}</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>后门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.backDoor')}</span>
                 </div>
               )}
 
@@ -1036,7 +1036,7 @@ export default function ConferenceRoom({ students }: Props) {
                   dominantBaseline="middle"
                   className="fill-primary text-sm font-medium"
                 >
-                  会议桌
+                  {t('seat.editor.conf.meetingTable')}
                 </text>
               </svg>
               </div>
@@ -1045,10 +1045,13 @@ export default function ConferenceRoom({ students }: Props) {
         </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
+            <p className="text-lg mb-2">{t('seat.editor.common.clickAutoToStart')}</p>
             <p className="text-sm">
-              会议桌初始每边 {seatsPerSide} 人，
-              {showCompanionSeats ? `每侧陪同 ${companionRows} 列` : '不显示陪同座位'}
+              {tFormat(
+                t('seat.editor.conf.startHint'),
+                seatsPerSide,
+                showCompanionSeats ? tFormat(t('seat.editor.conf.companionDesc'), companionRows) : t('seat.editor.conf.noCompanion'),
+              )}
             </p>
           </div>
         )}
@@ -1056,7 +1059,7 @@ export default function ConferenceRoom({ students }: Props) {
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可换座；点击空座位可关闭/开放使用；幕布/讲台/窗/前后门支持显隐与拖拽
+          {t('seat.editor.conf.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
@@ -1068,7 +1071,7 @@ export default function ConferenceRoom({ students }: Props) {
         sceneType="conference"
         sceneConfig={exportSceneConfig}
         className={recordName.trim() || exportClassName}
-        pngFileName={recordName.trim() || '会议室座位'}
+        pngFileName={recordName.trim() || t('seat.editor.scene.conferenceFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
