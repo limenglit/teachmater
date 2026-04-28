@@ -25,6 +25,7 @@ import {
   renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
@@ -59,6 +60,7 @@ export default function SmartClassroom({
   backDoorPosition = 'left',
   entryDoorMode = 'front',
 }: Props) {
+  const { t } = useLanguage();
   // 门窗位置状态
   const [frontDoor, setFrontDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(frontDoorPosition);
   // 保证后门与前门不重叠
