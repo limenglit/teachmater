@@ -516,10 +516,10 @@ export default function ConferenceRoom({ students }: Props) {
 
   const saveToHistory = async () => {
     if (!seated) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.editor.common.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `会议室-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.conference')}-${new Date().toLocaleString()}`;
     const item = saveConferenceRoomHistory(name, buildSnapshot());
     let savedItem: ConferenceRoomHistoryItem = item;
     const cloud = await saveCloudSeatHistory('conference', name, item.snapshot);
@@ -529,13 +529,13 @@ export default function ConferenceRoom({ students }: Props) {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveConferenceRoomSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.editor.common.savedHistoryCloud') : t('seat.editor.common.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请选择要恢复的历史记录');
+      toast.error(t('seat.editor.common.noHistorySelected'));
       return;
     }
     const snapshot = item.snapshot;
@@ -561,7 +561,7 @@ export default function ConferenceRoom({ students }: Props) {
       assignment: nextAssignment,
       closedSeats: snapshot.closedSeats || [],
     });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.editor.common.restoredHistory'));
   };
 
   useEffect(() => {
