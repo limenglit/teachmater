@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { getActiveClassName } from '@/lib/class-context';
 import { createSeatCheckinSession } from '@/lib/seat-checkin-session';
 import { getRequireSeatAssignmentBeforeCheckin, isSeatAssignmentComplete } from '@/lib/seat-checkin-policy';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface UseSeatExportQrParams {
   seatData: unknown;
@@ -13,9 +14,10 @@ interface UseSeatExportQrParams {
 }
 
 export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, sceneConfig, sceneType, durationMinutes }: UseSeatExportQrParams) {
+  const { t } = useLanguage();
   const [checkinUrl, setCheckinUrl] = useState<string | null>(null);
 
-  const className = useMemo(() => getActiveClassName() || '当前班级', []);
+  const className = useMemo(() => getActiveClassName() || t('seat.qr.fallbackClass'), [t]);
 
   const resolveQrCode = async () => {
     if (checkinUrl) {
@@ -27,7 +29,7 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
       ? seatAssignmentReady
       : isSeatAssignmentComplete(seatData, studentNames);
     if (requireSeatAssignment && !completed) {
-      throw new Error('请先完成排座后再发起签到');
+      throw new Error(t('seat.qr.requireAssign'));
     }
 
     const created = await createSeatCheckinSession({

@@ -191,24 +191,24 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
               <div className="relative max-w-4xl mx-auto">
                 <div className="flex justify-between mb-2">
                   <div className="flex gap-2 items-center">
-                    <Button variant="outline" size="icon" onClick={() => setCodeFontSize(f => Math.max(12, f - 2))} title="减小字号">-</Button>
+                    <Button variant="outline" size="icon" onClick={() => setCodeFontSize(f => Math.max(12, f - 2))} title={t('bppt.fontDecrease')}>-</Button>
                     <span className="px-2 text-base select-none">{codeFontSize}px</span>
-                    <Button variant="outline" size="icon" onClick={() => setCodeFontSize(f => Math.min(32, f + 2))} title="增大字号">+</Button>
+                    <Button variant="outline" size="icon" onClick={() => setCodeFontSize(f => Math.min(32, f + 2))} title={t('bppt.fontIncrease')}>+</Button>
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={handleShowCodePreview}>
-                      <Maximize2 className="w-4 h-4 mr-1" /> 全屏预览
+                      <Maximize2 className="w-4 h-4 mr-1" /> {t('bppt.fullPreview')}
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => triggerDownload(card.media_url, getFileNameFromUrl(card.media_url))}>
-                      <Download className="w-4 h-4 mr-1" /> 下载
+                      <Download className="w-4 h-4 mr-1" /> {t('bppt.download')}
                     </Button>
                   </div>
                 </div>
                 <div className="max-h-[400px] overflow-y-auto rounded-lg border border-border bg-card p-2 text-left">
                   {codeLoading ? (
-                    <div className="py-12 text-center text-sm text-muted-foreground">代码加载中...</div>
+                    <div className="py-12 text-center text-sm text-muted-foreground">{t('bppt.codeLoading')}</div>
                   ) : (
-                    <Suspense fallback={<div className="py-12 text-center text-sm text-muted-foreground">代码高亮加载中...</div>}>
+                    <Suspense fallback={<div className="py-12 text-center text-sm text-muted-foreground">{t('bppt.codeHighlightLoading')}</div>}>
                       <CodeHighlight code={codeText} ext={getFileExtFromUrl(card.media_url)} initialMaxHeight={400} fontSize={codeFontSize} onFontSizeChange={setCodeFontSize} />
                     </Suspense>
                   )}
@@ -241,20 +241,20 @@ export default function BoardPPTMode({ cards, onExit }: Props) {
             type="button"
             className="absolute top-4 right-4 rounded-md bg-muted/80 p-2 text-foreground transition-colors hover:bg-muted"
             onClick={() => setShowCodePreview(false)}
-            aria-label="关闭"
+            aria-label={t('bppt.close')}
           >
             <X className="w-6 h-6" />
           </button>
           <div className="mx-auto h-[80vh] w-full max-w-6xl overflow-y-auto rounded-xl border border-border bg-card p-4 text-left shadow-lg">
             <div className="flex gap-2 items-center mb-2">
-              <Button variant="outline" size="icon" onClick={() => setPreviewFontSize(f => Math.max(12, f - 2))} title="减小字号">-</Button>
+              <Button variant="outline" size="icon" onClick={() => setPreviewFontSize(f => Math.max(12, f - 2))} title={t('bppt.fontDecrease')}>-</Button>
               <span className="px-2 text-base select-none">{previewFontSize}px</span>
-              <Button variant="outline" size="icon" onClick={() => setPreviewFontSize(f => Math.min(32, f + 2))} title="增大字号">+</Button>
+              <Button variant="outline" size="icon" onClick={() => setPreviewFontSize(f => Math.min(32, f + 2))} title={t('bppt.fontIncrease')}>+</Button>
             </div>
             {codeLoading ? (
-              <div className="py-12 text-center text-lg text-muted-foreground">代码加载中...</div>
+              <div className="py-12 text-center text-lg text-muted-foreground">{t('bppt.codeLoading')}</div>
             ) : (
-              <Suspense fallback={<div className="py-12 text-center text-lg text-muted-foreground">代码高亮加载中...</div>}>
+              <Suspense fallback={<div className="py-12 text-center text-lg text-muted-foreground">{t('bppt.codeHighlightLoading')}</div>}>
                 <CodeHighlight code={codeText} ext={codeExt} initialMaxHeight={600} fontSize={previewFontSize} onFontSizeChange={setPreviewFontSize} />
               </Suspense>
             )}

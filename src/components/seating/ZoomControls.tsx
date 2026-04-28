@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface UseSceneZoomOptions {
   contentWidth: number;
@@ -135,25 +136,26 @@ interface ZoomControlsProps {
 }
 
 export default function ZoomControls({ scale, onZoomIn, onZoomOut, onFit, onReset }: ZoomControlsProps) {
+  const { t } = useLanguage();
   return (
     <div className="flex items-center gap-1 rounded-md border border-border bg-background/80 backdrop-blur px-1.5 py-1 shadow-sm">
-      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onZoomOut} title="缩小">
+      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onZoomOut} title={t('seat.zoom.zoomOut')}>
         <ZoomOut className="w-3.5 h-3.5" />
       </Button>
       <button
         type="button"
         onClick={onReset}
         className="text-[11px] tabular-nums w-10 text-center text-muted-foreground hover:text-foreground"
-        title="重置 100%"
+        title={t('seat.zoom.reset100')}
       >
         {Math.round(scale * 100)}%
       </button>
-      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onZoomIn} title="放大">
+      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onZoomIn} title={t('seat.zoom.zoomIn')}>
         <ZoomIn className="w-3.5 h-3.5" />
       </Button>
-      <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-[11px]" onClick={onFit} title="适应屏幕">
+      <Button variant="ghost" size="sm" className="h-7 px-2 gap-1 text-[11px]" onClick={onFit} title={t('seat.zoom.fit')}>
         <Maximize2 className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">适应</span>
+        <span className="hidden sm:inline">{t('seat.zoom.fitShort')}</span>
       </Button>
     </div>
   );
