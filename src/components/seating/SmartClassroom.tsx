@@ -1081,7 +1081,7 @@ export default function SmartClassroom({
           </label>
         </div>
         <span className="text-xs text-muted-foreground">
-          容量 {seatsPerTable * tableCount} | 学生 {students.length}
+          {tFormat(t('seat.editor.smart.capacityHint'), seatsPerTable * tableCount, students.length)}
         </span>
         {assignment.length > 0 && (
           <ExportButtons
@@ -1227,14 +1227,14 @@ export default function SmartClassroom({
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg mb-2">{t('seat.editor.common.clickAutoToStart')}</p>
-            <p className="text-sm">圆形桌智能教室，每桌 {seatsPerTable} 人，共 {tableCount} 桌（{tableRows} 行 × {tableCols} 列）</p>
+            <p className="text-sm">{tFormat(t('seat.editor.smart.startHint'), seatsPerTable, tableCount, tableRows, tableCols)}</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          点击桌心可切换保留/开放；保留桌自动排座时不安排学生；拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/前后门/窗支持显隐与拖拽
+          {t('seat.editor.smart.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
