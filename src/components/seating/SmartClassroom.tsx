@@ -298,7 +298,7 @@ export default function SmartClassroom({
       .filter(group => group.members.length > 0);
 
     if (filteredGroups.length === 0) {
-      toast.error('未找到可用的分组数据。');
+      toast.error(t('seat.editor.common.noGroupsFound'));
       return false;
     }
 
@@ -369,7 +369,7 @@ export default function SmartClassroom({
 
       const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
       students.forEach(student => {
-        const org = student.organization?.trim() || '未分配单位';
+        const org = student.organization?.trim() || t('seat.editor.common.unassignedOrg');
         const item = { name: student.name, score: scoreTitle(student.title) };
         const bucket = groupsMap.get(org);
         if (bucket) bucket.push(item);
@@ -478,10 +478,10 @@ export default function SmartClassroom({
 
   const saveToHistory = async () => {
     if (assignment.length === 0) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.editor.common.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `智慧教室-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.classroom')}-${new Date().toLocaleString()}`;
     const item = saveSmartClassroomHistory(name, buildSnapshot());
     let savedItem: SmartClassroomHistoryItem = item;
     const cloud = await saveCloudSeatHistory('smart_classroom', name, item.snapshot);
@@ -491,13 +491,13 @@ export default function SmartClassroom({
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveSmartClassroomSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.editor.common.savedHistoryCloud') : t('seat.editor.common.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请选择要恢复的历史记录');
+      toast.error(t('seat.editor.common.noHistorySelected'));
       return;
     }
     const snapshot = item.snapshot;
@@ -518,18 +518,18 @@ export default function SmartClassroom({
     setReservedTables(new Set(snapshot.reservedTables || []));
     setRecordName(item.name);
     saveSmartClassroomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.editor.common.restoredHistory'));
   };
 
   const seatByLastGroups = () => {
     const cachedGroups = loadLastGroups();
     if (cachedGroups.length === 0) {
-      toast.error('暂无已保存分组');
+      toast.error(t('seat.editor.common.noGroups'));
       return;
     }
     const ok = applyGroupsToSeat(cachedGroups);
     if (ok) {
-      toast.success('已按分组一桌生成座位');
+      toast.success(t('seat.editor.common.byGroupOneTableDone'));
     }
   };
 
@@ -852,10 +852,10 @@ export default function SmartClassroom({
             }}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="top">上方</option>
-            <option value="bottom">下方</option>
-            <option value="left">左侧</option>
-            <option value="right">右侧</option>
+            <option value="top">{t('seat.editor.common.topSide')}</option>
+            <option value="bottom">{t('seat.editor.common.bottomSide')}</option>
+            <option value="left">{t('seat.editor.common.leftSide')}</option>
+            <option value="right">{t('seat.editor.common.rightSide')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -870,10 +870,10 @@ export default function SmartClassroom({
             }}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="top">上方</option>
-            <option value="bottom">下方</option>
-            <option value="left">左侧</option>
-            <option value="right">右侧</option>
+            <option value="top">{t('seat.editor.common.topSide')}</option>
+            <option value="bottom">{t('seat.editor.common.bottomSide')}</option>
+            <option value="left">{t('seat.editor.common.leftSide')}</option>
+            <option value="right">{t('seat.editor.common.rightSide')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -883,9 +883,9 @@ export default function SmartClassroom({
             onChange={e => setEntryDoor(e.target.value as any)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="front">仅前门</option>
-            <option value="back">仅后门</option>
-            <option value="both">前后门都可</option>
+            <option value="front">{t('seat.editor.smart.entryFront')}</option>
+            <option value="back">{t('seat.editor.smart.entryBack')}</option>
+            <option value="both">{t('seat.editor.smart.entryBoth')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -895,8 +895,8 @@ export default function SmartClassroom({
             onChange={e => setWindowPos(e.target.value as any)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="left">左侧</option>
-            <option value="right">右侧</option>
+            <option value="left">{t('seat.editor.common.leftSide')}</option>
+            <option value="right">{t('seat.editor.common.rightSide')}</option>
           </select>
         </label>
       </div>
@@ -908,7 +908,7 @@ export default function SmartClassroom({
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
-            placeholder="输入名称（用于保存历史和导出文件名）"
+            placeholder={t('seat.editor.common.namePlaceholder')}
             className="h-8 w-full sm:w-72"
           />
         </label>
@@ -954,11 +954,11 @@ export default function SmartClassroom({
             onChange={e => setMode(e.target.value as SmartSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="tableRoundRobin">每桌轮转</option>
-            <option value="tableGrouped">每组一桌</option>
-            <option value="verticalS">竖S桌序</option>
-            <option value="horizontalS">横S桌序</option>
-            <option value="orgTablePodium">同单位一桌+高职近讲台</option>
+            <option value="tableRoundRobin">{t('seat.editor.common.modeTableRoundRobin')}</option>
+            <option value="tableGrouped">{t('seat.editor.common.modeTableGrouped')}</option>
+            <option value="verticalS">{t('seat.editor.common.modeVerticalSTable')}</option>
+            <option value="horizontalS">{t('seat.editor.common.modeHorizontalSTable')}</option>
+            <option value="orgTablePodium">{t('seat.editor.common.modeOrgTablePodium')}</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (
@@ -991,7 +991,7 @@ export default function SmartClassroom({
             onChange={e => setSelectedHistoryId(e.target.value)}
             className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="">选择历史记录</option>
+            <option value="">{t('seat.editor.common.selectHistory')}</option>
             {historyItems.map(item => (
               <option key={item.id} value={item.id}>
                 {item.name}（{new Date(item.createdAt).toLocaleString()}）
@@ -1011,17 +1011,17 @@ export default function SmartClassroom({
             size="icon"
             className="h-8 w-8"
             disabled={!selectedHistoryId}
-            title="重命名该历史记录"
+            title={t('seat.editor.common.renameTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               const current = historyItems.find(h => h.id === id);
               if (!id || !current) return;
-              const next = window.prompt('请输入新名称', current.name)?.trim();
+              const next = window.prompt(t('seat.editor.common.renamePrompt'), current.name)?.trim();
               if (!next || next === current.name) return;
               await renameCloudSeatHistory(id, next);
               renameSeatHistoryLocal('smart_classroom', id, next);
               setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-              toast.success('已重命名');
+              toast.success(t('seat.editor.common.renamed'));
             }}
           >
             <Pencil className="w-4 h-4" />
@@ -1031,16 +1031,16 @@ export default function SmartClassroom({
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             disabled={!selectedHistoryId}
-            title="删除该历史记录"
+            title={t('seat.editor.common.deleteTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               if (!id) return;
-              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm'))) return;
               await deleteCloudSeatHistory(id);
               deleteSeatHistoryLocal('smart_classroom', id);
               setHistoryItems(prev => prev.filter(h => h.id !== id));
               setSelectedHistoryId('');
-              toast.success('已删除该历史记录');
+              toast.success(t('seat.editor.common.deleted'));
             }}
           >
             <Trash2 className="w-4 h-4" />
@@ -1054,7 +1054,7 @@ export default function SmartClassroom({
         </Button>
         <TitleRankConfigDialog
           value={titleRankRuleText}
-          sceneLabel="智慧教室"
+          sceneLabel={t('seat.editor.scene.classroom')}
           onSave={next => {
             const saved = saveTitleRankRuleText(next, 'smartClassroom');
             setTitleRankRuleText(saved);
@@ -1105,7 +1105,7 @@ export default function SmartClassroom({
           <Button
             variant="outline"
             onClick={() => {
-              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              if (!window.confirm(t('seat.editor.common.clearConfirm'))) return;
               setAssignment(Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => '')));
             }}
             className="gap-2"
