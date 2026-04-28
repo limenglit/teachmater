@@ -60,6 +60,7 @@ type PointerLikeEvent = {
 };
 
 export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLocked, creatorToken }: Props) {
+  const { t } = useLanguage();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
