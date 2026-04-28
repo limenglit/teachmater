@@ -25,6 +25,7 @@ import {
   renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
@@ -59,6 +60,7 @@ export default function SmartClassroom({
   backDoorPosition = 'left',
   entryDoorMode = 'front',
 }: Props) {
+  const { t } = useLanguage();
   // 门窗位置状态
   const [frontDoor, setFrontDoor] = useState<'top' | 'bottom' | 'left' | 'right'>(frontDoorPosition);
   // 保证后门与前门不重叠
@@ -296,7 +298,7 @@ export default function SmartClassroom({
       .filter(group => group.members.length > 0);
 
     if (filteredGroups.length === 0) {
-      toast.error('未找到可用的分组数据。');
+      toast.error(t('seat.editor.common.noGroupsFound'));
       return false;
     }
 
@@ -367,7 +369,7 @@ export default function SmartClassroom({
 
       const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
       students.forEach(student => {
-        const org = student.organization?.trim() || '未分配单位';
+        const org = student.organization?.trim() || t('seat.editor.common.unassignedOrg');
         const item = { name: student.name, score: scoreTitle(student.title) };
         const bucket = groupsMap.get(org);
         if (bucket) bucket.push(item);
@@ -476,10 +478,10 @@ export default function SmartClassroom({
 
   const saveToHistory = async () => {
     if (assignment.length === 0) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.editor.common.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `智慧教室-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.classroom')}-${new Date().toLocaleString()}`;
     const item = saveSmartClassroomHistory(name, buildSnapshot());
     let savedItem: SmartClassroomHistoryItem = item;
     const cloud = await saveCloudSeatHistory('smart_classroom', name, item.snapshot);
@@ -489,13 +491,13 @@ export default function SmartClassroom({
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveSmartClassroomSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.editor.common.savedHistoryCloud') : t('seat.editor.common.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请选择要恢复的历史记录');
+      toast.error(t('seat.editor.common.noHistorySelected'));
       return;
     }
     const snapshot = item.snapshot;
@@ -516,18 +518,18 @@ export default function SmartClassroom({
     setReservedTables(new Set(snapshot.reservedTables || []));
     setRecordName(item.name);
     saveSmartClassroomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.editor.common.restoredHistory'));
   };
 
   const seatByLastGroups = () => {
     const cachedGroups = loadLastGroups();
     if (cachedGroups.length === 0) {
-      toast.error('暂无已保存分组');
+      toast.error(t('seat.editor.common.noGroups'));
       return;
     }
     const ok = applyGroupsToSeat(cachedGroups);
     if (ok) {
-      toast.success('已按分组一桌生成座位');
+      toast.success(t('seat.editor.common.byGroupOneTableDone'));
     }
   };
 
@@ -754,10 +756,10 @@ export default function SmartClassroom({
               strokeWidth={2}
             />
             <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-primary text-[10px] font-medium'}>
-              {tableIndex + 1}桌
+              {tFormat(t('seat.editor.smart.tableNum'), tableIndex + 1)}
             </text>
             <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-muted-foreground text-[10px]'}>
-              {isReservedTable ? '保留' : '开放'}
+              {isReservedTable ? t('seat.editor.common.reserved') : t('seat.editor.common.open')}
             </text>
           </g>
           {Array.from({ length: totalSlots }).map((_, i) => {
@@ -800,7 +802,7 @@ export default function SmartClassroom({
                 />
                 {isClosed && (
                   <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
-                    关
+                    {t('seat.editor.common.off')}
                   </text>
                 )}
                 {name && !isDragging && (
@@ -839,7 +841,7 @@ export default function SmartClassroom({
       {/* 结构设置分区 */}
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          前门
+          {t('seat.editor.common.frontDoor')}
           <select
             value={frontDoor}
             onChange={e => {
@@ -850,14 +852,14 @@ export default function SmartClassroom({
             }}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="top">上方</option>
-            <option value="bottom">下方</option>
-            <option value="left">左侧</option>
-            <option value="right">右侧</option>
+            <option value="top">{t('seat.editor.common.topSide')}</option>
+            <option value="bottom">{t('seat.editor.common.bottomSide')}</option>
+            <option value="left">{t('seat.editor.common.leftSide')}</option>
+            <option value="right">{t('seat.editor.common.rightSide')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          后门
+          {t('seat.editor.common.backDoor')}
           <select
             value={backDoor}
             onChange={e => {
@@ -868,55 +870,55 @@ export default function SmartClassroom({
             }}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="top">上方</option>
-            <option value="bottom">下方</option>
-            <option value="left">左侧</option>
-            <option value="right">右侧</option>
+            <option value="top">{t('seat.editor.common.topSide')}</option>
+            <option value="bottom">{t('seat.editor.common.bottomSide')}</option>
+            <option value="left">{t('seat.editor.common.leftSide')}</option>
+            <option value="right">{t('seat.editor.common.rightSide')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          入场门
+          {t('seat.editor.smart.entryDoor')}
           <select
             value={entryDoor}
             onChange={e => setEntryDoor(e.target.value as any)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="front">仅前门</option>
-            <option value="back">仅后门</option>
-            <option value="both">前后门都可</option>
+            <option value="front">{t('seat.editor.smart.entryFront')}</option>
+            <option value="back">{t('seat.editor.smart.entryBack')}</option>
+            <option value="both">{t('seat.editor.smart.entryBoth')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          窗户
+          {t('seat.editor.smart.windowSide')}
           <select
             value={windowPos}
             onChange={e => setWindowPos(e.target.value as any)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="left">左侧</option>
-            <option value="right">右侧</option>
+            <option value="left">{t('seat.editor.common.leftSide')}</option>
+            <option value="right">{t('seat.editor.common.rightSide')}</option>
           </select>
         </label>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-card/60 p-4">
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
-          名称
+          {t('seat.editor.common.name')}
           <Input
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
-            placeholder="输入名称（用于保存历史和导出文件名）"
+            placeholder={t('seat.editor.common.namePlaceholder')}
             className="h-8 w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每桌人数
+          {t('seat.editor.common.perTable')}
           <Input type="number" min={3} max={12} value={seatsPerTable}
             onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          行数
+          {t('seat.editor.common.rows')}
           <Input
             type="number"
             min={1}
@@ -926,7 +928,7 @@ export default function SmartClassroom({
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          列数
+          {t('seat.editor.common.cols')}
           <Input
             type="number"
             min={1}
@@ -936,7 +938,7 @@ export default function SmartClassroom({
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌数
+          {t('seat.editor.common.tables')}
           <Input
             type="number"
             min={1}
@@ -946,28 +948,28 @@ export default function SmartClassroom({
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          {t('seat.editor.common.mode')}
           <select
             value={mode}
             onChange={e => setMode(e.target.value as SmartSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="tableRoundRobin">每桌轮转</option>
-            <option value="tableGrouped">每组一桌</option>
-            <option value="verticalS">竖S桌序</option>
-            <option value="horizontalS">横S桌序</option>
-            <option value="orgTablePodium">同单位一桌+高职近讲台</option>
+            <option value="tableRoundRobin">{t('seat.editor.common.modeTableRoundRobin')}</option>
+            <option value="tableGrouped">{t('seat.editor.common.modeTableGrouped')}</option>
+            <option value="verticalS">{t('seat.editor.common.modeVerticalSTable')}</option>
+            <option value="horizontalS">{t('seat.editor.common.modeHorizontalSTable')}</option>
+            <option value="orgTablePodium">{t('seat.editor.common.modeOrgTablePodium')}</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            组数
+            {t('seat.editor.common.groupCount')}
             <Input type="number" min={2} max={20} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌子间距
+          {t('seat.editor.common.tableSpacing')}
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
@@ -978,18 +980,18 @@ export default function SmartClassroom({
             onChange={e => setShowOrgColorMark(e.target.checked)}
             className="accent-primary"
           />
-          单位颜色标识
+          {t('seat.editor.common.orgColor')}
         </label>
         <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
           <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={assignment.length === 0}>
-            <Save className="w-4 h-4" /> 保存历史
+            <Save className="w-4 h-4" /> {t('seat.editor.common.saveHistory')}
           </Button>
           <select
             value={selectedHistoryId}
             onChange={e => setSelectedHistoryId(e.target.value)}
             className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="">选择历史记录</option>
+            <option value="">{t('seat.editor.common.selectHistory')}</option>
             {historyItems.map(item => (
               <option key={item.id} value={item.id}>
                 {item.name}（{new Date(item.createdAt).toLocaleString()}）
@@ -1002,24 +1004,24 @@ export default function SmartClassroom({
             disabled={!selectedHistoryId}
             className="gap-2 h-8"
           >
-            <RotateCcw className="w-4 h-4" /> 恢复历史
+            <RotateCcw className="w-4 h-4" /> {t('seat.editor.common.restoreHistory')}
           </Button>
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8"
             disabled={!selectedHistoryId}
-            title="重命名该历史记录"
+            title={t('seat.editor.common.renameTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               const current = historyItems.find(h => h.id === id);
               if (!id || !current) return;
-              const next = window.prompt('请输入新名称', current.name)?.trim();
+              const next = window.prompt(t('seat.editor.common.renamePrompt'), current.name)?.trim();
               if (!next || next === current.name) return;
               await renameCloudSeatHistory(id, next);
               renameSeatHistoryLocal('smart_classroom', id, next);
               setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-              toast.success('已重命名');
+              toast.success(t('seat.editor.common.renamed'));
             }}
           >
             <Pencil className="w-4 h-4" />
@@ -1029,30 +1031,30 @@ export default function SmartClassroom({
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             disabled={!selectedHistoryId}
-            title="删除该历史记录"
+            title={t('seat.editor.common.deleteTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               if (!id) return;
-              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm'))) return;
               await deleteCloudSeatHistory(id);
               deleteSeatHistoryLocal('smart_classroom', id);
               setHistoryItems(prev => prev.filter(h => h.id !== id));
               setSelectedHistoryId('');
-              toast.success('已删除该历史记录');
+              toast.success(t('seat.editor.common.deleted'));
             }}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
         <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
-          <Users className="w-4 h-4" /> 按分组一桌
+          <Users className="w-4 h-4" /> {t('seat.editor.common.byGroupOneTable')}
         </Button>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
-          重置参照物
+          {t('seat.editor.common.resetReferences')}
         </Button>
         <TitleRankConfigDialog
           value={titleRankRuleText}
-          sceneLabel="智慧教室"
+          sceneLabel={t('seat.editor.scene.classroom')}
           onSave={next => {
             const saved = saveTitleRankRuleText(next, 'smartClassroom');
             setTitleRankRuleText(saved);
@@ -1060,31 +1062,31 @@ export default function SmartClassroom({
         />
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> {t('seat.editor.common.screen')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> {t('seat.editor.common.podium')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
+            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> {t('seat.editor.common.frontDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> 后门
+            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> {t('seat.editor.common.backDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> {t('seat.editor.common.window')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> {t('seat.editor.common.lockReferences')}
           </label>
         </div>
         <span className="text-xs text-muted-foreground">
-          容量 {seatsPerTable * tableCount} | 学生 {students.length}
+          {tFormat(t('seat.editor.smart.capacityHint'), seatsPerTable * tableCount, students.length)}
         </span>
         {assignment.length > 0 && (
           <ExportButtons
             targetRef={printRef}
-            filename={recordName.trim() || '智能教室座位'}
+            filename={recordName.trim() || t('seat.editor.scene.classroomFile')}
             resolveQrCode={resolveQrCode}
             titleValue={recordName}
             onTitleChange={setRecordName}
@@ -1093,26 +1095,26 @@ export default function SmartClassroom({
         )}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" /> 签到
+            <QrCode className="w-4 h-4" /> {t('seat.editor.common.checkin')}
           </Button>
         )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> {t('seat.editor.common.randomSeat')}
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              if (!window.confirm(t('seat.editor.common.clearConfirm'))) return;
               setAssignment(Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => '')));
             }}
             className="gap-2"
-            title="清空所有座位（保留教室容量）"
+            title={t('seat.editor.common.clearTitle')}
           >
-            <Trash2 className="w-4 h-4" /> 清空
+            <Trash2 className="w-4 h-4" /> {t('seat.editor.common.clear')}
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> {t('seat.editor.common.autoSeat')}
           </Button>
         </div>
       </div>
@@ -1136,7 +1138,7 @@ export default function SmartClassroom({
                   onMouseDown={e => startRefDrag(e, 'screen')}
                 >
                   <span className={refIconClass}>🖥️</span>
-                  <span className={refTextClass}>幕布</span>
+                  <span className={refTextClass}>{t('seat.editor.common.screen')}</span>
                 </div>
               )}
 
@@ -1147,7 +1149,7 @@ export default function SmartClassroom({
                   onMouseDown={e => startRefDrag(e, 'podium')}
                 >
                   <span className={refIconClass}>🎤</span>
-                  <span className={refTextClass}>讲台</span>
+                  <span className={refTextClass}>{t('seat.editor.common.podium')}</span>
                 </div>
               )}
 
@@ -1167,10 +1169,10 @@ export default function SmartClassroom({
                     className={refBadgeClass + (highlight ? ' ring-4 ring-green-400/80 ring-offset-2 animate-pulse' : '')}
                     style={{...style, zIndex: 10, background: 'linear-gradient(90deg,#e0ffe0 0%,#fff 100%)'}}
                     onMouseDown={e => startRefDrag(e, 'frontDoor')}
-                    title={highlight ? '学生可从此门入场' : undefined}
+                    title={highlight ? t('seat.editor.common.entryHint') : undefined}
                   >
                     <span className={refIconClass + ' text-green-700 bg-green-100'}>🚪</span>
-                    <span className={refTextClass + ' font-bold'}>前门</span>
+                    <span className={refTextClass + ' font-bold'}>{t('seat.editor.common.frontDoor')}</span>
                   </div>
                 );
               })()}
@@ -1189,10 +1191,10 @@ export default function SmartClassroom({
                     className={refBadgeClass + (highlight ? ' ring-4 ring-green-400/80 ring-offset-2 animate-pulse' : '')}
                     style={{...style, zIndex: 10, background: 'linear-gradient(90deg,#e0ffe0 0%,#fff 100%)'}}
                     onMouseDown={e => startRefDrag(e, 'backDoor')}
-                    title={highlight ? '学生可从此门入场' : undefined}
+                    title={highlight ? t('seat.editor.common.entryHint') : undefined}
                   >
                     <span className={refIconClass + ' text-green-700 bg-green-100'}>🚪</span>
-                    <span className={refTextClass + ' font-bold'}>后门</span>
+                    <span className={refTextClass + ' font-bold'}>{t('seat.editor.common.backDoor')}</span>
                   </div>
                 );
               })()}
@@ -1208,7 +1210,7 @@ export default function SmartClassroom({
                     onMouseDown={e => startRefDrag(e, 'window')}
                   >
                     <span className={refIconClass + ' text-blue-700 bg-blue-100'}>🪟</span>
-                    <span className={refTextClass + ' font-bold'}>窗</span>
+                    <span className={refTextClass + ' font-bold'}>{t('seat.editor.common.window')}</span>
                   </div>
                 );
               })()}
@@ -1224,15 +1226,15 @@ export default function SmartClassroom({
           </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
-            <p className="text-sm">圆形桌智能教室，每桌 {seatsPerTable} 人，共 {tableCount} 桌（{tableRows} 行 × {tableCols} 列）</p>
+            <p className="text-lg mb-2">{t('seat.editor.common.clickAutoToStart')}</p>
+            <p className="text-sm">{tFormat(t('seat.editor.smart.startHint'), seatsPerTable, tableCount, tableRows, tableCols)}</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          点击桌心可切换保留/开放；保留桌自动排座时不安排学生；拖拽姓名可交换座位；点击空座位可关闭/开放使用；幕布/讲台/前后门/窗支持显隐与拖拽
+          {t('seat.editor.smart.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
@@ -1243,7 +1245,7 @@ export default function SmartClassroom({
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}
         className={recordName.trim() || exportClassName}
-        pngFileName={recordName.trim() || '智能教室座位'}
+        pngFileName={recordName.trim() || t('seat.editor.scene.classroomFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
