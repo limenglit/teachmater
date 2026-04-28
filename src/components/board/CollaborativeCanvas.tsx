@@ -463,7 +463,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         // "Click to open" hint
         ctx.font = `${Math.min(ih * 0.09, 10)}px sans-serif`;
         ctx.fillStyle = '#94a3b8';
-        ctx.fillText('点击打开', ix + iw / 2, iy + ih * 0.82);
+        ctx.fillText(t('bcoll.openFile'), ix + iw / 2, iy + ih * 0.82);
         ctx.restore();
       } else {
         // Image rendering
@@ -481,7 +481,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           ctx.fillStyle = '#9ca3af';
           ctx.font = '14px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('加载中...', ix + iw / 2, iy + ih / 2);
+          ctx.fillText(t('bcoll.imageLoading'), ix + iw / 2, iy + ih / 2);
           ctx.restore();
         }
       }
@@ -558,7 +558,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
     } else {
       console.error('Save stroke error:', error);
       setLastInsertError(error?.message || 'unknown error');
-      toast({ title: '白板内容同步失败', description: '请检查网络后重试', variant: 'destructive' });
+      toast({ title: t('bcoll.syncFailed'), description: t('bcoll.checkNetwork'), variant: 'destructive' });
       return null;
     }
 
@@ -611,7 +611,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   async function handleFileUpload(file: File) {
     const MAX_SIZE = 20 * 1024 * 1024; // 20MB
     if (file.size > MAX_SIZE) {
-      toast({ title: '文件不能超过20MB', variant: 'destructive' });
+      toast({ title: t('bcoll.fileTooLarge'), variant: 'destructive' });
       return;
     }
 
@@ -651,7 +651,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       const saved = await saveStroke(strokeData);
       if (saved) {
         setTool('select');
-        toast({ title: isImage ? '图片已添加到画布' : `文件 ${file.name} 已添加` });
+        toast({ title: isImage ? t('bcoll.imageAdded') : tFormat(t('bcoll.fileAdded'), file.name) });
       }
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -675,7 +675,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
       console.error('Update image stroke error:', error);
       setLastUpdateError(error.message || 'unknown error');
       setStrokes(prev => prev.map(s => s.id === strokeId ? { ...s, stroke_data: previousData } : s));
-      toast({ title: '图片同步失败', description: '请稍后重试', variant: 'destructive' });
+      toast({ title: t('bcoll.imageSyncFailed'), description: t('bcoll.retryLater'), variant: 'destructive' });
       await fetchStrokes();
     } else {
       setLastUpdateError(null);
@@ -1018,10 +1018,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
   async function handleClearAll() {
     if (!isCreator || !creatorToken) return;
-    if (!confirm('确定清除所有笔画？')) return;
+    if (!confirm(t('bcoll.confirmClear'))) return;
     await supabase.rpc('clear_board_strokes', { p_board_id: boardId, p_token: creatorToken } as any);
     setStrokes([]);
-    toast({ title: '已清除所有笔画' });
+    toast({ title: t('bcoll.allCleared') });
   }
 
   function handleExport() {
@@ -1060,15 +1060,15 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
   }
 
   const tools_list: { id: Tool; icon: any; label: string }[] = [
-    { id: 'select', icon: MousePointer, label: '移动' },
-    { id: 'pen', icon: Pen, label: '画笔' },
-    { id: 'eraser', icon: Eraser, label: '橡皮擦' },
-    { id: 'rect', icon: Square, label: '矩形' },
-    { id: 'circle', icon: Circle, label: '圆形' },
-    { id: 'arrow', icon: ArrowRight, label: '箭头' },
-    { id: 'line', icon: Minus, label: '直线' },
-    { id: 'text', icon: Type, label: '文字' },
-    { id: 'image', icon: ImagePlus, label: '选择图片/文件' },
+    { id: 'select', icon: MousePointer, label: t('bcoll.toolMove') },
+    { id: 'pen', icon: Pen, label: t('bcoll.toolPen') },
+    { id: 'eraser', icon: Eraser, label: t('bcoll.toolEraser') },
+    { id: 'rect', icon: Square, label: t('bcoll.toolRect') },
+    { id: 'circle', icon: Circle, label: t('bcoll.toolCircle') },
+    { id: 'arrow', icon: ArrowRight, label: t('bcoll.toolArrow') },
+    { id: 'line', icon: Minus, label: t('bcoll.toolLine') },
+    { id: 'text', icon: Type, label: t('bcoll.toolText') },
+    { id: 'image', icon: ImagePlus, label: t('bcoll.toolImage') },
   ];
 
   return (
@@ -1115,7 +1115,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
           size="sm"
           className="h-8 w-8 p-0"
           onClick={() => fileInputRef.current?.click()}
-          title="上传文件"
+          title={t('bcoll.uploadFile')}
           disabled={(isLocked && !isCreator) || uploading}
         >
           <Upload className="w-4 h-4" />
@@ -1124,7 +1124,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         {/* Color picker */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="颜色">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title={t('bcoll.color')}>
               <div className="w-5 h-5 rounded-full border border-border" style={{ backgroundColor: color }} />
             </Button>
           </PopoverTrigger>
@@ -1157,14 +1157,14 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
         <div className="w-px h-6 bg-border mx-1" />
 
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleUndo} title="撤销">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleUndo} title={t('bcoll.undo')}>
           <Undo2 className="w-4 h-4" />
         </Button>
 
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setZoom(z => Math.min(3, z + 0.2))} title="放大">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setZoom(z => Math.min(3, z + 0.2))} title={t('bcoll.zoomIn')}>
           <ZoomIn className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setZoom(z => Math.max(0.3, z - 0.2))} title="缩小">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => setZoom(z => Math.max(0.3, z - 0.2))} title={t('bcoll.zoomOut')}>
           <ZoomOut className="w-4 h-4" />
         </Button>
         <Button
@@ -1175,23 +1175,23 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
             setZoom(1);
             setPan({ x: 0, y: 0 });
           }}
-          title="重置视图"
+          title={t('bcoll.resetView')}
         >
           <LocateFixed className="w-4 h-4" />
         </Button>
 
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleExport} title="导出PNG">
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleExport} title={t('bcoll.exportPng')}>
           <Download className="w-4 h-4" />
         </Button>
 
         {isCreator && (
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={handleClearAll} title="清除全部">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" onClick={handleClearAll} title={t('bcoll.clearAll')}>
             <Trash2 className="w-4 h-4" />
           </Button>
         )}
 
         {uploading && (
-          <span className="text-xs text-muted-foreground animate-pulse ml-1">上传中...</span>
+          <span className="text-xs text-muted-foreground animate-pulse ml-1">{t('bcoll.uploading')}</span>
         )}
 
 
@@ -1263,10 +1263,10 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
                 value={textInput}
                 onChange={e => setTextInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleTextSubmit()}
-                placeholder="输入文字..."
+                placeholder={t('bcoll.textPh')}
                 className="h-8 w-40 text-sm"
               />
-              <Button size="sm" className="h-8" onClick={handleTextSubmit}>确定</Button>
+              <Button size="sm" className="h-8" onClick={handleTextSubmit}>{t('bcoll.confirm')}</Button>
               <Button size="sm" variant="ghost" className="h-8" onClick={() => setTextPos(null)}>✕</Button>
             </div>
           </div>
@@ -1284,8 +1284,8 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
         {isLocked && !isCreator && (
           <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-20">
             <div className="text-center">
-              <p className="text-lg font-semibold text-foreground">白板已锁定</p>
-              <p className="text-sm text-muted-foreground">教师已锁定此白板，当前只能浏览</p>
+              <p className="text-lg font-semibold text-foreground">{t('bcoll.locked')}</p>
+              <p className="text-sm text-muted-foreground">{t('bcoll.lockedDesc')}</p>
             </div>
           </div>
         )}
