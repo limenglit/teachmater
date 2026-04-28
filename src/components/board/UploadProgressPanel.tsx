@@ -67,7 +67,7 @@ export function useUploadProgress() {
       updateItem(id, {
         status: 'failed',
         progress: 0,
-        error: err?.message || '上传失败',
+        error: err?.message || 'Upload failed',
       });
       return null;
     }
