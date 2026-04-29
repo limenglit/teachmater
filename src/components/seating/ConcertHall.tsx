@@ -780,32 +780,32 @@ export default function ConcertHall({ students }: Props) {
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>🖥️</span>
-                  <span className={refTextClass}>幕布</span>
+                  <span className={refTextClass}>{t('seat.editor.common.screen')}</span>
                 </div>
               )}
-              {/* 讲台默认不显示，用户可手动开启 */}
+              {/* podium hidden by default; user can enable manually */}
               {refVisible.podium && (
                 <div className={refBadgeClass} style={{ left: refPositions.podium.x, top: refPositions.podium.y }} onMouseDown={e => startRefDrag(e, 'podium')}>
                   <span className={refIconClass}>🎤</span>
-                  <span className={refTextClass}>讲台</span>
+                  <span className={refTextClass}>{t('seat.editor.common.podium')}</span>
                 </div>
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗户</span>
+                  <span className={refTextClass}>{t('seat.editor.common.window')}</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>前门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.frontDoor')}</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>后门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.backDoor')}</span>
                 </div>
               )}
 
@@ -813,7 +813,7 @@ export default function ConcertHall({ students }: Props) {
                 <rect x={cx - stageW / 2} y={stageY - stageH / 2} width={stageW} height={stageH} rx={10}
                   className="fill-primary/15 stroke-primary/30" strokeWidth={2} />
                 <text x={cx} y={stageY} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-sm font-medium">
-                  🎵 舞 台
+                  {t('seat.editor.concert.stageEmoji')}
                 </text>
 
                 {assignment.map((row, ri) => {
@@ -878,7 +878,7 @@ export default function ConcertHall({ students }: Props) {
                         {name && <title>{`${name} ${seatMarker}`}</title>}
                         {isClosed && (
                           <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
-                            关
+                            {t('seat.editor.common.off')}
                           </text>
                         )}
                         {name && !isDragging && (
@@ -921,15 +921,15 @@ export default function ConcertHall({ students }: Props) {
         </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
-            <p className="text-sm">半圆形音乐厅，{rowCount} 排座位围绕舞台</p>
+            <p className="text-lg mb-2">{t('seat.editor.concert.startHint1')}</p>
+            <p className="text-sm">{tFormat(t('seat.editor.concert.startHint2'), rowCount)}</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可换座；点击空座位可关闭/开放使用；幕布/讲台/窗/前后门支持显隐与拖拽
+          {t('seat.editor.concert.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
@@ -940,7 +940,7 @@ export default function ConcertHall({ students }: Props) {
         sceneType="concertHall"
         sceneConfig={exportSceneConfig}
         className={recordName.trim() || exportClassName}
-        pngFileName={recordName.trim() || '音乐厅座位'}
+        pngFileName={recordName.trim() || t('seat.editor.scene.concertFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
