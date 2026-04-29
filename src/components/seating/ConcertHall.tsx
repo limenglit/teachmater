@@ -18,6 +18,7 @@ import {
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
 import type { StudentGender } from '@/hooks/useStudentStore';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   students: { id: string; name: string; gender?: StudentGender }[];
@@ -61,6 +62,7 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function ConcertHall({ students }: Props) {
+  const { t } = useLanguage();
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 12));
   const [groupCount, setGroupCount] = useState(4);
@@ -510,10 +512,10 @@ export default function ConcertHall({ students }: Props) {
 
   const saveToHistory = async () => {
     if (assignment.length === 0) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.editor.common.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `音乐厅-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.concert')}-${new Date().toLocaleString()}`;
     const item = saveConcertHallHistory(name, buildSnapshot());
     let savedItem: ConcertHallHistoryItem = item;
     const cloud = await saveCloudSeatHistory('concert', name, item.snapshot);
@@ -523,13 +525,13 @@ export default function ConcertHall({ students }: Props) {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveConcertHallSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.editor.common.savedHistoryCloud') : t('seat.editor.common.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请选择要恢复的历史记录');
+      toast.error(t('seat.editor.common.noHistorySelected'));
       return;
     }
     const snapshot = item.snapshot;
@@ -555,7 +557,7 @@ export default function ConcertHall({ students }: Props) {
       rowCount: nextRowCount,
       assignment: nextAssignment,
     });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.editor.common.restoredHistory'));
   };
 
   const nameTextLength = Math.max(28, seatR * 1.95);
@@ -565,63 +567,63 @@ export default function ConcertHall({ students }: Props) {
     <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
-          名称
+          {t('seat.editor.common.name')}
           <Input
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
-            placeholder="输入名称（用于保存历史和导出文件名）"
+            placeholder={t('seat.editor.common.namePlaceholder')}
             className="h-8 w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每排基准座位
+          {t('seat.editor.concert.seatsPerRowBase')}
           <Input type="number" min={6} max={24} value={seatsPerRow}
             onChange={e => setSeatsPerRow(Math.max(6, Math.min(24, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <div className="inline-flex items-center gap-2 text-sm text-muted-foreground px-2.5 h-8 rounded-md border border-border bg-muted/40">
-          自动排数
+          {t('seat.editor.concert.autoRows')}
           <span className="text-foreground font-medium">{rowCount}</span>
         </div>
         <div className="inline-flex items-center gap-2 text-xs text-muted-foreground px-2.5 h-8 rounded-md border border-border bg-muted/40">
-          容量 {totalCapacity} 人
+          {tFormat(t('seat.editor.concert.capacityHint'), totalCapacity)}
         </div>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          {t('seat.editor.common.mode')}
           <select
             value={mode}
             onChange={e => setMode(e.target.value as ConcertSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="arcBalanced">扇区平衡</option>
-            <option value="groupZone">分组分区</option>
-            <option value="verticalS">竖S分配</option>
-            <option value="horizontalS">横S分配</option>
+            <option value="arcBalanced">{t('seat.editor.concert.modeArcBalanced')}</option>
+            <option value="groupZone">{t('seat.editor.concert.modeGroupZone')}</option>
+            <option value="verticalS">{t('seat.editor.concert.modeVerticalS')}</option>
+            <option value="horizontalS">{t('seat.editor.concert.modeHorizontalS')}</option>
           </select>
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          性别排座
+          {t('seat.editor.concert.genderSeating')}
           <select
             value={genderSeatPolicy}
             onChange={e => setGenderSeatPolicy(e.target.value as GenderSeatPolicy)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="none">不限制</option>
-            <option value="alternate">男女间隔</option>
-            <option value="cluster">男女集中</option>
-            <option value="alternateRows">男女隔行</option>
+            <option value="none">{t('seat.editor.concert.genderNone')}</option>
+            <option value="alternate">{t('seat.editor.concert.genderAlternate')}</option>
+            <option value="cluster">{t('seat.editor.concert.genderCluster')}</option>
+            <option value="alternateRows">{t('seat.editor.concert.genderAlternateRows')}</option>
           </select>
         </label>
         {genderSeatPolicy !== 'none' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            起始性别
+            {t('seat.editor.concert.startGender')}
             <select
               value={genderFirst}
               onChange={e => setGenderFirst(e.target.value as GenderFirst)}
               className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
             >
-              <option value="male">男生在前</option>
-              <option value="female">女生在前</option>
+              <option value="male">{t('seat.editor.concert.maleFirst')}</option>
+              <option value="female">{t('seat.editor.concert.femaleFirst')}</option>
             </select>
           </label>
         )}
@@ -633,31 +635,31 @@ export default function ConcertHall({ students }: Props) {
               onChange={e => setCenterRowsByGender(e.target.checked)}
               className="accent-primary"
             />
-            自动居中
+            {t('seat.editor.concert.autoCenter')}
           </label>
         )}
         {genderSeatPolicy !== 'none' && (
           <div className="inline-flex items-center gap-2 text-xs text-muted-foreground px-2.5 h-8 rounded-md border border-border bg-muted/40">
-            男 {genderStats.male} / 女 {genderStats.female} / 未知 {genderStats.unknown}
+            {tFormat(t('seat.editor.concert.genderStats'), genderStats.male, genderStats.female, genderStats.unknown)}
           </div>
         )}
         {mode === 'groupZone' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            组数
+            {t('seat.editor.common.groupCount')}
             <Input type="number" min={2} max={20} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
         <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
           <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={assignment.length === 0}>
-            <Save className="w-4 h-4" /> 保存历史
+            <Save className="w-4 h-4" /> {t('seat.editor.common.saveHistory')}
           </Button>
           <select
             value={selectedHistoryId}
             onChange={e => setSelectedHistoryId(e.target.value)}
             className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="">选择历史记录</option>
+            <option value="">{t('seat.editor.common.selectHistory')}</option>
             {historyItems.map(item => (
               <option key={item.id} value={item.id}>
                 {item.name}（{new Date(item.createdAt).toLocaleString()}）
@@ -665,24 +667,24 @@ export default function ConcertHall({ students }: Props) {
             ))}
           </select>
           <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
-            <RotateCcw className="w-4 h-4" /> 恢复历史
+            <RotateCcw className="w-4 h-4" /> {t('seat.editor.common.restoreHistory')}
           </Button>
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8"
             disabled={!selectedHistoryId}
-            title="重命名该历史记录"
+            title={t('seat.editor.common.renameTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               const current = historyItems.find(h => h.id === id);
               if (!id || !current) return;
-              const next = window.prompt('请输入新名称', current.name)?.trim();
+              const next = window.prompt(t('seat.editor.common.renamePrompt'), current.name)?.trim();
               if (!next || next === current.name) return;
               await renameCloudSeatHistory(id, next);
               renameSeatHistoryLocal('concert', id, next);
               setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-              toast.success('已重命名');
+              toast.success(t('seat.editor.common.renamed'));
             }}
           >
             <Pencil className="w-4 h-4" />
@@ -692,48 +694,48 @@ export default function ConcertHall({ students }: Props) {
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             disabled={!selectedHistoryId}
-            title="删除该历史记录"
+            title={t('seat.editor.common.deleteTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               if (!id) return;
-              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm'))) return;
               await deleteCloudSeatHistory(id);
               deleteSeatHistoryLocal('concert', id);
               setHistoryItems(prev => prev.filter(h => h.id !== id));
               setSelectedHistoryId('');
-              toast.success('已删除该历史记录');
+              toast.success(t('seat.editor.common.deleted'));
             }}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
-          重置参照物
+          {t('seat.editor.common.resetReferences')}
         </Button>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 幕布
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> {t('seat.editor.common.screen')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> 讲台
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> {t('seat.editor.common.podium')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> {t('seat.editor.common.window')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
+            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> {t('seat.editor.common.frontDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> 后门
+            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> {t('seat.editor.common.backDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> {t('seat.editor.common.lockReferences')}
           </label>
         </div>
         {assignment.length > 0 && (
           <ExportButtons
             targetRef={printRef}
-            filename={recordName.trim() || '音乐厅座位'}
+            filename={recordName.trim() || t('seat.editor.scene.concertFile')}
             resolveQrCode={resolveQrCode}
             titleValue={recordName}
             onTitleChange={setRecordName}
@@ -742,26 +744,26 @@ export default function ConcertHall({ students }: Props) {
         )}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" /> 签到
+            <QrCode className="w-4 h-4" /> {t('seat.editor.common.checkin')}
           </Button>
         )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> {t('seat.editor.common.randomSeat')}
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              if (!window.confirm(t('seat.editor.common.clearConfirm'))) return;
               setAssignment(seatCaps.map(cap => Array.from({ length: cap }, () => '')));
             }}
             className="gap-2"
-            title="清空所有座位（保留音乐厅容量）"
+            title={t('seat.editor.common.clearTitle')}
           >
-            <Trash2 className="w-4 h-4" /> 清空
+            <Trash2 className="w-4 h-4" /> {t('seat.editor.common.clear')}
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> {t('seat.editor.common.autoSeat')}
           </Button>
         </div>
       </div>
@@ -778,32 +780,32 @@ export default function ConcertHall({ students }: Props) {
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>🖥️</span>
-                  <span className={refTextClass}>幕布</span>
+                  <span className={refTextClass}>{t('seat.editor.common.screen')}</span>
                 </div>
               )}
-              {/* 讲台默认不显示，用户可手动开启 */}
+              {/* podium hidden by default; user can enable manually */}
               {refVisible.podium && (
                 <div className={refBadgeClass} style={{ left: refPositions.podium.x, top: refPositions.podium.y }} onMouseDown={e => startRefDrag(e, 'podium')}>
                   <span className={refIconClass}>🎤</span>
-                  <span className={refTextClass}>讲台</span>
+                  <span className={refTextClass}>{t('seat.editor.common.podium')}</span>
                 </div>
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗户</span>
+                  <span className={refTextClass}>{t('seat.editor.common.window')}</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>前门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.frontDoor')}</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>后门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.backDoor')}</span>
                 </div>
               )}
 
@@ -811,7 +813,7 @@ export default function ConcertHall({ students }: Props) {
                 <rect x={cx - stageW / 2} y={stageY - stageH / 2} width={stageW} height={stageH} rx={10}
                   className="fill-primary/15 stroke-primary/30" strokeWidth={2} />
                 <text x={cx} y={stageY} textAnchor="middle" dominantBaseline="middle" className="fill-primary text-sm font-medium">
-                  🎵 舞 台
+                  {t('seat.editor.concert.stageEmoji')}
                 </text>
 
                 {assignment.map((row, ri) => {
@@ -876,7 +878,7 @@ export default function ConcertHall({ students }: Props) {
                         {name && <title>{`${name} ${seatMarker}`}</title>}
                         {isClosed && (
                           <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
-                            关
+                            {t('seat.editor.common.off')}
                           </text>
                         )}
                         {name && !isDragging && (
@@ -919,15 +921,15 @@ export default function ConcertHall({ students }: Props) {
         </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
-            <p className="text-sm">半圆形音乐厅，{rowCount} 排座位围绕舞台</p>
+            <p className="text-lg mb-2">{t('seat.editor.concert.startHint1')}</p>
+            <p className="text-sm">{tFormat(t('seat.editor.concert.startHint2'), rowCount)}</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可换座；点击空座位可关闭/开放使用；幕布/讲台/窗/前后门支持显隐与拖拽
+          {t('seat.editor.concert.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
@@ -938,7 +940,7 @@ export default function ConcertHall({ students }: Props) {
         sceneType="concertHall"
         sceneConfig={exportSceneConfig}
         className={recordName.trim() || exportClassName}
-        pngFileName={recordName.trim() || '音乐厅座位'}
+        pngFileName={recordName.trim() || t('seat.editor.scene.concertFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
