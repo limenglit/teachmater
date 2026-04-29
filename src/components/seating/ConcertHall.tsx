@@ -512,10 +512,10 @@ export default function ConcertHall({ students }: Props) {
 
   const saveToHistory = async () => {
     if (assignment.length === 0) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.editor.common.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `音乐厅-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.concert')}-${new Date().toLocaleString()}`;
     const item = saveConcertHallHistory(name, buildSnapshot());
     let savedItem: ConcertHallHistoryItem = item;
     const cloud = await saveCloudSeatHistory('concert', name, item.snapshot);
@@ -525,13 +525,13 @@ export default function ConcertHall({ students }: Props) {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveConcertHallSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.editor.common.savedHistoryCloud') : t('seat.editor.common.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请选择要恢复的历史记录');
+      toast.error(t('seat.editor.common.noHistorySelected'));
       return;
     }
     const snapshot = item.snapshot;
@@ -557,7 +557,7 @@ export default function ConcertHall({ students }: Props) {
       rowCount: nextRowCount,
       assignment: nextAssignment,
     });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.editor.common.restoredHistory'));
   };
 
   const nameTextLength = Math.max(28, seatR * 1.95);
@@ -679,12 +679,12 @@ export default function ConcertHall({ students }: Props) {
               const id = selectedHistoryId;
               const current = historyItems.find(h => h.id === id);
               if (!id || !current) return;
-              const next = window.prompt('请输入新名称', current.name)?.trim();
+              const next = window.prompt(t('seat.editor.common.renamePrompt'), current.name)?.trim();
               if (!next || next === current.name) return;
               await renameCloudSeatHistory(id, next);
               renameSeatHistoryLocal('concert', id, next);
               setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-              toast.success('已重命名');
+              toast.success(t('seat.editor.common.renamed'));
             }}
           >
             <Pencil className="w-4 h-4" />
@@ -698,12 +698,12 @@ export default function ConcertHall({ students }: Props) {
             onClick={async () => {
               const id = selectedHistoryId;
               if (!id) return;
-              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm'))) return;
               await deleteCloudSeatHistory(id);
               deleteSeatHistoryLocal('concert', id);
               setHistoryItems(prev => prev.filter(h => h.id !== id));
               setSelectedHistoryId('');
-              toast.success('已删除该历史记录');
+              toast.success(t('seat.editor.common.deleted'));
             }}
           >
             <Trash2 className="w-4 h-4" />
@@ -754,7 +754,7 @@ export default function ConcertHall({ students }: Props) {
           <Button
             variant="outline"
             onClick={() => {
-              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              if (!window.confirm(t('seat.editor.common.clearConfirm'))) return;
               setAssignment(seatCaps.map(cap => Array.from({ length: cap }, () => '')));
             }}
             className="gap-2"
