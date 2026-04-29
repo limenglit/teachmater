@@ -18,6 +18,7 @@ import {
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
 import type { StudentGender } from '@/hooks/useStudentStore';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   students: { id: string; name: string; gender?: StudentGender }[];
