@@ -62,6 +62,7 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function ConcertHall({ students }: Props) {
+  const { t } = useLanguage();
   const [seatsPerRow, setSeatsPerRow] = useState(12);
   const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 12));
   const [groupCount, setGroupCount] = useState(4);
