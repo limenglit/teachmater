@@ -558,12 +558,12 @@ export default function BanquetHall({ students }: Props) {
   const seatByLastGroups = () => {
     const cachedGroups = loadLastGroups();
     if (cachedGroups.length === 0) {
-      toast.error('暂无可用的已保存分组数据。');
+      toast.error(t('seat.editor.banquet.noUsableGroups'));
       return;
     }
     const ok = applyGroupsToSeat(cachedGroups);
     if (ok) {
-      toast.success('已按分组生成座位。');
+      toast.success(t('seat.editor.banquet.byGroupGenerated'));
     }
   };
 
