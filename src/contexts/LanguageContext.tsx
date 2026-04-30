@@ -4136,6 +4136,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'Reset',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': 'By height (short→tall: inner→outer)',
+    'seat.editor.art.byGrade': 'By grade (low→high: inner→outer)',
+    'seat.editor.art.tipFinal': 'Tip: occlusion-based angular offsets reduce overlapping sightlines; you can still drag to fine-tune.',
   },
   ru: {
     'app.title': 'TeachMate',
