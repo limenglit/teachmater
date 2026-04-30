@@ -583,79 +583,79 @@ export default function ComputerLab({ students }: Props) {
     <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
-          名称
+          {t('seat.editor.common.name')}
           <Input
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
-            placeholder="输入名称（用于保存历史和导出文件名）"
+            placeholder={t('seat.editor.common.namePlaceholder')}
             className="h-8 w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          排数
+          {t('seat.editor.common.rows')}
           <Input type="number" min={1} max={30} value={rowCount}
             onChange={e => { setRowCount(Math.max(1, Math.min(30, Number(e.target.value)))); setAutoRowCount(false); }}
             className="w-14 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          列数（桌组）
+          {t('seat.editor.lab.colsTableGroups')}
           <Input type="number" min={1} max={6} value={tableCols}
             onChange={e => setTableCols(Math.max(1, Math.min(6, Number(e.target.value))))}
             className="w-14 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每桌座位数
+          {t('seat.editor.lab.seatsPerTable')}
           <Input type="number" min={3} max={16} value={seatsPerSide}
             onChange={e => setSeatsPerSide(Math.max(3, Math.min(16, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          {t('seat.editor.common.mode')}
           <select
             value={mode}
             onChange={e => setMode(e.target.value as LabSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="balanced">行列平衡</option>
-            <option value="groupRow">每组同排</option>
-            <option value="verticalS">竖S分配</option>
-            <option value="horizontalS">横S分配</option>
+            <option value="balanced">{t('seat.editor.lab.modeBalanced')}</option>
+            <option value="groupRow">{t('seat.editor.lab.modeGroupRow')}</option>
+            <option value="verticalS">{t('seat.editor.lab.modeVerticalS')}</option>
+            <option value="horizontalS">{t('seat.editor.lab.modeHorizontalS')}</option>
           </select>
         </label>
         {mode === 'groupRow' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            组数
+            {t('seat.editor.common.groupCount')}
             <Input type="number" min={2} max={20} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-14 h-8 text-center" />
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          行间距
+          {t('seat.editor.lab.rowSpacing')}
           <Input type="number" min={80} max={260} value={tableGap}
             onChange={e => setTableGap(Math.max(80, Math.min(260, Number(e.target.value))))} className="w-14 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          学生位置
+          {t('seat.editor.lab.studentPos')}
           <select
             value={seatSide}
             onChange={e => setSeatSide(e.target.value as LabSeatSide)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="both">两侧</option>
-            <option value="top">仅上侧</option>
-            <option value="bottom">仅下侧</option>
+            <option value="both">{t('seat.editor.lab.sideBoth')}</option>
+            <option value="top">{t('seat.editor.lab.sideTopOnly')}</option>
+            <option value="bottom">{t('seat.editor.lab.sideBottomOnly')}</option>
           </select>
         </label>
         <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
           <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={!seated}>
-            <Save className="w-4 h-4" /> 保存历史
+            <Save className="w-4 h-4" /> {t('seat.editor.common.saveHistory')}
           </Button>
           <select
             value={selectedHistoryId}
             onChange={e => setSelectedHistoryId(e.target.value)}
             className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="">选择历史记录</option>
+            <option value="">{t('seat.editor.common.selectHistory')}</option>
             {historyItems.map(item => (
               <option key={item.id} value={item.id}>
                 {item.name}（{new Date(item.createdAt).toLocaleString()}）
@@ -663,24 +663,24 @@ export default function ComputerLab({ students }: Props) {
             ))}
           </select>
           <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
-            <RotateCcw className="w-4 h-4" /> 恢复历史
+            <RotateCcw className="w-4 h-4" /> {t('seat.editor.common.restoreHistory')}
           </Button>
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8"
             disabled={!selectedHistoryId}
-            title="重命名该历史记录"
+            title={t('seat.editor.common.renameTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               const current = historyItems.find(h => h.id === id);
               if (!id || !current) return;
-              const next = window.prompt('请输入新名称', current.name)?.trim();
+              const next = window.prompt(t('seat.editor.common.renamePrompt'), current.name)?.trim();
               if (!next || next === current.name) return;
               await renameCloudSeatHistory(id, next);
               renameSeatHistoryLocal('computer_lab', id, next);
               setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-              toast.success('已重命名');
+              toast.success(t('seat.editor.common.renamed'));
             }}
           >
             <Pencil className="w-4 h-4" />
@@ -690,46 +690,46 @@ export default function ComputerLab({ students }: Props) {
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             disabled={!selectedHistoryId}
-            title="删除该历史记录"
+            title={t('seat.editor.common.deleteTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               if (!id) return;
-              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm'))) return;
               await deleteCloudSeatHistory(id);
               deleteSeatHistoryLocal('computer_lab', id);
               setHistoryItems(prev => prev.filter(h => h.id !== id));
               setSelectedHistoryId('');
-              toast.success('已删除该历史记录');
+              toast.success(t('seat.editor.common.deleted'));
             }}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
-          重置参照物
+          {t('seat.editor.common.resetReferences')}
         </Button>
         <Button variant="outline" onClick={resetRowTransforms}>
-          重置桌位位置
+          {t('seat.editor.lab.resetTablePos')}
         </Button>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.blackboard} onChange={() => toggleRefVisible('blackboard')} className="accent-primary" /> 前黑板
+            <input type="checkbox" checked={refVisible.blackboard} onChange={() => toggleRefVisible('blackboard')} className="accent-primary" /> {t('seat.editor.lab.frontBoard')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> {t('seat.editor.common.window')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.door} onChange={() => toggleRefVisible('door')} className="accent-primary" /> 门
+            <input type="checkbox" checked={refVisible.door} onChange={() => toggleRefVisible('door')} className="accent-primary" /> {t('seat.editor.lab.door')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定参照物
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> {t('seat.editor.common.lockReferences')}
           </label>
         </div>
-        <span className="text-xs text-muted-foreground">可容纳 {rowCount * totalSeatsPerSide * (dualSide ? 2 : 1)} 人 | 当前 {students.length} 人</span>
+        <span className="text-xs text-muted-foreground">{tFormat(t('seat.editor.lab.capacityHint'), rowCount * totalSeatsPerSide * (dualSide ? 2 : 1), students.length)}</span>
         {seated && (
           <ExportButtons
             targetRef={printRef}
-            filename={recordName.trim() || '机房座位'}
+            filename={recordName.trim() || t('seat.editor.scene.labFile')}
             resolveQrCode={resolveQrCode}
             titleValue={recordName}
             onTitleChange={setRecordName}
@@ -738,17 +738,17 @@ export default function ComputerLab({ students }: Props) {
         )}
         {seated && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" /> 签到
+            <QrCode className="w-4 h-4" /> {t('seat.editor.common.checkin')}
           </Button>
         )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> {t('seat.editor.common.randomSeat')}
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              if (!window.confirm(t('seat.editor.common.clearConfirm'))) return;
               const blank: typeof assignment = [];
               for (let r = 0; r < rowCount; r++) {
                 blank.push({ rowIndex: r, side: 'top', students: Array.from({ length: totalSeatsPerSide }, () => '') });
@@ -758,12 +758,12 @@ export default function ComputerLab({ students }: Props) {
               setSeated(true);
             }}
             className="gap-2"
-            title="清空所有座位（保留机房容量）"
+            title={t('seat.editor.common.clearTitle')}
           >
-            <Trash2 className="w-4 h-4" /> 清空
+            <Trash2 className="w-4 h-4" /> {t('seat.editor.common.clear')}
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> {t('seat.editor.common.autoSeat')}
           </Button>
         </div>
       </div>
