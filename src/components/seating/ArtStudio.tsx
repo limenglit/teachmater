@@ -208,6 +208,7 @@ const resolveSeatCollisions = (
 };
 
 export default function ArtStudio({ students }: Props) {
+  const { t } = useLanguage();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('radial');
   const [ringCount, setRingCount] = useState(3);
