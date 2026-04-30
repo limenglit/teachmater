@@ -2155,6 +2155,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': '重置',
     'seat.editor.art.fileName': '美术教室座位图',
     'seat.editor.art.qrFile': '美术教室签到码',
+    'seat.editor.art.byHeight': '按身高（矮到高：内环到外环）',
+    'seat.editor.art.byGrade': '按年级（低到高：内环到外环）',
+    'seat.editor.art.tipFinal': '提示：系统会基于遮挡评分做角度错位优化，尽量减少同视线重叠；若需要，仍可拖拽手动微调。',
   },
   en: {
     'app.title': 'TeachMate',
