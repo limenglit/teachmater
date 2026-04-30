@@ -526,56 +526,56 @@ export default function ArtStudio({ students }: Props) {
 
       <div className="rounded-xl border border-border p-3 sm:p-4 bg-card/70 space-y-3">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-muted-foreground">一键预设:</span>
-          <Button variant={preset === 'stillLife' ? 'default' : 'outline'} size="sm" className="h-7 px-2" onClick={() => applyPreset('stillLife')}>静物写生</Button>
-          <Button variant={preset === 'plaster' ? 'default' : 'outline'} size="sm" className="h-7 px-2" onClick={() => applyPreset('plaster')}>石膏像写生</Button>
+          <span className="text-muted-foreground">{t('seat.editor.art.preset')}</span>
+          <Button variant={preset === 'stillLife' ? 'default' : 'outline'} size="sm" className="h-7 px-2" onClick={() => applyPreset('stillLife')}>{t('seat.editor.art.areaStill')}</Button>
+          <Button variant={preset === 'plaster' ? 'default' : 'outline'} size="sm" className="h-7 px-2" onClick={() => applyPreset('plaster')}>{t('seat.editor.art.areaPlaster')}</Button>
           <Button variant={preset === 'model' ? 'default' : 'outline'} size="sm" className="h-7 px-2" onClick={() => applyPreset('model')}>
-            <UserRound className="w-3 h-3 mr-1" /> 人物模特写生
+            <UserRound className="w-3 h-3 mr-1" /> {t('seat.editor.art.modelStill')}
           </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <label className="flex items-center gap-2">
-            布局
+            {t('seat.editor.art.layout')}
             <select
               className="h-8 px-2 rounded-md border border-input bg-background text-foreground"
               value={layoutMode}
               onChange={e => setLayoutMode(e.target.value as LayoutMode)}
             >
-              <option value="radial">辐射状</option>
-              <option value="concentric">同心圆</option>
+              <option value="radial">{t('seat.editor.art.layoutRadial')}</option>
+              <option value="concentric">{t('seat.editor.art.layoutConcentric')}</option>
             </select>
           </label>
           <label className="flex items-center gap-2">
-            环数
+            {t('seat.editor.art.rings')}
             <Input type="number" className="h-8 w-16 text-center" min={2} max={5} value={ringCount}
               onChange={e => setRingCount(clamp(Number(e.target.value) || 3, 2, 5))} />
           </label>
           <label className="flex items-center gap-2">
-            内环席位
+            {t('seat.editor.art.innerSeats')}
             <Input type="number" className="h-8 w-16 text-center" min={6} max={16} value={innerRingSeats}
               onChange={e => setInnerRingSeats(clamp(Number(e.target.value) || 8, 6, 16))} />
           </label>
           <label className="flex items-center gap-2">
-            外环增量
+            {t('seat.editor.art.outerInc')}
             <Input type="number" className="h-8 w-16 text-center" min={0} max={8} value={ringGrowth}
               onChange={e => setRingGrowth(clamp(Number(e.target.value) || 0, 0, 8))} />
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" className="accent-primary" checked={enableLayeredStrategy} onChange={e => setEnableLayeredStrategy(e.target.checked)} />
-            分层策略（前排矮凳 / 后排站立）
+            {t('seat.editor.art.layerStrategy')}
           </label>
           <label className="flex items-center gap-2">
-            分层依据
+            {t('seat.editor.art.layerBy')}
             <select className="h-8 px-2 rounded-md border border-input bg-background text-foreground" value={layerRule} onChange={e => setLayerRule(e.target.value as LayerRule)}>
-              <option value="default">默认（名单顺序）</option>
-              <option value="height">按身高（矮到高：内环到外环）</option>
-              <option value="grade">按年级（低到高：内环到外环）</option>
+              <option value="default">{t('seat.editor.art.defaultOrder')}</option>
+              <option value="height">{t('seat.editor.art.byHeight')}</option>
+              <option value="grade">{t('seat.editor.art.byGrade')}</option>
             </select>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" className="accent-primary" checked={optimizeView} onChange={e => setOptimizeView(e.target.checked)} />
-            启用视角遮挡评分优化
+            {t('seat.editor.art.enableOcclusion')}
           </label>
         </div>
       </div>
