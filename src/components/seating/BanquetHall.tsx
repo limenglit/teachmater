@@ -1180,7 +1180,7 @@ export default function BanquetHall({ students }: Props) {
         sceneType="banquet"
         sceneConfig={exportSceneConfig}
         className={recordName.trim() || exportClassName}
-        pngFileName={recordName.trim() || '宴会厅座位安排'}
+        pngFileName={recordName.trim() || t('seat.editor.scene.banquetFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
