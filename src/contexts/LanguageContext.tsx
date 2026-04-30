@@ -6817,6 +6817,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'リセット',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': '身長順（低→高：内環→外環）',
+    'seat.editor.art.byGrade': '学年順（低→高：内環→外環）',
+    'seat.editor.art.tipFinal': 'ヒント：遮蔽スコアに基づく角度調整で視線の重なりを減らします。手動でドラッグ微調整も可能です。',
   },
   ko: {
     'app.title': 'TeachMate',
