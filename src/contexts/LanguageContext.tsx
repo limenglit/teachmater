@@ -5490,6 +5490,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'Сброс',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': 'По росту (низ→верх: внутр→внеш)',
+    'seat.editor.art.byGrade': 'По классу (мл→ст: внутр→внеш)',
+    'seat.editor.art.tipFinal': 'Подсказка: угловое смещение по затенению уменьшает перекрытие линий взгляда; вы можете перетаскивать для тонкой настройки.',
   },
   ja: {
     'app.title': 'TeachMate',
