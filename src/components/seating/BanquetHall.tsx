@@ -392,7 +392,7 @@ export default function BanquetHall({ students }: Props) {
 
       const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
       students.forEach(student => {
-        const org = student.organization?.trim() || '未分配单位';
+        const org = student.organization?.trim() || t('seat.editor.common.unassignedOrg');
         const item = { name: student.name, score: scoreTitle(student.title) };
         const bucket = groupsMap.get(org);
         if (bucket) bucket.push(item);
