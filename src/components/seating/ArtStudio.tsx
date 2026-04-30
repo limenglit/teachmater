@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Shuffle, LayoutGrid, Palette, QrCode, Orbit, Move, UserRound } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
