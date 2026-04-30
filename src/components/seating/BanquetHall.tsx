@@ -1109,7 +1109,7 @@ export default function BanquetHall({ students }: Props) {
                     className="absolute text-[11px] font-medium text-primary/80 select-none pointer-events-none"
                     style={{ left: '50%', top: tStageTopY + 6, transform: 'translateX(-50%)' }}
                   >
-                    T台
+                    {t('seat.editor.banquet.tStage')}
                   </div>
                 </>
               )}
