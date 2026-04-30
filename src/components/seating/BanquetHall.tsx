@@ -552,7 +552,7 @@ export default function BanquetHall({ students }: Props) {
     setReservedTables(new Set(snapshot.reservedTables || []));
     setRecordName(item.name);
     saveBanquetHallSnapshot({ ...snapshot, assignment: sanitizedAssignment });
-    toast.success('历史记录已恢复，可继续调整。');
+    toast.success(t('seat.editor.banquet.restoredHistory'));
   };
 
   const seatByLastGroups = () => {
