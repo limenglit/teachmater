@@ -322,7 +322,7 @@ export default function BanquetHall({ students }: Props) {
       .filter(group => group.members.length > 0);
 
     if (filteredGroups.length === 0) {
-      toast.error('未找到可用的分组数据。');
+      toast.error(t('seat.editor.banquet.noUsableGroups'));
       return false;
     }
 
