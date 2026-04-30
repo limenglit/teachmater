@@ -51,6 +51,7 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function BanquetHall({ students }: Props) {
+  const { t } = useLanguage();
   const initialTableCount = Math.max(1, Math.ceil(students.length / 10));
   const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
