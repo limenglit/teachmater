@@ -2155,6 +2155,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': '重置',
     'seat.editor.art.fileName': '美术教室座位图',
     'seat.editor.art.qrFile': '美术教室签到码',
+    'seat.editor.art.byHeight': '按身高（矮到高：内环到外环）',
+    'seat.editor.art.byGrade': '按年级（低到高：内环到外环）',
+    'seat.editor.art.tipFinal': '提示：系统会基于遮挡评分做角度错位优化，尽量减少同视线重叠；若需要，仍可拖拽手动微调。',
   },
   en: {
     'app.title': 'TeachMate',
@@ -4133,6 +4136,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'Reset',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': 'By height (short→tall: inner→outer)',
+    'seat.editor.art.byGrade': 'By grade (low→high: inner→outer)',
+    'seat.editor.art.tipFinal': 'Tip: occlusion-based angular offsets reduce overlapping sightlines; you can still drag to fine-tune.',
   },
   ru: {
     'app.title': 'TeachMate',
@@ -5484,6 +5490,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'Сброс',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': 'По росту (низ→верх: внутр→внеш)',
+    'seat.editor.art.byGrade': 'По классу (мл→ст: внутр→внеш)',
+    'seat.editor.art.tipFinal': 'Подсказка: угловое смещение по затенению уменьшает перекрытие линий взгляда; вы можете перетаскивать для тонкой настройки.',
   },
   ja: {
     'app.title': 'TeachMate',
@@ -6808,6 +6817,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'リセット',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': '身長順（低→高：内環→外環）',
+    'seat.editor.art.byGrade': '学年順（低→高：内環→外環）',
+    'seat.editor.art.tipFinal': 'ヒント：遮蔽スコアに基づく角度調整で視線の重なりを減らします。手動でドラッグ微調整も可能です。',
   },
   ko: {
     'app.title': 'TeachMate',
@@ -8131,6 +8143,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': '초기화',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': '키 순(낮음→높음: 안쪽→바깥쪽)',
+    'seat.editor.art.byGrade': '학년 순(낮음→높음: 안쪽→바깥쪽)',
+    'seat.editor.art.tipFinal': '팁: 가림 점수 기반 각도 조정으로 시선 겹침을 줄입니다. 필요 시 드래그로 미세 조정할 수 있습니다.',
   },
   es: {
     'app.title': 'TeachMate',
@@ -9679,6 +9694,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'Restablecer',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': 'Por estatura (bajo→alto: interior→exterior)',
+    'seat.editor.art.byGrade': 'Por curso (bajo→alto: interior→exterior)',
+    'seat.editor.art.tipFinal': 'Sugerencia: el desplazamiento angular por oclusión reduce solapamientos visuales; aún puedes arrastrar para ajustar.',
   },
 };
 

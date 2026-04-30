@@ -25,6 +25,7 @@ import {
   renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
   students: { id: string; name: string; organization?: string; title?: string }[];
@@ -50,6 +51,7 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function BanquetHall({ students }: Props) {
+  const { t } = useLanguage();
   const initialTableCount = Math.max(1, Math.ceil(students.length / 10));
   const initialTableCols = Math.max(1, Math.ceil(Math.sqrt(initialTableCount)));
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
@@ -320,7 +322,7 @@ export default function BanquetHall({ students }: Props) {
       .filter(group => group.members.length > 0);
 
     if (filteredGroups.length === 0) {
-      toast.error('未找到可用的分组数据。');
+      toast.error(t('seat.editor.banquet.noUsableGroups'));
       return false;
     }
 
@@ -390,7 +392,7 @@ export default function BanquetHall({ students }: Props) {
 
       const groupsMap = new Map<string, Array<{ name: string; score: number }>>();
       students.forEach(student => {
-        const org = student.organization?.trim() || '未分配单位';
+        const org = student.organization?.trim() || t('seat.editor.common.unassignedOrg');
         const item = { name: student.name, score: scoreTitle(student.title) };
         const bucket = groupsMap.get(org);
         if (bucket) bucket.push(item);
@@ -510,10 +512,10 @@ export default function BanquetHall({ students }: Props) {
 
   const saveToHistory = async () => {
     if (assignment.length === 0) {
-      toast.error('请先生成座位，再保存到历史。');
+      toast.error(t('seat.editor.banquet.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `宴会厅-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.banquet')}-${new Date().toLocaleString()}`;
     const item = saveBanquetHallHistory(name, buildSnapshot());
     let savedItem: BanquetHallHistoryItem = item;
     const cloud = await saveCloudSeatHistory('banquet', name, item.snapshot);
@@ -523,13 +525,13 @@ export default function BanquetHall({ students }: Props) {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveBanquetHallSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到宴会厅历史记录（云端）。' : '已保存到宴会厅历史记录。');
+    toast.success(cloud ? t('seat.editor.banquet.savedHistoryCloud') : t('seat.editor.banquet.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请先选择一条历史记录。');
+      toast.error(t('seat.editor.banquet.noHistorySelected'));
       return;
     }
     const snapshot = item.snapshot;
@@ -550,18 +552,18 @@ export default function BanquetHall({ students }: Props) {
     setReservedTables(new Set(snapshot.reservedTables || []));
     setRecordName(item.name);
     saveBanquetHallSnapshot({ ...snapshot, assignment: sanitizedAssignment });
-    toast.success('历史记录已恢复，可继续调整。');
+    toast.success(t('seat.editor.banquet.restoredHistory'));
   };
 
   const seatByLastGroups = () => {
     const cachedGroups = loadLastGroups();
     if (cachedGroups.length === 0) {
-      toast.error('暂无可用的已保存分组数据。');
+      toast.error(t('seat.editor.banquet.noUsableGroups'));
       return;
     }
     const ok = applyGroupsToSeat(cachedGroups);
     if (ok) {
-      toast.success('已按分组生成座位。');
+      toast.success(t('seat.editor.banquet.byGroupGenerated'));
     }
   };
 
@@ -772,7 +774,7 @@ export default function BanquetHall({ students }: Props) {
               T{tableIndex + 1}
             </text>
             <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-primary/60 text-xs'}>
-              {isReservedTable ? '保留' : `${assignedCount}`}
+              {isReservedTable ? t('seat.editor.common.reserved') : `${assignedCount}`}
             </text>
           </g>
           {Array.from({ length: totalSlots }).map((_, i) => {
@@ -866,58 +868,58 @@ export default function BanquetHall({ students }: Props) {
     >
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
-          名称
+          {t('seat.editor.common.name')}
           <Input
             type="text"
             value={recordName}
             onChange={e => setRecordName(e.target.value)}
-            placeholder="输入名称（用于保存历史和导出文件名）"
+            placeholder={t('seat.editor.common.namePlaceholder')}
             className="h-8 w-full sm:w-72"
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          每桌座位
+          {t('seat.editor.common.perTable')}
           <Input type="number" min={6} max={20} value={seatsPerTable}
             onChange={e => setSeatsPerTable(Math.max(6, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          行数
+          {t('seat.editor.common.rows')}
           <Input type="number" min={1} value={tableRows}
             onChange={e => handleRowsChange(e.target.value)} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          列数
+          {t('seat.editor.common.cols')}
           <Input type="number" min={1} value={tableCols}
             onChange={e => handleColsChange(e.target.value)} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          桌数
+          {t('seat.editor.common.tables')}
           <Input type="number" min={1} value={tableCount}
             onChange={e => handleTableCountChange(e.target.value)} className="w-20 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          模式
+          {t('seat.editor.common.mode')}
           <select
             value={mode}
             onChange={e => setMode(e.target.value as BanquetSeatMode)}
             className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="tableRoundRobin">轮转排座</option>
-            <option value="tableGrouped">每组一桌</option>
-            <option value="verticalS">纵向 S 型</option>
-            <option value="horizontalS">横向 S 型</option>
-            <option value="orgTableStage">同单位一桌+高职近舞台</option>
+            <option value="tableRoundRobin">{t('seat.editor.banquet.modeTableRoundRobin')}</option>
+            <option value="tableGrouped">{t('seat.editor.banquet.modeTableGrouped')}</option>
+            <option value="verticalS">{t('seat.editor.banquet.modeVerticalS')}</option>
+            <option value="horizontalS">{t('seat.editor.banquet.modeHorizontalS')}</option>
+            <option value="orgTableStage">{t('seat.editor.banquet.modeOrgTableStage')}</option>
           </select>
         </label>
         {mode === 'tableGrouped' && (
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
-            分组数
+            {t('seat.editor.common.groupCount')}
             <Input type="number" min={2} max={30} value={groupCount}
               onChange={e => setGroupCount(Math.max(2, Math.min(30, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          间距
+          {t('seat.editor.common.tableSpacing')}
           <Input type="number" min={0} max={100} value={tableGap}
             onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
@@ -928,19 +930,19 @@ export default function BanquetHall({ students }: Props) {
             onChange={e => setShowOrgColorMark(e.target.checked)}
             className="accent-primary"
           />
-          单位颜色标识
+          {t('seat.editor.common.orgColor')}
         </label>
 
         <div className="flex w-full sm:w-auto sm:min-w-[24rem] items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-1">
           <Button variant="outline" onClick={saveToHistory} className="gap-2 h-8" disabled={assignment.length === 0}>
-            <Save className="w-4 h-4" /> 保存历史
+            <Save className="w-4 h-4" /> {t('seat.editor.common.saveHistory')}
           </Button>
           <select
             value={selectedHistoryId}
             onChange={e => setSelectedHistoryId(e.target.value)}
             className="h-8 min-w-0 flex-1 sm:max-w-72 px-2 rounded-md border border-input bg-background text-foreground text-sm"
           >
-            <option value="">选择历史记录</option>
+            <option value="">{t('seat.editor.common.selectHistory')}</option>
             {historyItems.map(item => (
               <option key={item.id} value={item.id}>
                 {item.name}（{new Date(item.createdAt).toLocaleString()}）
@@ -948,24 +950,24 @@ export default function BanquetHall({ students }: Props) {
             ))}
           </select>
           <Button variant="outline" onClick={restoreFromHistory} disabled={!selectedHistoryId} className="gap-2 h-8">
-            <RotateCcw className="w-4 h-4" /> 恢复历史
+            <RotateCcw className="w-4 h-4" /> {t('seat.editor.common.restoreHistory')}
           </Button>
           <Button
             variant="outline"
             size="icon"
             className="h-8 w-8"
             disabled={!selectedHistoryId}
-            title="重命名该历史记录"
+            title={t('seat.editor.common.renameTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               const current = historyItems.find(h => h.id === id);
               if (!id || !current) return;
-              const next = window.prompt('请输入新名称', current.name)?.trim();
+              const next = window.prompt(t('seat.editor.common.renamePrompt'), current.name)?.trim();
               if (!next || next === current.name) return;
               await renameCloudSeatHistory(id, next);
               renameSeatHistoryLocal('banquet', id, next);
               setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-              toast.success('已重命名');
+              toast.success(t('seat.editor.common.renamed'));
             }}
           >
             <Pencil className="w-4 h-4" />
@@ -975,31 +977,31 @@ export default function BanquetHall({ students }: Props) {
             size="icon"
             className="h-8 w-8 text-destructive hover:text-destructive"
             disabled={!selectedHistoryId}
-            title="删除该历史记录"
+            title={t('seat.editor.common.deleteTitle')}
             onClick={async () => {
               const id = selectedHistoryId;
               if (!id) return;
-              if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm'))) return;
               await deleteCloudSeatHistory(id);
               deleteSeatHistoryLocal('banquet', id);
               setHistoryItems(prev => prev.filter(h => h.id !== id));
               setSelectedHistoryId('');
-              toast.success('已删除该历史记录');
+              toast.success(t('seat.editor.common.deleted'));
             }}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
         <Button variant="outline" onClick={seatByLastGroups} className="gap-2">
-          <Users className="w-4 h-4" /> 按分组排座
+          <Users className="w-4 h-4" /> {t('seat.editor.banquet.byGroupArrange')}
         </Button>
 
         <Button variant="outline" onClick={() => setRefPositions(defaultRefPositions)}>
-          重置标记
+          {t('seat.editor.banquet.resetMarkers')}
         </Button>
         <TitleRankConfigDialog
           value={titleRankRuleText}
-          sceneLabel="宴会厅"
+          sceneLabel={t('seat.editor.scene.banquet')}
           onSave={next => {
             const saved = saveTitleRankRuleText(next, 'banquet');
             setTitleRankRuleText(saved);
@@ -1008,33 +1010,33 @@ export default function BanquetHall({ students }: Props) {
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> 屏幕
+            <input type="checkbox" checked={refVisible.screen} onChange={() => toggleRefVisible('screen')} className="accent-primary" /> {t('seat.editor.banquet.screen')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> T台
+            <input type="checkbox" checked={refVisible.podium} onChange={() => toggleRefVisible('podium')} className="accent-primary" /> {t('seat.editor.banquet.tStage')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> 窗户
+            <input type="checkbox" checked={refVisible.window} onChange={() => toggleRefVisible('window')} className="accent-primary" /> {t('seat.editor.common.window')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> 前门
+            <input type="checkbox" checked={refVisible.frontDoor} onChange={() => toggleRefVisible('frontDoor')} className="accent-primary" /> {t('seat.editor.common.frontDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> 后门
+            <input type="checkbox" checked={refVisible.backDoor} onChange={() => toggleRefVisible('backDoor')} className="accent-primary" /> {t('seat.editor.common.backDoor')}
           </label>
           <label className="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> 锁定标记
+            <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> {t('seat.editor.banquet.lockMarkers')}
           </label>
         </div>
 
         <span className="text-xs text-muted-foreground">
-          容量 {seatsPerTable * tableCount} | 学生 {students.length}
+          {tFormat(t('seat.editor.smart.capacityHint'), seatsPerTable * tableCount, students.length)}
         </span>
 
         {assignment.length > 0 && (
           <ExportButtons
             targetRef={printRef}
-            filename={recordName.trim() || '宴会厅座位安排'}
+            filename={recordName.trim() || t('seat.editor.scene.banquetFile')}
             resolveQrCode={resolveQrCode}
             titleValue={recordName}
             onTitleChange={setRecordName}
@@ -1043,26 +1045,26 @@ export default function BanquetHall({ students }: Props) {
         )}
         {assignment.length > 0 && (
           <Button variant="outline" onClick={() => setCheckinOpen(true)} className="gap-2">
-            <QrCode className="w-4 h-4" /> 签到
+            <QrCode className="w-4 h-4" /> {t('seat.editor.common.checkin')}
           </Button>
         )}
         <div className="flex gap-2 ml-auto">
           <Button variant="outline" onClick={() => autoSeat(true)} className="gap-2">
-            <Shuffle className="w-4 h-4" /> 随机排座
+            <Shuffle className="w-4 h-4" /> {t('seat.editor.common.randomSeat')}
           </Button>
           <Button
             variant="outline"
             onClick={() => {
-              if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+              if (!window.confirm(t('seat.editor.common.clearConfirm'))) return;
               setAssignment(Array.from({ length: tableCount }, () => Array.from({ length: seatsPerTable }, () => '')));
             }}
             className="gap-2"
-            title="清空所有座位（保留宴会厅容量）"
+            title={t('seat.editor.common.clearTitle')}
           >
-            <Trash2 className="w-4 h-4" /> 清空
+            <Trash2 className="w-4 h-4" /> {t('seat.editor.common.clear')}
           </Button>
           <Button onClick={() => autoSeat(false)} className="gap-2">
-            <LayoutGrid className="w-4 h-4" /> 自动排座
+            <LayoutGrid className="w-4 h-4" /> {t('seat.editor.common.autoSeat')}
           </Button>
         </div>
       </div>
@@ -1080,7 +1082,7 @@ export default function BanquetHall({ students }: Props) {
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>🖥️</span>
-                  <span className={refTextClass}>幕布</span>
+                  <span className={refTextClass}>{t('seat.editor.common.screen')}</span>
                 </div>
               )}
               {hasTStage && (
@@ -1107,26 +1109,26 @@ export default function BanquetHall({ students }: Props) {
                     className="absolute text-[11px] font-medium text-primary/80 select-none pointer-events-none"
                     style={{ left: '50%', top: tStageTopY + 6, transform: 'translateX(-50%)' }}
                   >
-                    T台
+                    {t('seat.editor.banquet.tStage')}
                   </div>
                 </>
               )}
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗</span>
+                  <span className={refTextClass}>{t('seat.editor.common.window')}</span>
                 </div>
               )}
               {refVisible.frontDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.frontDoor.x, top: refPositions.frontDoor.y }} onMouseDown={e => startRefDrag(e, 'frontDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>前门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.frontDoor')}</span>
                 </div>
               )}
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>后门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.backDoor')}</span>
                 </div>
               )}
 
@@ -1159,15 +1161,15 @@ export default function BanquetHall({ students }: Props) {
         </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击“自动排座”开始。</p>
-            <p className="text-sm">宴会厅圆桌将按规则自动安排。</p>
+            <p className="text-lg mb-2">{t('seat.editor.banquet.startHint1')}</p>
+            <p className="text-sm">{t('seat.editor.banquet.startHint2')}</p>
           </div>
         )}
       </div>
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          单击可选中桌子或座位；选中后按住拖拽可移动。双击桌心切换“保留/开放”，双击空座切换“禁坐/开放”。自动排座会跳过保留桌；开启 T 台后仅允许纵向拖动，避免压住 T 台。
+          {t('seat.editor.banquet.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
@@ -1178,7 +1180,7 @@ export default function BanquetHall({ students }: Props) {
         sceneType="banquet"
         sceneConfig={exportSceneConfig}
         className={recordName.trim() || exportClassName}
-        pngFileName={recordName.trim() || '宴会厅座位安排'}
+        pngFileName={recordName.trim() || t('seat.editor.scene.banquetFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
     </div>
