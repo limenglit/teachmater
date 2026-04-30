@@ -1161,8 +1161,8 @@ export default function BanquetHall({ students }: Props) {
         </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击“自动排座”开始。</p>
-            <p className="text-sm">宴会厅圆桌将按规则自动安排。</p>
+            <p className="text-lg mb-2">{t('seat.editor.banquet.startHint1')}</p>
+            <p className="text-sm">{t('seat.editor.banquet.startHint2')}</p>
           </div>
         )}
       </div>
