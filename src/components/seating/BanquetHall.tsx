@@ -1128,7 +1128,7 @@ export default function BanquetHall({ students }: Props) {
               {refVisible.backDoor && (
                 <div className={refBadgeClass} style={{ left: refPositions.backDoor.x, top: refPositions.backDoor.y }} onMouseDown={e => startRefDrag(e, 'backDoor')}>
                   <span className={refIconClass}>🚪</span>
-                  <span className={refTextClass}>后门</span>
+                  <span className={refTextClass}>{t('seat.editor.common.backDoor')}</span>
                 </div>
               )}
 
