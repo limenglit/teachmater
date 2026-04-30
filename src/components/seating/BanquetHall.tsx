@@ -774,7 +774,7 @@ export default function BanquetHall({ students }: Props) {
               T{tableIndex + 1}
             </text>
             <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-primary/60 text-xs'}>
-              {isReservedTable ? '保留' : `${assignedCount}`}
+              {isReservedTable ? t('seat.editor.common.reserved') : `${assignedCount}`}
             </text>
           </g>
           {Array.from({ length: totalSlots }).map((_, i) => {
