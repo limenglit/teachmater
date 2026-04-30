@@ -493,34 +493,34 @@ export default function ArtStudio({ students }: Props) {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="relative group w-fit">
           <h2 className="text-lg sm:text-xl font-semibold text-foreground flex items-center gap-2">
-            <Palette className="w-5 h-5 text-primary" /> 美术教室
+            <Palette className="w-5 h-5 text-primary" /> {t('seat.editor.art.title')}
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">核心写生区采用 {layoutName} 布局，支持预设、分层、视角优化与拖拽微调。</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">{tFormat(t('seat.editor.art.subtitle'), layoutName)}</p>
           <div className="pointer-events-none absolute left-0 top-full z-20 mt-2 hidden w-[min(92vw,620px)] rounded-lg border border-border bg-background/95 px-3 py-2 text-xs text-muted-foreground shadow-md group-hover:block">
-            <p>容量 {totalCapacity} 座 · 当前学生 {students.length} 人 · 核心区：写生区（静物/石膏像/人物模特） · 支持拖拽：画架位、模特台、静物台</p>
-            <p className="mt-1">可识别数据：身高 {parsedStats.heightKnown}/{students.length} 人，年级 {parsedStats.gradeKnown}/{students.length} 人（从学生“职务/单位/姓名”文本解析，未识别者将顺延外环）。</p>
+            <p>{tFormat(t('seat.editor.art.capacityInfo'), totalCapacity, students.length)}</p>
+            <p className="mt-1">{tFormat(t('seat.editor.art.parsedHint'), parsedStats.heightKnown, students.length, parsedStats.gradeKnown, students.length)}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => autoSeat(false)}>
-            <LayoutGrid className="w-3.5 h-3.5" /> 自动排座
+            <LayoutGrid className="w-3.5 h-3.5" /> {t('seat.editor.common.autoSeat')}
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => autoSeat(true)}>
-            <Shuffle className="w-3.5 h-3.5" /> 随机排座
+            <Shuffle className="w-3.5 h-3.5" /> {t('seat.editor.common.randomSeat')}
           </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => { if (window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) clearAll(); }}>
-            清空
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => { if (window.confirm(t('seat.editor.common.clearConfirm'))) clearAll(); }}>
+            {t('seat.editor.common.clear')}
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => regeneratePositions(true)}>
-            <Orbit className="w-3.5 h-3.5" /> 视角优化
+            <Orbit className="w-3.5 h-3.5" /> {t('seat.editor.art.viewOpt')}
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setShowPeripheralZones(prev => !prev)}>
-            {showPeripheralZones ? '隐藏外围区域' : '显示外围区域'}
+            {showPeripheralZones ? t('seat.editor.banquet.hidePeriphery') : t('seat.editor.banquet.showPeriphery')}
           </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setCheckinOpen(true)}>
-            <QrCode className="w-3.5 h-3.5" /> 签到
+            <QrCode className="w-3.5 h-3.5" /> {t('seat.editor.common.checkin')}
           </Button>
-          <ExportButtons targetRef={printRef as React.RefObject<HTMLElement>} filename="美术教室座位图" hideTitleInput={false} titleValue={recordName} onTitleChange={setRecordName} />
+          <ExportButtons targetRef={printRef as React.RefObject<HTMLElement>} filename={t('seat.editor.art.fileName')} hideTitleInput={false} titleValue={recordName} onTitleChange={setRecordName} />
         </div>
       </div>
 
