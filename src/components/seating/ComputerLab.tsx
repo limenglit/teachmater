@@ -824,7 +824,7 @@ export default function ComputerLab({ students }: Props) {
                             <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
                               className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
                             <text x={tableX + tableW / 2} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-[10px]">
-                              {tableCols > 1 ? `长桌${tci + 1}` : '━━━ 长桌 ━━━'}
+                              {tableCols > 1 ? tFormat(t('seat.editor.lab.longTableNumbered'), tci + 1) : t('seat.editor.lab.longTable')}
                             </text>
 
                             {/* Top seats */}
