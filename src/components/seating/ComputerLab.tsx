@@ -877,7 +877,7 @@ export default function ComputerLab({ students }: Props) {
 
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          拖拽姓名可换座；点击空座位可关闭/开放使用；每排长桌可拖拽与旋转90°；前黑板/门窗支持显隐与拖拽
+          {t('seat.editor.lab.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
