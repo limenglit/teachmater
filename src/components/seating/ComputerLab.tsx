@@ -567,7 +567,7 @@ export default function ComputerLab({ students }: Props) {
         />
         {isClosed && (
           <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs">
-            关
+            {t('seat.editor.common.off')}
           </text>
         )}
         {name && !isDragging && (
