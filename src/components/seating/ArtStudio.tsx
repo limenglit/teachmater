@@ -481,7 +481,7 @@ export default function ArtStudio({ students }: Props) {
     ? assignment
     : ensureAssignmentShape([]);
 
-  const layoutName = layoutMode === 'radial' ? '辐射状' : '同心圆';
+  const layoutName = layoutMode === 'radial' ? t('seat.editor.art.layoutRadial') : t('seat.editor.art.layoutConcentric');
 
   const resolveSeatPoint = (key: string, fallbackX: number, fallbackY: number) => {
     const p = seatPositions[key];
