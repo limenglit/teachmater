@@ -531,7 +531,7 @@ export default function BanquetHall({ students }: Props) {
   const restoreFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请先选择一条历史记录。');
+      toast.error(t('seat.editor.banquet.noHistorySelected'));
       return;
     }
     const snapshot = item.snapshot;
