@@ -605,34 +605,34 @@ export default function ArtStudio({ students }: Props) {
         </div>
 
         <div ref={canvasRef} className="relative rounded-xl border border-border bg-[linear-gradient(180deg,rgba(250,250,245,0.95)_0%,rgba(245,247,250,0.92)_100%)] overflow-hidden mx-auto" style={{ width: `${CANVAS_W}px`, height: `${CANVAS_H}px` }}>
-          <div className="absolute left-3 top-3 rounded-md bg-primary/10 border border-primary/20 px-2 py-1 text-xs text-primary font-medium">写生区（核心）</div>
+          <div className="absolute left-3 top-3 rounded-md bg-primary/10 border border-primary/20 px-2 py-1 text-xs text-primary font-medium">{t('seat.editor.art.areaCenter')}</div>
 
           <div
             className="absolute inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-100/90 px-2 py-1 text-[11px] text-sky-800 font-medium shadow-sm cursor-grab active:cursor-grabbing select-none"
             style={{ left: markers.window.x - 26, top: markers.window.y - 12 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'marker', key: 'window' }); }}
-            title="拖拽移动窗户位置"
+            title={t('seat.editor.art.dragMoveWindow')}
           >
             <span>🪟</span>
-            <span>窗</span>
+            <span>{t('seat.editor.art.windowMarker')}</span>
           </div>
 
           <div
             className="absolute inline-flex items-center gap-1 rounded-md border border-amber-600/35 bg-amber-100/90 px-2 py-1 text-[11px] text-amber-800 font-medium shadow-sm cursor-grab active:cursor-grabbing select-none"
             style={{ left: markers.door.x - 26, top: markers.door.y - 12 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'marker', key: 'door' }); }}
-            title="拖拽移动门位置"
+            title={t('seat.editor.art.dragMoveDoor')}
           >
             <span>🚪</span>
-            <span>门</span>
+            <span>{t('seat.editor.art.doorMarker')}</span>
           </div>
 
           <div className="absolute right-3 top-16 w-28 rounded-lg border border-border bg-white/80 p-2 text-[11px]">
-            <div className="font-semibold">写生区</div>
+            <div className="font-semibold">{t('seat.editor.art.areaSketch')}</div>
             <ul className="mt-1 space-y-0.5 text-muted-foreground">
-              <li>• 模特台</li>
-              <li>• 静物台</li>
-              <li>• 可升降</li>
+              <li>{t('seat.editor.art.bullet2')}</li>
+              <li>{t('seat.editor.art.bullet1')}</li>
+              <li>{t('seat.editor.art.bullet3')}</li>
             </ul>
           </div>
 
@@ -640,24 +640,24 @@ export default function ArtStudio({ students }: Props) {
             className="absolute w-24 h-24 rounded-full border-2 border-primary/50 bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shadow-sm cursor-grab active:cursor-grabbing select-none"
             style={{ left: platforms.model.x - 48, top: platforms.model.y - 48 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'platform', key: 'model' }); }}
-            title="拖拽移动模特台"
+            title={t('seat.editor.art.dragMoveModel')}
           >
-            模特台
+            {t('seat.editor.art.modelStand')}
           </div>
 
           <div
             className="absolute w-20 h-20 rounded-full border-2 border-amber-500/50 bg-amber-100/70 flex items-center justify-center text-[11px] font-semibold text-amber-700 shadow-sm cursor-grab active:cursor-grabbing select-none"
             style={{ left: platforms.stillLife.x - 40, top: platforms.stillLife.y - 40 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'platform', key: 'stillLife' }); }}
-            title="拖拽移动静物台"
+            title={t('seat.editor.art.dragMoveStill')}
           >
-            静物台
+            {t('seat.editor.art.stillTable')}
           </div>
 
           {seatNodes.map(node => {
             const pos = resolveSeatPoint(node.key, node.x, node.y);
             const name = seatData[node.ringIndex]?.[node.seatIndex] || '';
-            const layerText = node.layer === 'stool' ? '矮凳' : '站立画架';
+            const layerText = node.layer === 'stool' ? t('seat.editor.art.stool') : t('seat.editor.art.standEasel');
 
             return (
               <div
@@ -665,46 +665,46 @@ export default function ArtStudio({ students }: Props) {
                 className={`absolute rounded-md border text-[10px] flex items-center justify-center px-1 text-center leading-tight cursor-grab active:cursor-grabbing select-none ${name ? 'bg-white border-primary/40 text-foreground shadow-sm' : 'bg-muted/60 border-border text-muted-foreground'}`}
                 style={{ left: pos.x - SEAT_W / 2, top: pos.y - SEAT_H / 2, width: `${SEAT_W}px`, height: `${SEAT_H}px` }}
                 onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'seat', key: node.key }); }}
-                title={`${name || '空位'} · 第${node.ringIndex + 1}环第${node.seatIndex + 1}位 · ${layerText}`}
+                title={tFormat(t('seat.editor.art.seatTitle'), name || t('seat.editor.art.empty'), node.ringIndex + 1, node.seatIndex + 1, layerText)}
               >
-                <span className="truncate w-full">{name || '画架'}</span>
+                <span className="truncate w-full">{name || t('seat.editor.art.easel')}</span>
               </div>
             );
           })}
 
           <div className="absolute right-3 bottom-3 rounded-md border border-border bg-background/80 px-2 py-1 text-[11px] text-muted-foreground flex items-center gap-1">
-            <Move className="w-3 h-3" /> 拖拽可调整画架位、中心台与门窗标识
+            <Move className="w-3 h-3" /> {t('seat.editor.art.dragInfo')}
           </div>
         </div>
 
         {showPeripheralZones && (
         <div className="grid grid-cols-12 gap-2 text-xs mt-3">
           <div className="col-span-3 rounded-lg border border-border bg-muted/40 p-2">
-            <div className="font-semibold">清洗区</div>
-            <div className="text-muted-foreground mt-1">深水槽 / 废油桶</div>
+            <div className="font-semibold">{t('seat.editor.art.areaWash')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.areaSink')}</div>
           </div>
-          <div className="col-span-6 rounded-lg border border-dashed border-border bg-background p-2 text-center text-muted-foreground">主干道（机动调整通道）</div>
+          <div className="col-span-6 rounded-lg border border-dashed border-border bg-background p-2 text-center text-muted-foreground">{t('seat.editor.art.areaMain')}</div>
           <div className="col-span-3 rounded-lg border border-border bg-muted/40 p-2">
-            <div className="font-semibold">晾干区</div>
-            <div className="text-muted-foreground mt-1">展示架 / 网格墙</div>
+            <div className="font-semibold">{t('seat.editor.art.areaDry')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.areaDisplay')}</div>
           </div>
 
           <div className="col-span-3 rounded-lg border border-border bg-muted/40 p-2">
-            <div className="font-semibold">储藏区</div>
-            <div className="text-muted-foreground mt-1">石膏柜 / 画材货架</div>
+            <div className="font-semibold">{t('seat.editor.art.areaStorage')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.areaPlasterStor')}</div>
           </div>
           <div className="col-span-6 rounded-lg border border-border bg-primary/5 p-2">
-            <div className="font-semibold">平涂创作区</div>
-            <div className="text-muted-foreground mt-1">大工作台（靠墙）/ 墙壁软木板</div>
+            <div className="font-semibold">{t('seat.editor.art.areaPainting')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.areaDeskWall')}</div>
           </div>
           <div className="col-span-3 rounded-lg border border-border bg-muted/40 p-2">
-            <div className="font-semibold">储藏区</div>
-            <div className="text-muted-foreground mt-1">个人柜 / 画架库</div>
+            <div className="font-semibold">{t('seat.editor.art.areaStorage')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.areaLockers')}</div>
           </div>
         </div>
         )}
 
-        <p className="mt-3 text-xs text-muted-foreground">提示：系统会基于遮挡评分做角度错位优化，尽量减少同视线重叠；若需要，仍可拖拽手动微调。</p>
+        <p className="mt-3 text-xs text-muted-foreground">{t('seat.editor.art.tipFinal')}</p>
       </div>
 
       <SeatCheckinDialog
@@ -714,8 +714,8 @@ export default function ArtStudio({ students }: Props) {
         studentNames={students.map(s => s.name)}
         sceneConfig={{ layoutMode, ringCount, innerRingSeats, ringGrowth }}
         sceneType="artStudio"
-        className="美术教室"
-        pngFileName="美术教室签到码"
+        className={t('seat.editor.scene.art')}
+        pngFileName={t('seat.editor.art.qrFile')}
       />
     </div>
   );
