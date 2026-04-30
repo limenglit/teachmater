@@ -350,7 +350,7 @@ export default function ComputerLab({ students }: Props) {
       rowTransforms: Array.from({ length: nextRowCount }, (_, i) => snapshot.rowTransforms?.[i] || { x: 0, y: 0, rotation: 0 }),
       closedSeats: snapshot.closedSeats || [],
     });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.editor.common.restoredHistory'));
   };
 
   useEffect(() => {
