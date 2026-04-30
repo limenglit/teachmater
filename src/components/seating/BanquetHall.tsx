@@ -1169,7 +1169,7 @@ export default function BanquetHall({ students }: Props) {
 
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
-          单击可选中桌子或座位；选中后按住拖拽可移动。双击桌心切换“保留/开放”，双击空座切换“禁坐/开放”。自动排座会跳过保留桌；开启 T 台后仅允许纵向拖动，避免压住 T 台。
+          {t('seat.editor.banquet.dragHint')}
         </p>
       )}
       <SeatCheckinDialog
