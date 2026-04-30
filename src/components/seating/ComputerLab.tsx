@@ -298,10 +298,10 @@ export default function ComputerLab({ students }: Props) {
 
   const saveToHistory = async () => {
     if (!seated) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.editor.common.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `机房-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.lab')}-${new Date().toLocaleString()}`;
     const item = saveComputerLabHistory(name, buildSnapshot());
     let savedItem: ComputerLabHistoryItem = item;
     const cloud = await saveCloudSeatHistory('computer_lab', name, item.snapshot);
@@ -311,7 +311,7 @@ export default function ComputerLab({ students }: Props) {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveComputerLabSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.editor.common.savedHistoryCloud') : t('seat.editor.common.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
