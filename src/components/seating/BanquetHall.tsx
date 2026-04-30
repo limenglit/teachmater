@@ -512,10 +512,10 @@ export default function BanquetHall({ students }: Props) {
 
   const saveToHistory = async () => {
     if (assignment.length === 0) {
-      toast.error('请先生成座位，再保存到历史。');
+      toast.error(t('seat.editor.banquet.noSeatsToSave'));
       return;
     }
-    const name = recordName.trim() || `宴会厅-${new Date().toLocaleString()}`;
+    const name = recordName.trim() || `${t('seat.editor.scene.banquet')}-${new Date().toLocaleString()}`;
     const item = saveBanquetHallHistory(name, buildSnapshot());
     let savedItem: BanquetHallHistoryItem = item;
     const cloud = await saveCloudSeatHistory('banquet', name, item.snapshot);
@@ -525,7 +525,7 @@ export default function BanquetHall({ students }: Props) {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveBanquetHallSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到宴会厅历史记录（云端）。' : '已保存到宴会厅历史记录。');
+    toast.success(cloud ? t('seat.editor.banquet.savedHistoryCloud') : t('seat.editor.banquet.savedHistoryLocal'));
   };
 
   const restoreFromHistory = () => {
