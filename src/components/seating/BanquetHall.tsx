@@ -1082,7 +1082,7 @@ export default function BanquetHall({ students }: Props) {
               {refVisible.screen && (
                 <div className={refBadgeClass} style={{ left: refPositions.screen.x, top: refPositions.screen.y }} onMouseDown={e => startRefDrag(e, 'screen')}>
                   <span className={refIconClass}>🖥️</span>
-                  <span className={refTextClass}>幕布</span>
+                  <span className={refTextClass}>{t('seat.editor.common.screen')}</span>
                 </div>
               )}
               {hasTStage && (
