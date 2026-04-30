@@ -584,24 +584,24 @@ export default function ArtStudio({ students }: Props) {
         {showPeripheralZones && (
         <div className="grid grid-cols-12 gap-2 text-xs mb-3">
           <div className="col-span-4 rounded-lg border border-border bg-muted/40 p-2">
-            <div className="font-semibold text-foreground">教师办公区</div>
-            <div className="text-muted-foreground mt-1">讲台 / 备课</div>
+            <div className="font-semibold text-foreground">{t('seat.editor.art.areaTeacher')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.areaPodium')}</div>
           </div>
           <div className="col-span-5 rounded-lg border border-border bg-primary/5 p-2">
-            <div className="font-semibold text-foreground">多媒体教学区</div>
-            <div className="text-muted-foreground mt-1">白板 / 投影幕</div>
+            <div className="font-semibold text-foreground">{t('seat.editor.art.areaMedia')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.areaWhiteboard')}</div>
           </div>
           <div className="col-span-3 rounded-lg border border-border bg-muted/40 p-2">
-            <div className="font-semibold text-foreground">门窗参照</div>
-            <div className="text-muted-foreground mt-1">画布内可拖拽调整</div>
+            <div className="font-semibold text-foreground">{t('seat.editor.art.refTitle')}</div>
+            <div className="text-muted-foreground mt-1">{t('seat.editor.art.dragInside')}</div>
           </div>
         </div>
         )}
 
         <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-muted-foreground">门窗位置:</span>
-          <Button variant="outline" size="sm" className="h-7 px-2" onClick={swapMarkerSides}>左右互换</Button>
-          <Button variant="outline" size="sm" className="h-7 px-2" onClick={resetMarkers}>重置</Button>
+          <span className="text-muted-foreground">{t('seat.editor.art.refPos')}</span>
+          <Button variant="outline" size="sm" className="h-7 px-2" onClick={swapMarkerSides}>{t('seat.editor.art.swapLR')}</Button>
+          <Button variant="outline" size="sm" className="h-7 px-2" onClick={resetMarkers}>{t('seat.editor.art.reset')}</Button>
         </div>
 
         <div ref={canvasRef} className="relative rounded-xl border border-border bg-[linear-gradient(180deg,rgba(250,250,245,0.95)_0%,rgba(245,247,250,0.92)_100%)] overflow-hidden mx-auto" style={{ width: `${CANVAS_W}px`, height: `${CANVAS_H}px` }}>
