@@ -50,6 +50,7 @@ function buildDefaultRefPositions(roomWidth: number, roomHeight: number): RefPos
 }
 
 export default function ComputerLab({ students }: Props) {
+  const { t } = useLanguage();
   const [tableCols, setTableCols] = useState(1);
   const [rowCount, setRowCount] = useState(() => getAutoRowCount(students.length, 8, 1));
   const [seatsPerSide, setSeatsPerSide] = useState(8);
