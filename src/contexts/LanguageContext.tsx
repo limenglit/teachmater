@@ -8143,6 +8143,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': '초기화',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': '키 순(낮음→높음: 안쪽→바깥쪽)',
+    'seat.editor.art.byGrade': '학년 순(낮음→높음: 안쪽→바깥쪽)',
+    'seat.editor.art.tipFinal': '팁: 가림 점수 기반 각도 조정으로 시선 겹침을 줄입니다. 필요 시 드래그로 미세 조정할 수 있습니다.',
   },
   es: {
     'app.title': 'TeachMate',
