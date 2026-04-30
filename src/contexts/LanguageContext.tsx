@@ -9694,6 +9694,9 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.art.reset': 'Restablecer',
     'seat.editor.art.fileName': 'art-studio-seats',
     'seat.editor.art.qrFile': 'art-studio-checkin-qr',
+    'seat.editor.art.byHeight': 'Por estatura (bajo→alto: interior→exterior)',
+    'seat.editor.art.byGrade': 'Por curso (bajo→alto: interior→exterior)',
+    'seat.editor.art.tipFinal': 'Sugerencia: el desplazamiento angular por oclusión reduce solapamientos visuales; aún puedes arrastrar para ajustar.',
   },
 };
 
