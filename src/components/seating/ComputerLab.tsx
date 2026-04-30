@@ -786,7 +786,7 @@ export default function ComputerLab({ students }: Props) {
               {refVisible.window && (
                 <div className={refBadgeClass} style={{ left: refPositions.window.x, top: refPositions.window.y }} onMouseDown={e => startRefDrag(e, 'window')}>
                   <span className={refIconClass}>🪟</span>
-                  <span className={refTextClass}>窗</span>
+                  <span className={refTextClass}>{t('seat.editor.common.window')}</span>
                 </div>
               )}
               {refVisible.door && (
