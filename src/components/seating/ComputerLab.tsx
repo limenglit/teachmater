@@ -867,9 +867,9 @@ export default function ComputerLab({ students }: Props) {
         </div>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg mb-2">点击「自动排座」开始安排</p>
+            <p className="text-lg mb-2">{t('seat.editor.lab.startHint1')}</p>
             <p className="text-sm">
-              {`${rowCount} 排 × ${tableCols} 列桌组，每桌每侧 ${seatsPerSide} 座位（${seatSide === 'both' ? '两侧' : seatSide === 'top' ? '仅上侧' : '仅下侧'}）`}
+              {tFormat(t('seat.editor.lab.startHint2'), rowCount, tableCols, seatsPerSide, seatSide === 'both' ? t('seat.editor.lab.sideBoth') : seatSide === 'top' ? t('seat.editor.lab.sideTopOnly') : t('seat.editor.lab.sideBottomOnly'))}
             </p>
           </div>
         )}
