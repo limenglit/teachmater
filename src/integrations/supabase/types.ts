@@ -865,6 +865,7 @@ export type Database = {
           ended_at: string | null
           id: string
           questions: Json
+          reveal_answers: boolean
           status: string
           student_names: Json | null
           title: string
@@ -876,6 +877,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           questions?: Json
+          reveal_answers?: boolean
           status?: string
           student_names?: Json | null
           title?: string
@@ -887,6 +889,7 @@ export type Database = {
           ended_at?: string | null
           id?: string
           questions?: Json
+          reveal_answers?: boolean
           status?: string
           student_names?: Json | null
           title?: string
@@ -1431,6 +1434,10 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: Json
       }
+      get_quiz_student_result: {
+        Args: { p_session_id: string; p_student_name: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1506,15 +1513,26 @@ export type Database = {
         }
         Returns: undefined
       }
-      update_quiz_session: {
-        Args: {
-          p_session_id: string
-          p_status?: string
-          p_title?: string
-          p_token: string
-        }
-        Returns: undefined
-      }
+      update_quiz_session:
+        | {
+            Args: {
+              p_session_id: string
+              p_status?: string
+              p_title?: string
+              p_token: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_reveal_answers?: boolean
+              p_session_id: string
+              p_status?: string
+              p_title?: string
+              p_token: string
+            }
+            Returns: undefined
+          }
       update_seat_checkin_session: {
         Args: { p_session_id: string; p_status?: string }
         Returns: undefined
