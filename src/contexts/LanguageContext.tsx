@@ -1952,6 +1952,54 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.editor.common.reserved': '保留',
     'seat.editor.common.off': '关',
     'seat.editor.common.clickAutoToStart': '点击「自动排座」开始安排',
+    // ============================================================
+    // RESERVE KEYS — Phase 3 i18n (38 keys, defined but not yet wired to UI)
+    // Audited: kept for upcoming feature parity. When wiring the UI, search
+    // for the key and replace the literal. Scenarios per key:
+    //
+    // [common] —— 通用座位编辑器（六个场景共享）
+    //   common.dragHint           : 通用拖拽提示气泡（座位区底部 / Tooltip） — SeatChart 工具栏下方提示行
+    //   common.modeOrgTableStage  : "同单位一桌+高职近舞台" 排座模式下拉项 — Banquet/Concert 排座模式 <Select>
+    //   common.aisle              : 通用走道标记文本 — SeatChart 走道分隔条 label
+    //   common.disabledSeat       : 通用"关闭座位"标记 — SeatChart 禁用座 hover/aria 文本
+    //   common.snapshotInvalid    : 历史快照损坏 toast — SeatChart 恢复历史失败时的 toast 文案
+    //
+    // [scene] —— 场景标题/导出文件名
+    //   scene.artFile             : 美术教室导出 PNG/PDF 默认文件名 — ArtStudio 导出按钮 useSeatExportQr
+    //
+    // [smart] —— 智慧教室
+    //   smart.tableSuffix         : 圆桌编号后缀（如 "3桌"） — SmartClassroom 桌心 label（与 tableNum 互斥占位）
+    //
+    // [concert] —— 音乐厅
+    //   concert.stage / aisle / zoneA / zoneB / zoneC : 音乐厅分区标记
+    //                              — ConcertHall 舞台周围分区文字（启用分区视图时显示）
+    //   concert.byHeight          : "按身高内→外" 排座模式选项 — ConcertHall 模式 <Select>
+    //   concert.byGrade           : "按年级内→外" 排座模式选项 — ConcertHall 模式 <Select>
+    //   concert.sectorBalance     : 旧版"扇区平衡" — ConcertHall 模式 <Select>（已被 modeArcBalanced 覆盖，保留兼容）
+    //   concert.concentric        : 同心圆布局选项 — ConcertHall 布局切换
+    //   concert.radial            : 辐射状布局选项 — ConcertHall 布局切换
+    //   concert.occlusionHint     : 视线遮挡优化提示 — ConcertHall 配置面板底部说明
+    //
+    // [lab] —— 机房 / 长桌教室
+    //   lab.sideMode              : "学生分布"标签 — ComputerLab 工具栏（上侧/下侧/两侧切换）
+    //   lab.tableGroups           : "并排桌组数"标签 — ComputerLab 工具栏（已由 colsTableGroups 替代，保留兼容）
+    //   lab.blackboard            : "前黑板"标记文本 — ComputerLab 画布顶部黑板条（与 frontBoard 互斥占位）
+    //
+    // [banquet] —— 宴会厅
+    //   banquet.tablesPerRow      : "每行桌数"标签 — BanquetHall 工具栏数字输入
+    //   banquet.peripheryToggle   : "外围区域"分组标签 — BanquetHall 显示/隐藏外围 Switch 标题
+    //   banquet.autoArrangeHint   : 自动排座规则说明 — BanquetHall 起始空状态提示（与 startHint2 互斥占位）
+    //   banquet.fileNamePng       : 宴会厅导出 PNG 默认文件名 — BanquetHall useSeatExportQr
+    //
+    // [art] —— 美术教室
+    //   art.modeRotate / modeBalance / modeGroupRow / modeVerticalS /
+    //   art.modeHorizontalS / modeGroupZone : 美术教室排座模式选项
+    //                              — ArtStudio 模式 <Select>（当前用预设按钮，模式 Select 待启用）
+    //   art.boyFront / girlFront  : 性别起始选项 — ArtStudio 性别排座单选
+    //   art.gridRow / gridCol / cluster / unrestricted : 性别分布模式
+    //                              — ArtStudio 性别策略 <Select>（与 concert.gender* 平行的本地化版本）
+    //   art.startHint             : 美术教室初始空状态提示 — ArtStudio 画布空态文案
+    // ============================================================
     'seat.editor.common.dragHint': '拖拽姓名可换座；点击空座位可关闭/开放使用',
     'seat.editor.common.modeBalanced': '两侧平衡',
     'seat.editor.common.modeGroupCluster': '分组同侧',
