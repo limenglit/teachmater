@@ -217,8 +217,8 @@ export default function QuizPanel() {
       return;
     }
 
-    setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: true } : null);
-    toast({ title: '测验已结束，学生端将显示参考答案与成绩' });
+    setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: revealAfterEnd } : null);
+    toast({ title: revealAfterEnd ? '测验已结束，学生端将显示参考答案与成绩' : '测验已结束，参考答案对学生端隐藏' });
     loadSessions();
   };
 
