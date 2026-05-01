@@ -279,6 +279,16 @@ export default function QuizPanel() {
           <span className={`text-xs px-2 py-0.5 rounded-full ${activeSession.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
             {activeSession.status === 'active' ? t('quiz.active') : t('quiz.ended')}
           </span>
+          <span
+            className={`text-[11px] px-2 py-0.5 rounded-full border ${
+              (activeSession as any).reveal_answers
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-amber-50 text-amber-700 border-amber-200'
+            }`}
+            title={(activeSession as any).reveal_answers ? '结束后学生端可看到参考答案' : '结束后学生端不会显示参考答案'}
+          >
+            {(activeSession as any).reveal_answers ? '答案：公开' : '答案：隐藏'}
+          </span>
           <div className="ml-auto flex items-center gap-1 max-w-full overflow-x-auto pb-1">
             <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowQR(true)}>
               <QrCode className="w-3 h-3" /> {t('board.qrcode')}
