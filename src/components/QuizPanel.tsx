@@ -189,7 +189,7 @@ export default function QuizPanel() {
       p_session_id: activeSession.id,
       p_token: token,
       p_status: 'ended',
-      p_reveal_answers: true,
+      p_reveal_answers: revealAfterEnd,
     } as any);
 
     if (error && /p_reveal_answers/i.test(error.message || '')) {
