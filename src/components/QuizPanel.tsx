@@ -287,6 +287,17 @@ export default function QuizPanel() {
               <Download className="w-3 h-3" /> {t('quiz.exportCSV')}
             </Button>
             {activeSession.status === 'active' && (
+              <label className="flex items-center gap-1.5 h-7 px-2 rounded border border-border bg-card text-xs text-foreground cursor-pointer">
+                <Switch
+                  checked={revealAfterEnd}
+                  onCheckedChange={setRevealAfterEnd}
+                  disabled={revealFeatureUnsupported}
+                  className="scale-75 -mx-1"
+                />
+                <span className="whitespace-nowrap">公开答案</span>
+              </label>
+            )}
+            {activeSession.status === 'active' && (
               <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => setEndConfirmOpen(true)} disabled={ending}>
                 <StopCircle className="w-3 h-3" /> {t('quiz.endSession')}
               </Button>
