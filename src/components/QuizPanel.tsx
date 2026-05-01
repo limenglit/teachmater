@@ -189,7 +189,7 @@ export default function QuizPanel() {
       p_session_id: activeSession.id,
       p_token: token,
       p_status: 'ended',
-      p_reveal_answers: true,
+      p_reveal_answers: revealAfterEnd,
     } as any);
 
     if (error && /p_reveal_answers/i.test(error.message || '')) {
@@ -217,8 +217,8 @@ export default function QuizPanel() {
       return;
     }
 
-    setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: true } : null);
-    toast({ title: '测验已结束，学生端将显示参考答案与成绩' });
+    setActiveSession(prev => prev ? { ...prev, status: 'ended', reveal_answers: revealAfterEnd } : null);
+    toast({ title: revealAfterEnd ? '测验已结束，学生端将显示参考答案与成绩' : '测验已结束，参考答案对学生端隐藏' });
     loadSessions();
   };
 
@@ -286,6 +286,17 @@ export default function QuizPanel() {
             <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
               <Download className="w-3 h-3" /> {t('quiz.exportCSV')}
             </Button>
+            {activeSession.status === 'active' && (
+              <label className="flex items-center gap-1.5 h-7 px-2 rounded border border-border bg-card text-xs text-foreground cursor-pointer">
+                <Switch
+                  checked={revealAfterEnd}
+                  onCheckedChange={setRevealAfterEnd}
+                  disabled={revealFeatureUnsupported}
+                  className="scale-75 -mx-1"
+                />
+                <span className="whitespace-nowrap">公开答案</span>
+              </label>
+            )}
             {activeSession.status === 'active' && (
               <Button variant="destructive" size="sm" className="h-7 text-xs gap-1" onClick={() => setEndConfirmOpen(true)} disabled={ending}>
                 <StopCircle className="w-3 h-3" /> {t('quiz.endSession')}
