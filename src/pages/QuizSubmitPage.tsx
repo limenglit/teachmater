@@ -197,11 +197,18 @@ export default function QuizSubmitPage() {
           <div className="text-4xl mb-3">⏰</div>
           <p className="text-lg font-medium text-foreground mb-1">{session.title}</p>
           <p className="text-sm text-muted-foreground">{t('quiz.sessionEnded')}</p>
-          <p className="text-sm text-primary mt-2">
-            {session.reveal_answers
-              ? tr('quiz.answerNowVisible', '本场测验已结束，以下展示参考答案')
-              : tr('quiz.answerHiddenAfterEnd', '本场测验已结束，教师设置为不公开参考答案')}
-          </p>
+          <div className={`inline-flex items-center gap-1.5 mt-3 px-3 py-1 rounded-full text-xs font-medium border ${
+            session.reveal_answers
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-amber-50 text-amber-700 border-amber-200'
+          }`}>
+            <span>{session.reveal_answers ? '✅' : '🔒'}</span>
+            <span>
+              {session.reveal_answers
+                ? tr('quiz.answerNowVisible', '本场测验已结束，以下展示参考答案')
+                : tr('quiz.answerHiddenAfterEnd', '本场测验已结束，教师设置为不公开参考答案')}
+            </span>
+          </div>
         </div>
 
         {session.reveal_answers ? (
