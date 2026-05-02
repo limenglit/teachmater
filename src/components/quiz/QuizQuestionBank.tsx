@@ -70,15 +70,28 @@ export default function QuizQuestionBank({
   const [qTags, setQTags] = useState('');
   const [qCategoryId, setQCategoryId] = useState<string>('');
 
-  // Filters
+  // Filters (basic)
   const [searchText, setSearchText] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterCategoryId, setFilterCategoryId] = useState<string>('all');
   const [filterStarred, setFilterStarred] = useState(false);
 
+  // Advanced filters (multi-select)
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [advTypes, setAdvTypes] = useState<Set<QuestionType>>(new Set());
+  const [advCategoryIds, setAdvCategoryIds] = useState<Set<string>>(new Set());
+  const [advKnowledge, setAdvKnowledge] = useState<string[]>([]);
+  const [advKnowledgeMatch, setAdvKnowledgeMatch] = useState<'all' | 'any'>('all');
+  const [knowledgeInput, setKnowledgeInput] = useState('');
+
   // Category management
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+
+  const allKnowledgePoints = useMemo(() => collectKnowledgePoints(questions), [questions]);
+
+  const advancedActive =
+    advTypes.size > 0 || advCategoryIds.size > 0 || advKnowledge.length > 0;
 
   const filteredQuestions = useMemo(() => {
     return filterQuestions(questions, {
@@ -86,8 +99,13 @@ export default function QuizQuestionBank({
       categoryId: filterCategoryId,
       starred: filterStarred,
       search: searchText,
+      types: advTypes.size > 0 ? Array.from(advTypes) : undefined,
+      categoryIds: advCategoryIds.size > 0 ? Array.from(advCategoryIds) : undefined,
+      knowledgePoints: advKnowledge,
+      knowledgeMatch: advKnowledgeMatch,
     });
-  }, [questions, filterType, filterCategoryId, filterStarred, searchText]);
+  }, [questions, filterType, filterCategoryId, filterStarred, searchText,
+      advTypes, advCategoryIds, advKnowledge, advKnowledgeMatch]);
 
   const resetForm = () => {
     setQType('single'); setQContent(''); setQOptions(['', '', '', '']);
