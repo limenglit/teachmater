@@ -87,6 +87,20 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     setTitle(''); setDesc(''); setPaperQs([]); setTotalScore(100); setIsTemplate(false); setEditPaper(null);
   };
 
+  // Consume seedQuestions: pre-populate a new paper from the question bank's filtered selection
+  useEffect(() => {
+    if (!seedQuestions || seedQuestions.length === 0) return;
+    resetForm();
+    setTitle(seedTitle || '');
+    setPaperQs(seedQuestions.map((q, i) => {
+      const score = q.type === 'short' ? 10 : q.type === 'multi' ? 4 : q.type === 'tf' ? 2 : 3;
+      return { question_id: q.id, question: q, score, order: i };
+    }));
+    setView('create');
+    onSeedConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedQuestions]);
+
   const openCreate = () => { resetForm(); setView('create'); };
 
   const openEdit = (p: QuizPaper) => {
