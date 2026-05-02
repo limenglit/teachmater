@@ -46,12 +46,15 @@ interface Props {
   onRevealAfterEndChange: (v: boolean) => void;
   isGuest: boolean;
   rosterButton?: React.ReactNode;
+  /** Hand off the current selection (or filtered list if no selection) to the paper builder. */
+  onBuildPaperFromSelection?: (questions: QuizQuestion[], suggestedTitle: string) => void;
 }
 
 export default function QuizQuestionBank({
   questions, setQuestions, categories, setCategories,
   selectedIds, setSelectedIds, onStartSession,
   sessionTitle, setSessionTitle, revealAfterEnd, onRevealAfterEndChange, isGuest, rosterButton,
+  onBuildPaperFromSelection,
 }: Props) {
   const { t } = useLanguage();
   const { user } = useAuth();
