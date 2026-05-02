@@ -66,6 +66,7 @@ export default function QuizPanel() {
   const [deleting, setDeleting] = useState(false);
   const [revealAfterEnd, setRevealAfterEnd] = useState(true);
   const [revealFeatureUnsupported, setRevealFeatureUnsupported] = useState(false);
+  const [paperSeed, setPaperSeed] = useState<{ questions: QuizQuestion[]; title: string } | null>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const REVEAL_AFTER_END_KEY = 'quiz-reveal-after-end';
