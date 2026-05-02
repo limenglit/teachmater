@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,9 +36,13 @@ interface Props {
   setPapers: (ps: QuizPaper[]) => void;
   questions: QuizQuestion[]; // full question bank for paper assembly
   isGuest: boolean;
+  /** When set (non-empty), pre-populate a new paper draft and switch to create view. Cleared via onSeedConsumed. */
+  seedQuestions?: QuizQuestion[];
+  seedTitle?: string;
+  onSeedConsumed?: () => void;
 }
 
-export default function QuizPaperBank({ papers, setPapers, questions, isGuest }: Props) {
+export default function QuizPaperBank({ papers, setPapers, questions, isGuest, seedQuestions, seedTitle, onSeedConsumed }: Props) {
   const { t } = useLanguage();
   const { user } = useAuth();
 
@@ -82,6 +86,20 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest }:
   const resetForm = () => {
     setTitle(''); setDesc(''); setPaperQs([]); setTotalScore(100); setIsTemplate(false); setEditPaper(null);
   };
+
+  // Consume seedQuestions: pre-populate a new paper from the question bank's filtered selection
+  useEffect(() => {
+    if (!seedQuestions || seedQuestions.length === 0) return;
+    resetForm();
+    setTitle(seedTitle || '');
+    setPaperQs(seedQuestions.map((q, i) => {
+      const score = q.type === 'short' ? 10 : q.type === 'multi' ? 4 : q.type === 'tf' ? 2 : 3;
+      return { question_id: q.id, question: q, score, order: i };
+    }));
+    setView('create');
+    onSeedConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seedQuestions]);
 
   const openCreate = () => { resetForm(); setView('create'); };
 

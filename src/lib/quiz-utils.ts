@@ -4,23 +4,68 @@ import type { QuizQuestion, QuizPaper, PaperQuestion, TemplateRule } from '@/com
 // ── Question filtering ──────────────────────────────────
 
 export interface QuestionFilter {
-  type?: string;       // 'all' | QuestionType
-  categoryId?: string; // 'all' | category id
+  type?: string;            // 'all' | QuestionType
+  categoryId?: string;      // 'all' | category id | '' for uncategorized
   starred?: boolean;
   search?: string;
+  /** Multi-type filter — when provided, takes precedence over single `type`. */
+  types?: string[];
+  /** Multi-category filter — when provided, takes precedence over single `categoryId`. */
+  categoryIds?: string[];
+  /** Knowledge points (matched against `tags` substring/token). */
+  knowledgePoints?: string[];
+  /** Combine knowledge points with AND (default) or OR. */
+  knowledgeMatch?: 'all' | 'any';
+}
+
+function splitTokens(s: string): string[] {
+  return s.split(/[,，、;；\s]+/).map(t => t.trim().toLowerCase()).filter(Boolean);
 }
 
 export function filterQuestions(questions: QuizQuestion[], filter: QuestionFilter): QuizQuestion[] {
+  const useTypes = filter.types && filter.types.length > 0;
+  const useCats = filter.categoryIds && filter.categoryIds.length > 0;
+  const kps = (filter.knowledgePoints || []).map(s => s.trim().toLowerCase()).filter(Boolean);
+  const kpMode = filter.knowledgeMatch || 'all';
+
   return questions.filter(q => {
-    if (filter.type && filter.type !== 'all' && q.type !== filter.type) return false;
-    if (filter.categoryId && filter.categoryId !== 'all' && (q.category_id || '') !== filter.categoryId) return false;
+    if (useTypes) {
+      if (!filter.types!.includes(q.type)) return false;
+    } else if (filter.type && filter.type !== 'all' && q.type !== filter.type) {
+      return false;
+    }
+
+    if (useCats) {
+      const cid = q.category_id || '';
+      if (!filter.categoryIds!.includes(cid)) return false;
+    } else if (filter.categoryId && filter.categoryId !== 'all' && (q.category_id || '') !== filter.categoryId) {
+      return false;
+    }
+
     if (filter.starred && !q.is_starred) return false;
+
+    if (kps.length > 0) {
+      const tokens = splitTokens(q.tags);
+      const hay = q.tags.toLowerCase();
+      const hits = kps.filter(kp => hay.includes(kp) || tokens.includes(kp));
+      if (kpMode === 'all' ? hits.length !== kps.length : hits.length === 0) return false;
+    }
+
     if (filter.search?.trim()) {
       const s = filter.search.trim().toLowerCase();
       if (!q.content.toLowerCase().includes(s) && !q.tags.toLowerCase().includes(s)) return false;
     }
     return true;
   });
+}
+
+/** Collect distinct knowledge-point tokens across all questions. */
+export function collectKnowledgePoints(questions: QuizQuestion[]): string[] {
+  const set = new Set<string>();
+  for (const q of questions) {
+    for (const tok of splitTokens(q.tags)) set.add(tok);
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, 'zh'));
 }
 
 // ── Question CRUD helpers (guest/local mode) ────────────

@@ -66,6 +66,7 @@ export default function QuizPanel() {
   const [deleting, setDeleting] = useState(false);
   const [revealAfterEnd, setRevealAfterEnd] = useState(true);
   const [revealFeatureUnsupported, setRevealFeatureUnsupported] = useState(false);
+  const [paperSeed, setPaperSeed] = useState<{ questions: QuizQuestion[]; title: string } | null>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const REVEAL_AFTER_END_KEY = 'quiz-reveal-after-end';
@@ -469,6 +470,10 @@ export default function QuizPanel() {
             revealAfterEnd={revealAfterEnd}
             onRevealAfterEndChange={setRevealAfterEnd}
             isGuest={isGuest}
+            onBuildPaperFromSelection={(qs, title) => {
+              setPaperSeed({ questions: qs, title });
+              setTab('papers');
+            }}
             rosterButton={
               <Button
                 variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
@@ -500,6 +505,9 @@ export default function QuizPanel() {
           <QuizPaperBank
             papers={papers} setPapers={setPapers}
             questions={questions} isGuest={isGuest}
+            seedQuestions={paperSeed?.questions}
+            seedTitle={paperSeed?.title}
+            onSeedConsumed={() => setPaperSeed(null)}
           />
         )}
 
