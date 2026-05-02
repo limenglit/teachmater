@@ -36,9 +36,13 @@ interface Props {
   setPapers: (ps: QuizPaper[]) => void;
   questions: QuizQuestion[]; // full question bank for paper assembly
   isGuest: boolean;
+  /** When set (non-empty), pre-populate a new paper draft and switch to create view. Cleared via onSeedConsumed. */
+  seedQuestions?: QuizQuestion[];
+  seedTitle?: string;
+  onSeedConsumed?: () => void;
 }
 
-export default function QuizPaperBank({ papers, setPapers, questions, isGuest }: Props) {
+export default function QuizPaperBank({ papers, setPapers, questions, isGuest, seedQuestions, seedTitle, onSeedConsumed }: Props) {
   const { t } = useLanguage();
   const { user } = useAuth();
 
