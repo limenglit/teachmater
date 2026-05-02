@@ -427,7 +427,170 @@ export default function QuizQuestionBank({
           onClick={() => setFilterStarred(!filterStarred)} title={t('quiz.starredOnly')}>
           <Star className={`w-3.5 h-3.5 ${filterStarred ? 'fill-current' : ''}`} />
         </Button>
+        <Button
+          variant={advancedActive || advancedOpen ? 'default' : 'outline'}
+          size="sm"
+          className="h-8 text-xs gap-1"
+          onClick={() => setAdvancedOpen(!advancedOpen)}
+          title="高级检索"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" />
+          高级检索
+          {advancedActive && (
+            <span className="ml-0.5 inline-flex items-center justify-center rounded-full bg-primary-foreground/30 text-[10px] px-1.5 min-w-[16px] h-4">
+              {advTypes.size + advCategoryIds.size + advKnowledge.length}
+            </span>
+          )}
+        </Button>
       </div>
+
+      {/* Advanced search panel */}
+      {advancedOpen && (
+        <div className="bg-muted/30 border border-border rounded-xl p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5" /> 综合筛选
+            </span>
+            {advancedActive && (
+              <Button
+                variant="ghost" size="sm" className="h-6 text-[11px] gap-1"
+                onClick={() => { setAdvTypes(new Set()); setAdvCategoryIds(new Set()); setAdvKnowledge([]); setKnowledgeInput(''); }}
+              >
+                <X className="w-3 h-3" /> 清空
+              </Button>
+            )}
+          </div>
+
+          {/* Course / Category multi-select */}
+          {categories.length > 0 && (
+            <div>
+              <div className="text-[11px] text-muted-foreground mb-1.5 flex items-center gap-1">
+                <Folder className="w-3 h-3" /> 课程 / 分类（可多选）
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = new Set(advCategoryIds);
+                    if (next.has('')) next.delete(''); else next.add('');
+                    setAdvCategoryIds(next);
+                  }}
+                  className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${advCategoryIds.has('') ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted border-border'}`}
+                >
+                  {t('quiz.uncategorized')}
+                </button>
+                {categories.map(c => {
+                  const sel = advCategoryIds.has(c.id);
+                  const count = questions.filter(q => q.category_id === c.id).length;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        const next = new Set(advCategoryIds);
+                        if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                        setAdvCategoryIds(next);
+                      }}
+                      className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${sel ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted border-border'}`}
+                    >
+                      {c.name} <span className="opacity-70">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Type multi-select */}
+          <div>
+            <div className="text-[11px] text-muted-foreground mb-1.5">题型（可多选）</div>
+            <div className="flex flex-wrap gap-1.5">
+              {(['single', 'multi', 'tf', 'short'] as QuestionType[]).map(tp => {
+                const sel = advTypes.has(tp);
+                const count = questions.filter(q => q.type === tp).length;
+                return (
+                  <button
+                    key={tp}
+                    type="button"
+                    onClick={() => {
+                      const next = new Set(advTypes);
+                      if (next.has(tp)) next.delete(tp); else next.add(tp);
+                      setAdvTypes(next);
+                    }}
+                    className={`text-[11px] px-2 py-1 rounded-md border transition-colors flex items-center gap-1 ${sel ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted border-border'}`}
+                  >
+                    {typeIcon(tp)} {typeLabel(tp)} <span className="opacity-70">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Knowledge points */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <Tag className="w-3 h-3" /> 知识点（输入回车添加；可多选）
+              </span>
+              {advKnowledge.length >= 2 && (
+                <div className="flex items-center gap-1 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setAdvKnowledgeMatch('all')}
+                    className={`px-1.5 py-0.5 rounded ${advKnowledgeMatch === 'all' ? 'bg-primary text-primary-foreground' : 'bg-background border border-border hover:bg-muted'}`}
+                  >同时满足 (AND)</button>
+                  <button
+                    type="button"
+                    onClick={() => setAdvKnowledgeMatch('any')}
+                    className={`px-1.5 py-0.5 rounded ${advKnowledgeMatch === 'any' ? 'bg-primary text-primary-foreground' : 'bg-background border border-border hover:bg-muted'}`}
+                  >任一即可 (OR)</button>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {advKnowledge.map(kp => (
+                <span key={kp} className="text-[11px] px-2 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                  {kp}
+                  <button type="button" onClick={() => setAdvKnowledge(advKnowledge.filter(k => k !== kp))}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <Input
+              value={knowledgeInput}
+              onChange={e => setKnowledgeInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ',' || e.key === '，') {
+                  e.preventDefault();
+                  const v = knowledgeInput.trim().replace(/[,，]$/, '').trim();
+                  if (v && !advKnowledge.includes(v)) setAdvKnowledge([...advKnowledge, v]);
+                  setKnowledgeInput('');
+                }
+              }}
+              placeholder="例如：函数极限，导数定义"
+              className="h-8 text-xs"
+            />
+            {allKnowledgePoints.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5 max-h-20 overflow-y-auto">
+                {allKnowledgePoints
+                  .filter(kp => !advKnowledge.includes(kp))
+                  .slice(0, 30)
+                  .map(kp => (
+                    <button
+                      key={kp}
+                      type="button"
+                      onClick={() => setAdvKnowledge([...advKnowledge, kp])}
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-background border border-border hover:bg-muted text-muted-foreground"
+                    >
+                      + {kp}
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Action bar */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
