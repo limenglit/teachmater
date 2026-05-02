@@ -12,7 +12,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import {
   Plus, Trash2, Star, Search, Filter, Edit3, CheckCircle2, XCircle,
-  HelpCircle, ListChecks, ToggleLeft, FileText, FolderPlus, Folder, ChevronRight
+  HelpCircle, ListChecks, ToggleLeft, FileText, FolderPlus, Folder, ChevronRight,
+  SlidersHorizontal, Tag, FileCheck, X,
 } from 'lucide-react';
 import QuizImporter from './QuizImporter';
 import type {
@@ -24,6 +25,7 @@ import {
 } from './quizTypes';
 import {
   filterQuestions,
+  collectKnowledgePoints,
   addLocalQuestion,
   updateLocalQuestion,
   deleteLocalQuestion,
