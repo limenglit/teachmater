@@ -470,6 +470,10 @@ export default function QuizPanel() {
             revealAfterEnd={revealAfterEnd}
             onRevealAfterEndChange={setRevealAfterEnd}
             isGuest={isGuest}
+            onBuildPaperFromSelection={(qs, title) => {
+              setPaperSeed({ questions: qs, title });
+              setTab('papers');
+            }}
             rosterButton={
               <Button
                 variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
