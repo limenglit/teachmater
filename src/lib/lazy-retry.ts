@@ -51,6 +51,15 @@ export function lazyRetry<T extends { default: ComponentType<any> }>(
   return lazy(() =>
     factory()
       .then((module) => {
+        // Guard against stale/HTML responses that resolve without a default export.
+        // React's lazy internals would otherwise throw "undefined is not an object
+        // (evaluating 'e._result.default')" deep in the renderer.
+        if (!module || typeof (module as any).default === 'undefined') {
+          if (tryReloadForChunkError()) {
+            return waitForReload<T>();
+          }
+          throw new Error('Dynamically imported module is missing a default export');
+        }
         sessionStorage.removeItem(CHUNK_RELOAD_KEY);
         return module;
       })
