@@ -505,6 +505,9 @@ export default function QuizPanel() {
           <QuizPaperBank
             papers={papers} setPapers={setPapers}
             questions={questions} isGuest={isGuest}
+            seedQuestions={paperSeed?.questions}
+            seedTitle={paperSeed?.title}
+            onSeedConsumed={() => setPaperSeed(null)}
           />
         )}
 
