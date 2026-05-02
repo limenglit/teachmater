@@ -603,6 +603,31 @@ export default function QuizQuestionBank({
               {selectedIds.size === filteredQuestions.length ? t('quiz.deselectAll') : t('quiz.selectAll')}
             </Button>
           )}
+          {onBuildPaperFromSelection && (selectedIds.size > 0 || (advancedActive && filteredQuestions.length > 0)) && (
+            <Button
+              variant="outline" size="sm" className="text-xs h-8 gap-1"
+              onClick={() => {
+                const pool = selectedIds.size > 0
+                  ? questions.filter(q => selectedIds.has(q.id))
+                  : filteredQuestions;
+                if (pool.length === 0) return;
+                const titleParts: string[] = [];
+                if (advCategoryIds.size > 0) {
+                  titleParts.push(
+                    Array.from(advCategoryIds)
+                      .map(id => id ? (categories.find(c => c.id === id)?.name || '') : t('quiz.uncategorized'))
+                      .filter(Boolean).join('/')
+                  );
+                }
+                if (advKnowledge.length > 0) titleParts.push(advKnowledge.join('·'));
+                const suggested = (titleParts.join(' - ') || '检索组卷') + ` (${pool.length}题)`;
+                onBuildPaperFromSelection(pool, suggested);
+              }}
+              title={selectedIds.size > 0 ? `用所选 ${selectedIds.size} 题组卷` : `用筛选结果 ${filteredQuestions.length} 题组卷`}
+            >
+              <FileCheck className="w-3 h-3" /> 组卷
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="text-xs h-8 gap-1" onClick={() => setShowCategoryDialog(true)}>
             <Folder className="w-3 h-3" /> {t('quiz.manageCategories')}
           </Button>
