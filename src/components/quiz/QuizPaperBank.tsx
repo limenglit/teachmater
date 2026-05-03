@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus, Trash2, FileCheck, ArrowLeft, Edit3, Shuffle, Download, Copy, ChevronUp, ChevronDown,
-  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft,
+  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye,
 } from 'lucide-react';
 import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
