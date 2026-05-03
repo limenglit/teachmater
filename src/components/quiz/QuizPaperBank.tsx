@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus, Trash2, FileCheck, ArrowLeft, Edit3, Shuffle, Download, Copy, ChevronUp, ChevronDown,
-  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye, GripVertical,
+  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye, GripVertical, ChevronRight,
 } from 'lucide-react';
 import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
@@ -76,6 +76,20 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
   const [showPreview, setShowPreview] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
+  const toggleAnswer = (key: string) => setExpandedAnswers(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+  const formatAnswer = (q: QuizQuestion): string => {
+    if (q.type === 'tf') {
+      const v = String(q.correct_answer);
+      return v === 'true' || v === 'T' || v === '1' ? '✓' : '✗';
+    }
+    if (Array.isArray(q.correct_answer)) return q.correct_answer.join(', ');
+    return String(q.correct_answer ?? '');
+  };
 
   const reorderPaperQs = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= paperQs.length || to >= paperQs.length) return;
@@ -450,35 +464,81 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
               <div className="space-y-1">
                 {paperQs.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">{t('quiz.paper.emptyHint')}</p>
-                ) : paperQs.map((pq, i) => (
-                  <div key={pq.question_id + '-pv-' + i}
+                ) : paperQs.map((pq, i) => {
+                  const key = pq.question_id + '-pv-' + i;
+                  const open = expandedAnswers.has(key);
+                  const q = pq.question;
+                  const answerText = formatAnswer(q);
+                  const explanation = (q as any).explanation as string | undefined;
+                  return (
+                  <div key={key}
                     draggable
                     onDragStart={onRowDragStart(i)}
                     onDragOver={onRowDragOver(i)}
                     onDrop={onRowDrop(i)}
                     onDragEnd={onRowDragEnd}
-                    className={`flex items-start gap-2 p-2.5 rounded-md border bg-card text-xs transition-colors ${
+                    className={`rounded-md border bg-card text-xs transition-colors ${
                       dragOverIdx === i && dragIdx !== i ? 'border-primary border-dashed bg-primary/5' : 'border-border'
                     } ${dragIdx === i ? 'opacity-50' : ''}`}>
-                    <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 mt-0.5" />
-                    <span className="text-muted-foreground font-mono w-6 pt-0.5">{i + 1}.</span>
-                    <div className="shrink-0 pt-0.5">{typeIcon(pq.question.type)}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-foreground line-clamp-2">{pq.question.content}</p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Input type="number" min={1} value={pq.score}
-                        onChange={e => updateScore(i, parseInt(e.target.value) || 1)}
-                        className="h-7 w-14 text-center text-xs" />
-                      <span className="text-muted-foreground text-[10px]">{t('quiz.paper.points')}</span>
-                      <div className="flex flex-col">
-                        <Button variant="ghost" size="sm" className="h-4 w-5 p-0" onClick={() => moveQuestion(i, -1)} disabled={i === 0}><ChevronUp className="w-3 h-3" /></Button>
-                        <Button variant="ghost" size="sm" className="h-4 w-5 p-0" onClick={() => moveQuestion(i, 1)} disabled={i === paperQs.length - 1}><ChevronDown className="w-3 h-3" /></Button>
+                    <div className="flex items-start gap-2 p-2.5">
+                      <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 mt-0.5" />
+                      <span className="text-muted-foreground font-mono w-6 pt-0.5">{i + 1}.</span>
+                      <div className="shrink-0 pt-0.5">{typeIcon(q.type)}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-foreground line-clamp-2">{q.content}</p>
                       </div>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => removeFromPaper(i)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Input type="number" min={1} value={pq.score}
+                          onChange={e => updateScore(i, parseInt(e.target.value) || 1)}
+                          className="h-7 w-14 text-center text-xs" />
+                        <span className="text-muted-foreground text-[10px]">{t('quiz.paper.points')}</span>
+                        <div className="flex flex-col">
+                          <Button variant="ghost" size="sm" className="h-4 w-5 p-0" onClick={() => moveQuestion(i, -1)} disabled={i === 0}><ChevronUp className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="sm" className="h-4 w-5 p-0" onClick={() => moveQuestion(i, 1)} disabled={i === paperQs.length - 1}><ChevronDown className="w-3 h-3" /></Button>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => removeFromPaper(i)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleAnswer(key)}
+                      className="w-full flex items-center gap-1 px-2.5 py-1.5 border-t border-border text-[11px] text-muted-foreground hover:bg-muted/40 transition-colors"
+                    >
+                      <ChevronRight className={`w-3 h-3 transition-transform ${open ? 'rotate-90' : ''}`} />
+                      <span>{t('quiz.paper.answerExplanation') || '答案与解析'}（{t('quiz.paper.teacherOnly') || '仅教师可见'}）</span>
+                    </button>
+                    {open && (
+                      <div className="px-2.5 pb-2.5 pt-1 space-y-1.5 border-t border-border bg-muted/20">
+                        {q.options && q.options.length > 0 && (
+                          <div className="space-y-0.5">
+                            {q.options.map((opt, oi) => {
+                              const letter = String.fromCharCode(65 + oi);
+                              const isCorrect = Array.isArray(q.correct_answer)
+                                ? q.correct_answer.includes(letter)
+                                : q.correct_answer === letter;
+                              return (
+                                <div key={oi} className={`text-[11px] ${isCorrect ? 'text-emerald-700 font-medium' : 'text-muted-foreground'}`}>
+                                  {isCorrect ? '✓ ' : '   '}{letter}. {opt}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-foreground">
+                          <span className="text-muted-foreground">{t('quiz.imp.answer') || '答案'}：</span>
+                          <span className="text-emerald-700 font-medium">{answerText || '—'}</span>
+                        </div>
+                        {explanation && (
+                          <div className="text-[11px] text-foreground">
+                            <span className="text-muted-foreground">{t('quiz.imp.explanation') || '解析'}：</span>
+                            <span>{explanation}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             <div className="p-4 border-t border-border flex items-center justify-between gap-2">
