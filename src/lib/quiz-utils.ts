@@ -1,6 +1,26 @@
 // Pure utility functions for the quiz module
 import type { QuizQuestion, QuizPaper, PaperQuestion, TemplateRule } from '@/components/quiz/quizTypes';
 
+export function normalizeQuizOptionText(option: string, index?: number): string {
+  const trimmed = String(option ?? '').trim();
+  if (!trimmed) return '';
+
+  const expectedLetter = typeof index === 'number' ? String.fromCharCode(65 + index) : '[A-F]';
+  const prefixedPattern = new RegExp(`^${expectedLetter}[.．、:：\s\-]+(.+)$`, 'i');
+  const prefixedMatch = trimmed.match(prefixedPattern);
+  if (prefixedMatch?.[1]?.trim()) {
+    return prefixedMatch[1].trim();
+  }
+
+  return trimmed;
+}
+
+export function normalizeQuizOptions(options: string[]): string[] {
+  return options
+    .map((option, index) => normalizeQuizOptionText(option, index))
+    .filter(Boolean);
+}
+
 // ── Question filtering ──────────────────────────────────
 
 export interface QuestionFilter {
@@ -79,6 +99,7 @@ export function addLocalQuestion(
     user_id: 'local',
     created_at: new Date().toISOString(),
     ...data,
+    options: normalizeQuizOptions(data.options),
   };
   return [newQ, ...questions];
 }
@@ -88,7 +109,13 @@ export function updateLocalQuestion(
   id: string,
   data: Partial<QuizQuestion>
 ): QuizQuestion[] {
-  return questions.map(q => q.id === id ? { ...q, ...data } : q);
+  return questions.map(q => q.id === id
+    ? {
+        ...q,
+        ...data,
+        options: data.options ? normalizeQuizOptions(data.options) : q.options,
+      }
+    : q);
 }
 
 export function deleteLocalQuestion(questions: QuizQuestion[], id: string): QuizQuestion[] {

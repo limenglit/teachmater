@@ -12,6 +12,7 @@ import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { QuizQuestion } from './quizTypes';
 import { getLocalQuestions, saveLocalQuestions } from './quizTypes';
+import { normalizeQuizOptions } from '@/lib/quiz-utils';
 
 interface Props {
   isGuest: boolean;
@@ -58,7 +59,9 @@ function normalizeGeneratedQuestion(raw: any, index: number, defaultTag: string)
   if (!['single', 'multi', 'tf', 'short'].includes(type)) return null;
 
   if (type === 'single') {
-    const options = Array.isArray(raw?.options) ? raw.options.map((o: any) => String(o).trim()).filter(Boolean) : [];
+    const options = Array.isArray(raw?.options)
+      ? normalizeQuizOptions(raw.options.map((o: any) => String(o).trim()).filter(Boolean))
+      : [];
     const answer = typeof raw?.correct_answer === 'string' ? raw.correct_answer.trim().toUpperCase() : 'A';
     if (options.length < 2) return null;
     return {
@@ -72,7 +75,9 @@ function normalizeGeneratedQuestion(raw: any, index: number, defaultTag: string)
   }
 
   if (type === 'multi') {
-    const options = Array.isArray(raw?.options) ? raw.options.map((o: any) => String(o).trim()).filter(Boolean) : [];
+    const options = Array.isArray(raw?.options)
+      ? normalizeQuizOptions(raw.options.map((o: any) => String(o).trim()).filter(Boolean))
+      : [];
     const arr: string[] = Array.isArray(raw?.correct_answer)
       ? raw.correct_answer.map((a: any) => String(a).trim().toUpperCase()).filter((a: string) => /^[A-F]$/.test(a))
       : [];

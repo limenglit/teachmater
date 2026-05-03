@@ -28,6 +28,7 @@ import {
   computeAutoTotalScore,
   deleteLocalPaper,
   duplicateLocalPaper,
+  normalizeQuizOptionText,
 } from '@/lib/quiz-utils';
 import { writeExcelFile } from '@/lib/excel-utils';
 import jsPDF from 'jspdf';
@@ -546,7 +547,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
                                 : q.correct_answer === letter;
                               return (
                                 <div key={oi} className={`text-[11px] ${isCorrect ? 'text-emerald-700 font-medium' : 'text-muted-foreground'}`}>
-                                  {isCorrect ? '✓ ' : '   '}{letter}. {opt}
+                                  {isCorrect ? '✓ ' : '   '}{letter}. {normalizeQuizOptionText(opt, oi)}
                                 </div>
                               );
                             })}

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { normalizeQuizOptionText } from '@/lib/quiz-utils';
 
 interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
@@ -64,7 +65,7 @@ export default function QuizSubmitPage() {
   const optionText = (q: QuizQuestion, letter: string) => {
     const index = letter.charCodeAt(0) - 65;
     if (index < 0 || index >= q.options.length) return letter;
-    return `${letter}. ${q.options[index]}`;
+    return `${letter}. ${normalizeQuizOptionText(q.options[index], index)}`;
   };
 
   const formatCorrectAnswer = (q: QuizQuestion): string => {
@@ -226,7 +227,7 @@ export default function QuizSubmitPage() {
                           key={`${idx}-${letter}`}
                           className={`text-[11px] px-2 py-0.5 rounded ${correct ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}
                         >
-                          {letter}. {opt}
+                          {letter}. {normalizeQuizOptionText(opt, i)}
                         </span>
                       );
                     })}
@@ -353,7 +354,7 @@ export default function QuizSubmitPage() {
                   onClick={() => setAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
-                  <span className="text-sm text-foreground">{opt}</span>
+                  <span className="text-sm text-foreground">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
             })}
@@ -374,7 +375,7 @@ export default function QuizSubmitPage() {
                   onClick={() => toggleMultiAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
-                  <span className="text-sm text-foreground">{opt}</span>
+                  <span className="text-sm text-foreground">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
             })}

@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -13,7 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import {
   Plus, Trash2, Star, Search, Filter, Edit3, CheckCircle2, XCircle,
   HelpCircle, ListChecks, ToggleLeft, FileText, FolderPlus, Folder, ChevronRight,
-  SlidersHorizontal, Tag, FileCheck, X,
+  SlidersHorizontal, Tag, FileCheck, X, Eraser,
 } from 'lucide-react';
 import QuizImporter from './QuizImporter';
 import type {
@@ -30,6 +40,8 @@ import {
   updateLocalQuestion,
   deleteLocalQuestion,
   toggleStarQuestion,
+  normalizeQuizOptions,
+  normalizeQuizOptionText,
 } from '@/lib/quiz-utils';
 
 interface Props {
@@ -87,8 +99,22 @@ export default function QuizQuestionBank({
   // Category management
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showCleanupDialog, setShowCleanupDialog] = useState(false);
+  const [cleanupSubmitting, setCleanupSubmitting] = useState(false);
 
   const allKnowledgePoints = useMemo(() => collectKnowledgePoints(questions), [questions]);
+  const cleanupCandidates = useMemo(() => {
+    return questions
+      .filter((question) => question.type === 'single' || question.type === 'multi')
+      .map((question) => ({
+        question,
+        normalizedOptions: normalizeQuizOptions(question.options),
+      }))
+      .filter(({ question, normalizedOptions }) => (
+        normalizedOptions.length === question.options.length
+        && normalizedOptions.some((option, index) => option !== question.options[index])
+      ));
+  }, [questions]);
 
   const advancedActive =
     advTypes.size > 0 || advCategoryIds.size > 0 || advKnowledge.length > 0;
@@ -116,7 +142,9 @@ export default function QuizQuestionBank({
     setEditQ(q);
     setQType(q.type);
     setQContent(q.content);
-    setQOptions(q.type === 'tf' || q.type === 'short' ? ['', '', '', ''] : [...q.options, '', '', '', ''].slice(0, Math.max(q.options.length, 4)));
+    setQOptions(q.type === 'tf' || q.type === 'short'
+      ? ['', '', '', '']
+      : [...normalizeQuizOptions(q.options), '', '', '', ''].slice(0, Math.max(q.options.length, 4)));
     setQCorrect(q.correct_answer);
     setQTags(q.tags);
     setQCategoryId(q.category_id || '');
@@ -125,7 +153,7 @@ export default function QuizQuestionBank({
 
   const saveQuestion = async () => {
     if (!qContent.trim()) return;
-    const opts = qType === 'tf' ? ['正确', '错误'] : qType === 'short' ? [] : qOptions.filter(o => o.trim());
+    const opts = qType === 'tf' ? ['正确', '错误'] : qType === 'short' ? [] : normalizeQuizOptions(qOptions.filter(o => o.trim()));
     if ((qType === 'single' || qType === 'multi') && opts.length < 2) {
       toast({ title: t('quiz.needOptions'), variant: 'destructive' }); return;
     }
@@ -133,7 +161,7 @@ export default function QuizQuestionBank({
     if (isGuest) {
       const qData = {
         type: qType, content: qContent.trim(), options: opts,
-        correct_answer: qCorrect, tags: qTags.trim(),
+          correct_answer: qCorrect, tags: qTags.trim(),
         category_id: qCategoryId || null, is_starred: editQ?.is_starred || false,
       };
       let updated: QuizQuestion[];
@@ -238,6 +266,68 @@ export default function QuizQuestionBank({
       // category_id will be set to null by FK ON DELETE SET NULL
       setQuestions(questions.map(q => q.category_id === id ? { ...q, category_id: null } : q));
     }
+  };
+
+  const cleanupHistoricalOptionPrefixes = async () => {
+    if (cleanupSubmitting) return;
+    if (cleanupCandidates.length === 0) {
+      toast({ title: t('quiz.cleanup.noChanges') });
+      return;
+    }
+
+    if (isGuest) {
+      const nextQuestions = questions.map((question) => {
+        const matched = cleanupCandidates.find((candidate) => candidate.question.id === question.id);
+        return matched ? { ...question, options: matched.normalizedOptions } : question;
+      });
+      setQuestions(nextQuestions);
+      saveLocalQuestions(nextQuestions);
+      setShowCleanupDialog(false);
+      toast({ title: t('quiz.cleanup.done').replace('{0}', String(cleanupCandidates.length)) });
+      return;
+    }
+
+    setCleanupSubmitting(true);
+    const results = await Promise.allSettled(
+      cleanupCandidates.map(({ question, normalizedOptions }) => (
+        supabase
+          .from('quiz_questions')
+          .update({ options: normalizedOptions } as any)
+          .eq('id', question.id)
+      )),
+    );
+
+    const succeededIds = new Set<string>();
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled' && !result.value.error) {
+        succeededIds.add(cleanupCandidates[index].question.id);
+      }
+    });
+    const failedCount = results.filter((result) => result.status === 'rejected' || result.value.error).length;
+    const successCount = cleanupCandidates.length - failedCount;
+
+    if (successCount > 0) {
+      const nextQuestions = questions.map((question) => {
+        const matched = cleanupCandidates.find((candidate) => candidate.question.id === question.id);
+        return matched && succeededIds.has(question.id)
+          ? { ...question, options: matched.normalizedOptions }
+          : question;
+      });
+      setQuestions(nextQuestions);
+    }
+
+    setCleanupSubmitting(false);
+    setShowCleanupDialog(false);
+
+    if (failedCount > 0) {
+      toast({
+        title: t('quiz.cleanup.partial').replace('{0}', String(successCount)).replace('{1}', String(failedCount)),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({ title: t('quiz.cleanup.done').replace('{0}', String(successCount)) });
   };
 
   const toggleSelect = (id: string) => {
@@ -603,6 +693,17 @@ export default function QuizQuestionBank({
               {selectedIds.size === filteredQuestions.length ? t('quiz.deselectAll') : t('quiz.selectAll')}
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 gap-1"
+            onClick={() => setShowCleanupDialog(true)}
+            disabled={cleanupCandidates.length === 0}
+            title={cleanupCandidates.length === 0 ? t('quiz.cleanup.noChanges') : t('quiz.cleanup.button')}
+          >
+            <Eraser className="w-3 h-3" /> {t('quiz.cleanup.button')}
+            {cleanupCandidates.length > 0 ? ` (${cleanupCandidates.length})` : ''}
+          </Button>
           {onBuildPaperFromSelection && (selectedIds.size > 0 || (advancedActive && filteredQuestions.length > 0)) && (
             <Button
               variant="outline" size="sm" className="text-xs h-8 gap-1"
@@ -666,7 +767,7 @@ export default function QuizQuestionBank({
                     {q.options.map((o: string, i: number) => {
                       const letter = String.fromCharCode(65 + i);
                       const isCorrect = Array.isArray(q.correct_answer) ? q.correct_answer.includes(letter) : q.correct_answer === letter;
-                      return <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${isCorrect ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}>{letter}. {o}</span>;
+                      return <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${isCorrect ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}>{letter}. {normalizeQuizOptionText(o, i)}</span>;
                     })}
                   </div>
                 )}
@@ -743,6 +844,23 @@ export default function QuizQuestionBank({
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showCleanupDialog} onOpenChange={setShowCleanupDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('quiz.cleanup.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('quiz.cleanup.desc').replace('{0}', String(cleanupCandidates.length))}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cleanupSubmitting}>{t('quiz.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={cleanupHistoricalOptionPrefixes} disabled={cleanupSubmitting}>
+              {cleanupSubmitting ? t('common.loading') : t('quiz.cleanup.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

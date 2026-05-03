@@ -5,6 +5,8 @@ import {
   updateLocalQuestion,
   deleteLocalQuestion,
   toggleStarQuestion,
+  normalizeQuizOptionText,
+  normalizeQuizOptions,
   addQuestionToPaper,
   removeFromPaper,
   movePaperQuestion,
@@ -106,6 +108,25 @@ describe('filterQuestions', () => {
 
   it('no match returns empty', () => {
     expect(filterQuestions(sampleQuestions, { search: 'xyz不存在' })).toHaveLength(0);
+  });
+});
+
+describe('normalizeQuizOptionText', () => {
+  it('strips matching option prefixes with content', () => {
+    expect(normalizeQuizOptionText('A. 选项一', 0)).toBe('选项一');
+    expect(normalizeQuizOptionText('B、第二项', 1)).toBe('第二项');
+    expect(normalizeQuizOptionText('C: third', 2)).toBe('third');
+  });
+
+  it('keeps bare letter options unchanged', () => {
+    expect(normalizeQuizOptionText('A', 0)).toBe('A');
+    expect(normalizeQuizOptionText('B', 1)).toBe('B');
+  });
+});
+
+describe('normalizeQuizOptions', () => {
+  it('normalizes each option by its own index', () => {
+    expect(normalizeQuizOptions(['A. 苹果', 'B. 香蕉', 'C', ''])).toEqual(['苹果', '香蕉', 'C']);
   });
 });
 

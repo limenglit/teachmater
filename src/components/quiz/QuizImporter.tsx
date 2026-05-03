@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from '@/hooks/use-toast';
 import { Download, Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
+import { normalizeQuizOptions } from '@/lib/quiz-utils';
 
 interface ImportedQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
@@ -91,9 +92,9 @@ export default function QuizImporter({ onImport }: Props) {
 
           let options: string[] = [];
           if (type === 'single' || type === 'multi') {
-            options = [row[2], row[3], row[4], row[5]]
+            options = normalizeQuizOptions([row[2], row[3], row[4], row[5]]
               .map(v => String(v || '').trim())
-              .filter(v => v && v !== 'undefined');
+              .filter(v => v && v !== 'undefined'));
             if (options.length < 2) {
               errs.push(`${t('quiz.imp.row')} ${i + 1}: ${t('quiz.imp.fewOptions')}`);
               continue;
