@@ -72,6 +72,9 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerType, setPickerType] = useState('all');
 
+  // Paper preview drawer (auto-opens after generation/seeding)
+  const [showPreview, setShowPreview] = useState(false);
+
   const availableForPicker = useMemo(() => {
     const usedIds = new Set(paperQs.map(pq => pq.question_id));
     return questions.filter(q => {
