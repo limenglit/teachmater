@@ -205,6 +205,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     setPaperQs(result);
     setTotalScore(computePaperTotalScore(result));
     setView('create');
+    setShowPreview(true);
     toast({ title: `${t('quiz.paper.generated')} ${result.length} ${t('quiz.imp.questionsUnit')}` });
   };
 
