@@ -76,6 +76,20 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
   const [showPreview, setShowPreview] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
+  const toggleAnswer = (key: string) => setExpandedAnswers(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+  const formatAnswer = (q: QuizQuestion): string => {
+    if (q.type === 'tf') {
+      const v = String(q.correct_answer);
+      return v === 'true' || v === 'T' || v === '1' ? '✓' : '✗';
+    }
+    if (Array.isArray(q.correct_answer)) return q.correct_answer.join(', ');
+    return String(q.correct_answer ?? '');
+  };
 
   const reorderPaperQs = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= paperQs.length || to >= paperQs.length) return;
