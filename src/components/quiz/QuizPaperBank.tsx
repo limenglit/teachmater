@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus, Trash2, FileCheck, ArrowLeft, Edit3, Shuffle, Download, Copy, ChevronUp, ChevronDown,
-  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye,
+  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye, GripVertical,
 } from 'lucide-react';
 import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
