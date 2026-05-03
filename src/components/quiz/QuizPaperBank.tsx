@@ -101,6 +101,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
       return { question_id: q.id, question: q, score, order: i };
     }));
     setView('create');
+    setShowPreview(true);
     onSeedConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedQuestions]);
