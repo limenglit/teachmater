@@ -451,7 +451,16 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
                 {paperQs.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">{t('quiz.paper.emptyHint')}</p>
                 ) : paperQs.map((pq, i) => (
-                  <div key={pq.question_id + '-pv-' + i} className="flex items-start gap-2 p-2.5 rounded-md border border-border bg-card text-xs">
+                  <div key={pq.question_id + '-pv-' + i}
+                    draggable
+                    onDragStart={onRowDragStart(i)}
+                    onDragOver={onRowDragOver(i)}
+                    onDrop={onRowDrop(i)}
+                    onDragEnd={onRowDragEnd}
+                    className={`flex items-start gap-2 p-2.5 rounded-md border bg-card text-xs transition-colors ${
+                      dragOverIdx === i && dragIdx !== i ? 'border-primary border-dashed bg-primary/5' : 'border-border'
+                    } ${dragIdx === i ? 'opacity-50' : ''}`}>
+                    <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 mt-0.5" />
                     <span className="text-muted-foreground font-mono w-6 pt-0.5">{i + 1}.</span>
                     <div className="shrink-0 pt-0.5">{typeIcon(pq.question.type)}</div>
                     <div className="flex-1 min-w-0">
