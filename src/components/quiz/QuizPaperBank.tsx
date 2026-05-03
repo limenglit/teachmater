@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus, Trash2, FileCheck, ArrowLeft, Edit3, Shuffle, Download, Copy, ChevronUp, ChevronDown,
-  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye,
+  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye, GripVertical,
 } from 'lucide-react';
 import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
@@ -74,6 +74,35 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
 
   // Paper preview drawer (auto-opens after generation/seeding)
   const [showPreview, setShowPreview] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const reorderPaperQs = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= paperQs.length || to >= paperQs.length) return;
+    const arr = [...paperQs];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    setPaperQs(arr.map((pq, i) => ({ ...pq, order: i })));
+  };
+
+  const onRowDragStart = (i: number) => (e: React.DragEvent) => {
+    setDragIdx(i);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(i)); } catch {}
+  };
+  const onRowDragOver = (i: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== i) setDragOverIdx(i);
+  };
+  const onRowDrop = (i: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const from = dragIdx ?? parseInt(e.dataTransfer.getData('text/plain'));
+    if (!Number.isNaN(from)) reorderPaperQs(from, i);
+    setDragIdx(null); setDragOverIdx(null);
+  };
+  const onRowDragEnd = () => { setDragIdx(null); setDragOverIdx(null); };
+
 
   const availableForPicker = useMemo(() => {
     const usedIds = new Set(paperQs.map(pq => pq.question_id));
@@ -340,7 +369,16 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
           ) : (
             <div className="space-y-1">
               {paperQs.map((pq, i) => (
-                <div key={pq.question_id + '-' + i} className="flex items-center gap-2 p-2 rounded-md border border-border bg-card text-xs group">
+                <div key={pq.question_id + '-' + i}
+                  draggable
+                  onDragStart={onRowDragStart(i)}
+                  onDragOver={onRowDragOver(i)}
+                  onDrop={onRowDrop(i)}
+                  onDragEnd={onRowDragEnd}
+                  className={`flex items-center gap-2 p-2 rounded-md border bg-card text-xs group transition-colors ${
+                    dragOverIdx === i && dragIdx !== i ? 'border-primary border-dashed bg-primary/5' : 'border-border'
+                  } ${dragIdx === i ? 'opacity-50' : ''}`}>
+                  <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
                   <span className="text-muted-foreground font-mono w-5">{i + 1}</span>
                   {typeIcon(pq.question.type)}
                   <span className="flex-1 truncate text-foreground">{pq.question.content}</span>
@@ -413,7 +451,16 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
                 {paperQs.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">{t('quiz.paper.emptyHint')}</p>
                 ) : paperQs.map((pq, i) => (
-                  <div key={pq.question_id + '-pv-' + i} className="flex items-start gap-2 p-2.5 rounded-md border border-border bg-card text-xs">
+                  <div key={pq.question_id + '-pv-' + i}
+                    draggable
+                    onDragStart={onRowDragStart(i)}
+                    onDragOver={onRowDragOver(i)}
+                    onDrop={onRowDrop(i)}
+                    onDragEnd={onRowDragEnd}
+                    className={`flex items-start gap-2 p-2.5 rounded-md border bg-card text-xs transition-colors ${
+                      dragOverIdx === i && dragIdx !== i ? 'border-primary border-dashed bg-primary/5' : 'border-border'
+                    } ${dragIdx === i ? 'opacity-50' : ''}`}>
+                    <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0 mt-0.5" />
                     <span className="text-muted-foreground font-mono w-6 pt-0.5">{i + 1}.</span>
                     <div className="shrink-0 pt-0.5">{typeIcon(pq.question.type)}</div>
                     <div className="flex-1 min-w-0">
