@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus, Trash2, FileCheck, ArrowLeft, Edit3, Shuffle, Download, Copy, ChevronUp, ChevronDown,
-  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft,
+  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye,
 } from 'lucide-react';
 import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
@@ -71,6 +72,9 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerType, setPickerType] = useState('all');
 
+  // Paper preview drawer (auto-opens after generation/seeding)
+  const [showPreview, setShowPreview] = useState(false);
+
   const availableForPicker = useMemo(() => {
     const usedIds = new Set(paperQs.map(pq => pq.question_id));
     return questions.filter(q => {
@@ -97,6 +101,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
       return { question_id: q.id, question: q, score, order: i };
     }));
     setView('create');
+    setShowPreview(true);
     onSeedConsumed?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seedQuestions]);
@@ -200,6 +205,7 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     setPaperQs(result);
     setTotalScore(computePaperTotalScore(result));
     setView('create');
+    setShowPreview(true);
     toast({ title: `${t('quiz.paper.generated')} ${result.length} ${t('quiz.imp.questionsUnit')}` });
   };
 
@@ -317,9 +323,14 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
           {/* Paper questions */}
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-foreground">{t('quiz.paper.paperQuestions')} ({paperQs.length}) · {currentTotalScore}{t('quiz.paper.points')}</span>
-            <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowPicker(true)}>
-              <Plus className="w-3 h-3" /> {t('quiz.paper.addFromBank')}
-            </Button>
+            <div className="flex gap-1.5">
+              <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowPreview(true)} disabled={paperQs.length === 0}>
+                <Eye className="w-3 h-3" /> {t('quiz.paper.preview') || '预览'}
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowPicker(true)}>
+                <Plus className="w-3 h-3" /> {t('quiz.paper.addFromBank')}
+              </Button>
+            </div>
           </div>
 
           {paperQs.length === 0 ? (
@@ -383,6 +394,57 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Paper preview drawer */}
+        <Sheet open={showPreview} onOpenChange={setShowPreview}>
+          <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
+            <SheetHeader className="p-4 border-b border-border">
+              <SheetTitle className="text-base">{t('quiz.paper.preview') || '试卷预览'}</SheetTitle>
+              <SheetDescription className="text-xs">
+                {paperQs.length} {t('quiz.imp.questionsUnit')} · {t('quiz.paper.totalScore')}: {currentTotalScore}{t('quiz.paper.points')}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="p-4 space-y-3 overflow-y-auto flex-1">
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">{t('quiz.paper.paperTitle')}</label>
+                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('quiz.paper.paperTitle')} className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1">
+                {paperQs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">{t('quiz.paper.emptyHint')}</p>
+                ) : paperQs.map((pq, i) => (
+                  <div key={pq.question_id + '-pv-' + i} className="flex items-start gap-2 p-2.5 rounded-md border border-border bg-card text-xs">
+                    <span className="text-muted-foreground font-mono w-6 pt-0.5">{i + 1}.</span>
+                    <div className="shrink-0 pt-0.5">{typeIcon(pq.question.type)}</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-foreground line-clamp-2">{pq.question.content}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Input type="number" min={1} value={pq.score}
+                        onChange={e => updateScore(i, parseInt(e.target.value) || 1)}
+                        className="h-7 w-14 text-center text-xs" />
+                      <span className="text-muted-foreground text-[10px]">{t('quiz.paper.points')}</span>
+                      <div className="flex flex-col">
+                        <Button variant="ghost" size="sm" className="h-4 w-5 p-0" onClick={() => moveQuestion(i, -1)} disabled={i === 0}><ChevronUp className="w-3 h-3" /></Button>
+                        <Button variant="ghost" size="sm" className="h-4 w-5 p-0" onClick={() => moveQuestion(i, 1)} disabled={i === paperQs.length - 1}><ChevronDown className="w-3 h-3" /></Button>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => removeFromPaper(i)}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 border-t border-border flex items-center justify-between gap-2">
+              <span className="text-xs text-muted-foreground">{t('quiz.paper.totalScore')}: <span className="font-semibold text-foreground">{currentTotalScore}</span></span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowPreview(false)}>{t('quiz.cancel')}</Button>
+                <Button size="sm" onClick={() => { setShowPreview(false); savePaper(); }} className="gap-1">
+                  <FileCheck className="w-3.5 h-3.5" /> {t('quiz.save')}
+                </Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
     );
   }
