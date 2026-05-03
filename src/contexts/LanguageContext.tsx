@@ -1677,6 +1677,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'quiz.paper.noPapersHint': '手动组卷或自动生成试卷',
     'quiz.paper.totalScore': '总分',
     'quiz.paper.points': '分',
+    'quiz.paper.expandAllAnswers': '展开全部答案与解析',
+    'quiz.paper.collapseAllAnswers': '全部折叠',
     'quiz.paper.rules': '组卷规则',
     'quiz.paper.available': '题可用',
     'quiz.paper.generate': '生成试卷',

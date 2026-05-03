@@ -77,11 +77,15 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [expandedAnswers, setExpandedAnswers] = useState<Set<string>>(new Set());
+  const previewAnswerKeys = useMemo(() => paperQs.map((pq) => pq.question_id), [paperQs]);
+  const allAnswersExpanded = previewAnswerKeys.length > 0 && previewAnswerKeys.every((key) => expandedAnswers.has(key));
   const toggleAnswer = (key: string) => setExpandedAnswers(prev => {
     const next = new Set(prev);
     next.has(key) ? next.delete(key) : next.add(key);
     return next;
   });
+  const expandAllAnswers = () => setExpandedAnswers(new Set(previewAnswerKeys));
+  const collapseAllAnswers = () => setExpandedAnswers(new Set());
   const formatAnswer = (q: QuizQuestion): string => {
     if (q.type === 'tf') {
       const v = String(q.correct_answer);
@@ -461,11 +465,35 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
                 <label className="text-xs font-medium text-foreground">{t('quiz.paper.paperTitle')}</label>
                 <Input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('quiz.paper.paperTitle')} className="h-9 text-sm" />
               </div>
+              {paperQs.length > 0 && (
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={expandAllAnswers}
+                    disabled={allAnswersExpanded}
+                  >
+                    {t('quiz.paper.expandAllAnswers')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={collapseAllAnswers}
+                    disabled={expandedAnswers.size === 0}
+                  >
+                    {t('quiz.paper.collapseAllAnswers')}
+                  </Button>
+                </div>
+              )}
               <div className="space-y-1">
                 {paperQs.length === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">{t('quiz.paper.emptyHint')}</p>
                 ) : paperQs.map((pq, i) => {
-                  const key = pq.question_id + '-pv-' + i;
+                  const key = pq.question_id;
                   const open = expandedAnswers.has(key);
                   const q = pq.question;
                   const answerText = formatAnswer(q);
