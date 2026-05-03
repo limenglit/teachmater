@@ -323,9 +323,14 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
           {/* Paper questions */}
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-foreground">{t('quiz.paper.paperQuestions')} ({paperQs.length}) · {currentTotalScore}{t('quiz.paper.points')}</span>
-            <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowPicker(true)}>
-              <Plus className="w-3 h-3" /> {t('quiz.paper.addFromBank')}
-            </Button>
+            <div className="flex gap-1.5">
+              <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowPreview(true)} disabled={paperQs.length === 0}>
+                <Eye className="w-3 h-3" /> {t('quiz.paper.preview') || '预览'}
+              </Button>
+              <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setShowPicker(true)}>
+                <Plus className="w-3 h-3" /> {t('quiz.paper.addFromBank')}
+              </Button>
+            </div>
           </div>
 
           {paperQs.length === 0 ? (
