@@ -74,6 +74,35 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
 
   // Paper preview drawer (auto-opens after generation/seeding)
   const [showPreview, setShowPreview] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const reorderPaperQs = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= paperQs.length || to >= paperQs.length) return;
+    const arr = [...paperQs];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    setPaperQs(arr.map((pq, i) => ({ ...pq, order: i })));
+  };
+
+  const onRowDragStart = (i: number) => (e: React.DragEvent) => {
+    setDragIdx(i);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(i)); } catch {}
+  };
+  const onRowDragOver = (i: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== i) setDragOverIdx(i);
+  };
+  const onRowDrop = (i: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const from = dragIdx ?? parseInt(e.dataTransfer.getData('text/plain'));
+    if (!Number.isNaN(from)) reorderPaperQs(from, i);
+    setDragIdx(null); setDragOverIdx(null);
+  };
+  const onRowDragEnd = () => { setDragIdx(null); setDragOverIdx(null); };
+
 
   const availableForPicker = useMemo(() => {
     const usedIds = new Set(paperQs.map(pq => pq.question_id));
