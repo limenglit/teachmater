@@ -227,12 +227,19 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
 }
 
 export async function loadSeatCheckinRecords(sessionId: string) {
+  const token = getSeatCheckinSessionToken(sessionId);
+  if (token) {
+    const { data, error } = await supabase.rpc('get_seat_checkin_records_for_owner', {
+      p_session_id: sessionId,
+      p_token: token,
+    } as any);
+    if (!error && Array.isArray(data)) return data as SeatCheckinRecord[];
+  }
   const { data, error } = await supabase
     .from('seat_checkin_records')
     .select('*')
     .eq('session_id', sessionId)
     .order('checked_in_at', { ascending: true });
-
   if (error || !data) return [] as SeatCheckinRecord[];
   return data as SeatCheckinRecord[];
 }

@@ -134,8 +134,14 @@ export default function PollManager() {
 
   const openPoll = async (poll: Poll) => {
     setActivePoll(poll);
-    const { data } = await supabase.from('poll_votes').select('*').eq('poll_id', poll.id) as any;
-    setVotes(data || []);
+    const token = getCreatorToken(poll.id);
+    if (token) {
+      const { data } = await supabase.rpc('get_poll_votes_for_owner', { p_poll_id: poll.id, p_token: token } as any);
+      setVotes((data as any) || []);
+    } else {
+      const { data } = await supabase.from('poll_votes').select('*').eq('poll_id', poll.id) as any;
+      setVotes(data || []);
+    }
   };
 
   const deletePoll = async (poll: Poll) => {
