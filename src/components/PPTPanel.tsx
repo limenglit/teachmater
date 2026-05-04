@@ -162,7 +162,7 @@ export default function PPTPanel() {
         await exportPPTX(outline, effectiveColorId, template, fontConfig.fontFace, fontSizeConfig);
       }
       if (format === 'pdf' || format === 'both') {
-        await exportPDF(outline, effectiveColorId, fontSizeConfig);
+        await exportPDF(outline, effectiveColorId, fontConfig.fontFace, fontSizeConfig);
       }
       
       // Save to history

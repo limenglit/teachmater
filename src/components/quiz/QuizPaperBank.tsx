@@ -31,7 +31,7 @@ import {
   normalizeQuizOptionText,
 } from '@/lib/quiz-utils';
 import { writeExcelFile } from '@/lib/excel-utils';
-import jsPDF from 'jspdf';
+import { exportToPDF } from '@/lib/export';
 
 interface Props {
   papers: QuizPaper[];
@@ -275,30 +275,89 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     );
   };
 
-  const exportPaperPDF = (p: QuizPaper) => {
-    const doc = new jsPDF();
-    doc.setFont('helvetica');
-    doc.setFontSize(16);
-    doc.text(p.title, 105, 20, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(`${t('quiz.paper.totalScore')}: ${p.total_score}`, 105, 28, { align: 'center' });
-    let y = 40;
-    const qs = (p.questions as PaperQuestion[]);
-    doc.setFontSize(11);
-    qs.forEach((pq, i) => {
-      if (y > 270) { doc.addPage(); y = 20; }
-      doc.text(`${i + 1}. (${pq.score}pts) ${pq.question.content}`, 15, y, { maxWidth: 175 });
-      y += 8;
+  const exportPaperPDF = async (p: QuizPaper) => {
+    const host = document.createElement('div');
+    host.style.position = 'fixed';
+    host.style.left = '-100000px';
+    host.style.top = '0';
+    host.style.width = '820px';
+    host.style.padding = '0';
+    host.style.background = '#ffffff';
+
+    const container = document.createElement('div');
+    container.style.width = '100%';
+    container.style.boxSizing = 'border-box';
+    container.style.background = '#ffffff';
+    container.style.color = '#111827';
+    container.style.fontFamily = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif';
+    container.style.padding = '8px 16px 24px';
+
+    const meta = document.createElement('div');
+    meta.style.display = 'flex';
+    meta.style.justifyContent = 'space-between';
+    meta.style.alignItems = 'center';
+    meta.style.marginBottom = '16px';
+    meta.style.paddingBottom = '8px';
+    meta.style.borderBottom = '1px solid #e5e7eb';
+    meta.style.fontSize = '14px';
+    meta.innerHTML = `
+      <span>题目数：${p.questions.length}</span>
+      <span>${t('quiz.paper.totalScore')}: ${p.total_score}</span>
+    `;
+    container.appendChild(meta);
+
+    (p.questions as PaperQuestion[]).forEach((pq, index) => {
+      const card = document.createElement('div');
+      card.style.padding = '0 0 14px';
+      card.style.marginBottom = '14px';
+      card.style.borderBottom = '1px dashed #d1d5db';
+      card.style.breakInside = 'avoid';
+      (card.style as any).pageBreakInside = 'avoid';
+
+      const title = document.createElement('div');
+      title.style.fontSize = '16px';
+      title.style.lineHeight = '1.7';
+      title.style.fontWeight = '600';
+      title.style.whiteSpace = 'pre-wrap';
+      title.textContent = `${index + 1}. (${pq.score}${t('quiz.paper.points')}) ${pq.question.content}`;
+      card.appendChild(title);
+
       if (pq.question.options.length > 0) {
-        pq.question.options.forEach((opt, oi) => {
-          if (y > 280) { doc.addPage(); y = 20; }
-          doc.text(`   ${String.fromCharCode(65 + oi)}. ${opt}`, 20, y);
-          y += 6;
+        const options = document.createElement('div');
+        options.style.marginTop = '10px';
+        options.style.paddingLeft = '8px';
+        options.style.display = 'grid';
+        options.style.gap = '8px';
+
+        pq.question.options.forEach((opt, optionIndex) => {
+          const option = document.createElement('div');
+          option.style.fontSize = '14px';
+          option.style.lineHeight = '1.7';
+          option.style.whiteSpace = 'pre-wrap';
+          option.textContent = `${String.fromCharCode(65 + optionIndex)}. ${normalizeQuizOptionText(opt, optionIndex)}`;
+          options.appendChild(option);
         });
+
+        card.appendChild(options);
       }
-      y += 4;
+
+      container.appendChild(card);
     });
-    doc.save(`${p.title}.pdf`);
+
+    host.appendChild(container);
+    document.body.appendChild(host);
+
+    try {
+      await exportToPDF(container, p.title, p.title);
+    } catch (error) {
+      toast({
+        title: 'PDF 导出失败',
+        description: error instanceof Error ? error.message : '请重试',
+        variant: 'destructive',
+      });
+    } finally {
+      document.body.removeChild(host);
+    }
   };
 
   const typeIcon = (type: string) => {

@@ -1,282 +1,549 @@
-// PPT PDF export using jspdf
+import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { PPTOutline, PPT_COLOR_SCHEMES, PPTFontSize } from './pptTypes';
+import { PPTOutline, PPT_COLOR_SCHEMES, type PPTFontSize, type PPTSlide } from './pptTypes';
+
+const SLIDE_WIDTH = 1600;
+const SLIDE_HEIGHT = 900;
+
+function createElement<K extends keyof HTMLElementTagNameMap>(tag: K, styles?: Partial<CSSStyleDeclaration>) {
+  const element = document.createElement(tag);
+  if (styles) Object.assign(element.style, styles);
+  return element;
+}
+
+function addBox(root: HTMLElement, styles: Partial<CSSStyleDeclaration>) {
+  const element = createElement('div', { position: 'absolute', ...styles });
+  root.appendChild(element);
+  return element;
+}
+
+function addText(
+  root: HTMLElement,
+  text: string,
+  options: {
+    left: number;
+    top: number;
+    width: number;
+    color: string;
+    fontSize: number;
+    fontFamily: string;
+    fontWeight?: string;
+    fontStyle?: string;
+    textAlign?: 'left' | 'center' | 'right';
+    lineHeight?: number;
+  },
+) {
+  const element = createElement('div', {
+    position: 'absolute',
+    left: `${options.left}px`,
+    top: `${options.top}px`,
+    width: `${options.width}px`,
+    color: options.color,
+    fontSize: `${options.fontSize}px`,
+    fontFamily: options.fontFamily,
+    fontWeight: options.fontWeight || '400',
+    fontStyle: options.fontStyle || 'normal',
+    textAlign: options.textAlign || 'left',
+    lineHeight: String(options.lineHeight || 1.45),
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'break-word',
+  });
+  element.textContent = text;
+  root.appendChild(element);
+  return element;
+}
+
+function addBullets(
+  root: HTMLElement,
+  bullets: string[] | undefined,
+  options: {
+    left: number;
+    top: number;
+    width: number;
+    gap: number;
+    fontSize: number;
+    color: string;
+    fontFamily: string;
+    bullet?: string;
+  },
+) {
+  if (!bullets?.length) return;
+  bullets.forEach((item, index) => {
+    addText(root, `${options.bullet || '•'} ${item}`, {
+      left: options.left,
+      top: options.top + index * options.gap,
+      width: options.width,
+      fontSize: options.fontSize,
+      color: options.color,
+      fontFamily: options.fontFamily,
+    });
+  });
+}
+
+function addImageOrPlaceholder(
+  root: HTMLElement,
+  slide: PPTSlide,
+  colors: typeof PPT_COLOR_SCHEMES[number],
+  fontFace: string,
+) {
+  if (slide.imageUrl) {
+    const image = createElement('img', {
+      position: 'absolute',
+      left: '80px',
+      top: '180px',
+      width: '650px',
+      height: '520px',
+      objectFit: 'cover',
+      borderRadius: '18px',
+    }) as HTMLImageElement;
+    image.src = slide.imageUrl;
+    root.appendChild(image);
+    return;
+  }
+
+  const box = addBox(root, {
+    left: '80px',
+    top: '180px',
+    width: '650px',
+    height: '520px',
+    background: colors.accent,
+    borderRadius: '18px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#ffffff',
+    fontSize: '120px',
+  });
+  box.textContent = '🖼️';
+
+  addText(root, slide.imagePlaceholder || '图片占位符', {
+    left: 110,
+    top: 610,
+    width: 590,
+    fontSize: 24,
+    color: '#ffffff',
+    textAlign: 'center',
+    fontFamily: fontFace,
+  });
+}
+
+function addTitle(root: HTMLElement, slide: PPTSlide, color: string, fontSize: number, fontFace: string) {
+  addText(root, slide.title, {
+    left: 80,
+    top: 50,
+    width: 1440,
+    fontSize,
+    color,
+    fontFamily: fontFace,
+    fontWeight: '700',
+    lineHeight: 1.3,
+  });
+}
+
+function renderSlide(
+  slide: PPTSlide,
+  outline: PPTOutline,
+  slideIndex: number,
+  colorSchemeId: string,
+  fontFace: string,
+  fontSizeConfig?: PPTFontSize,
+) {
+  const colors = PPT_COLOR_SCHEMES.find((scheme) => scheme.id === colorSchemeId) || PPT_COLOR_SCHEMES[0];
+  const titleFS = fontSizeConfig?.titleSize || 32;
+  const bodyFS = fontSizeConfig?.bodySize || 16;
+  const captionFS = fontSizeConfig?.captionSize || 12;
+
+  const root = createElement('div', {
+    width: `${SLIDE_WIDTH}px`,
+    height: `${SLIDE_HEIGHT}px`,
+    position: 'relative',
+    overflow: 'hidden',
+    background: colors.background,
+    color: colors.text,
+    fontFamily: fontFace,
+  });
+
+  if (slide.type === 'title') {
+    addText(root, slide.title, {
+      left: 140,
+      top: 250,
+      width: 1320,
+      fontSize: titleFS + 26,
+      color: colors.primary,
+      textAlign: 'center',
+      fontFamily: fontFace,
+      fontWeight: '700',
+      lineHeight: 1.25,
+    });
+    if (slide.subtitle) {
+      addText(root, slide.subtitle, {
+        left: 180,
+        top: 420,
+        width: 1240,
+        fontSize: bodyFS + 10,
+        color: colors.text,
+        textAlign: 'center',
+        fontFamily: fontFace,
+      });
+    }
+    if (outline.keywords.length > 0) {
+      addText(root, outline.keywords.join('  •  '), {
+        left: 180,
+        top: 540,
+        width: 1240,
+        fontSize: captionFS + 8,
+        color: colors.accent,
+        textAlign: 'center',
+        fontFamily: fontFace,
+      });
+    }
+  } else if (slide.type === 'toc') {
+    addTitle(root, slide, colors.primary, titleFS + 2, fontFace);
+    addBullets(root, slide.bullets?.map((item, index) => `${index + 1}. ${item}`), {
+      left: 130,
+      top: 190,
+      width: 1260,
+      gap: 72,
+      fontSize: bodyFS + 8,
+      color: colors.text,
+      fontFamily: fontFace,
+      bullet: '',
+    });
+  } else if (slide.type === 'section') {
+    addBox(root, {
+      left: '0',
+      top: '300px',
+      width: '100%',
+      height: '220px',
+      background: colors.primary,
+    });
+    addText(root, slide.title, {
+      left: 140,
+      top: 360,
+      width: 1320,
+      fontSize: titleFS + 20,
+      color: '#ffffff',
+      textAlign: 'center',
+      fontFamily: fontFace,
+      fontWeight: '700',
+      lineHeight: 1.25,
+    });
+  } else if (slide.type === 'conclusion') {
+    addTitle(root, slide, colors.primary, titleFS + 4, fontFace);
+    addBullets(root, slide.bullets, {
+      left: 110,
+      top: 200,
+      width: 1320,
+      gap: 78,
+      fontSize: bodyFS + 8,
+      color: colors.text,
+      fontFamily: fontFace,
+      bullet: '✓',
+    });
+  } else if (slide.type === 'two-column') {
+    addTitle(root, slide, colors.primary, titleFS, fontFace);
+    addBox(root, {
+      left: '80px',
+      top: '112px',
+      width: '220px',
+      height: '8px',
+      background: colors.accent,
+    });
+    addBox(root, {
+      left: '800px',
+      top: '170px',
+      width: '2px',
+      height: '620px',
+      background: colors.accent,
+      opacity: '0.8',
+    });
+    if (slide.leftTitle) {
+      addText(root, slide.leftTitle, {
+        left: 110,
+        top: 170,
+        width: 610,
+        fontSize: bodyFS + 10,
+        color: colors.secondary,
+        fontFamily: fontFace,
+        fontWeight: '700',
+      });
+    }
+    if (slide.rightTitle) {
+      addText(root, slide.rightTitle, {
+        left: 860,
+        top: 170,
+        width: 610,
+        fontSize: bodyFS + 10,
+        color: colors.secondary,
+        fontFamily: fontFace,
+        fontWeight: '700',
+      });
+    }
+    addBullets(root, slide.leftBullets, {
+      left: 110,
+      top: 250,
+      width: 610,
+      gap: 58,
+      fontSize: bodyFS + 2,
+      color: colors.text,
+      fontFamily: fontFace,
+    });
+    addBullets(root, slide.rightBullets, {
+      left: 860,
+      top: 250,
+      width: 610,
+      gap: 58,
+      fontSize: bodyFS + 2,
+      color: colors.text,
+      fontFamily: fontFace,
+    });
+  } else if (slide.type === 'image-text') {
+    addTitle(root, slide, colors.primary, titleFS, fontFace);
+    addImageOrPlaceholder(root, slide, colors, fontFace);
+    addBullets(root, slide.bullets, {
+      left: 800,
+      top: 220,
+      width: 700,
+      gap: 72,
+      fontSize: bodyFS + 4,
+      color: colors.text,
+      fontFamily: fontFace,
+    });
+  } else if (slide.type === 'comparison') {
+    addTitle(root, slide, colors.primary, titleFS, fontFace);
+    addBox(root, {
+      left: '80px',
+      top: '180px',
+      width: '610px',
+      height: '560px',
+      background: colors.primary,
+      borderRadius: '24px',
+    });
+    addBox(root, {
+      left: '910px',
+      top: '180px',
+      width: '610px',
+      height: '560px',
+      background: colors.secondary,
+      borderRadius: '24px',
+    });
+    addText(root, 'VS', {
+      left: 720,
+      top: 410,
+      width: 160,
+      fontSize: 48,
+      color: colors.accent,
+      textAlign: 'center',
+      fontFamily: fontFace,
+      fontWeight: '700',
+    });
+    if (slide.leftTitle) {
+      addText(root, slide.leftTitle, {
+        left: 120,
+        top: 220,
+        width: 530,
+        fontSize: bodyFS + 12,
+        color: '#ffffff',
+        textAlign: 'center',
+        fontFamily: fontFace,
+        fontWeight: '700',
+      });
+    }
+    if (slide.rightTitle) {
+      addText(root, slide.rightTitle, {
+        left: 950,
+        top: 220,
+        width: 530,
+        fontSize: bodyFS + 12,
+        color: '#ffffff',
+        textAlign: 'center',
+        fontFamily: fontFace,
+        fontWeight: '700',
+      });
+    }
+    addBullets(root, slide.leftBullets, {
+      left: 130,
+      top: 320,
+      width: 510,
+      gap: 60,
+      fontSize: bodyFS + 2,
+      color: '#ffffff',
+      fontFamily: fontFace,
+    });
+    addBullets(root, slide.rightBullets, {
+      left: 960,
+      top: 320,
+      width: 510,
+      gap: 60,
+      fontSize: bodyFS + 2,
+      color: '#ffffff',
+      fontFamily: fontFace,
+    });
+  } else if (slide.type === 'quote') {
+    addTitle(root, slide, colors.primary, titleFS, fontFace);
+    addText(root, '"', {
+      left: 80,
+      top: 170,
+      width: 120,
+      fontSize: 140,
+      color: colors.accent,
+      fontFamily: 'Georgia',
+    });
+    if (slide.quoteText) {
+      addText(root, slide.quoteText, {
+        left: 220,
+        top: 250,
+        width: 1160,
+        fontSize: bodyFS + 18,
+        color: colors.text,
+        fontFamily: fontFace,
+        fontStyle: 'italic',
+        lineHeight: 1.6,
+      });
+    }
+    if (slide.quoteAuthor) {
+      addText(root, `— ${slide.quoteAuthor}`, {
+        left: 900,
+        top: 700,
+        width: 480,
+        fontSize: bodyFS + 4,
+        color: colors.secondary,
+        textAlign: 'right',
+        fontFamily: fontFace,
+      });
+    }
+  } else if (slide.type === 'timeline') {
+    addTitle(root, slide, colors.primary, titleFS, fontFace);
+    addBox(root, {
+      left: '120px',
+      top: '460px',
+      width: '1360px',
+      height: '6px',
+      background: colors.accent,
+    });
+    const items = slide.timelineItems || [];
+    const spacing = items.length > 1 ? 1240 / (items.length - 1) : 0;
+    items.forEach((item, index) => {
+      const x = 180 + index * spacing;
+      addBox(root, {
+        left: `${x - 12}px`,
+        top: '443px',
+        width: '24px',
+        height: '24px',
+        background: colors.primary,
+        borderRadius: '999px',
+      });
+      addText(root, item.year, {
+        left: x - 80,
+        top: 370,
+        width: 160,
+        fontSize: bodyFS + 2,
+        color: colors.primary,
+        textAlign: 'center',
+        fontFamily: fontFace,
+        fontWeight: '700',
+      });
+      addText(root, item.text, {
+        left: x - 110,
+        top: 500,
+        width: 220,
+        fontSize: captionFS + 2,
+        color: colors.text,
+        textAlign: 'center',
+        fontFamily: fontFace,
+      });
+    });
+  } else {
+    addTitle(root, slide, colors.primary, titleFS, fontFace);
+    addBox(root, {
+      left: '80px',
+      top: '112px',
+      width: '220px',
+      height: '8px',
+      background: colors.accent,
+    });
+    addBullets(root, slide.bullets, {
+      left: 110,
+      top: 180,
+      width: 1320,
+      gap: 72,
+      fontSize: bodyFS + 4,
+      color: colors.text,
+      fontFamily: fontFace,
+    });
+  }
+
+  if (slideIndex > 0) {
+    addText(root, String(slideIndex), {
+      left: 1460,
+      top: 835,
+      width: 80,
+      fontSize: captionFS + 4,
+      color: colors.accent,
+      textAlign: 'right',
+      fontFamily: fontFace,
+    });
+  }
+
+  return root;
+}
+
+async function waitForImages(root: HTMLElement) {
+  const images = Array.from(root.querySelectorAll('img'));
+  await Promise.all(images.map((image) => {
+    if (image.complete) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+    });
+  }));
+}
+
+async function captureSlide(node: HTMLElement) {
+  await waitForImages(node);
+  return html2canvas(node, {
+    backgroundColor: '#ffffff',
+    scale: 2,
+    useCORS: true,
+  });
+}
 
 export async function exportPDF(
   outline: PPTOutline,
   colorSchemeId: string,
-  fontSizeConfig?: PPTFontSize
+  fontFace: string = 'Microsoft YaHei',
+  fontSizeConfig?: PPTFontSize,
 ): Promise<void> {
-  const colorScheme = PPT_COLOR_SCHEMES.find(c => c.id === colorSchemeId) || PPT_COLOR_SCHEMES[0];
-  const titleFS = fontSizeConfig?.titleSize || 32;
-  const bodyFS = fontSizeConfig?.bodySize || 16;
-  
-  // Create PDF in landscape 16:9 format
+  const host = createElement('div', {
+    position: 'fixed',
+    left: '-100000px',
+    top: '0',
+    width: `${SLIDE_WIDTH}px`,
+    background: '#ffffff',
+  });
+  document.body.appendChild(host);
+
   const pdf = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
-    format: [297, 167], // A4 width, 16:9 height
+    format: [297, 167],
   });
 
-  const pageWidth = 297;
-  const pageHeight = 167;
-  
-  const hexToRgb = (hex: string): [number, number, number] => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result 
-      ? [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)]
-      : [0, 0, 0];
-  };
-
-  const primaryRgb = hexToRgb(colorScheme.primary);
-  const textRgb = hexToRgb(colorScheme.text);
-  const accentRgb = hexToRgb(colorScheme.accent);
-  const secondaryRgb = hexToRgb(colorScheme.secondary);
-  const bgRgb = hexToRgb(colorScheme.background);
-
-  outline.slides.forEach((slide, index) => {
-    if (index > 0) pdf.addPage();
-    
-    // Background
-    pdf.setFillColor(...bgRgb);
-    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
-
-    if (slide.type === 'title') {
-      // Title slide
-      pdf.setFontSize(titleFS + 4);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, pageWidth / 2, 70, { align: 'center' });
-      
-      if (slide.subtitle) {
-        pdf.setFontSize(bodyFS);
-        pdf.setTextColor(...textRgb);
-        pdf.text(slide.subtitle, pageWidth / 2, 90, { align: 'center' });
+  try {
+    for (let index = 0; index < outline.slides.length; index++) {
+      const slideNode = renderSlide(outline.slides[index], outline, index, colorSchemeId, fontFace, fontSizeConfig);
+      host.appendChild(slideNode);
+      const canvas = await captureSlide(slideNode);
+      const image = canvas.toDataURL('image/png');
+      if (index > 0) {
+        pdf.addPage([297, 167], 'landscape');
       }
-      
-      if (outline.keywords.length > 0) {
-        pdf.setFontSize(bodyFS - 6);
-        pdf.setTextColor(...accentRgb);
-        pdf.text(outline.keywords.join('  •  '), pageWidth / 2, 110, { align: 'center' });
-      }
-    } else if (slide.type === 'toc') {
-      // Table of contents
-      pdf.setFontSize(titleFS - 8);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 25);
-      
-      if (slide.bullets) {
-        pdf.setFontSize(bodyFS - 2);
-        pdf.setTextColor(...textRgb);
-        slide.bullets.forEach((item, i) => {
-          pdf.text(`${i + 1}. ${item}`, 30, 45 + i * 12);
-        });
-      }
-    } else if (slide.type === 'section') {
-      // Section divider
-      pdf.setFillColor(...primaryRgb);
-      pdf.rect(0, 60, pageWidth, 35, 'F');
-      
-      pdf.setFontSize(28);
-      pdf.setTextColor(255, 255, 255);
-      pdf.text(slide.title, pageWidth / 2, 82, { align: 'center' });
-    } else if (slide.type === 'conclusion') {
-      // Conclusion slide
-      pdf.setFontSize(24);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 25);
-      
-      if (slide.bullets) {
-        pdf.setFontSize(14);
-        pdf.setTextColor(...textRgb);
-        slide.bullets.forEach((item, i) => {
-          pdf.text(`✓ ${item}`, 25, 50 + i * 14);
-        });
-      }
-    } else if (slide.type === 'two-column') {
-      // Two-column layout
-      pdf.setFontSize(22);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 22);
-      
-      // Accent line
-      pdf.setFillColor(...accentRgb);
-      pdf.rect(20, 26, 40, 1.5, 'F');
-      
-      // Left column
-      if (slide.leftTitle) {
-        pdf.setFontSize(14);
-        pdf.setTextColor(...secondaryRgb);
-        pdf.text(slide.leftTitle, 25, 42);
-      }
-      if (slide.leftBullets) {
-        pdf.setFontSize(11);
-        pdf.setTextColor(...textRgb);
-        slide.leftBullets.forEach((item, i) => {
-          pdf.text(`• ${item}`, 28, 54 + i * 10);
-        });
-      }
-      
-      // Vertical divider
-      pdf.setDrawColor(...accentRgb);
-      pdf.setLineWidth(0.3);
-      pdf.line(pageWidth / 2, 35, pageWidth / 2, 150);
-      
-      // Right column
-      if (slide.rightTitle) {
-        pdf.setFontSize(14);
-        pdf.setTextColor(...secondaryRgb);
-        pdf.text(slide.rightTitle, pageWidth / 2 + 10, 42);
-      }
-      if (slide.rightBullets) {
-        pdf.setFontSize(11);
-        pdf.setTextColor(...textRgb);
-        slide.rightBullets.forEach((item, i) => {
-          pdf.text(`• ${item}`, pageWidth / 2 + 13, 54 + i * 10);
-        });
-      }
-    } else if (slide.type === 'image-text') {
-      // Image-text layout
-      pdf.setFontSize(22);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 22);
-      
-      // Image placeholder
-      pdf.setFillColor(...accentRgb);
-      pdf.roundedRect(20, 35, 110, 100, 3, 3, 'F');
-      pdf.setFontSize(32);
-      pdf.setTextColor(255, 255, 255);
-      pdf.text('🖼️', 70, 85, { align: 'center' });
-      pdf.setFontSize(10);
-      pdf.text(slide.imagePlaceholder || '图片占位符', 75, 115, { align: 'center' });
-      
-      // Text content
-      if (slide.bullets) {
-        pdf.setFontSize(12);
-        pdf.setTextColor(...textRgb);
-        slide.bullets.forEach((item, i) => {
-          pdf.text(`• ${item}`, 145, 50 + i * 14);
-        });
-      }
-    } else if (slide.type === 'comparison') {
-      // Comparison layout
-      pdf.setFontSize(22);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 22);
-      
-      // Left box
-      pdf.setFillColor(...primaryRgb);
-      pdf.roundedRect(20, 35, 115, 110, 5, 5, 'F');
-      if (slide.leftTitle) {
-        pdf.setFontSize(16);
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(slide.leftTitle, 78, 50, { align: 'center' });
-      }
-      if (slide.leftBullets) {
-        pdf.setFontSize(11);
-        slide.leftBullets.forEach((item, i) => {
-          pdf.text(`• ${item}`, 28, 68 + i * 12);
-        });
-      }
-      
-      // VS
-      pdf.setFontSize(18);
-      pdf.setTextColor(...accentRgb);
-      pdf.text('VS', pageWidth / 2, 90, { align: 'center' });
-      
-      // Right box
-      pdf.setFillColor(...secondaryRgb);
-      pdf.roundedRect(162, 35, 115, 110, 5, 5, 'F');
-      if (slide.rightTitle) {
-        pdf.setFontSize(16);
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(slide.rightTitle, 220, 50, { align: 'center' });
-      }
-      if (slide.rightBullets) {
-        pdf.setFontSize(11);
-        slide.rightBullets.forEach((item, i) => {
-          pdf.text(`• ${item}`, 170, 68 + i * 12);
-        });
-      }
-    } else if (slide.type === 'quote') {
-      // Quote layout
-      pdf.setFontSize(22);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 22);
-      
-      // Quote mark
-      pdf.setFontSize(72);
-      pdf.setTextColor(...accentRgb);
-      pdf.text('"', 20, 65);
-      
-      // Quote text
-      if (slide.quoteText) {
-        pdf.setFontSize(18);
-        pdf.setTextColor(...textRgb);
-        const lines = pdf.splitTextToSize(slide.quoteText, 220);
-        pdf.text(lines, 45, 75);
-      }
-      
-      // Author
-      if (slide.quoteAuthor) {
-        pdf.setFontSize(12);
-        pdf.setTextColor(...secondaryRgb);
-        pdf.text(`— ${slide.quoteAuthor}`, pageWidth - 40, 130, { align: 'right' });
-      }
-    } else if (slide.type === 'timeline') {
-      // Timeline layout
-      pdf.setFontSize(22);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 22);
-      
-      // Timeline line
-      pdf.setDrawColor(...accentRgb);
-      pdf.setLineWidth(1);
-      pdf.line(30, 85, pageWidth - 30, 85);
-      
-      // Timeline items
-      const items = slide.timelineItems || [];
-      const spacing = items.length > 1 ? (pageWidth - 80) / (items.length - 1) : 0;
-      items.forEach((item, i) => {
-        const x = 40 + i * spacing;
-        // Dot
-        pdf.setFillColor(...primaryRgb);
-        pdf.circle(x, 85, 4, 'F');
-        // Year
-        pdf.setFontSize(12);
-        pdf.setTextColor(...primaryRgb);
-        pdf.text(item.year, x, 72, { align: 'center' });
-        // Text
-        pdf.setFontSize(9);
-        pdf.setTextColor(...textRgb);
-        const textLines = pdf.splitTextToSize(item.text, 40);
-        pdf.text(textLines, x, 98, { align: 'center' });
-      });
-    } else {
-      // Default content slide
-      pdf.setFontSize(22);
-      pdf.setTextColor(...primaryRgb);
-      pdf.text(slide.title, 20, 22);
-      
-      // Accent line
-      pdf.setFillColor(...accentRgb);
-      pdf.rect(20, 26, 40, 1.5, 'F');
-      
-      if (slide.bullets) {
-        pdf.setFontSize(13);
-        pdf.setTextColor(...textRgb);
-        slide.bullets.forEach((item, i) => {
-          pdf.text(`• ${item}`, 25, 45 + i * 14);
-        });
-      }
+      pdf.addImage(image, 'PNG', 0, 0, 297, 167);
+      host.removeChild(slideNode);
     }
 
-    // Page number (except title)
-    if (index > 0) {
-      pdf.setFontSize(9);
-      pdf.setTextColor(...accentRgb);
-      pdf.text(`${index}`, pageWidth - 15, pageHeight - 8);
-    }
-  });
-
-  pdf.save(`${outline.title || 'presentation'}.pdf`);
+    pdf.save(`${outline.title || 'presentation'}.pdf`);
+  } finally {
+    document.body.removeChild(host);
+  }
 }
