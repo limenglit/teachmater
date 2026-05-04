@@ -67,15 +67,21 @@ export default function StudentAnalytics({ studentNames }: Props) {
 
     try {
       // Query all data sources in parallel
-      const [boardRes, boardCommentRes, taskRes, barrageRes, quizRes, checkinRes, seatCheckinRes] = await Promise.all([
+      const [boardRes, boardCommentRes, taskRes, barrageRes, quizRes, checkinAggRes] = await Promise.all([
         supabase.from('board_cards').select('author_nickname, likes_count').gte('created_at', fromISO).lte('created_at', toISO).in('author_nickname', studentNames),
         supabase.from('board_comments').select('author_nickname, created_at').gte('created_at', fromISO).lte('created_at', toISO).in('author_nickname', studentNames),
         supabase.from('task_completions').select('student_name').gte('completed_at', fromISO).lte('completed_at', toISO).in('student_name', studentNames),
         supabase.from('barrage_messages').select('nickname').gte('created_at', fromISO).lte('created_at', toISO).in('nickname', studentNames),
         supabase.from('quiz_answers').select('student_name, session_id').gte('created_at', fromISO).lte('created_at', toISO).in('student_name', studentNames),
-        supabase.from('checkin_records').select('student_name').gte('checked_in_at', fromISO).lte('checked_in_at', toISO).in('student_name', studentNames),
-        supabase.from('seat_checkin_records').select('student_name').gte('checked_in_at', fromISO).lte('checked_in_at', toISO).in('student_name', studentNames),
+        supabase.rpc('get_student_checkin_counts_for_owner', { p_student_names: studentNames, p_from: fromISO, p_to: toISO } as any),
       ]);
+      // Build pseudo arrays for downstream aggregation compatibility
+      const checkinRes: any = { data: [] as any[] };
+      const seatCheckinRes: any = { data: [] as any[] };
+      ((checkinAggRes as any).data || []).forEach((row: any) => {
+        const arr = row.source === 'seat' ? seatCheckinRes.data : checkinRes.data;
+        for (let i = 0; i < Number(row.c || 0); i++) arr.push({ student_name: row.student_name });
+      });
 
       // Aggregate board participation & likes
       const bc: Record<string, number> = {};

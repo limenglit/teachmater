@@ -66,6 +66,14 @@ export default function CheckInPanel() {
     if (!session || session.status !== 'active') return;
 
     const loadExisting = async () => {
+      const token = (session as any).creator_token;
+      if (token) {
+        const { data } = await supabase.rpc('get_checkin_records_for_owner', {
+          p_session_id: session.id,
+          p_token: token,
+        } as any);
+        if (Array.isArray(data)) { setRecords(data as CheckinRecord[]); return; }
+      }
       const { data } = await supabase
         .from('checkin_records')
         .select('*')

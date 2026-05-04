@@ -232,14 +232,10 @@ export default function TaskChecklist() {
       }
 
       if (tokens.length > 0) {
-        const { data, error } = await supabase
-          .from('task_sessions')
-          .select('*')
-          .in('creator_token', tokens)
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.rpc('get_task_sessions_by_tokens', { p_tokens: tokens } as any);
         if (error) throw error;
 
-        for (const row of data || []) {
+        for (const row of (data as any[]) || []) {
           const session = parseTaskSession(row);
           if (!merged.some((item) => item.id === session.id)) {
             merged.push(session);

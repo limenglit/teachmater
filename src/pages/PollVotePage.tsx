@@ -33,7 +33,7 @@ export default function PollVotePage() {
 
   useEffect(() => {
     if (!pollId) return;
-    supabase.from('polls').select('*').eq('id', pollId).single()
+    supabase.from('polls').select('id,title,poll_type,options,status').eq('id', pollId).single()
       .then(({ data }) => {
         if (data) setPoll(data as any);
         setLoading(false);
