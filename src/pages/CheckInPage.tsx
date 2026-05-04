@@ -21,11 +21,7 @@ export default function CheckInPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    supabase
-      .from('checkin_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single()
+    supabase.rpc('get_checkin_session_for_student', { p_session_id: sessionId } as any)
       .then(({ data, error }) => {
         if (error || !data) {
           setSessionValid(false);
@@ -79,13 +75,11 @@ export default function CheckInPage() {
     const trimmed = name.trim();
     if (!trimmed || !sessionId) return;
     setStatus('loading');
-    const { data: existing } = await supabase
-      .from('checkin_records')
-      .select('id')
-      .eq('session_id', sessionId)
-      .eq('student_name', trimmed)
-      .maybeSingle();
-    if (existing) {
+    const { data: existing } = await supabase.rpc('has_checkin_record', {
+      p_session_id: sessionId,
+      p_student_name: trimmed,
+    } as any);
+    if (existing === true) {
       setStatus('success');
       return;
     }

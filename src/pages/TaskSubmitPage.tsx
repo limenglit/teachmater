@@ -33,23 +33,16 @@ export default function TaskSubmitPage() {
 
   const loadSession = async () => {
     if (!sessionId) return;
-    const { data } = await supabase
-      .from('task_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .single();
+    const { data } = await supabase.rpc('get_task_session_for_student', { p_session_id: sessionId } as any);
     if (data) {
-      const tasks = typeof (data as any).tasks === 'string'
-        ? JSON.parse((data as any).tasks)
-        : (data as any).tasks;
-      const names = typeof (data as any).student_names === 'string'
-        ? JSON.parse((data as any).student_names)
-        : ((data as any).student_names || []);
+      const d: any = data;
+      const tasks = typeof d.tasks === 'string' ? JSON.parse(d.tasks) : d.tasks;
+      const names = typeof d.student_names === 'string' ? JSON.parse(d.student_names) : (d.student_names || []);
       setSession({
-        id: (data as any).id,
-        title: (data as any).title,
+        id: d.id,
+        title: d.title,
         tasks,
-        status: (data as any).status,
+        status: d.status,
         student_names: names,
       });
     }
