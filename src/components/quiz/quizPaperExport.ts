@@ -81,7 +81,12 @@ export function getQuizPaperExportRows(paper: QuizPaper, includeAnswers: boolean
   });
 }
 
-export function createQuizPaperExportContainer(paper: QuizPaper, includeAnswers: boolean, labels: QuizPaperExportLabels) {
+export function createQuizPaperExportContainer(
+  paper: QuizPaper,
+  includeAnswers: boolean,
+  labels: QuizPaperExportLabels,
+  options?: { includeTitle?: boolean },
+) {
   const host = document.createElement('div');
   host.style.position = 'fixed';
   host.style.left = '-100000px';
@@ -98,13 +103,15 @@ export function createQuizPaperExportContainer(paper: QuizPaper, includeAnswers:
   container.style.fontFamily = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif';
   container.style.padding = '8px 16px 24px';
 
-  const title = document.createElement('h1');
-  title.style.fontSize = '24px';
-  title.style.fontWeight = '700';
-  title.style.textAlign = 'center';
-  title.style.margin = '0 0 8px';
-  title.textContent = paper.title;
-  container.appendChild(title);
+  if (options?.includeTitle !== false) {
+    const title = document.createElement('h1');
+    title.style.fontSize = '24px';
+    title.style.fontWeight = '700';
+    title.style.textAlign = 'center';
+    title.style.margin = '0 0 8px';
+    title.textContent = paper.title;
+    container.appendChild(title);
+  }
 
   if (paper.description) {
     const description = document.createElement('p');
@@ -331,7 +338,7 @@ async function exportQuizPaperExcel(paper: QuizPaper, includeAnswers: boolean, l
 }
 
 async function exportQuizPaperPdf(paper: QuizPaper, includeAnswers: boolean, labels: QuizPaperExportLabels) {
-  const { host, container } = createQuizPaperExportContainer(paper, includeAnswers, labels);
+  const { host, container } = createQuizPaperExportContainer(paper, includeAnswers, labels, { includeTitle: false });
   document.body.appendChild(host);
 
   try {

@@ -98,6 +98,11 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     return String(q.correct_answer ?? '');
   };
 
+  const getExportLabel = (key: string, fallback: string) => {
+    const value = t(key);
+    return !value || value === key ? fallback : value;
+  };
+
   const exportLabels = useMemo(() => ({
     single: t('quiz.single'),
     multi: t('quiz.multi'),
@@ -105,8 +110,8 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     short: t('quiz.short'),
     totalScore: t('quiz.paper.totalScore'),
     points: t('quiz.paper.points'),
-    answer: t('quiz.imp.answer') || '答案',
-    explanation: t('quiz.imp.explanation') || '解析',
+    answer: getExportLabel('quiz.imp.answer', '答案'),
+    explanation: getExportLabel('quiz.imp.explanation', '解析'),
     questionsUnit: t('quiz.imp.questionsUnit'),
   }), [t]);
 
