@@ -30,8 +30,7 @@ import {
   duplicateLocalPaper,
   normalizeQuizOptionText,
 } from '@/lib/quiz-utils';
-import { writeExcelFile } from '@/lib/excel-utils';
-import { exportToPDF } from '@/lib/export';
+import { exportQuizPaper, type QuizPaperExportFormat } from './quizPaperExport';
 
 interface Props {
   papers: QuizPaper[];
@@ -67,6 +66,9 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
   ]);
   const [autoTitle, setAutoTitle] = useState('');
   const [autoTags, setAutoTags] = useState('');
+  const [exportPaper, setExportPaper] = useState<QuizPaper | null>(null);
+  const [exportFormat, setExportFormat] = useState<QuizPaperExportFormat>('xlsx');
+  const [exportWithAnswers, setExportWithAnswers] = useState(false);
 
   // Question picker
   const [showPicker, setShowPicker] = useState(false);
@@ -95,6 +97,18 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     if (Array.isArray(q.correct_answer)) return q.correct_answer.join(', ');
     return String(q.correct_answer ?? '');
   };
+
+  const exportLabels = useMemo(() => ({
+    single: t('quiz.single'),
+    multi: t('quiz.multi'),
+    tf: t('quiz.tf'),
+    short: t('quiz.short'),
+    totalScore: t('quiz.paper.totalScore'),
+    points: t('quiz.paper.points'),
+    answer: t('quiz.imp.answer') || '答案',
+    explanation: t('quiz.imp.explanation') || '解析',
+    questionsUnit: t('quiz.imp.questionsUnit'),
+  }), [t]);
 
   const reorderPaperQs = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= paperQs.length || to >= paperQs.length) return;
@@ -257,106 +271,23 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     toast({ title: `${t('quiz.paper.generated')} ${result.length} ${t('quiz.imp.questionsUnit')}` });
   };
 
-  const exportPaperExcel = (p: QuizPaper) => {
-    const qs = (p.questions as PaperQuestion[]);
-    const rows = qs.map((pq, i) => [
-      i + 1, pq.question.type === 'single' ? '单选' : pq.question.type === 'multi' ? '多选' : pq.question.type === 'tf' ? '判断' : '简答',
-      pq.question.content,
-      ...(['A', 'B', 'C', 'D'].map((_, oi) => pq.question.options[oi] || '')),
-      Array.isArray(pq.question.correct_answer) ? pq.question.correct_answer.join(',') : pq.question.correct_answer,
-      pq.score,
-    ]);
-    const headers = ['序号', '题型', '题目', '选项A', '选项B', '选项C', '选项D', '答案', '分值'];
-    writeExcelFile(
-      [headers, ...rows],
-      p.title.slice(0, 30),
-      `${p.title}.xlsx`,
-      [5, 6, 40, 15, 15, 15, 15, 8, 5]
-    );
-  };
-
-  const exportPaperPDF = async (p: QuizPaper) => {
-    const host = document.createElement('div');
-    host.style.position = 'fixed';
-    host.style.left = '-100000px';
-    host.style.top = '0';
-    host.style.width = '820px';
-    host.style.padding = '0';
-    host.style.background = '#ffffff';
-
-    const container = document.createElement('div');
-    container.style.width = '100%';
-    container.style.boxSizing = 'border-box';
-    container.style.background = '#ffffff';
-    container.style.color = '#111827';
-    container.style.fontFamily = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif';
-    container.style.padding = '8px 16px 24px';
-
-    const meta = document.createElement('div');
-    meta.style.display = 'flex';
-    meta.style.justifyContent = 'space-between';
-    meta.style.alignItems = 'center';
-    meta.style.marginBottom = '16px';
-    meta.style.paddingBottom = '8px';
-    meta.style.borderBottom = '1px solid #e5e7eb';
-    meta.style.fontSize = '14px';
-    meta.innerHTML = `
-      <span>题目数：${p.questions.length}</span>
-      <span>${t('quiz.paper.totalScore')}: ${p.total_score}</span>
-    `;
-    container.appendChild(meta);
-
-    (p.questions as PaperQuestion[]).forEach((pq, index) => {
-      const card = document.createElement('div');
-      card.style.padding = '0 0 14px';
-      card.style.marginBottom = '14px';
-      card.style.borderBottom = '1px dashed #d1d5db';
-      card.style.breakInside = 'avoid';
-      (card.style as any).pageBreakInside = 'avoid';
-
-      const title = document.createElement('div');
-      title.style.fontSize = '16px';
-      title.style.lineHeight = '1.7';
-      title.style.fontWeight = '600';
-      title.style.whiteSpace = 'pre-wrap';
-      title.textContent = `${index + 1}. (${pq.score}${t('quiz.paper.points')}) ${pq.question.content}`;
-      card.appendChild(title);
-
-      if (pq.question.options.length > 0) {
-        const options = document.createElement('div');
-        options.style.marginTop = '10px';
-        options.style.paddingLeft = '8px';
-        options.style.display = 'grid';
-        options.style.gap = '8px';
-
-        pq.question.options.forEach((opt, optionIndex) => {
-          const option = document.createElement('div');
-          option.style.fontSize = '14px';
-          option.style.lineHeight = '1.7';
-          option.style.whiteSpace = 'pre-wrap';
-          option.textContent = `${String.fromCharCode(65 + optionIndex)}. ${normalizeQuizOptionText(opt, optionIndex)}`;
-          options.appendChild(option);
-        });
-
-        card.appendChild(options);
-      }
-
-      container.appendChild(card);
-    });
-
-    host.appendChild(container);
-    document.body.appendChild(host);
+  const confirmExportPaper = async () => {
+    if (!exportPaper) return;
 
     try {
-      await exportToPDF(container, p.title, p.title);
+      await exportQuizPaper(exportPaper, {
+        format: exportFormat,
+        includeAnswers: exportWithAnswers,
+        labels: exportLabels,
+      });
+      setExportPaper(null);
     } catch (error) {
+      const formatLabel = exportFormat === 'pdf' ? 'PDF' : exportFormat === 'docx' ? 'DOCX' : 'Excel';
       toast({
-        title: 'PDF 导出失败',
+        title: `${formatLabel} 导出失败`,
         description: error instanceof Error ? error.message : '请重试',
         variant: 'destructive',
       });
-    } finally {
-      document.body.removeChild(host);
     }
   };
 
@@ -687,11 +618,18 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => duplicatePaperHandler(p)} title={t('quiz.paper.duplicate')}>
                       <Copy className="w-3 h-3 text-muted-foreground" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => exportPaperExcel(p)} title="Excel">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => {
+                        setExportPaper(p);
+                        setExportFormat('xlsx');
+                        setExportWithAnswers(false);
+                      }}
+                      title={t('quiz.paper.export') || '导出'}
+                    >
                       <Download className="w-3 h-3 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => exportPaperPDF(p)} title="PDF">
-                      <FileText className="w-3 h-3 text-muted-foreground" />
                     </Button>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => deletePaper(p.id)}>
                       <Trash2 className="w-3 h-3 text-destructive" />
@@ -709,6 +647,42 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
           })}
         </div>
       )}
+
+      <Dialog open={!!exportPaper} onOpenChange={(open) => !open && setExportPaper(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{t('quiz.paper.export') || '导出试卷'}</DialogTitle>
+            <DialogDescription>
+              {exportPaper?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">{t('quiz.paper.exportFormat') || '导出格式'}</label>
+              <Select value={exportFormat} onValueChange={(value: QuizPaperExportFormat) => setExportFormat(value)}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
+                  <SelectItem value="pdf">PDF (.pdf)</SelectItem>
+                  <SelectItem value="docx">DOCX (.docx)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-foreground">
+              <Checkbox checked={exportWithAnswers} onCheckedChange={(value) => setExportWithAnswers(!!value)} />
+              <span>{t('quiz.paper.exportWithAnswers') || '同时导出答案与解析'}</span>
+            </label>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setExportPaper(null)}>{t('quiz.cancel')}</Button>
+              <Button size="sm" onClick={() => { void confirmExportPaper(); }} className="gap-1">
+                <FileText className="w-3.5 h-3.5" /> {t('quiz.paper.export') || '导出'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
