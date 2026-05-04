@@ -180,8 +180,17 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
     return [] as SeatCheckinHistoryRow[];
   };
 
-  // 1) Prefer owner-linked sessions (newer flow with token).
-  if (ids.length > 0) {
+  // 1) Prefer owner-linked sessions via token RPC (works for guest teachers).
+  const tokens = Object.values(getSeatCheckinSessionTokens()).filter(Boolean);
+  if (tokens.length > 0) {
+    const { data, error } = await supabase.rpc('get_seat_checkin_sessions_by_tokens', { p_tokens: tokens } as any);
+    if (!error && Array.isArray(data)) {
+      rows = data as SeatCheckinHistoryRow[];
+    }
+  }
+
+  // 2) Fallback: id-based query (works for logged-in owners via RLS).
+  if (rows.length === 0 && ids.length > 0) {
     rows = await queryHistoryRows((selectClause) =>
       supabase
         .from('seat_checkin_sessions')
@@ -191,25 +200,7 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
     );
   }
 
-  // 2) Compatibility fallback: load recent scene sessions when token list is empty
-  // or when owner-linked sessions are not available yet.
-  if (rows.length === 0) {
-    rows = await queryHistoryRows((selectClause) => {
-      let query = supabase
-        .from('seat_checkin_sessions')
-        .select(selectClause)
-        .order('created_at', { ascending: false })
-        .limit(30);
-
-      if (sceneType) {
-        query = query.eq('scene_type', sceneType);
-      }
-
-      return query;
-    });
-
-    if (rows.length === 0) return [];
-  }
+  if (rows.length === 0) return [];
 
   return rows
     .filter(item => !sceneType || item.scene_type === sceneType)
