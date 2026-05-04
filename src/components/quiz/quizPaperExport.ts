@@ -211,16 +211,17 @@ function createMultilineTextRuns(text: string, options?: ConstructorParameters<t
 }
 
 function createParagraph(options: Omit<IParagraphOptions, 'children'> & { text: string; prefix?: string; boldPrefix?: boolean }) {
+  const { text, prefix, boldPrefix, ...paragraphOptions } = options;
   const children: TextRun[] = [];
 
-  if (options.prefix) {
-    children.push(new TextRun({ text: options.prefix, bold: options.boldPrefix }));
+  if (prefix) {
+    children.push(new TextRun({ text: prefix, bold: boldPrefix }));
   }
 
-  children.push(...createMultilineTextRuns(options.text));
+  children.push(...createMultilineTextRuns(text));
 
   return new Paragraph({
-    ...options,
+    ...paragraphOptions,
     children,
   });
 }
