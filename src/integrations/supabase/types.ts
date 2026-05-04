@@ -341,6 +341,7 @@ export type Database = {
           id: string
           status: string
           student_names: Json | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -350,6 +351,7 @@ export type Database = {
           id?: string
           status?: string
           student_names?: Json | null
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -359,6 +361,7 @@ export type Database = {
           id?: string
           status?: string
           student_names?: Json | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -956,30 +959,36 @@ export type Database = {
       seat_checkin_sessions: {
         Row: {
           created_at: string
+          creator_token: string | null
           id: string
           scene_config: Json
           scene_type: string
           seat_data: Json
           status: string
           student_names: Json
+          user_id: string | null
         }
         Insert: {
           created_at?: string
+          creator_token?: string | null
           id?: string
           scene_config?: Json
           scene_type?: string
           seat_data?: Json
           status?: string
           student_names?: Json
+          user_id?: string | null
         }
         Update: {
           created_at?: string
+          creator_token?: string | null
           id?: string
           scene_config?: Json
           scene_type?: string
           seat_data?: Json
           status?: string
           student_names?: Json
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1419,6 +1428,45 @@ export type Database = {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
       }
+      get_checkin_records_for_owner: {
+        Args: { p_session_id: string; p_token: string }
+        Returns: {
+          checked_in_at: string
+          id: string
+          session_id: string
+          status: string
+          student_name: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "checkin_records"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_checkin_session_for_student: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      get_checkin_sessions_by_tokens: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          created_at: string
+          creator_token: string
+          duration_minutes: number
+          ended_at: string | null
+          id: string
+          status: string
+          student_names: Json | null
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "checkin_sessions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_my_status: { Args: never; Returns: string }
       get_pending_users: {
         Args: never
@@ -1430,6 +1478,23 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_poll_votes_for_owner: {
+        Args: { p_poll_id: string; p_token: string }
+        Returns: {
+          created_at: string
+          id: string
+          poll_id: string
+          selected_options: Json
+          voter_name: string
+          voter_token: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "poll_votes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_quiz_session_for_student: {
         Args: { p_session_id: string }
         Returns: Json
@@ -1438,11 +1503,100 @@ export type Database = {
         Args: { p_session_id: string; p_student_name: string }
         Returns: Json
       }
+      get_seat_checkin_guest_records: {
+        Args: { p_session_id: string }
+        Returns: {
+          checked_in_at: string
+          student_name: string
+        }[]
+      }
+      get_seat_checkin_records_for_owner: {
+        Args: { p_session_id: string; p_token: string }
+        Returns: {
+          checked_in_at: string
+          id: string
+          session_id: string
+          student_name: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "seat_checkin_records"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_seat_checkin_seat_data: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      get_seat_checkin_session_for_student: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      get_seat_checkin_sessions_by_tokens: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          created_at: string
+          creator_token: string | null
+          id: string
+          scene_config: Json
+          scene_type: string
+          seat_data: Json
+          status: string
+          student_names: Json
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "seat_checkin_sessions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_student_checkin_counts_for_owner: {
+        Args: { p_from: string; p_student_names: string[]; p_to: string }
+        Returns: {
+          c: number
+          source: string
+          student_name: string
+        }[]
+      }
+      get_task_session_for_student: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      get_task_sessions_by_tokens: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          created_at: string
+          creator_token: string
+          id: string
+          status: string
+          student_names: Json | null
+          tasks: Json
+          title: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "task_sessions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      has_checkin_record: {
+        Args: { p_session_id: string; p_student_name: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      has_seat_checkin_record: {
+        Args: { p_session_id: string; p_student_name: string }
         Returns: boolean
       }
       manage_board_card: {
