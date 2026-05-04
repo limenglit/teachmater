@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -209,14 +210,15 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
       if (trimmed.startsWith('### ')) {
         return <h3 key={i} className="text-base font-semibold text-foreground mt-4 mb-2">{trimmed.slice(4)}</h3>;
       }
+      const sanitize = (s: string) => DOMPurify.sanitize(s, { ALLOWED_TAGS: ['strong', 'em', 'br'], ALLOWED_ATTR: [] });
       if (trimmed.startsWith('- ')) {
-        const content = trimmed.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        const content = sanitize(trimmed.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
         return (
           <li key={i} className="text-sm text-foreground/85 ml-4 mb-1 list-disc" dangerouslySetInnerHTML={{ __html: content }} />
         );
       }
       if (trimmed === '') return <div key={i} className="h-2" />;
-      const content = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      const content = sanitize(trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'));
       return <p key={i} className="text-sm text-foreground/85 mb-1" dangerouslySetInnerHTML={{ __html: content }} />;
     });
   };
