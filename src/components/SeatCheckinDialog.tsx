@@ -319,14 +319,10 @@ export default function SeatCheckinDialog({
     if (!currentSession) return;
 
     let canceled = false;
-    void supabase
-      .from('seat_checkin_sessions')
-      .select('seat_data')
-      .eq('id', currentSession.id)
-      .maybeSingle()
+    void supabase.rpc('get_seat_checkin_seat_data', { p_session_id: currentSession.id } as any)
       .then(({ data }) => {
         if (canceled) return;
-        setSessionSeatData((data as { seat_data?: unknown } | null)?.seat_data ?? null);
+        setSessionSeatData((data as unknown) ?? null);
       })
       .then(null, () => {
         if (canceled) return;

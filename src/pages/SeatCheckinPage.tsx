@@ -31,18 +31,12 @@ const saveStoredSeatCheckinName = (sessionId: string, studentName: string) => {
 };
 
 const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: string) => {
-  const { data, error } = await supabase
-    .from('seat_checkin_records')
-    .select('id')
-    .eq('session_id', sessionId)
-    .eq('student_name', studentName)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  return Boolean(data);
+  const { data, error } = await supabase.rpc('has_seat_checkin_record', {
+    p_session_id: sessionId,
+    p_student_name: studentName,
+  } as any);
+  if (error) throw error;
+  return data === true;
 };
 
 const isSeatEmptyValue = (value: unknown) => value === null || value === '';
@@ -231,11 +225,9 @@ export default function SeatCheckinPage() {
       };
     }
 
-    const { data, error } = await supabase
-      .from('seat_checkin_records')
-      .select('student_name, checked_in_at')
-      .eq('session_id', sessionId)
-      .order('checked_in_at', { ascending: true });
+    const { data, error } = await supabase.rpc('get_seat_checkin_guest_records', {
+      p_session_id: sessionId,
+    } as any);
 
     if (error) throw error;
 
@@ -284,19 +276,20 @@ export default function SeatCheckinPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    supabase.from('seat_checkin_sessions').select('*').eq('id', sessionId).single()
+    supabase.rpc('get_seat_checkin_session_for_student', { p_session_id: sessionId } as any)
       .then(async ({ data, error }) => {
         if (error || !data) {
           toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
           setLoading(false);
           return;
         }
+        const d: any = data;
         const nextSession = {
-          seat_data: data.seat_data,
-          student_names: data.student_names as unknown as string[],
-          scene_config: data.scene_config as unknown as Record<string, unknown>,
-          scene_type: (data as Record<string, unknown>).scene_type as string || 'classroom',
-          status: (data as Record<string, unknown>).status as string || 'active',
+          seat_data: d.seat_data,
+          student_names: d.student_names as unknown as string[],
+          scene_config: d.scene_config as unknown as Record<string, unknown>,
+          scene_type: (d.scene_type as string) || 'classroom',
+          status: (d.status as string) || 'active',
         };
         setSession(nextSession);
 
