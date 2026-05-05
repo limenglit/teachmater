@@ -90,6 +90,11 @@ serve(async (req) => {
     if (!supabaseUrl || !serviceRoleKey) throw new Error('Supabase service credentials are not configured');
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Server-side AI quota
+    const { data: quotaOk } = await supabaseClient.rpc('consume_ai_quota', { p_user_id: userId });
+    if (quotaOk === false) return errorResponse('已达今日 AI 使用上限', 429);
+
     const { data: topic, error: topicError } = await supabaseClient
       .from('discussion_topics').select('id, creator_token').eq('id', topic_id).maybeSingle();
     if (topicError) { console.error('Failed to load discussion topic:', topicError); return errorResponse('Topic lookup failed', 500); }
