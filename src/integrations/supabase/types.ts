@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_log: {
+        Row: {
+          count: number
+          id: string
+          updated_at: string
+          used_on: string
+          user_id: string
+        }
+        Insert: {
+          count?: number
+          id?: string
+          updated_at?: string
+          used_on?: string
+          user_id: string
+        }
+        Update: {
+          count?: number
+          id?: string
+          updated_at?: string
+          used_on?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           condition_type: string
@@ -1060,6 +1084,7 @@ export type Database = {
           points: number
           source: string
           student_name: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1069,6 +1094,7 @@ export type Database = {
           points?: number
           source?: string
           student_name: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1078,6 +1104,7 @@ export type Database = {
           points?: number
           source?: string
           student_name?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1396,6 +1423,7 @@ export type Database = {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
       }
+      consume_ai_quota: { Args: { p_user_id: string }; Returns: boolean }
       delete_badge: {
         Args: { p_badge_id: string; p_token: string }
         Returns: undefined
@@ -1583,6 +1611,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_teamwork_session_for_student: {
+        Args: { p_session_id: string }
+        Returns: Json
       }
       has_checkin_record: {
         Args: { p_session_id: string; p_student_name: string }
