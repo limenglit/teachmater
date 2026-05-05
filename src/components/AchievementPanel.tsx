@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
