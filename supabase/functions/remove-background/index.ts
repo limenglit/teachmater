@@ -31,6 +31,15 @@ serve(async (req) => {
       });
     }
 
+    // Server-side AI quota
+    const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: claimsData.claims.sub });
+    if (quotaOk === false) {
+      return new Response(JSON.stringify({ error: '已达今日 AI 使用上限' }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { imageBase64 } = await req.json();
     if (!imageBase64 || typeof imageBase64 !== "string") {
       return new Response(JSON.stringify({ error: "No image provided" }), {
