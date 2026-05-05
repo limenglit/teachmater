@@ -61,6 +61,7 @@ function getToken(): string {
 
 export default function AchievementPanel() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { students: sidebarStudents } = useStudents();
   const token = getToken();
 
