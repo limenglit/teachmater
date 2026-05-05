@@ -204,10 +204,10 @@ export function createQuizPaperExportContainer(
 function createMultilineTextRuns(text: string, options?: ConstructorParameters<typeof TextRun>[0]) {
   const lines = (text || '').split(/\r?\n/);
   return lines.map((line, index) => new TextRun({
-    ...options,
+    ...(options || {}),
     text: line || ' ',
     break: index === 0 ? undefined : 1,
-  }));
+  } as ConstructorParameters<typeof TextRun>[0]));
 }
 
 function createParagraph(options: Omit<IParagraphOptions, 'children'> & { text: string; prefix?: string; boldPrefix?: boolean }) {

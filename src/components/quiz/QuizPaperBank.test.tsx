@@ -9,8 +9,8 @@ vi.mock('@/components/ui/select', async () => {
 
   const SelectItem = ({ value, children }: any) => React.createElement('option', { value }, children);
 
-  const collectItems = (children: React.ReactNode): Array<React.ReactElement<{ value: string }>> => {
-    const items: Array<React.ReactElement<{ value: string }>> = [];
+  const collectItems = (children: React.ReactNode): Array<React.ReactElement<{ value: string; children?: React.ReactNode }>> => {
+    const items: Array<React.ReactElement<{ value: string; children?: React.ReactNode }>> = [];
     React.Children.forEach(children, (child) => {
       if (!React.isValidElement(child)) return;
       if (child.type === SelectItem) {
