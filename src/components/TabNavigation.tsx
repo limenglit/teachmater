@@ -1,4 +1,4 @@
-import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation, ImageIcon, MessagesSquare, BookOpen } from 'lucide-react';
+import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation, ImageIcon, MessagesSquare, BookOpen, MonitorPlay } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
 
@@ -36,6 +36,7 @@ const tabs: TabItem[] = [
 
 const externalLinks: ExternalLink[] = [
   { labelKey: 'ext.ai', emoji: '🤖', icon: <BotMessageSquare className="w-4 h-4" />, url: 'https://mcuai.lovable.app/' },
+  { labelKey: 'ext.interactiveClass', emoji: '🧑‍🏫', icon: <MonitorPlay className="w-4 h-4" />, url: 'https://studentcenter.lovable.app/' },
 ];
 
 interface Props {
@@ -82,7 +83,7 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
             title={t('ext.tip')}
             className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60"
           >
-            <span className="text-sm">{link.emoji}</span>
+            <span className="text-sm" aria-hidden="true">{link.icon}</span>
             <span>{t(link.labelKey)}</span>
           </a>
         );
