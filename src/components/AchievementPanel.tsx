@@ -155,6 +155,7 @@ export default function AchievementPanel() {
       source: addSource,
       description: addDesc.trim() || t(`achieve.source_${addSource}`),
       creator_token: token,
+      user_id: user?.id,
     }));
 
     const { data, error } = await supabase.from('student_points').insert(inserts).select() as any;
