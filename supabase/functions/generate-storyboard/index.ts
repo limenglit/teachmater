@@ -130,6 +130,15 @@ serve(async (req) => {
       });
     }
 
+    // Server-side AI quota
+    const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: user.id });
+    if (quotaOk === false) {
+      return new Response(JSON.stringify({ error: '已达今日 AI 使用上限' }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { params } = await req.json() as { params: StoryboardParams };
     if (!params?.theme?.trim()) {
       return new Response(JSON.stringify({ error: "Theme is required" }), {

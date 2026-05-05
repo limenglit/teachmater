@@ -42,6 +42,23 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
+    // Require authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return errorResponse('Unauthorized', 401);
+    }
+    const authClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return errorResponse('Unauthorized', 401);
+    }
+    const userId = claimsData.claims.sub as string;
+
     const body = await req.json();
     const { messages, type, topic_id, creator_token } = body;
 
@@ -73,6 +90,11 @@ serve(async (req) => {
     if (!supabaseUrl || !serviceRoleKey) throw new Error('Supabase service credentials are not configured');
 
     const supabaseClient = createClient(supabaseUrl, serviceRoleKey);
+
+    // Server-side AI quota
+    const { data: quotaOk } = await supabaseClient.rpc('consume_ai_quota', { p_user_id: userId });
+    if (quotaOk === false) return errorResponse('已达今日 AI 使用上限', 429);
+
     const { data: topic, error: topicError } = await supabaseClient
       .from('discussion_topics').select('id, creator_token').eq('id', topic_id).maybeSingle();
     if (topicError) { console.error('Failed to load discussion topic:', topicError); return errorResponse('Topic lookup failed', 500); }

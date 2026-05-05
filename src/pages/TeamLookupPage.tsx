@@ -28,18 +28,16 @@ export default function TeamLookupPage() {
     if (!sessionId) return;
     (async () => {
       const { data, error: err } = await supabase
-        .from('teamwork_sessions')
-        .select('*')
-        .eq('id', sessionId)
-        .single();
+        .rpc('get_teamwork_session_for_student', { p_session_id: sessionId } as any);
       if (err || !data) {
         setError('未找到该分组/建队信息');
         setLoading(false);
         return;
       }
-      setTeams((data.data as any) as Team[]);
-      setTitle(data.title);
-      setType(data.type);
+      const d = data as any;
+      setTeams((d.data) as Team[]);
+      setTitle(d.title);
+      setType(d.type);
       setLoading(false);
     })();
   }, [sessionId]);

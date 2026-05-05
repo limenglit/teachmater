@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ function getToken(): string {
 
 export default function AchievementPanel() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { students: sidebarStudents } = useStudents();
   const token = getToken();
 
@@ -155,6 +157,7 @@ export default function AchievementPanel() {
       source: addSource,
       description: addDesc.trim() || t(`achieve.source_${addSource}`),
       creator_token: token,
+      user_id: user?.id,
     }));
 
     const { data, error } = await supabase.from('student_points').insert(inserts).select() as any;

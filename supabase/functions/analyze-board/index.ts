@@ -52,6 +52,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
     if (userError || !user) return errorResponse('Unauthorized', 401);
 
+    // Server-side AI quota
+    const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: user.id });
+    if (quotaOk === false) return errorResponse('已达今日 AI 使用上限', 429);
+
     const body = await req.json();
     const { cards } = body;
 
