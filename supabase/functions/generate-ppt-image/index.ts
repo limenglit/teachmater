@@ -88,7 +88,7 @@ serve(async (req) => {
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
     const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
 
-    const fileName = `ai-${crypto.randomUUID()}.png`;
+    const fileName = `${user.id}/ai-${crypto.randomUUID()}.png`;
     const { error: uploadError } = await supabase.storage
       .from("ppt-images")
       .upload(fileName, binaryData, { contentType: "image/png", upsert: false });
