@@ -31,19 +31,26 @@ serve(async (req) => {
       });
     }
 
+    const { imageBase64 } = await req.json();
+    if (!imageBase64 || typeof imageBase64 !== "string") {
+      return new Response(JSON.stringify({ error: "No image provided" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const MAX_BASE64_BYTES = 5 * 1024 * 1024; // 5 MB
+    if (imageBase64.length > MAX_BASE64_BYTES) {
+      return new Response(JSON.stringify({ error: "Image too large (max 5 MB)" }), {
+        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Server-side AI quota
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: claimsData.claims.sub });
     if (quotaOk === false) {
       return new Response(JSON.stringify({ error: '已达今日 AI 使用上限' }), {
         status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { imageBase64 } = await req.json();
-    if (!imageBase64 || typeof imageBase64 !== "string") {
-      return new Response(JSON.stringify({ error: "No image provided" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
