@@ -178,7 +178,8 @@ serve(async (req) => {
       try {
         json = await callDeepSeek(messages);
       } catch (e2: any) {
-        return new Response(JSON.stringify({ error: 'AI 生成失败：' + (e2?.message || msg) }), {
+        console.error('DeepSeek fallback failed:', e2);
+        return new Response(JSON.stringify({ error: 'AI 生成失败，请稍后重试' }), {
           status: 500,
           headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
         });
