@@ -180,7 +180,7 @@ Language for output: ${lang === "zh" ? "Chinese" : lang === "ja" ? "Japanese" : 
     });
   } catch (e) {
     console.error("analyze-text error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
