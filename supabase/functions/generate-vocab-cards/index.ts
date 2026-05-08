@@ -199,7 +199,7 @@ serve(async (req) => {
     });
   } catch (e: any) {
     console.error('generate-vocab-cards error:', e);
-    return new Response(JSON.stringify({ error: e?.message || 'unknown' }), {
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });
