@@ -30,8 +30,6 @@ function buildPrompt(b: Body): string {
   return `${audience}${hint}请围绕主题"${b.topic}"，生成 ${count} 对匹配卡片，调用 emit_cards 返回。`;
 }
 
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS });
   try {
