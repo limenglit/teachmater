@@ -261,8 +261,6 @@ Quality rules:
     });
   } catch (error) {
     console.error('generate-quiz-questions error:', error);
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+    return internalErrorResponse(CORS_HEADERS);
   }
 });
