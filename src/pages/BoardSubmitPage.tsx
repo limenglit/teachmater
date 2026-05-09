@@ -84,7 +84,9 @@ export default function BoardSubmitPage() {
   /* ── Load board ── */
   useEffect(() => {
     if (!boardId) return;
-    supabase.from('boards').select('*').eq('id', boardId).single()
+    // Use security-definer RPC so anonymous students never receive
+    // sensitive columns (creator_token, user_id) from the boards row.
+    supabase.rpc('get_board_for_student', { p_board_id: boardId })
       .then(({ data }) => {
         if (data) {
           setBoard(data as any);
