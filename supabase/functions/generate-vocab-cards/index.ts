@@ -15,7 +15,7 @@ interface Body {
   hint?: string;
 }
 
-interface CardOut {
+export interface CardOut {
   word: string;
   definition: string;
   example?: string;
@@ -82,7 +82,7 @@ async function callLovableAI(messages: any[]): Promise<any> {
   return await resp.json();
 }
 
-async function callDeepSeek(messages: any[]): Promise<any> {
+export async function callDeepSeek(messages: any[]): Promise<any> {
   const key = Deno.env.get('DEEPSEEK_API_KEY');
   if (!key) throw new Error('DEEPSEEK_API_KEY missing');
   const resp = await fetch('https://api.deepseek.com/chat/completions', {
@@ -99,7 +99,7 @@ async function callDeepSeek(messages: any[]): Promise<any> {
   return await resp.json();
 }
 
-function extractCards(json: any): CardOut[] {
+export function extractCards(json: any): CardOut[] {
   const tc = json?.choices?.[0]?.message?.tool_calls?.[0];
   if (!tc?.function?.arguments) return [];
   try {
