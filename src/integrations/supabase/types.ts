@@ -1459,6 +1459,7 @@ export type Database = {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
       }
+      get_board_for_student: { Args: { p_board_id: string }; Returns: Json }
       get_checkin_records_for_owner: {
         Args: { p_session_id: string; p_token: string }
         Returns: {

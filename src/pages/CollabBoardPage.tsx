@@ -32,13 +32,17 @@ export default function CollabBoardPage() {
     let mounted = true;
 
     const loadBoard = async () => {
-      const { data } = await supabase.from('boards').select('*').eq('id', boardId).single();
+      // Use security-definer RPC so anonymous students never receive
+      // sensitive columns (creator_token, user_id).
+      const { data } = await supabase.rpc('get_board_for_student', { p_board_id: boardId });
       if (mounted && data) setBoard(data as any);
       if (mounted) setLoading(false);
     };
 
     void loadBoard();
 
+    // Realtime meta updates: re-fetch via RPC on change rather than reading
+    // the raw row payload (which would expose creator_token to subscribers).
     const channel = supabase
       .channel(`collab-board-meta-${boardId}`)
       .on('postgres_changes', {
@@ -46,8 +50,8 @@ export default function CollabBoardPage() {
         schema: 'public',
         table: 'boards',
         filter: `id=eq.${boardId}`,
-      }, (payload) => {
-        setBoard(payload.new as unknown as Board);
+      }, () => {
+        void loadBoard();
       })
       .subscribe();
 
