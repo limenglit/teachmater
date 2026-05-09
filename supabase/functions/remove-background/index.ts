@@ -39,12 +39,8 @@ serve(async (req) => {
       });
     }
 
-    const MAX_BASE64_BYTES = 5 * 1024 * 1024; // 5 MB
-    if (imageBase64.length > MAX_BASE64_BYTES) {
-      return new Response(JSON.stringify({ error: "Image too large (max 5 MB)" }), {
-        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const tooLarge = checkImageSize(imageBase64, corsHeaders);
+    if (tooLarge) return tooLarge;
 
     // Server-side AI quota
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
