@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { internalErrorResponse } from '../_shared/responses.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -260,8 +261,6 @@ Quality rules:
     });
   } catch (error) {
     console.error('generate-quiz-questions error:', error);
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500, headers: { ...cors, 'Content-Type': 'application/json' },
-    });
+    return internalErrorResponse(CORS_HEADERS);
   }
 });

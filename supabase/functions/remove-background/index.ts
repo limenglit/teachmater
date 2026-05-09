@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { checkImageSize, internalErrorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,12 +39,8 @@ serve(async (req) => {
       });
     }
 
-    const MAX_BASE64_BYTES = 5 * 1024 * 1024; // 5 MB
-    if (imageBase64.length > MAX_BASE64_BYTES) {
-      return new Response(JSON.stringify({ error: "Image too large (max 5 MB)" }), {
-        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const tooLarge = checkImageSize(imageBase64, corsHeaders);
+    if (tooLarge) return tooLarge;
 
     // Server-side AI quota
     const svc = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -112,9 +109,6 @@ serve(async (req) => {
     );
   } catch (e) {
     console.error("remove-background error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return internalErrorResponse(corsHeaders);
   }
 });
