@@ -115,3 +115,24 @@ export function extractCards(json: any): CardOut[] {
     .filter((c) => c.word && c.definition);
 }
 
+
+// Maps a parsed upstream AI response to the final HTTP response.
+// All validation/parse failures collapse to a single sanitized 422 — the
+// outer handler never echoes upstream parse errors, schema details, or
+// raw card-payload shapes to the client.
+export const VALIDATION_FAILED_MESSAGE = 'AI 未返回有效卡片，请换个主题再试';
+
+// deno-lint-ignore no-explicit-any
+export function cardsToResponse(json: any, cors: Record<string, string>): Response {
+  const cards = extractCards(json);
+  if (cards.length < 2) {
+    return new Response(JSON.stringify({ error: VALIDATION_FAILED_MESSAGE }), {
+      status: 422,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
+  return new Response(JSON.stringify({ cards }), {
+    status: 200,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
+}
