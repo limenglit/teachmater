@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { internalErrorResponse } from '../_shared/responses.ts';
-import { callDeepSeek, callLovableAI, extractCards } from './lib.ts';
+import { callDeepSeek, callLovableAI, cardsToResponse } from './lib.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -100,17 +100,7 @@ serve(async (req) => {
       }
     }
 
-    const cards = extractCards(json);
-    if (cards.length < 2) {
-      return new Response(JSON.stringify({ error: 'AI 未返回有效卡片，请换个主题再试' }), {
-        status: 422,
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-      });
-    }
-    return new Response(JSON.stringify({ cards }), {
-      status: 200,
-      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    });
+    return cardsToResponse(json, CORS_HEADERS);
   } catch (e: any) {
     console.error('generate-vocab-cards error:', e);
     return internalErrorResponse(CORS_HEADERS);

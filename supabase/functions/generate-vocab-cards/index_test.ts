@@ -446,3 +446,129 @@ Deno.test("property: well-formed payloads round-trip through extractCards", () =
     }
   }
 });
+
+// ── Handler-level: validation failures map to sanitized 422 ──────────────
+import { cardsToResponse, VALIDATION_FAILED_MESSAGE } from "./lib.ts";
+
+const CORS = { "Access-Control-Allow-Origin": "*" };
+
+// Strings we must NEVER find in the response body — these would indicate
+// that parsing details, schema diagnostics, or upstream payload fragments
+// have leaked to the client.
+const FORBIDDEN_FRAGMENTS = [
+  "JSON.parse",
+  "SyntaxError",
+  "Unexpected token",
+  "tool_call",
+  "tool_calls",
+  "schema",
+  "validateCardsPayload",
+  "DeepSeek",
+  "Lovable",
+  "stack",
+  "at ",       // stack trace marker
+  "definition", // raw card field name leak
+  "arguments",
+];
+
+async function assertSanitized422(json: unknown, label: string) {
+  const resp = cardsToResponse(json, CORS);
+  if (resp.status !== 422) {
+    throw new Error(`${label}: expected 422, got ${resp.status}`);
+  }
+  const text = await resp.text();
+  const body = JSON.parse(text);
+  if (body.error !== VALIDATION_FAILED_MESSAGE) {
+    throw new Error(`${label}: error message changed to "${body.error}"`);
+  }
+  if (Object.keys(body).length !== 1) {
+    throw new Error(`${label}: body has unexpected keys: ${Object.keys(body).join(",")}`);
+  }
+  for (const frag of FORBIDDEN_FRAGMENTS) {
+    if (text.includes(frag)) {
+      throw new Error(`${label}: response leaked fragment "${frag}": ${text}`);
+    }
+  }
+}
+
+Deno.test("handler: empty / null upstream → sanitized 422", async () => {
+  await assertSanitized422(null, "null");
+  await assertSanitized422(undefined, "undefined");
+  await assertSanitized422({}, "empty object");
+  await assertSanitized422({ choices: [] }, "no choices");
+  await assertSanitized422({ choices: [{ message: {} }] }, "no tool_calls");
+});
+
+Deno.test("handler: malformed JSON arguments → sanitized 422", async () => {
+  const cases: Array<[string, string]> = [
+    ["not-json", "{not json"],
+    ["truncated", "{\"cards\":["],
+    ["empty string", ""],
+    ["control bytes", "\u0000\u0001 garbage"],
+    ["wrong root null", "null"],
+    ["wrong root array", "[1,2,3]"],
+  ];
+  for (const [label, args] of cases) {
+    await assertSanitized422({
+      choices: [{ message: { tool_calls: [{ function: { arguments: args } }] } }],
+    }, `malformed ${label}`);
+  }
+});
+
+Deno.test("handler: schema-invalid cards payload → sanitized 422", async () => {
+  const cases: Array<[string, unknown]> = [
+    ["cards is null", { cards: null }],
+    ["cards is object", { cards: { word: "x", definition: "y" } }],
+    ["cards is string", { cards: "nope" }],
+    ["entry missing definition", { cards: [{ word: "ok" }] }],
+    ["entry has numeric word", { cards: [{ word: 1, definition: "ok" }] }],
+    ["entry has numeric definition", { cards: [{ word: "ok", definition: 2 }] }],
+    ["entry has non-string example", { cards: [{ word: "ok", definition: "ok", example: 7 }] }],
+    ["mixed valid + invalid entries", { cards: [{ word: "ok", definition: "ok" }, null] }],
+  ];
+  for (const [label, args] of cases) {
+    await assertSanitized422({
+      choices: [{ message: { tool_calls: [{ function: { arguments: JSON.stringify(args) } }] } }],
+    }, `schema-invalid ${label}`);
+  }
+});
+
+Deno.test("handler: only one valid card → sanitized 422 (need ≥ 2)", async () => {
+  await assertSanitized422({
+    choices: [{
+      message: {
+        tool_calls: [{
+          function: {
+            arguments: JSON.stringify({
+              cards: [{ word: "Apple", definition: "苹果" }],
+            }),
+          },
+        }],
+      },
+    }],
+  }, "single valid card");
+});
+
+Deno.test("handler: ≥2 valid cards → 200 with cards body (no leakage)", async () => {
+  const resp = cardsToResponse({
+    choices: [{
+      message: {
+        tool_calls: [{
+          function: {
+            arguments: JSON.stringify({
+              cards: [
+                { word: "Apple", definition: "苹果" },
+                { word: "Banana", definition: "香蕉", example: "I eat one." },
+              ],
+            }),
+          },
+        }],
+      },
+    }],
+  }, CORS);
+  if (resp.status !== 200) throw new Error(`expected 200, got ${resp.status}`);
+  const body = await resp.json();
+  if (!Array.isArray(body.cards) || body.cards.length !== 2) {
+    throw new Error(`unexpected body: ${JSON.stringify(body)}`);
+  }
+});
