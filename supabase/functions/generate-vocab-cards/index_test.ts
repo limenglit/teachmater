@@ -121,3 +121,119 @@ Deno.test("callDeepSeek surfaces network failures so the handler can fall throug
     restoreFetch();
   }
 });
+
+// ── DeepSeek: non-JSON upstream body ─────────────────────────────────────
+Deno.test("callDeepSeek throws when upstream returns 200 with non-JSON body", async () => {
+  Deno.env.set("DEEPSEEK_API_KEY", "test-key");
+  stubFetch(() =>
+    Promise.resolve(
+      new Response("<html>upstream gateway error</html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      }),
+    )
+  );
+  try {
+    await assertRejects(
+      () => callDeepSeek([{ role: "user", content: "hi" }]),
+      Error,
+    );
+  } finally {
+    restoreFetch();
+  }
+});
+
+Deno.test("callDeepSeek error for non-OK status does not leak the API key", async () => {
+  const SECRET = "sk-super-secret-deepseek-key";
+  Deno.env.set("DEEPSEEK_API_KEY", SECRET);
+  stubFetch(() =>
+    Promise.resolve(new Response("forbidden", { status: 403 }))
+  );
+  try {
+    const err = await assertRejects(
+      () => callDeepSeek([{ role: "user", content: "hi" }]),
+      Error,
+    );
+    if (String(err.message).includes(SECRET)) {
+      throw new Error("DeepSeek error message leaked the API key");
+    }
+  } finally {
+    restoreFetch();
+  }
+});
+
+// ── extractCards: additional unexpected tool-call shapes ─────────────────
+Deno.test("extractCards returns [] when arguments.cards is not an array", () => {
+  const json = {
+    choices: [{
+      message: {
+        tool_calls: [{
+          function: { arguments: JSON.stringify({ cards: { word: "x", definition: "y" } }) },
+        }],
+      },
+    }],
+  };
+  assertEquals(extractCards(json), []);
+});
+
+Deno.test("extractCards returns [] when arguments JSON is an array (wrong root shape)", () => {
+  const json = {
+    choices: [{
+      message: {
+        tool_calls: [{
+          function: { arguments: JSON.stringify([{ word: "Apple", definition: "苹果" }]) },
+        }],
+      },
+    }],
+  };
+  assertEquals(extractCards(json), []);
+});
+
+Deno.test("extractCards skips null / non-object card entries without throwing", () => {
+  const json = {
+    choices: [{
+      message: {
+        tool_calls: [{
+          function: {
+            arguments: JSON.stringify({
+              cards: [
+                null,
+                "string-entry",
+                { word: "Apple", definition: "苹果" },
+                { word: 123, definition: 456 }, // coerced; both truthy after String()
+                { definition: "no word" },       // filtered (empty word)
+              ],
+            }),
+          },
+        }],
+      },
+    }],
+  };
+  const cards = extractCards(json);
+  // "string-entry" => c?.word is undefined -> filtered
+  // null entry => c?.word undefined -> filtered
+  // {word:123,definition:456} => "123"/"456" both truthy -> kept
+  assertEquals(cards.length, 2);
+  assertEquals(cards[0], { word: "Apple", definition: "苹果", example: undefined });
+  assertEquals(cards[1].word, "123");
+  assertEquals(cards[1].definition, "456");
+});
+
+Deno.test("extractCards returns [] when tool_call.function is missing", () => {
+  const json = { choices: [{ message: { tool_calls: [{}] } }] };
+  assertEquals(extractCards(json), []);
+});
+
+Deno.test("extractCards returns [] when arguments is an empty string", () => {
+  const json = {
+    choices: [{ message: { tool_calls: [{ function: { arguments: "" } }] } }],
+  };
+  assertEquals(extractCards(json), []);
+});
+
+Deno.test("extractCards returns [] when message has content instead of tool_calls", () => {
+  const json = {
+    choices: [{ message: { content: "{\"cards\":[{\"word\":\"a\",\"definition\":\"b\"}]}" } }],
+  };
+  assertEquals(extractCards(json), []);
+});
