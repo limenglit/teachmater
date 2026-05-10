@@ -73,22 +73,45 @@ export async function callDeepSeek(messages: any[]): Promise<any> {
   return await resp.json();
 }
 
+// JSON-schema-style validator for the emit_cards tool payload.
+// Returns true only when the parsed arguments match:
+//   { cards: Array<{ word: string, definition: string, example?: string }> }
+// Any deviation (wrong root type, non-array cards, non-object entries,
+// non-string required fields) makes the whole payload invalid.
+// deno-lint-ignore no-explicit-any
+export function validateCardsPayload(args: any): boolean {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return false;
+  const cards = (args as { cards?: unknown }).cards;
+  if (!Array.isArray(cards)) return false;
+  for (const c of cards) {
+    if (!c || typeof c !== 'object' || Array.isArray(c)) return false;
+    const rec = c as Record<string, unknown>;
+    if (typeof rec.word !== 'string') return false;
+    if (typeof rec.definition !== 'string') return false;
+    if (rec.example !== undefined && typeof rec.example !== 'string') return false;
+  }
+  return true;
+}
+
 // deno-lint-ignore no-explicit-any
 export function extractCards(json: any): CardOut[] {
   const tc = json?.choices?.[0]?.message?.tool_calls?.[0];
   if (!tc?.function?.arguments) return [];
+  let args: unknown;
   try {
-    const args = JSON.parse(tc.function.arguments);
-    const arr = Array.isArray(args?.cards) ? args.cards : [];
-    return arr
-      // deno-lint-ignore no-explicit-any
-      .map((c: any) => ({
-        word: String(c?.word || '').trim(),
-        definition: String(c?.definition || '').trim(),
-        example: c?.example ? String(c.example).trim() : undefined,
-      }))
-      .filter((c: CardOut) => c.word && c.definition);
+    args = JSON.parse(tc.function.arguments);
   } catch {
+    // Sanitized: never surface the parser error / raw upstream body.
     return [];
   }
+  if (!validateCardsPayload(args)) return [];
+  const arr = (args as { cards: Array<Record<string, unknown>> }).cards;
+  return arr
+    .map((c) => ({
+      word: String(c.word).trim(),
+      definition: String(c.definition).trim(),
+      example: c.example !== undefined ? String(c.example).trim() : undefined,
+    }))
+    .filter((c) => c.word && c.definition);
 }
+

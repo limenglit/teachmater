@@ -189,7 +189,7 @@ Deno.test("extractCards returns [] when arguments JSON is an array (wrong root s
   assertEquals(extractCards(json), []);
 });
 
-Deno.test("extractCards skips null / non-object card entries without throwing", () => {
+Deno.test("extractCards rejects whole payload when any card entry is invalid (schema)", () => {
   const json = {
     choices: [{
       message: {
@@ -197,11 +197,8 @@ Deno.test("extractCards skips null / non-object card entries without throwing", 
           function: {
             arguments: JSON.stringify({
               cards: [
-                null,
-                "string-entry",
                 { word: "Apple", definition: "苹果" },
-                { word: 123, definition: 456 }, // coerced; both truthy after String()
-                { definition: "no word" },       // filtered (empty word)
+                null, // invalid entry → whole payload fails schema
               ],
             }),
           },
@@ -209,14 +206,41 @@ Deno.test("extractCards skips null / non-object card entries without throwing", 
       },
     }],
   };
-  const cards = extractCards(json);
-  // "string-entry" => c?.word is undefined -> filtered
-  // null entry => c?.word undefined -> filtered
-  // {word:123,definition:456} => "123"/"456" both truthy -> kept
-  assertEquals(cards.length, 2);
-  assertEquals(cards[0], { word: "Apple", definition: "苹果", example: undefined });
-  assertEquals(cards[1].word, "123");
-  assertEquals(cards[1].definition, "456");
+  assertEquals(extractCards(json), []);
+});
+
+Deno.test("extractCards rejects payload with non-string word/definition (schema)", () => {
+  const json = {
+    choices: [{
+      message: {
+        tool_calls: [{
+          function: {
+            arguments: JSON.stringify({
+              cards: [{ word: 123, definition: 456 }],
+            }),
+          },
+        }],
+      },
+    }],
+  };
+  assertEquals(extractCards(json), []);
+});
+
+Deno.test("extractCards rejects payload with non-string example (schema)", () => {
+  const json = {
+    choices: [{
+      message: {
+        tool_calls: [{
+          function: {
+            arguments: JSON.stringify({
+              cards: [{ word: "Apple", definition: "苹果", example: 42 }],
+            }),
+          },
+        }],
+      },
+    }],
+  };
+  assertEquals(extractCards(json), []);
 });
 
 Deno.test("extractCards returns [] when tool_call.function is missing", () => {
