@@ -261,3 +261,188 @@ Deno.test("extractCards returns [] when message has content instead of tool_call
   };
   assertEquals(extractCards(json), []);
 });
+
+// ── Fuzz / property-based tests ──────────────────────────────────────────
+// Goal: for ANY malformed upstream payload, extractCards must
+//   (a) never throw, and
+//   (b) return either [] or a CardOut[] whose entries all have
+//       non-empty string `word` and `definition` (and string|undefined example).
+
+// Seeded PRNG (Mulberry32) for deterministic, reproducible runs.
+function mulberry32(seed: number) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+function randomValue(rand: () => number, depth: number): any {
+  if (depth > 4) return null;
+  const pick = Math.floor(rand() * 12);
+  switch (pick) {
+    case 0: return null;
+    case 1: return undefined;
+    case 2: return rand() < 0.5;
+    case 3: return Math.floor(rand() * 1_000_000) - 500_000;
+    case 4: return rand() * 1e6;
+    case 5: {
+      const len = Math.floor(rand() * 10);
+      let s = "";
+      for (let i = 0; i < len; i++) {
+        s += String.fromCharCode(32 + Math.floor(rand() * 95));
+      }
+      return s;
+    }
+    case 6: return ""; // empty string
+    case 7: { // array
+      const n = Math.floor(rand() * 4);
+      const arr: unknown[] = [];
+      for (let i = 0; i < n; i++) arr.push(randomValue(rand, depth + 1));
+      return arr;
+    }
+    case 8: { // object
+      const n = Math.floor(rand() * 4);
+      const obj: Record<string, unknown> = {};
+      for (let i = 0; i < n; i++) {
+        obj[`k${i}`] = randomValue(rand, depth + 1);
+      }
+      return obj;
+    }
+    case 9: { // object that *might* look like a card
+      const obj: Record<string, unknown> = {};
+      if (rand() < 0.7) obj.word = randomValue(rand, depth + 1);
+      if (rand() < 0.7) obj.definition = randomValue(rand, depth + 1);
+      if (rand() < 0.4) obj.example = randomValue(rand, depth + 1);
+      return obj;
+    }
+    case 10: return Number.NaN;
+    default: return Infinity;
+  }
+}
+
+function isValidCardOut(c: unknown): boolean {
+  if (!c || typeof c !== "object") return false;
+  const r = c as Record<string, unknown>;
+  if (typeof r.word !== "string" || r.word.length === 0) return false;
+  if (typeof r.definition !== "string" || r.definition.length === 0) return false;
+  if (r.example !== undefined && typeof r.example !== "string") return false;
+  return true;
+}
+
+Deno.test("fuzz: extractCards never throws on arbitrary random payloads", () => {
+  const rand = mulberry32(0xC0FFEE);
+  for (let i = 0; i < 500; i++) {
+    const payload = randomValue(rand, 0);
+    let result: unknown;
+    try {
+      result = extractCards(payload);
+    } catch (e) {
+      throw new Error(
+        `extractCards threw on iteration ${i}: ${(e as Error).message}\n` +
+        `payload=${JSON.stringify(payload)?.slice(0, 200)}`,
+      );
+    }
+    if (!Array.isArray(result)) {
+      throw new Error(`extractCards returned non-array on iteration ${i}`);
+    }
+    for (const c of result) {
+      if (!isValidCardOut(c)) {
+        throw new Error(
+          `extractCards returned invalid card on iteration ${i}: ${JSON.stringify(c)}`,
+        );
+      }
+    }
+  }
+});
+
+Deno.test("fuzz: extractCards never throws on random tool-call argument strings", () => {
+  const rand = mulberry32(0xBADF00D);
+  // Build payloads shaped like a tool_call but with arbitrary `arguments` strings,
+  // including non-JSON, truncated JSON, JSON of wrong shapes, and giant strings.
+  const argFactories: Array<() => string> = [
+    () => "",
+    () => "{",
+    () => "}{",
+    () => "null",
+    () => "true",
+    () => "42",
+    () => "\"a string\"",
+    () => "[1,2,3]",
+    () => "{\"cards\":null}",
+    () => "{\"cards\":\"not-an-array\"}",
+    () => "{\"cards\":[{}]}",
+    () => "{\"cards\":[{\"word\":1,\"definition\":2}]}",
+    () => "{\"cards\":[{\"word\":\"ok\",\"definition\":\"ok\",\"example\":7}]}",
+    () => JSON.stringify({ cards: [{ word: "a".repeat(10_000), definition: "b" }] }),
+    () => JSON.stringify(randomValue(rand, 0)),
+    () => "\u0000\u0001\u0002 garbage bytes",
+  ];
+
+  for (let i = 0; i < 800; i++) {
+    const factory = argFactories[Math.floor(rand() * argFactories.length)];
+    const args = factory();
+    const payload = {
+      choices: [{
+        message: {
+          tool_calls: [{ function: { arguments: args } }],
+        },
+      }],
+    };
+    let result: unknown;
+    try {
+      result = extractCards(payload);
+    } catch (e) {
+      throw new Error(
+        `extractCards threw on iteration ${i}: ${(e as Error).message}\n` +
+        `arguments=${args.slice(0, 200)}`,
+      );
+    }
+    if (!Array.isArray(result)) {
+      throw new Error(`extractCards returned non-array on iteration ${i}`);
+    }
+    for (const c of result) {
+      if (!isValidCardOut(c)) {
+        throw new Error(
+          `extractCards returned invalid card on iteration ${i}: ${JSON.stringify(c)}`,
+        );
+      }
+    }
+  }
+});
+
+Deno.test("property: well-formed payloads round-trip through extractCards", () => {
+  const rand = mulberry32(42);
+  for (let i = 0; i < 200; i++) {
+    const n = 1 + Math.floor(rand() * 6);
+    const cards = Array.from({ length: n }, (_, k) => {
+      const card: Record<string, string> = {
+        word: `w${i}_${k}`,
+        definition: `d${i}_${k}`,
+      };
+      if (rand() < 0.5) card.example = `ex${i}_${k}`;
+      return card;
+    });
+    const payload = {
+      choices: [{
+        message: {
+          tool_calls: [{
+            function: { arguments: JSON.stringify({ cards }) },
+          }],
+        },
+      }],
+    };
+    const out = extractCards(payload);
+    if (out.length !== n) {
+      throw new Error(`expected ${n} cards, got ${out.length} on iteration ${i}`);
+    }
+    for (let k = 0; k < n; k++) {
+      if (out[k].word !== cards[k].word || out[k].definition !== cards[k].definition) {
+        throw new Error(`round-trip mismatch on iteration ${i}, card ${k}`);
+      }
+    }
+  }
+});
