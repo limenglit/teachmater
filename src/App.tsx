@@ -25,6 +25,7 @@ const PollVotePage = lazyRetry(() => import("./pages/PollVotePage"));
 const TaskSubmitPage = lazyRetry(() => import("./pages/TaskSubmitPage"));
 const CollabBoardPage = lazyRetry(() => import("./pages/CollabBoardPage"));
 const TeamLookupPage = lazyRetry(() => import("./pages/TeamLookupPage"));
+const APIDocsPage = lazyRetry(() => import("./pages/APIDocsPage"));
 
 const queryClient = new QueryClient();
 
