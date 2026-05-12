@@ -56,6 +56,7 @@ const App = () => (
                 <Route path="/poll/:pollId" element={<Suspense fallback={<Loading />}><PollVotePage /></Suspense>} />
                 <Route path="/task/:sessionId" element={<Suspense fallback={<Loading />}><TaskSubmitPage /></Suspense>} />
                 <Route path="/team-lookup/:sessionId" element={<Suspense fallback={<Loading />}><TeamLookupPage /></Suspense>} />
+                <Route path="/api-docs" element={<Suspense fallback={<Loading />}><APIDocsPage /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
