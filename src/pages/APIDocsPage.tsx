@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Check, Code, ShieldAlert, CheckCircle, AlertCircle } from 'lucide-react';
+import { Copy, Check, Code, ShieldAlert, CheckCircle, AlertCircle, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface EndpointSectionProps {
