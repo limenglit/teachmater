@@ -52,6 +52,16 @@ function CodeBlock({ code, lang = 'json' }: CodeBlockProps) {
 }
 
 export default function APIDocsPage() {
+  const handleDownload = (format: 'json' | 'yaml') => {
+    const url = format === 'json' ? '/openapi.json' : '/openapi.yaml';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `openapi.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-10">
@@ -64,6 +74,16 @@ export default function APIDocsPage() {
           <p className="text-sm text-muted-foreground">
             以下说明生成词库卡片（generate-vocab-cards）端点的请求与响应格式。
           </p>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => handleDownload('json')} className="gap-1.5">
+              <FileDown className="w-3.5 h-3.5" />
+              下载 OpenAPI (JSON)
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleDownload('yaml')} className="gap-1.5">
+              <FileDown className="w-3.5 h-3.5" />
+              下载 OpenAPI (YAML)
+            </Button>
+          </div>
         </div>
 
         {/* Endpoint */}
