@@ -155,6 +155,11 @@ export async function createSeatCheckinSession({
     class_name: className?.trim() || '',
   };
 
+  const creatorTokenInsertData = {
+    ...baseInsertData,
+    creator_token: creatorToken,
+  };
+
   const doCreate = async () => {
     let data: any = null;
     let error: any = null;
@@ -192,6 +197,24 @@ export async function createSeatCheckinSession({
         error = null;
       } else if (!error) {
         error = legacyResult.error;
+      }
+    }
+
+    // Some deployed schemas already have creator_token but do not yet have the
+    // newer duration/class columns. Insert the explicit token without touching
+    // those newer columns so we still bypass the broken default.
+    if (!data?.id) {
+      const tokenOnlyResult = await supabase
+        .from('seat_checkin_sessions')
+        .insert([creatorTokenInsertData as any])
+        .select('id, creator_token, created_at, status, scene_type, student_names')
+        .single();
+
+      if (!tokenOnlyResult.error && tokenOnlyResult.data) {
+        data = tokenOnlyResult.data as any;
+        error = null;
+      } else if (!error) {
+        error = tokenOnlyResult.error;
       }
     }
 

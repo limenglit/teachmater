@@ -24,23 +24,25 @@ describe('createSeatCheckinSession', () => {
       error: { message: 'function gen_random_bytes(integer) does not exist' },
     });
 
-    singleMock.mockResolvedValue({
-      data: {
-        id: 'session-1',
-        creator_token: 'server-token',
-        created_at: '2026-05-13T00:00:00.000Z',
-        duration_minutes: 5,
-        status: 'active',
-        ended_at: null,
-        scene_type: 'classroom',
-        class_name: '高一(1)班',
-        student_names: ['张三'],
-      },
-      error: null,
-    });
+    singleMock
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: 'column "duration_minutes" does not exist' },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 'session-1',
+          creator_token: 'server-token',
+          created_at: '2026-05-13T00:00:00.000Z',
+          status: 'active',
+          scene_type: 'classroom',
+          student_names: ['张三'],
+        },
+        error: null,
+      });
   });
 
-  it('sends creator_token in insert payload', async () => {
+  it('falls back to creator_token-only insert when rpc and enhanced insert both fail', async () => {
     await createSeatCheckinSession({
       seatData: { rows: [] },
       studentNames: ['张三'],
@@ -52,7 +54,17 @@ describe('createSeatCheckinSession', () => {
 
     expect(rpcMock).toHaveBeenCalledWith('create_seat_checkin_session', expect.any(Object));
     expect(fromMock).toHaveBeenCalledWith('seat_checkin_sessions');
-    expect(insertMock).toHaveBeenCalledWith([
+
+    expect(insertMock).toHaveBeenNthCalledWith(1, [
+      expect.objectContaining({
+        creator_token: expect.any(String),
+        duration_minutes: 5,
+        class_name: '高一(1)班',
+        scene_type: 'classroom',
+      }),
+    ]);
+
+    expect(insertMock).toHaveBeenNthCalledWith(2, [
       expect.objectContaining({
         creator_token: expect.any(String),
         scene_type: 'classroom',
