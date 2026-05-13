@@ -41,6 +41,14 @@ interface CreateSeatCheckinSessionParams {
   className?: string;
 }
 
+const createSeatCheckinCreatorToken = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+};
+
 const getSeatCheckinSessionTokens = (): Record<string, string> => {
   try {
     return JSON.parse(localStorage.getItem(SEAT_CHECKIN_SESSION_TOKENS_KEY) || '{}');
@@ -96,6 +104,8 @@ export async function createSeatCheckinSession({
   durationMinutes,
   className,
 }: CreateSeatCheckinSessionParams) {
+  const creatorToken = createSeatCheckinCreatorToken();
+
   const baseInsertData = {
     seat_data: JSON.parse(JSON.stringify(seatData)),
     student_names: JSON.parse(JSON.stringify(studentNames)),
@@ -105,6 +115,7 @@ export async function createSeatCheckinSession({
 
   const enhancedInsertData = {
     ...baseInsertData,
+    creator_token: creatorToken,
     duration_minutes: durationMinutes,
     class_name: className?.trim() || '',
   };
