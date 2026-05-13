@@ -42,7 +42,7 @@ describe('createSeatCheckinSession', () => {
       });
   });
 
-  it('falls back to creator_token-only insert when rpc and enhanced insert both fail', async () => {
+  it('falls back to creator_token-only insert before trying the broken rpc path', async () => {
     await createSeatCheckinSession({
       seatData: { rows: [] },
       studentNames: ['张三'],
@@ -52,7 +52,7 @@ describe('createSeatCheckinSession', () => {
       className: '高一(1)班',
     });
 
-    expect(rpcMock).toHaveBeenCalledWith('create_seat_checkin_session', expect.any(Object));
+    expect(rpcMock).not.toHaveBeenCalled();
     expect(fromMock).toHaveBeenCalledWith('seat_checkin_sessions');
 
     expect(insertMock).toHaveBeenNthCalledWith(1, [

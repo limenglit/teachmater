@@ -164,27 +164,8 @@ export async function createSeatCheckinSession({
     let data: any = null;
     let error: any = null;
 
-    // Preferred path: RPC works for both signed-in and anonymous teachers and
-    // always returns the new id + creator_token (no RLS-after-insert issues).
-    const rpcResult = await (supabase.rpc as any)('create_seat_checkin_session', {
-      p_seat_data: baseInsertData.seat_data,
-      p_student_names: baseInsertData.student_names,
-      p_scene_config: baseInsertData.scene_config,
-      p_scene_type: baseInsertData.scene_type,
-      p_duration_minutes: enhancedInsertData.duration_minutes,
-      p_class_name: className?.trim() || '',
-    });
-
-    if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
-      data = rpcResult.data[0];
-    } else if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === 'object') {
-      data = rpcResult.data;
-    } else {
-      error = rpcResult.error;
-    }
-
-    // Fallback for environments where the RPC is missing or depends on
-    // unavailable database helpers such as gen_random_bytes().
+    // Preferred path: explicit inserts bypass broken database defaults such as
+    // creator_token DEFAULT encode(gen_random_bytes(...), 'hex').
     if (!data?.id) {
       const legacyResult = await supabase
         .from('seat_checkin_sessions')
@@ -232,6 +213,36 @@ export async function createSeatCheckinSession({
         error = null;
       } else if (!error) {
         error = minimalResult.error;
+      }
+    }
+
+    // Last resort: some environments may reject post-insert row selection via
+    // RLS but still expose the RPC helper. Try it only after the explicit
+    // insert paths so unsupported gen_random_bytes() never blocks creation.
+    if (!data?.id) {
+      try {
+        const rpcResult = await (supabase.rpc as any)('create_seat_checkin_session', {
+          p_seat_data: baseInsertData.seat_data,
+          p_student_names: baseInsertData.student_names,
+          p_scene_config: baseInsertData.scene_config,
+          p_scene_type: baseInsertData.scene_type,
+          p_duration_minutes: enhancedInsertData.duration_minutes,
+          p_class_name: className?.trim() || '',
+        });
+
+        if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
+          data = rpcResult.data[0];
+          error = null;
+        } else if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === 'object') {
+          data = rpcResult.data;
+          error = null;
+        } else if (!error) {
+          error = rpcResult.error;
+        }
+      } catch (rpcError) {
+        if (!error) {
+          error = rpcError;
+        }
       }
     }
 
