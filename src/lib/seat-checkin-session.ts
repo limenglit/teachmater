@@ -88,6 +88,30 @@ export const getSeatCheckinSessionToken = (sessionId: string) => {
   return getSeatCheckinSessionTokens()[sessionId] || null;
 };
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  opts: { attempts?: number; baseDelayMs?: number; shouldRetry?: (err: unknown) => boolean } = {},
+): Promise<T> {
+  const { attempts = 3, baseDelayMs = 500, shouldRetry } = opts;
+  let lastErr: unknown;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const isLast = i === attempts - 1;
+      if (isLast) break;
+      if (shouldRetry && !shouldRetry(err)) throw err;
+      // exponential backoff: 500ms, 1000ms
+      const delay = baseDelayMs * (i + 1);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+
+  throw lastErr;
+}
+
 export async function createSeatCheckinSession({
   seatData,
   studentNames,
@@ -107,53 +131,67 @@ export async function createSeatCheckinSession({
     }
   };
 
-  let data: any = null;
-  let error: any = null;
+  const doCreate = async () => {
+    let data: any = null;
+    let error: any = null;
 
-  // Preferred path: RPC works for both signed-in and anonymous teachers and
-  // always returns the new id + creator_token (no RLS-after-insert issues).
-  const rpcResult = await (supabase.rpc as any)('create_seat_checkin_session', {
-    p_seat_data: safeJson(seatData, []),
-    p_student_names: safeJson(studentNames, []),
-    p_scene_config: safeJson(sceneConfig, {}),
-    p_scene_type: sceneType || 'classroom',
-    p_duration_minutes: Math.max(1, Math.floor(durationMinutes || 5)),
-    p_class_name: className?.trim() || '',
-  });
+    // Preferred path: RPC works for both signed-in and anonymous teachers and
+    // always returns the new id + creator_token (no RLS-after-insert issues).
+    const rpcResult = await (supabase.rpc as any)('create_seat_checkin_session', {
+      p_seat_data: safeJson(seatData, []),
+      p_student_names: safeJson(studentNames, []),
+      p_scene_config: safeJson(sceneConfig, {}),
+      p_scene_type: sceneType || 'classroom',
+      p_duration_minutes: Math.max(1, Math.floor(durationMinutes || 5)),
+      p_class_name: className?.trim() || '',
+    });
 
-  if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
-    data = rpcResult.data[0];
-  } else if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === 'object') {
-    data = rpcResult.data;
-  } else {
-    error = rpcResult.error;
-  }
-
-  // Legacy fallback for environments where the RPC is missing.
-  if (!data?.id) {
-    const baseInsertData = {
-      seat_data: safeJson(seatData, []),
-      student_names: safeJson(studentNames, []),
-      scene_config: safeJson(sceneConfig, {}),
-      scene_type: sceneType || 'classroom',
-    };
-    const legacyResult = await supabase
-      .from('seat_checkin_sessions')
-      .insert([baseInsertData as any])
-      .select('id, created_at, status, scene_type, student_names')
-      .single();
-    if (!legacyResult.error && legacyResult.data) {
-      data = legacyResult.data as any;
-      error = null;
-    } else if (!error) {
-      error = legacyResult.error;
+    if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
+      data = rpcResult.data[0];
+    } else if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === 'object') {
+      data = rpcResult.data;
+    } else {
+      error = rpcResult.error;
     }
-  }
 
-  if (!data?.id) {
-    const message = (error && (error.message || error.hint || error.details)) || 'Failed to create seat checkin session';
-    throw new Error(typeof message === 'string' ? message : 'Failed to create seat checkin session');
-  }
+    // Legacy fallback for environments where the RPC is missing.
+    if (!data?.id) {
+      const baseInsertData = {
+        seat_data: safeJson(seatData, []),
+        student_names: safeJson(studentNames, []),
+        scene_config: safeJson(sceneConfig, {}),
+        scene_type: sceneType || 'classroom',
+      };
+      const legacyResult = await supabase
+        .from('seat_checkin_sessions')
+        .insert([baseInsertData as any])
+        .select('id, created_at, status, scene_type, student_names')
+        .single();
+      if (!legacyResult.error && legacyResult.data) {
+        data = legacyResult.data as any;
+        error = null;
+      } else if (!error) {
+        error = legacyResult.error;
+      }
+    }
+
+    if (!data?.id) {
+      const message = (error && (error.message || error.hint || error.details)) || 'Failed to create seat checkin session';
+      throw new Error(typeof message === 'string' ? message : 'Failed to create seat checkin session');
+    }
+
+    return data;
+  };
+
+  const data = await withRetry(doCreate, {
+    attempts: 3,
+    baseDelayMs: 500,
+    shouldRetry: (err) => {
+      const msg = String((err as Error)?.message || '');
+      // Retry on network timeout, connection reset, or 5xx-like RPC errors
+      return /timeout|network|connection|reset|failed to fetch|503|504|502/i.test(msg);
+    },
+  });
 
   if ((data as any).creator_token) {
     saveSeatCheckinSessionToken(data.id, (data as any).creator_token);

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet } from 'lucide-react';
+import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
@@ -249,6 +249,7 @@ export default function SeatCheckinDialog({
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
   const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
   const [loading, setLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [records, setRecords] = useState<SeatCheckinRecord[]>([]);
   const [sessionSeatData, setSessionSeatData] = useState<unknown | null>(null);
@@ -354,6 +355,7 @@ export default function SeatCheckinDialog({
     }
 
     setLoading(true);
+    setCreateError(null);
     try {
       const minutes = unlimited ? 99999 : durationMinutes;
       // 确保智能教室/宴会厅场景 sceneConfig 包含门口信息
@@ -380,10 +382,12 @@ export default function SeatCheckinDialog({
       setCurrentSession(created.session);
       setSessionSeatData(seatData);
       setRecords([]);
+      setCreateError(null);
       onSessionCreated?.({ sessionId: created.sessionId, checkinUrl: created.checkinUrl });
       await refreshHistory();
     } catch (err) {
       const description = err instanceof Error ? err.message : undefined;
+      setCreateError(description || '创建签到失败');
       toast({ title: '创建签到失败', description, variant: 'destructive' });
     } finally {
       setLoading(false);
@@ -656,8 +660,24 @@ export default function SeatCheckinDialog({
             </div>
 
             <Button onClick={createSession} disabled={loading || (requireSeatAssignment && !seatAssignmentComplete)} className="w-full">
-              {loading ? '生成中...' : '生成签到码'}
+              {loading ? '生成中...' : createError ? '重试生成签到码' : '生成签到码'}
             </Button>
+            {createError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="text-destructive font-medium mb-2">创建签到失败</p>
+                <p className="text-muted-foreground text-xs mb-3">{createError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-9 gap-1.5 text-xs"
+                  onClick={createSession}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  {loading ? '正在重试...' : '重新生成签到码'}
+                </Button>
+              </div>
+            )}
 
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex items-center justify-between">
