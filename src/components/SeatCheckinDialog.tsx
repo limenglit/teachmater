@@ -660,8 +660,24 @@ export default function SeatCheckinDialog({
             </div>
 
             <Button onClick={createSession} disabled={loading || (requireSeatAssignment && !seatAssignmentComplete)} className="w-full">
-              {loading ? '生成中...' : '生成签到码'}
+              {loading ? '生成中...' : createError ? '重试生成签到码' : '生成签到码'}
             </Button>
+            {createError && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
+                <p className="text-destructive font-medium mb-2">创建签到失败</p>
+                <p className="text-muted-foreground text-xs mb-3">{createError}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-9 gap-1.5 text-xs"
+                  onClick={createSession}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  {loading ? '正在重试...' : '重新生成签到码'}
+                </Button>
+              </div>
+            )}
 
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex items-center justify-between">
