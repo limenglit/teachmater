@@ -140,12 +140,15 @@ export async function createSeatCheckinSession({
   };
 
   const creatorToken = createSeatCheckinCreatorToken();
+  const { data: authData } = await supabase.auth.getUser();
+  const currentUserId = authData.user?.id ?? null;
 
   const baseInsertData = {
     seat_data: safeJson(seatData, []),
     student_names: safeJson(studentNames, []),
     scene_config: safeJson(sceneConfig, {}),
     scene_type: sceneType || 'classroom',
+    ...(currentUserId ? { user_id: currentUserId } : {}),
   };
 
   const enhancedInsertData = {

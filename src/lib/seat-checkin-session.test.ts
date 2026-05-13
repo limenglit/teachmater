@@ -9,6 +9,13 @@ const fromMock = vi.fn(() => ({ insert: insertMock }));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({
+        data: {
+          user: { id: 'user-1' },
+        },
+      }),
+    },
     rpc: (...args: any[]) => rpcMock(...args),
     from: (...args: any[]) => fromMock(...args),
   },
@@ -61,6 +68,7 @@ describe('createSeatCheckinSession', () => {
         duration_minutes: 5,
         class_name: '高一(1)班',
         scene_type: 'classroom',
+        user_id: 'user-1',
       }),
     ]);
 
@@ -68,6 +76,7 @@ describe('createSeatCheckinSession', () => {
       expect.objectContaining({
         creator_token: expect.any(String),
         scene_type: 'classroom',
+        user_id: 'user-1',
       }),
     ]);
   });
