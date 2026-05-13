@@ -35,6 +35,8 @@ interface StudentResult {
 const NAME_KEY = 'quiz-student-name';
 const RECENT_KEY = 'quiz-recent-names';
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
 export default function QuizSubmitPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { t } = useLanguage();
@@ -98,7 +100,7 @@ export default function QuizSubmitPage() {
 
   useEffect(() => {
     if (!sessionId || !session || session.status !== 'ended' || !session.reveal_answers) return;
-    const studentName = name.trim() || localStorage.getItem(NAME_KEY)?.trim();
+    const studentName = normalizeStudentName(name) || normalizeStudentName(localStorage.getItem(NAME_KEY) || '');
     if (!studentName) return;
 
     (supabase.rpc as any)('get_quiz_student_result', {
@@ -141,18 +143,21 @@ export default function QuizSubmitPage() {
   }, [session]);
 
   const filteredSuggestions = useMemo(() => {
-    if (!name.trim()) return nameSuggestions.slice(0, 8);
-    return nameSuggestions.filter(n => n.includes(name.trim())).slice(0, 8);
+    const normalized = normalizeStudentName(name).toLowerCase();
+    if (!normalized) return nameSuggestions.slice(0, 8);
+    return nameSuggestions.filter(n => normalizeStudentName(n).toLowerCase().includes(normalized)).slice(0, 8);
   }, [name, nameSuggestions]);
 
   const enterQuiz = () => {
-    if (!name.trim()) return;
-    localStorage.setItem(NAME_KEY, name.trim());
+    const normalizedName = normalizeStudentName(name);
+    if (!normalizedName) return;
+    localStorage.setItem(NAME_KEY, normalizedName);
     const recent: string[] = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
-    if (!recent.includes(name.trim())) {
-      recent.unshift(name.trim());
+    if (!recent.some(item => normalizeStudentName(item) === normalizedName)) {
+      recent.unshift(normalizedName);
       localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 20)));
     }
+    setName(normalizedName);
     setEntered(true);
   };
 
@@ -175,9 +180,10 @@ export default function QuizSubmitPage() {
     setSubmitting(true);
     const questions = session.questions;
     const answersArray = questions.map((_q: any, i: number) => answers[i] ?? '');
+    const normalizedName = normalizeStudentName(name);
     const { error } = await supabase.rpc('submit_quiz_answers', {
       p_session_id: session.id,
-      p_student_name: name.trim(),
+      p_student_name: normalizedName,
       p_answers: answersArray,
     } as any);
     if (error) {

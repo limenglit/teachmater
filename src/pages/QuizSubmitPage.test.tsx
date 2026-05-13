@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import QuizSubmitPage from './QuizSubmitPage';
 
 const rpcMock = vi.fn();
@@ -79,5 +79,55 @@ describe('QuizSubmitPage ended result visibility', () => {
       expect(screen.getByText('成绩：1 / 1')).toBeInTheDocument();
     });
     expect(screen.getByText('你的作答：B')).toBeInTheDocument();
+  });
+
+  it('normalizes student name before submitting answers', async () => {
+    rpcMock.mockImplementation((fn: string) => {
+      if (fn === 'get_quiz_session_for_student') {
+        return Promise.resolve({
+          data: {
+            id: 'session-1',
+            title: '单元测验',
+            status: 'active',
+            reveal_answers: false,
+            student_names: ['张三'],
+            questions: [
+              {
+                type: 'single',
+                content: '1+1=?',
+                options: ['1', '2', '3', '4'],
+                correct_answer: 'B',
+              },
+            ],
+          },
+          error: null,
+        });
+      }
+
+      if (fn === 'submit_quiz_answers') {
+        return Promise.resolve({ error: null });
+      }
+
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    localStorage.setItem('quiz-student-name', ' 张三　');
+
+    render(<QuizSubmitPage />);
+
+    const startButton = await screen.findByRole('button', { name: 'quiz.startAnswer' });
+    fireEvent.click(startButton);
+
+    const optionB = await screen.findByRole('button', { name: /B\./ });
+    fireEvent.click(optionB);
+
+    fireEvent.click(screen.getByRole('button', { name: 'quiz.submit' }));
+
+    await waitFor(() => {
+      expect(rpcMock).toHaveBeenCalledWith('submit_quiz_answers', expect.objectContaining({
+        p_session_id: 'session-1',
+        p_student_name: '张三',
+      }));
+    });
   });
 });
