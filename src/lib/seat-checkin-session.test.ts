@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeatCheckinSession } from './seat-checkin-session';
 
+const rpcMock = vi.fn();
 const singleMock = vi.fn();
 const selectMock = vi.fn(() => ({ single: singleMock }));
 const insertMock = vi.fn(() => ({ select: selectMock }));
@@ -8,6 +9,7 @@ const fromMock = vi.fn(() => ({ insert: insertMock }));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
+    rpc: (...args: any[]) => rpcMock(...args),
     from: (...args: any[]) => fromMock(...args),
   },
 }));
@@ -16,6 +18,11 @@ describe('createSeatCheckinSession', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+
+    rpcMock.mockResolvedValue({
+      data: null,
+      error: { message: 'function gen_random_bytes(integer) does not exist' },
+    });
 
     singleMock.mockResolvedValue({
       data: {
@@ -43,6 +50,7 @@ describe('createSeatCheckinSession', () => {
       className: '高一(1)班',
     });
 
+    expect(rpcMock).toHaveBeenCalledWith('create_seat_checkin_session', expect.any(Object));
     expect(fromMock).toHaveBeenCalledWith('seat_checkin_sessions');
     expect(insertMock).toHaveBeenCalledWith([
       expect.objectContaining({

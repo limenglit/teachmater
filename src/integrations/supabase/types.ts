@@ -982,8 +982,11 @@ export type Database = {
       }
       seat_checkin_sessions: {
         Row: {
+          class_name: string
           created_at: string
           creator_token: string | null
+          duration_minutes: number
+          ended_at: string | null
           id: string
           scene_config: Json
           scene_type: string
@@ -993,8 +996,11 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          class_name?: string
           created_at?: string
           creator_token?: string | null
+          duration_minutes?: number
+          ended_at?: string | null
           id?: string
           scene_config?: Json
           scene_type?: string
@@ -1004,8 +1010,11 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          class_name?: string
           created_at?: string
           creator_token?: string | null
+          duration_minutes?: number
+          ended_at?: string | null
           id?: string
           scene_config?: Json
           scene_type?: string
@@ -1233,6 +1242,7 @@ export type Database = {
           student_count: number
           title: string
           type: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1242,6 +1252,7 @@ export type Database = {
           student_count?: number
           title?: string
           type?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1251,6 +1262,7 @@ export type Database = {
           student_count?: number
           title?: string
           type?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1424,6 +1436,27 @@ export type Database = {
         Returns: undefined
       }
       consume_ai_quota: { Args: { p_user_id: string }; Returns: boolean }
+      create_seat_checkin_session: {
+        Args: {
+          p_class_name?: string
+          p_duration_minutes?: number
+          p_scene_config: Json
+          p_scene_type: string
+          p_seat_data: Json
+          p_student_names: Json
+        }
+        Returns: {
+          class_name: string
+          created_at: string
+          creator_token: string
+          duration_minutes: number
+          ended_at: string
+          id: string
+          scene_type: string
+          status: string
+          student_names: Json
+        }[]
+      }
       delete_badge: {
         Args: { p_badge_id: string; p_token: string }
         Returns: undefined
@@ -1444,6 +1477,10 @@ export type Database = {
         Args: { p_session_id: string; p_token: string }
         Returns: undefined
       }
+      delete_seat_checkin_session: {
+        Args: { p_session_id: string; p_token: string }
+        Returns: undefined
+      }
       delete_student_points: {
         Args: { p_point_id: string; p_token: string }
         Returns: undefined
@@ -1456,6 +1493,7 @@ export type Database = {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
       }
+      get_board_for_student: { Args: { p_board_id: string }; Returns: Json }
       get_checkin_records_for_owner: {
         Args: { p_session_id: string; p_token: string }
         Returns: {
@@ -1564,8 +1602,11 @@ export type Database = {
       get_seat_checkin_sessions_by_tokens: {
         Args: { p_tokens: string[] }
         Returns: {
+          class_name: string
           created_at: string
           creator_token: string | null
+          duration_minutes: number
+          ended_at: string | null
           id: string
           scene_config: Json
           scene_type: string
@@ -1719,10 +1760,15 @@ export type Database = {
             }
             Returns: undefined
           }
-      update_seat_checkin_session: {
-        Args: { p_session_id: string; p_status?: string }
-        Returns: undefined
-      }
+      update_seat_checkin_session:
+        | {
+            Args: { p_session_id: string; p_status?: string }
+            Returns: undefined
+          }
+        | {
+            Args: { p_session_id: string; p_status: string; p_token: string }
+            Returns: undefined
+          }
       update_task_session: {
         Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined

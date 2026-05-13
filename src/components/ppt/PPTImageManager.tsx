@@ -65,8 +65,14 @@ export default function PPTImageManager({ open, onClose, onSelectImage }: Props)
 
     setUploadLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('请先登录后再上传图片');
+        setUploadLoading(false);
+        return;
+      }
       const ext = file.name.split('.').pop() || 'png';
-      const fileName = `upload-${crypto.randomUUID()}.${ext}`;
+      const fileName = `${user.id}/upload-${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage
         .from('ppt-images')
         .upload(fileName, file, { contentType: file.type });

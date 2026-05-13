@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { internalErrorResponse } from "../_shared/responses.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -180,8 +181,6 @@ Language for output: ${lang === "zh" ? "Chinese" : lang === "ja" ? "Japanese" : 
     });
   } catch (e) {
     console.error("analyze-text error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return internalErrorResponse(corsHeaders);
   }
 });

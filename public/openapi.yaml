@@ -1,0 +1,163 @@
+openapi: 3.0.3
+info:
+  title: "TeachMate generate-vocab-cards API"
+  description: "生成词库匹配学习卡片的 Edge Function API。支持通过主题、受众和提示词生成消消乐式配对卡片。"
+  version: 1.0.0
+  contact:
+    name: TeachMate
+    url: "https://teachermate.org.cn"
+servers:
+  - url: "https://teachermate.org.cn"
+    description: Production
+
+  - url: "https://teachmater.lovable.app"
+    description: Published
+
+security:
+  - bearerAuth:
+
+paths:
+  /functions/v1/generate-vocab-cards:
+    post:
+      summary: 生成词库卡片
+      description: "根据给定主题生成配对学习卡片。每张卡片包含 word（题面/术语）和 definition（释义），以及可选的 example（示例句）。返回的卡片数组长度至少为 2。"
+      operationId: generateVocabCards
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateVocabCardsRequest"
+            example:
+              topic: "Python 基础"
+              count: 6
+              audience: 初中信息课
+              hint: 侧重基础语法
+      responses:
+        200:
+          description: "成功生成至少 2 张有效卡片"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateVocabCardsResponse"
+              example:
+                cards:
+                  - word: print
+                    definition: 输出函数，用于在控制台显示内容
+                    example: "print('Hello, World!')"
+
+                  - word: def
+                    definition: 定义函数的关键字
+                    example: "def greet(): return 'Hi'"
+
+        401:
+          description: "未认证或无效的 Bearer Token"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Unauthorized
+        422:
+          description: "AI 未返回有效卡片（已脱敏）。此错误不泄露原始解析错误、JSON 语法错误、工具调用详情或 schema 描述。"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "AI 未返回有效卡片，请换个主题再试"
+        429:
+          description: "AI 配额耗尽或请求过于频繁"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "已达今日 AI 使用上限"
+        500:
+          description: "AI 服务调用失败（主服务和降级服务均不可用）"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "AI 生成失败，请稍后重试"
+components:
+  schemas:
+    GenerateVocabCardsRequest:
+      type: object
+      required:
+        - topic
+
+      properties:
+        topic:
+          type: string
+          description: 生成主题，例如学科名称、知识点或概念集合
+          minLength: 1
+          example: "Python 基础"
+        count:
+          type: integer
+          description: "期望生成的卡片对数，范围 2~40，默认 10"
+          minimum: 2
+          maximum: 40
+          default: 10
+          example: 6
+        audience:
+          type: string
+          description: "适用对象说明，帮助 AI 调整难度和表述"
+          example: 初中信息课
+        hint:
+          type: string
+          description: 补充说明，进一步限定生成范围
+          example: 侧重基础语法
+    Card:
+      type: object
+      required:
+        - word
+
+        - definition
+
+      properties:
+        word:
+          type: string
+          description: 题面/术语/英文/缩写等（用于卡片正面显示）
+          minLength: 1
+          maxLength: 20
+          example: print
+        definition:
+          type: string
+          description: 中文释义/解释/对照（用于卡片背面显示）
+          minLength: 1
+          maxLength: 20
+          example: 输出函数，用于在控制台显示内容
+        example:
+          type: string
+          description: 一句话示例（可选）
+          example: "print('Hello, World!')"
+    GenerateVocabCardsResponse:
+      type: object
+      required:
+        - cards
+
+      properties:
+        cards:
+          type: array
+          description: "生成的配对卡片数组，长度至少为 2"
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/Card"
+    ErrorResponse:
+      type: object
+      required:
+        - error
+
+      properties:
+        error:
+          type: string
+          description: 人类可读的脱敏错误信息
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "使用 Supabase 身份验证获取的访问令牌"

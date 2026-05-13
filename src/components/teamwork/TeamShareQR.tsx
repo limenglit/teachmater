@@ -41,9 +41,15 @@ export default function TeamShareQR({ teams, type }: TeamShareQRProps) {
             isViceCaptain: !!(m.isViceCaptain || m.isViceLeader),
           })),
         }));
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast.error('请先登录后再生成分享链接');
+          setOpen(false);
+          return;
+        }
         const { data, error } = await supabase
           .from('teamwork_sessions')
-          .insert([{ type, title, data: normalized as any, student_count: studentCount }])
+          .insert([{ type, title, data: normalized as any, student_count: studentCount, user_id: user.id }])
           .select('id')
           .single();
         if (error) throw error;
