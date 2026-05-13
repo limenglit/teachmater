@@ -17,6 +17,7 @@ import {
   renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { isSeatAssignmentComplete } from '@/lib/seat-checkin-policy';
 import type { StudentGender } from '@/hooks/useStudentStore';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
@@ -201,9 +202,14 @@ export default function ConcertHall({ students }: Props) {
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const exportSceneConfig = { seatsPerRow, rowCount };
+  const seatAssignmentReady = useMemo(
+    () => isSeatAssignmentComplete(assignment, students.map(student => student.name)),
+    [assignment, students]
+  );
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
+    seatAssignmentReady,
     sceneConfig: exportSceneConfig,
     sceneType: 'concertHall',
   });
@@ -937,6 +943,7 @@ export default function ConcertHall({ students }: Props) {
         onOpenChange={setCheckinOpen}
         seatData={assignment}
         studentNames={students.map(s => s.name)}
+        seatAssignmentReady={seatAssignmentReady}
         sceneType="concertHall"
         sceneConfig={exportSceneConfig}
         className={recordName.trim() || exportClassName}

@@ -11,6 +11,7 @@ import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinV
 import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
 import ConcertCheckinView from '@/components/checkin-views/ConcertCheckinView';
 import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabCheckinView';
+import ArtStudioCheckinView from '@/components/checkin-views/ArtStudioCheckinView';
 
 const SEAT_CHECKIN_NAME_STORAGE_KEY = 'teachmate-seat-checkin-names';
 
@@ -172,6 +173,16 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
     for (let r = 0; r < rows.length; r++) {
       for (let c = 0; c < rows[r].length; c++) {
         if (isSameStudentName(rows[r][c], studentName)) return `第${r + 1}排第${c + 1}座`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'artStudio') {
+    const rings = seatData as string[][];
+    for (let ring = 0; ring < rings.length; ring++) {
+      for (let seat = 0; seat < rings[ring].length; seat++) {
+        if (isSameStudentName(rings[ring][seat], studentName)) return `第${ring + 1}圈第${seat + 1}位`;
       }
     }
     return null;
@@ -532,10 +543,13 @@ export default function SeatCheckinPage() {
         {sceneType === 'concertHall' && (
           <ConcertCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
+        {sceneType === 'artStudio' && (
+          <ArtStudioCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
+        )}
         {sceneType === 'computerLab' && (
           <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
-        {!['classroom', 'smartClassroom', 'banquet', 'conference', 'concertHall', 'computerLab'].includes(sceneType) && (
+        {!['classroom', 'smartClassroom', 'banquet', 'conference', 'concertHall', 'artStudio', 'computerLab'].includes(sceneType) && (
           <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
             暂不支持该座位场景的可视化展示，请按提示「{seatLabel}」入座。
           </div>

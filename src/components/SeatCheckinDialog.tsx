@@ -43,6 +43,13 @@ interface Props {
 
 const isSeatEmptyValue = (value: unknown) => value === null || value === '';
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
+const isSameStudentName = (left: unknown, right: string) => {
+  if (typeof left !== 'string') return false;
+  return normalizeStudentName(left) === normalizeStudentName(right);
+};
+
 const SEAT_CHECKIN_GUEST_OVERRIDE_KEY = 'teachmate-seat-checkin-guest-overrides-v1';
 
 type GuestOverrideMap = Record<string, Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }>>;
@@ -175,7 +182,7 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
     const seats = seatData as (string | null)[][];
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
-        if (seats[r][c] === studentName) return `第${r + 1}排第${c + 1}列`;
+        if (isSameStudentName(seats[r][c], studentName)) return `第${r + 1}排第${c + 1}列`;
       }
     }
     return null;
@@ -185,7 +192,7 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
     const tables = seatData as string[][];
     for (let t = 0; t < tables.length; t++) {
       for (let s = 0; s < tables[t].length; s++) {
-        if (tables[t][s] === studentName) return `第${t + 1}桌第${s + 1}号座`;
+        if (isSameStudentName(tables[t][s], studentName)) return `第${t + 1}桌第${s + 1}号座`;
       }
     }
     return null;
@@ -200,13 +207,13 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
       mainTop?: string[];
       mainBottom?: string[];
     };
-    if (data.headLeft === studentName) return '左侧主位';
-    if (data.headRight === studentName) return '右侧主位';
+    if (isSameStudentName(data.headLeft, studentName)) return '左侧主位';
+    if (isSameStudentName(data.headRight, studentName)) return '右侧主位';
     const top = data.top || data.mainTop || [];
     const bottom = data.bottom || data.mainBottom || [];
-    const topIdx = top.indexOf(studentName);
+    const topIdx = top.findIndex(name => isSameStudentName(name, studentName));
     if (topIdx >= 0) return `上方第${topIdx + 1}位`;
-    const bottomIdx = bottom.indexOf(studentName);
+    const bottomIdx = bottom.findIndex(name => isSameStudentName(name, studentName));
     if (bottomIdx >= 0) return `下方第${bottomIdx + 1}位`;
     return null;
   }
@@ -215,7 +222,17 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
     const rows = seatData as string[][];
     for (let r = 0; r < rows.length; r++) {
       for (let c = 0; c < rows[r].length; c++) {
-        if (rows[r][c] === studentName) return `第${r + 1}排第${c + 1}座`;
+        if (isSameStudentName(rows[r][c], studentName)) return `第${r + 1}排第${c + 1}座`;
+      }
+    }
+    return null;
+  }
+
+  if (sceneType === 'artStudio') {
+    const rings = seatData as string[][];
+    for (let ring = 0; ring < rings.length; ring++) {
+      for (let seat = 0; seat < rings[ring].length; seat++) {
+        if (isSameStudentName(rings[ring][seat], studentName)) return `第${ring + 1}圈第${seat + 1}位`;
       }
     }
     return null;
@@ -224,7 +241,7 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
   if (sceneType === 'computerLab') {
     const rows = seatData as Array<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }>;
     for (const row of rows) {
-      const idx = row.students.indexOf(studentName);
+      const idx = row.students.findIndex(name => isSameStudentName(name, studentName));
       if (idx >= 0) return `第${row.rowIndex + 1}排${row.side === 'top' ? '上侧' : '下侧'}第${idx + 1}位`;
     }
     return null;

@@ -18,7 +18,7 @@ export const setSystemRequireSeatAssignmentBeforeCheckin = (required: boolean) =
   localStorage.setItem(SYSTEM_REQUIRE_SEAT_ASSIGNMENT_KEY, String(required));
 };
 
-const normalize = (value: string) => value.trim();
+const normalize = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
 
 const collectAssignedNames = (seatData: unknown, knownNames: Set<string>) => {
   const assigned = new Set<string>();
