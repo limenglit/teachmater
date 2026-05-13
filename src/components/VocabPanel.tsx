@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  BookOpen, Plus, Loader2, LogIn, Edit2, Trash2, Send, Undo2, Play, Search, Globe2, FolderHeart,
+  BookOpen, Plus, Loader2, LogIn, Edit2, Trash2, Send, Undo2, Play, Search, Globe2, FolderHeart, QrCode,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ import {
 import VocabStatusBadge from './vocab/VocabStatusBadge';
 import VocabSetWizard from './vocab/VocabSetWizard';
 import VocabPlayer from './vocab/VocabPlayer';
+import VocabPublishDialog from './vocab/VocabPublishDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -34,6 +35,7 @@ export default function VocabPanel() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editing, setEditing] = useState<VocabSet | null>(null);
   const [playing, setPlaying] = useState<VocabSet | null>(null);
+  const [publishing, setPublishing] = useState<VocabSetWithCount | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -163,7 +165,9 @@ export default function VocabPanel() {
               key={s.id}
               set={s}
               isMine={tab === 'mine'}
+              canPublish={isApproved}
               onPlay={() => setPlaying(s)}
+              onPublish={() => setPublishing(s)}
               onEdit={() => { setEditing(s); setWizardOpen(true); }}
               onDelete={() => handleDelete(s)}
               onSubmit={() => handleSubmit(s)}
@@ -179,6 +183,7 @@ export default function VocabPanel() {
         editing={editing}
         onSaved={loadAll}
       />
+      <VocabPublishDialog open={!!publishing} onOpenChange={(open) => !open && setPublishing(null)} set={publishing} />
       {playing && <VocabPlayer set={playing} onClose={() => setPlaying(null)} />}
     </div>
   );
@@ -187,14 +192,16 @@ export default function VocabPanel() {
 interface CardProps {
   set: VocabSetWithCount;
   isMine: boolean;
+  canPublish: boolean;
   onPlay: () => void;
+  onPublish: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onSubmit: () => void;
   onWithdraw: () => void;
 }
 
-function VocabSetCard({ set, isMine, onPlay, onEdit, onDelete, onSubmit, onWithdraw }: CardProps) {
+function VocabSetCard({ set, isMine, canPublish, onPlay, onPublish, onEdit, onDelete, onSubmit, onWithdraw }: CardProps) {
   const editable = set.status === 'private' || set.status === 'rejected';
   const canSubmit = set.status === 'private' || set.status === 'rejected';
   const canWithdraw = set.status === 'pending';
@@ -228,6 +235,11 @@ function VocabSetCard({ set, isMine, onPlay, onEdit, onDelete, onSubmit, onWithd
         <Button size="sm" onClick={onPlay} className="h-7 text-xs gap-1 flex-1">
           <Play className="w-3 h-3" /> 学习
         </Button>
+        {canPublish && (
+          <Button size="sm" variant="outline" onClick={onPublish} className="h-7 text-xs gap-1">
+            <QrCode className="w-3 h-3" /> 扫码
+          </Button>
+        )}
         {isMine && editable && (
           <Button size="sm" variant="outline" onClick={onEdit} className="h-7 text-xs gap-1">
             <Edit2 className="w-3 h-3" />

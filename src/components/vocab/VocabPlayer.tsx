@@ -8,41 +8,77 @@ import type { CardItem } from '@/components/toolkit/memory-aid/types';
 import { toast } from 'sonner';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
+type PlayerSet = Pick<VocabSet, 'id' | 'title'>;
+
 interface Props {
-  set: VocabSet;
-  onClose: () => void;
+  set: PlayerSet;
+  onClose?: () => void;
+  defaultMode?: 'match' | 'flash';
+  allowModeSwitch?: boolean;
+  showCloseButton?: boolean;
+  fullScreen?: boolean;
+  cardsOverride?: CardItem[] | null;
 }
 
-export default function VocabPlayer({ set, onClose }: Props) {
+export default function VocabPlayer({
+  set,
+  onClose,
+  defaultMode = 'match',
+  allowModeSwitch = true,
+  showCloseButton = true,
+  fullScreen = true,
+  cardsOverride = null,
+}: Props) {
   const { t } = useLanguage();
-  const [mode, setMode] = useState<'match' | 'flash'>('match');
+  const [mode, setMode] = useState<'match' | 'flash'>(defaultMode);
   const [cards, setCards] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setMode(defaultMode);
+  }, [defaultMode]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
+
+    if (cardsOverride) {
+      if (cardsOverride.length < 2) {
+        toast.error(t('vp.minTwoToStart'));
+        onClose?.();
+        setLoading(false);
+        return () => { cancelled = true; };
+      }
+      setCards(cardsOverride);
+      setLoading(false);
+      return () => { cancelled = true; };
+    }
+
     loadCards(set.id)
       .then(rows => {
         if (cancelled) return;
         const items = toCardItems(rows);
         if (items.length < 2) {
           toast.error(t('vp.minTwoToStart'));
-          onClose();
+          onClose?.();
           return;
         }
         setCards(items);
       })
       .catch(e => {
         toast.error(t('vp.loadFailed') + e.message);
-        onClose();
+        onClose?.();
       })
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  }, [set.id, onClose, t]);
+  }, [cardsOverride, set.id, onClose, t]);
+
+  const containerClassName = fullScreen
+    ? 'fixed inset-0 z-[100] bg-background flex flex-col'
+    : 'min-h-[100dvh] bg-background flex flex-col';
 
   return (
-    <div className="fixed inset-0 z-[100] bg-background flex flex-col">
+    <div className={containerClassName}>
       <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0 flex-wrap gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Brain className="w-4 h-4 text-primary shrink-0" />
@@ -50,25 +86,31 @@ export default function VocabPlayer({ set, onClose }: Props) {
           <span className="text-xs text-muted-foreground shrink-0">{tFormat(t('vp.knowledgeCount'), cards.length)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant={mode === 'match' ? 'default' : 'outline'}
-            onClick={() => setMode('match')}
-            className="h-7 text-xs gap-1"
-          >
-            <Puzzle className="w-3 h-3" /> {t('vp.matchMode')}
-          </Button>
-          <Button
-            size="sm"
-            variant={mode === 'flash' ? 'default' : 'outline'}
-            onClick={() => setMode('flash')}
-            className="h-7 text-xs gap-1"
-          >
-            <Layers className="w-3 h-3" /> {t('vp.flashMode')}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={onClose} className="h-7 text-xs gap-1">
-            <X className="w-3.5 h-3.5" /> {t('vp.close')}
-          </Button>
+          {allowModeSwitch && (
+            <>
+              <Button
+                size="sm"
+                variant={mode === 'match' ? 'default' : 'outline'}
+                onClick={() => setMode('match')}
+                className="h-7 text-xs gap-1"
+              >
+                <Puzzle className="w-3 h-3" /> {t('vp.matchMode')}
+              </Button>
+              <Button
+                size="sm"
+                variant={mode === 'flash' ? 'default' : 'outline'}
+                onClick={() => setMode('flash')}
+                className="h-7 text-xs gap-1"
+              >
+                <Layers className="w-3 h-3" /> {t('vp.flashMode')}
+              </Button>
+            </>
+          )}
+          {showCloseButton && onClose && (
+            <Button size="sm" variant="ghost" onClick={onClose} className="h-7 text-xs gap-1">
+              <X className="w-3.5 h-3.5" /> {t('vp.close')}
+            </Button>
+          )}
         </div>
       </div>
 
