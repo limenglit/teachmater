@@ -19,6 +19,8 @@ type SeatPosition = {
   label: string;
 };
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
 interface DoorInfo { side: DoorSide; label: string; }
 
@@ -75,18 +77,18 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
 
   const myPos = useMemo((): SeatPosition | null => {
     if (!data) return null;
-    if (data.headLeft === studentName) return { side: 'head-left', index: 0, label: t('seat.nav.confHeadLeft') };
-    if (data.headRight === studentName) return { side: 'head-right', index: 0, label: t('seat.nav.confHeadRight') };
-    const topIdx = data.top.indexOf(studentName);
+    if (normalizeStudentName(data.headLeft) === normalizeStudentName(studentName)) return { side: 'head-left', index: 0, label: t('seat.nav.confHeadLeft') };
+    if (normalizeStudentName(data.headRight) === normalizeStudentName(studentName)) return { side: 'head-right', index: 0, label: t('seat.nav.confHeadRight') };
+    const topIdx = data.top.findIndex(name => normalizeStudentName(name) === normalizeStudentName(studentName));
     if (topIdx >= 0) return { side: 'top', index: topIdx, label: tFormat(t('seat.nav.confTopN'), topIdx + 1) };
-    const bottomIdx = data.bottom.indexOf(studentName);
+    const bottomIdx = data.bottom.findIndex(name => normalizeStudentName(name) === normalizeStudentName(studentName));
     if (bottomIdx >= 0) return { side: 'bottom', index: bottomIdx, label: tFormat(t('seat.nav.confBottomN'), bottomIdx + 1) };
     for (let cr = 0; cr < data.companionTop.length; cr++) {
-      const ci = data.companionTop[cr].indexOf(studentName);
+      const ci = data.companionTop[cr].findIndex(name => normalizeStudentName(name) === normalizeStudentName(studentName));
       if (ci >= 0) return { side: 'companion-top', index: ci, companionRow: cr, label: tFormat(t('seat.nav.confCompTopN'), cr + 1, ci + 1) };
     }
     for (let cr = 0; cr < data.companionBottom.length; cr++) {
-      const ci = data.companionBottom[cr].indexOf(studentName);
+      const ci = data.companionBottom[cr].findIndex(name => normalizeStudentName(name) === normalizeStudentName(studentName));
       if (ci >= 0) return { side: 'companion-bottom', index: ci, companionRow: cr, label: tFormat(t('seat.nav.confCompBottomN'), cr + 1, ci + 1) };
     }
     return null;

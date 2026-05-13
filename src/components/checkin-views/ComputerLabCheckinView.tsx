@@ -18,6 +18,8 @@ interface LabRow {
   students: string[];
 }
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
 type DoorPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
 function computeNavPath(
@@ -80,7 +82,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
 
   const myPos = useMemo(() => {
     for (const row of labRows) {
-      const idx = row.students.indexOf(studentName);
+      const idx = row.students.findIndex(name => normalizeStudentName(name) === normalizeStudentName(studentName));
       if (idx >= 0) return { rowIndex: row.rowIndex, side: row.side, col: idx };
     }
     return null;

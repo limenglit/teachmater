@@ -17,6 +17,8 @@ interface Props {
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
 interface DoorInfo { side: DoorSide; label: string; }
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
 function classifyDoorSide(door: { x: number; y: number } | null | undefined, roomW: number, roomH: number): DoorSide | null {
   if (!door) return null;
   const dLeft = door.x;
@@ -41,7 +43,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
   const myPos = useMemo(() => {
     for (let ti = 0; ti < tables.length; ti++) {
       for (let s = 0; s < tables[ti].length; s++) {
-        if (tables[ti][s] === studentName) return { table: ti, seat: s };
+        if (normalizeStudentName(tables[ti][s] || '') === normalizeStudentName(studentName)) return { table: ti, seat: s };
       }
     }
     return null;

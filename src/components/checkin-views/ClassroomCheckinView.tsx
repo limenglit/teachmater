@@ -22,6 +22,8 @@ interface Door {
   col: number;
 }
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
 export default function ClassroomCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
   const { t } = useLanguage();
   const seats = seatData as (string | null)[][];
@@ -41,7 +43,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const myPosition = useMemo(() => {
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
-        if (seats[r][c] === studentName) return { r, c };
+        if (typeof seats[r][c] === 'string' && normalizeStudentName(seats[r][c] as string) === normalizeStudentName(studentName)) return { r, c };
       }
     }
     return null;

@@ -15,6 +15,8 @@ interface Props {
   recenterSignal?: number;
 }
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
 export default function ConcertCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
   const { t } = useLanguage();
   const rows = seatData as string[][];
@@ -46,7 +48,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
   const myPos = useMemo(() => {
     for (let r = 0; r < rows.length; r++) {
       for (let c = 0; c < rows[r].length; c++) {
-        if (rows[r][c] === studentName) return { row: r, col: c };
+        if (normalizeStudentName(rows[r][c] || '') === normalizeStudentName(studentName)) return { row: r, col: c };
       }
     }
     return null;

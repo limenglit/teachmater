@@ -30,6 +30,13 @@ const saveStoredSeatCheckinName = (sessionId: string, studentName: string) => {
   localStorage.setItem(SEAT_CHECKIN_NAME_STORAGE_KEY, JSON.stringify(next));
 };
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
+const isSameStudentName = (left: unknown, right: string) => {
+  if (typeof left !== 'string') return false;
+  return normalizeStudentName(left) === normalizeStudentName(right);
+};
+
 const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: string) => {
   const { data, error } = await supabase.rpc('has_seat_checkin_record', {
     p_session_id: sessionId,
@@ -124,7 +131,7 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
     const seats = seatData as (string | null)[][];
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
-        if (seats[r][c] === studentName) return `第${r + 1}排第${c + 1}列`;
+        if (isSameStudentName(seats[r][c], studentName)) return `第${r + 1}排第${c + 1}列`;
       }
     }
     return null;
@@ -134,7 +141,7 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
     const tables = seatData as string[][];
     for (let t = 0; t < tables.length; t++) {
       for (let s = 0; s < tables[t].length; s++) {
-        if (tables[t][s] === studentName) return `第${t + 1}桌第${s + 1}号座`;
+        if (isSameStudentName(tables[t][s], studentName)) return `第${t + 1}桌第${s + 1}号座`;
       }
     }
     return null;
@@ -149,13 +156,13 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
       mainTop?: string[];
       mainBottom?: string[];
     };
-    if (data.headLeft === studentName) return '左侧主位';
-    if (data.headRight === studentName) return '右侧主位';
+    if (isSameStudentName(data.headLeft, studentName)) return '左侧主位';
+    if (isSameStudentName(data.headRight, studentName)) return '右侧主位';
     const top = data.top || data.mainTop || [];
     const bottom = data.bottom || data.mainBottom || [];
-    const topIdx = top.indexOf(studentName);
+    const topIdx = top.findIndex(name => isSameStudentName(name, studentName));
     if (topIdx >= 0) return `上方第${topIdx + 1}位`;
-    const bottomIdx = bottom.indexOf(studentName);
+    const bottomIdx = bottom.findIndex(name => isSameStudentName(name, studentName));
     if (bottomIdx >= 0) return `下方第${bottomIdx + 1}位`;
     return null;
   }
@@ -164,7 +171,7 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
     const rows = seatData as string[][];
     for (let r = 0; r < rows.length; r++) {
       for (let c = 0; c < rows[r].length; c++) {
-        if (rows[r][c] === studentName) return `第${r + 1}排第${c + 1}座`;
+        if (isSameStudentName(rows[r][c], studentName)) return `第${r + 1}排第${c + 1}座`;
       }
     }
     return null;
@@ -173,7 +180,7 @@ const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string
   if (sceneType === 'computerLab') {
     const rows = seatData as Array<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }>;
     for (const row of rows) {
-      const idx = row.students.indexOf(studentName);
+      const idx = row.students.findIndex(name => isSameStudentName(name, studentName));
       if (idx >= 0) return `第${row.rowIndex + 1}排${row.side === 'top' ? '上侧' : '下侧'}第${idx + 1}位`;
     }
     return null;
@@ -213,8 +220,8 @@ export default function SeatCheckinPage() {
     scene_type: string;
     scene_config?: Record<string, unknown>;
   }, targetName: string, includeCurrentAsGuest: boolean) => {
-    const normalized = targetName.trim();
-    const registeredSet = new Set(sessionData.student_names);
+    const normalized = normalizeStudentName(targetName);
+    const registeredSet = new Set(sessionData.student_names.map(normalizeStudentName).filter(Boolean));
     const isRegistered = registeredSet.has(normalized);
 
     if (isRegistered) {
@@ -234,7 +241,7 @@ export default function SeatCheckinPage() {
     const guestNames: string[] = [];
     const seen = new Set<string>();
     for (const row of (data || []) as Array<{ student_name: string }>) {
-      const studentName = row.student_name.trim();
+      const studentName = normalizeStudentName(row.student_name);
       if (!studentName || registeredSet.has(studentName) || seen.has(studentName)) continue;
       seen.add(studentName);
       guestNames.push(studentName);
@@ -286,7 +293,7 @@ export default function SeatCheckinPage() {
         const d: any = data;
         const nextSession = {
           seat_data: d.seat_data,
-          student_names: d.student_names as unknown as string[],
+          student_names: ((d.student_names as unknown as string[]) || []).map(normalizeStudentName).filter(Boolean),
           scene_config: d.scene_config as unknown as Record<string, unknown>,
           scene_type: (d.scene_type as string) || 'classroom',
           status: (d.status as string) || 'active',
@@ -318,16 +325,18 @@ export default function SeatCheckinPage() {
   const handleNameInput = (val: string) => {
     setName(val);
     if (!session || val.length === 0) { setSuggestions([]); return; }
+    const normalizedValue = normalizeStudentName(val).toLowerCase();
     const filtered = session.student_names.filter(n =>
-      n.toLowerCase().includes(val.toLowerCase()) && n !== val
+      normalizeStudentName(n).toLowerCase().includes(normalizedValue)
+      && normalizeStudentName(n) !== normalizeStudentName(val)
     );
     setSuggestions(filtered.slice(0, 5));
   };
 
   const handleSubmit = async () => {
     if (!name.trim() || !sessionId || !session) return;
-    const trimmedName = name.trim();
-    const isRegistered = session.student_names.includes(trimmedName);
+    const trimmedName = normalizeStudentName(name);
+    const isRegistered = session.student_names.some(n => normalizeStudentName(n) === trimmedName);
     setSubmitting(true);
     try {
       const exists = await hasExistingSeatCheckinRecord(sessionId, trimmedName);

@@ -41,6 +41,8 @@ interface CreateSeatCheckinSessionParams {
   className?: string;
 }
 
+const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
 const createSeatCheckinCreatorToken = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -142,10 +144,13 @@ export async function createSeatCheckinSession({
   const creatorToken = createSeatCheckinCreatorToken();
   const { data: authData } = await supabase.auth.getUser();
   const currentUserId = authData.user?.id ?? null;
+  const normalizedStudentNames = Array.from(
+    new Set(studentNames.map(normalizeStudentName).filter(Boolean)),
+  );
 
   const baseInsertData = {
     seat_data: safeJson(seatData, []),
-    student_names: safeJson(studentNames, []),
+    student_names: safeJson(normalizedStudentNames, []),
     scene_config: safeJson(sceneConfig, {}),
     scene_type: sceneType || 'classroom',
     ...(currentUserId ? { user_id: currentUserId } : {}),
