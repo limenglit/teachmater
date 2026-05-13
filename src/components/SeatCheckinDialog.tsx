@@ -355,6 +355,7 @@ export default function SeatCheckinDialog({
     }
 
     setLoading(true);
+    setCreateError(null);
     try {
       const minutes = unlimited ? 99999 : durationMinutes;
       // 确保智能教室/宴会厅场景 sceneConfig 包含门口信息
@@ -381,10 +382,12 @@ export default function SeatCheckinDialog({
       setCurrentSession(created.session);
       setSessionSeatData(seatData);
       setRecords([]);
+      setCreateError(null);
       onSessionCreated?.({ sessionId: created.sessionId, checkinUrl: created.checkinUrl });
       await refreshHistory();
     } catch (err) {
       const description = err instanceof Error ? err.message : undefined;
+      setCreateError(description || '创建签到失败');
       toast({ title: '创建签到失败', description, variant: 'destructive' });
     } finally {
       setLoading(false);
