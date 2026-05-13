@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Plus, Trash2, FileCheck, ArrowLeft, Edit3, Shuffle, Download, Copy, ChevronUp, ChevronDown,
-  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye, GripVertical, ChevronRight,
+  FileText, HelpCircle, CheckCircle2, ListChecks, ToggleLeft, Eye, GripVertical, ChevronRight, Play,
 } from 'lucide-react';
 import type {
   QuizQuestion, QuizPaper, PaperQuestion, PaperTemplate, TemplateRule, QuestionType,
@@ -41,9 +41,11 @@ interface Props {
   seedQuestions?: QuizQuestion[];
   seedTitle?: string;
   onSeedConsumed?: () => void;
+  onPublishPaper?: (paper: QuizPaper) => void | Promise<void>;
+  rosterButton?: React.ReactNode;
 }
 
-export default function QuizPaperBank({ papers, setPapers, questions, isGuest, seedQuestions, seedTitle, onSeedConsumed }: Props) {
+export default function QuizPaperBank({ papers, setPapers, questions, isGuest, seedQuestions, seedTitle, onSeedConsumed, onPublishPaper, rosterButton }: Props) {
   const { t } = useLanguage();
   const { user } = useAuth();
 
@@ -585,7 +587,8 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">{papers.length} {t('quiz.paper.papersCount')}</span>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 items-center">
+          {rosterButton}
           <Button variant="outline" size="sm" className="text-xs h-7 gap-1" onClick={() => setView('auto')}>
             <Shuffle className="w-3 h-3" /> {t('quiz.paper.autoGenerate')}
           </Button>
@@ -617,6 +620,19 @@ export default function QuizPaperBank({ papers, setPapers, questions, isGuest, s
                     {p.is_template && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">{t('quiz.paper.template')}</span>}
                   </div>
                   <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
+                    {onPublishPaper && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] gap-1"
+                        onClick={() => { void onPublishPaper(p); }}
+                        title={t('quiz.startSession')}
+                        disabled={isGuest}
+                      >
+                        <Play className="w-3 h-3 text-primary" />
+                        <span>{t('quiz.startSession')}</span>
+                      </Button>
+                    )}
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => openEdit(p)} title={t('quiz.editQuestion')}>
                       <Edit3 className="w-3 h-3 text-muted-foreground" />
                     </Button>

@@ -146,4 +146,24 @@ describe('QuizPaperBank export dialog', () => {
       }));
     });
   });
+
+  it('exposes a publish action for a paper', async () => {
+    const onPublishPaper = vi.fn();
+
+    render(
+      <QuizPaperBank
+        papers={[samplePaper]}
+        setPapers={vi.fn()}
+        questions={[]}
+        isGuest={false}
+        onPublishPaper={onPublishPaper}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'quiz.startSession' }));
+
+    await waitFor(() => {
+      expect(onPublishPaper).toHaveBeenCalledWith(samplePaper);
+    });
+  });
 });

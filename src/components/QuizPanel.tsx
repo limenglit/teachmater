@@ -136,17 +136,15 @@ export default function QuizPanel() {
     return null;
   };
 
-  const startSession = async () => {
+  const publishQuizSession = async (selectedQuestions: QuizQuestion[], titleSeed?: string) => {
     if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
-    const selected = questions.filter(q => selectedIds.has(q.id));
-    if (selected.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
-    // Default to sidebar students if no roster selected
+    if (selectedQuestions.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
     const names = sessionStudentNames.length > 0 ? sessionStudentNames : sidebarStudents.map(s => s.name);
-    const title = sessionTitle.trim() || t('quiz.defaultTitle');
+    const title = (titleSeed || sessionTitle).trim() || t('quiz.defaultTitle');
     const payload: any = {
       user_id: user.id,
       title,
-      questions: selected as any,
+      questions: selectedQuestions as any,
       reveal_answers: revealAfterEnd,
       student_names: names as any,
     };
@@ -159,7 +157,6 @@ export default function QuizPanel() {
     let { data, error } = await supabase.from('quiz_sessions').insert(payload).select().single() as any;
 
     if (error && isRevealSchemaError(error.message)) {
-      // Auto fallback when database column is not migrated or PostgREST schema cache is stale.
       const { reveal_answers: _skip, ...fallbackPayload } = payload;
       const retry = await supabase.from('quiz_sessions').insert(fallbackPayload).select().single() as any;
       data = retry.data;
@@ -175,6 +172,11 @@ export default function QuizPanel() {
     setActiveSession(data); setShowSession(true);
     setSelectedIds(new Set()); setSessionTitle(''); setSessionStudentNames([]);
     loadSessions();
+  };
+
+  const startSession = async () => {
+    const selected = questions.filter(q => selectedIds.has(q.id));
+    await publishQuizSession(selected);
   };
 
   const endSession = async () => {
@@ -508,6 +510,21 @@ export default function QuizPanel() {
             seedQuestions={paperSeed?.questions}
             seedTitle={paperSeed?.title}
             onSeedConsumed={() => setPaperSeed(null)}
+            onPublishPaper={async (paper) => {
+              await publishQuizSession(paper.questions.map((item) => item.question), paper.title);
+            }}
+            rosterButton={
+              <Button
+                variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
+                size="sm" className="h-8 text-xs gap-1 shrink-0"
+                onClick={() => setShowRoster(true)}
+              >
+                <Users className="w-3 h-3" />
+                {sessionStudentNames.length > 0
+                  ? tFormat(t('board.studentCount'), sessionStudentNames.length)
+                  : t('board.selectClass')}
+              </Button>
+            }
           />
         )}
 
