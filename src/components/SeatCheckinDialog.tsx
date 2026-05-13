@@ -249,6 +249,7 @@ export default function SeatCheckinDialog({
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
   const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
   const [loading, setLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [records, setRecords] = useState<SeatCheckinRecord[]>([]);
   const [sessionSeatData, setSessionSeatData] = useState<unknown | null>(null);
