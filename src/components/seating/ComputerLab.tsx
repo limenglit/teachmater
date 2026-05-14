@@ -429,27 +429,33 @@ export default function ComputerLab({ students }: Props) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (refDraggingRef.current) {
-        const dx = e.clientX - refDraggingRef.current.startX;
-        const dy = e.clientY - refDraggingRef.current.startY;
-        const key = refDraggingRef.current.key;
+      const refDrag = refDraggingRef.current;
+      if (refDrag) {
+        const dx = e.clientX - refDrag.startX;
+        const dy = e.clientY - refDrag.startY;
+        const key = refDrag.key;
+        const nx = refDrag.origX + dx;
+        const ny = key === 'blackboard' ? REF_BLACKBOARD_TOP : refDrag.origY + dy;
         setRefPositions(prev => ({
           ...prev,
-          [key]: {
-            x: refDraggingRef.current!.origX + dx,
-            y: key === 'blackboard' ? REF_BLACKBOARD_TOP : refDraggingRef.current!.origY + dy,
-          },
+          [key]: { x: nx, y: ny },
         }));
       }
 
-      if (rowDraggingRef.current) {
-        const dx = e.clientX - rowDraggingRef.current.startX;
-        const dy = e.clientY - rowDraggingRef.current.startY;
-        setRowTransforms(prev => prev.map((t, i) =>
-          i === rowDraggingRef.current!.row
-            ? { ...t, x: rowDraggingRef.current!.origX + dx, y: rowDraggingRef.current!.origY + dy }
-            : t
-        ));
+      const rowDrag = rowDraggingRef.current;
+      if (rowDrag) {
+        const dx = e.clientX - rowDrag.startX;
+        const dy = e.clientY - rowDrag.startY;
+        const row = rowDrag.row;
+        const nx = rowDrag.origX + dx;
+        const ny = rowDrag.origY + dy;
+        setRowTransforms(prev => {
+          if (row < 0) return prev;
+          const next = prev.slice();
+          while (next.length <= row) next.push({ x: 0, y: 0, rotation: 0 });
+          next[row] = { ...next[row], x: nx, y: ny };
+          return next;
+        });
       }
     };
 

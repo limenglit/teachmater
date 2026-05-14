@@ -289,16 +289,16 @@ export default function ConcertHall({ students }: Props) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!refDraggingRef.current) return;
-      const dx = e.clientX - refDraggingRef.current.startX;
-      const dy = e.clientY - refDraggingRef.current.startY;
-      const key = refDraggingRef.current.key;
+      const refDrag = refDraggingRef.current;
+      if (!refDrag) return;
+      const dx = e.clientX - refDrag.startX;
+      const dy = e.clientY - refDrag.startY;
+      const key = refDrag.key;
+      const nx = refDrag.origX + dx;
+      const ny = refDrag.origY + dy;
       setRefPositions(prev => ({
         ...prev,
-        [key]: {
-          x: refDraggingRef.current!.origX + dx,
-          y: refDraggingRef.current!.origY + dy,
-        },
+        [key]: { x: nx, y: ny },
       }));
     };
 

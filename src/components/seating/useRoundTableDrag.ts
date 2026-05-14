@@ -21,10 +21,12 @@ export function useRoundTableDrag(
     if (!dragFrom) return;
     setAssignment(prev => {
       const next = prev.map(t => [...t]);
-      // Swap: support cross-table swap
-      const fromName = next[dragFrom.table]?.[dragFrom.seat] ?? '';
-      const toName = next[table]?.[seat] ?? '';
-      // Ensure arrays are long enough
+      // Guard against tables/seats that no longer exist (e.g., layout changed mid-drag)
+      if (!next[dragFrom.table] || !next[table]) {
+        return prev;
+      }
+      const fromName = next[dragFrom.table][dragFrom.seat] ?? '';
+      const toName = next[table][seat] ?? '';
       while (next[dragFrom.table].length <= dragFrom.seat) next[dragFrom.table].push('');
       while (next[table].length <= seat) next[table].push('');
       next[dragFrom.table][dragFrom.seat] = toName;

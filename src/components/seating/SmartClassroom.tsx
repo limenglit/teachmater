@@ -661,26 +661,32 @@ export default function SmartClassroom({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (draggingRef.current) {
-        const dx = e.clientX - draggingRef.current.startX;
-        const dy = e.clientY - draggingRef.current.startY;
-        setTablePositions(pos => pos.map((p, i) =>
-          i === draggingRef.current!.index
-            ? { x: draggingRef.current!.origX + dx, y: draggingRef.current!.origY + dy }
-            : p
-        ));
+      const tableDrag = draggingRef.current;
+      if (tableDrag) {
+        const dx = e.clientX - tableDrag.startX;
+        const dy = e.clientY - tableDrag.startY;
+        const idx = tableDrag.index;
+        const nx = tableDrag.origX + dx;
+        const ny = tableDrag.origY + dy;
+        setTablePositions(pos => {
+          if (idx < 0) return pos;
+          const next = pos.slice();
+          while (next.length <= idx) next.push({ x: 0, y: 0 });
+          next[idx] = { x: nx, y: ny };
+          return next;
+        });
       }
 
-      if (refDraggingRef.current) {
-        const dx = e.clientX - refDraggingRef.current.startX;
-        const dy = e.clientY - refDraggingRef.current.startY;
-        const key = refDraggingRef.current.key;
+      const refDrag = refDraggingRef.current;
+      if (refDrag) {
+        const dx = e.clientX - refDrag.startX;
+        const dy = e.clientY - refDrag.startY;
+        const key = refDrag.key;
+        const nx = refDrag.origX + dx;
+        const ny = refDrag.origY + dy;
         setRefPositions(prev => ({
           ...prev,
-          [key]: {
-            x: refDraggingRef.current!.origX + dx,
-            y: refDraggingRef.current!.origY + dy,
-          },
+          [key]: { x: nx, y: ny },
         }));
       }
     };
