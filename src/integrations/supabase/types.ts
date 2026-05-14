@@ -1352,6 +1352,56 @@ export type Database = {
           },
         ]
       }
+      vocab_sessions: {
+        Row: {
+          class_name: string
+          created_at: string
+          creator_token: string
+          default_mode: string
+          ended_at: string | null
+          id: string
+          status: string
+          student_names: Json
+          title: string
+          user_id: string
+          vocab_set_id: string
+        }
+        Insert: {
+          class_name?: string
+          created_at?: string
+          creator_token?: string
+          default_mode?: string
+          ended_at?: string | null
+          id?: string
+          status?: string
+          student_names?: Json
+          title?: string
+          user_id: string
+          vocab_set_id: string
+        }
+        Update: {
+          class_name?: string
+          created_at?: string
+          creator_token?: string
+          default_mode?: string
+          ended_at?: string | null
+          id?: string
+          status?: string
+          student_names?: Json
+          title?: string
+          user_id?: string
+          vocab_set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocab_sessions_vocab_set_id_fkey"
+            columns: ["vocab_set_id"]
+            isOneToOne: false
+            referencedRelation: "vocab_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vocab_sets: {
         Row: {
           approved_at: string | null
@@ -1657,6 +1707,10 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: Json
       }
+      get_vocab_session_for_student: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       has_checkin_record: {
         Args: { p_session_id: string; p_student_name: string }
         Returns: boolean
@@ -1775,6 +1829,10 @@ export type Database = {
       }
       update_topic: {
         Args: { p_title: string; p_token: string; p_topic_id: string }
+        Returns: undefined
+      }
+      update_vocab_session: {
+        Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined
       }
       withdraw_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
