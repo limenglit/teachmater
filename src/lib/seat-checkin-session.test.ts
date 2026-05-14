@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSeatCheckinSession } from './seat-checkin-session';
 
+type SupabaseModule = typeof import('@/integrations/supabase/client');
+
 const rpcMock = vi.fn();
 const singleMock = vi.fn();
 const selectMock = vi.fn(() => ({ single: singleMock }));
 const insertMock = vi.fn(() => ({ select: selectMock }));
 const fromMock = vi.fn(() => ({ insert: insertMock }));
 
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
+vi.mock('@/integrations/supabase/client', () => {
+  const supabase = {
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: {
@@ -16,10 +18,11 @@ vi.mock('@/integrations/supabase/client', () => ({
         },
       }),
     },
-    rpc: ((...args: any[]) => (rpcMock as any)(...args)) as any,
-    from: ((...args: any[]) => (fromMock as any)(...args)) as any,
-  },
-}));
+    rpc: rpcMock,
+    from: fromMock,
+  } as unknown as SupabaseModule['supabase'];
+  return { supabase } satisfies SupabaseModule;
+});
 
 describe('createSeatCheckinSession', () => {
   beforeEach(() => {
