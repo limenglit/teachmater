@@ -543,22 +543,33 @@ export default function ComputerLab({ students }: Props) {
           }
 
           setAssignment(prev => {
-            const next = prev.map(group => ({ ...group, students: [...group.students] }));
-            const [fr, fs, fc] = from.split('-');
-            const [tr, ts, tc] = to.split('-');
-            const fromRow = Number(fr);
-            const toRow = Number(tr);
-            const fromCol = Number(fc);
-            const toCol = Number(tc);
+            try {
+              const next = prev.map(group => ({ ...group, students: [...(group.students ?? [])] }));
+              const [fr, fs, fc] = from.split('-');
+              const [tr, ts, tc] = to.split('-');
+              const fromRow = Number(fr);
+              const toRow = Number(tr);
+              const fromCol = Number(fc);
+              const toCol = Number(tc);
+              if (!Number.isFinite(fromRow) || !Number.isFinite(toRow) || !Number.isFinite(fromCol) || !Number.isFinite(toCol)) return prev;
+              if (fs !== 'top' && fs !== 'bottom') return prev;
+              if (ts !== 'top' && ts !== 'bottom') return prev;
 
-            const fromGroup = next.find(g => g.rowIndex === fromRow && g.side === fs);
-            const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
-            if (!fromGroup || !toGroup) return prev;
+              const fromGroup = next.find(g => g.rowIndex === fromRow && g.side === fs);
+              const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
+              if (!fromGroup || !toGroup) return prev;
+              if (fromCol < 0 || toCol < 0) return prev;
+              while (fromGroup.students.length <= fromCol) fromGroup.students.push('');
+              while (toGroup.students.length <= toCol) toGroup.students.push('');
 
-            const temp = fromGroup.students[fromCol] || '';
-            fromGroup.students[fromCol] = toGroup.students[toCol] || '';
-            toGroup.students[toCol] = temp;
-            return next;
+              const temp = fromGroup.students[fromCol] || '';
+              fromGroup.students[fromCol] = toGroup.students[toCol] || '';
+              toGroup.students[toCol] = temp;
+              return next;
+            } catch (err) {
+              console.error('[ComputerLab] seat swap error', err);
+              return prev;
+            }
           });
 
           setDragFrom(null);
