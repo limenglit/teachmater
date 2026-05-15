@@ -822,7 +822,7 @@ export default function ComputerLab({ students }: Props) {
                 </div>
               )}
 
-              <svg width={roomWidth} height={roomHeight} viewBox={`0 0 ${roomWidth} ${roomHeight}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
+              <svg data-testid="computerlab-svg" width={roomWidth} height={roomHeight} viewBox={`0 0 ${roomWidth} ${roomHeight}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
                 {Array.from({ length: maxRows }).map((_, rowIdx) => {
                   const baseY = 120 + rowIdx * rowGap;
                   const centerX = roomWidth / 2;
