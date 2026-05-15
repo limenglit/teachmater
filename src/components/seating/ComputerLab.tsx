@@ -429,33 +429,41 @@ export default function ComputerLab({ students }: Props) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const refDrag = refDraggingRef.current;
-      if (refDrag) {
-        const dx = e.clientX - refDrag.startX;
-        const dy = e.clientY - refDrag.startY;
-        const key = refDrag.key;
-        const nx = refDrag.origX + dx;
-        const ny = key === 'blackboard' ? REF_BLACKBOARD_TOP : refDrag.origY + dy;
-        setRefPositions(prev => ({
-          ...prev,
-          [key]: { x: nx, y: ny },
-        }));
-      }
+      try {
+        const refDrag = refDraggingRef.current;
+        if (refDrag) {
+          const dx = e.clientX - refDrag.startX;
+          const dy = e.clientY - refDrag.startY;
+          const key = refDrag.key;
+          const nx = refDrag.origX + dx;
+          const ny = key === 'blackboard' ? REF_BLACKBOARD_TOP : refDrag.origY + dy;
+          setRefPositions(prev => ({
+            ...prev,
+            [key]: { x: nx, y: ny },
+          }));
+        }
 
-      const rowDrag = rowDraggingRef.current;
-      if (rowDrag) {
-        const dx = e.clientX - rowDrag.startX;
-        const dy = e.clientY - rowDrag.startY;
-        const row = rowDrag.row;
-        const nx = rowDrag.origX + dx;
-        const ny = rowDrag.origY + dy;
-        setRowTransforms(prev => {
-          if (row < 0) return prev;
-          const next = prev.slice();
-          while (next.length <= row) next.push({ x: 0, y: 0, rotation: 0 });
-          next[row] = { ...next[row], x: nx, y: ny };
-          return next;
-        });
+        const rowDrag = rowDraggingRef.current;
+        if (rowDrag) {
+          const dx = e.clientX - rowDrag.startX;
+          const dy = e.clientY - rowDrag.startY;
+          const row = rowDrag.row;
+          if (!Number.isFinite(row) || row < 0) return;
+          const nx = rowDrag.origX + dx;
+          const ny = rowDrag.origY + dy;
+          setRowTransforms(prev => {
+            const next = prev.slice();
+            while (next.length <= row) next.push({ x: 0, y: 0, rotation: 0 });
+            const existing = next[row] ?? { x: 0, y: 0, rotation: 0 };
+            next[row] = { ...existing, x: nx, y: ny };
+            return next;
+          });
+        }
+      } catch (err) {
+        console.error('[ComputerLab] mousemove handler error', err);
+        refDraggingRef.current = null;
+        rowDraggingRef.current = null;
+        seatDraggingRef.current = false;
       }
     };
 
