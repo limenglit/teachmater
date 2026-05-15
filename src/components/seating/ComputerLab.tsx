@@ -529,6 +529,9 @@ export default function ComputerLab({ students }: Props) {
     return (
       <g
         key={slot}
+        data-testid={`computerlab-seat-${slot}`}
+        data-seat-name={name}
+        data-seat-closed={isClosed ? 'true' : 'false'}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
         onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
         onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
@@ -822,7 +825,7 @@ export default function ComputerLab({ students }: Props) {
                 </div>
               )}
 
-              <svg width={roomWidth} height={roomHeight} viewBox={`0 0 ${roomWidth} ${roomHeight}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
+              <svg data-testid="computerlab-svg" width={roomWidth} height={roomHeight} viewBox={`0 0 ${roomWidth} ${roomHeight}`} className="font-sans" style={{ fontFamily: 'var(--font-family)' }}>
                 {Array.from({ length: maxRows }).map((_, rowIdx) => {
                   const baseY = 120 + rowIdx * rowGap;
                   const centerX = roomWidth / 2;
@@ -836,6 +839,10 @@ export default function ComputerLab({ students }: Props) {
                   return (
                     <g
                       key={`row-${rowIdx}`}
+                      data-testid={`computerlab-row-${rowIdx}`}
+                      data-row-x={transform.x}
+                      data-row-y={transform.y}
+                      data-row-rotation={transform.rotation}
                       transform={`translate(${transform.x} ${transform.y})`}
                       onMouseDown={e => startRowDrag(e, rowIdx)}
                       style={{ cursor: 'move' }}
