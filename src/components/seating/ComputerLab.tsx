@@ -429,33 +429,41 @@ export default function ComputerLab({ students }: Props) {
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      const refDrag = refDraggingRef.current;
-      if (refDrag) {
-        const dx = e.clientX - refDrag.startX;
-        const dy = e.clientY - refDrag.startY;
-        const key = refDrag.key;
-        const nx = refDrag.origX + dx;
-        const ny = key === 'blackboard' ? REF_BLACKBOARD_TOP : refDrag.origY + dy;
-        setRefPositions(prev => ({
-          ...prev,
-          [key]: { x: nx, y: ny },
-        }));
-      }
+      try {
+        const refDrag = refDraggingRef.current;
+        if (refDrag) {
+          const dx = e.clientX - refDrag.startX;
+          const dy = e.clientY - refDrag.startY;
+          const key = refDrag.key;
+          const nx = refDrag.origX + dx;
+          const ny = key === 'blackboard' ? REF_BLACKBOARD_TOP : refDrag.origY + dy;
+          setRefPositions(prev => ({
+            ...prev,
+            [key]: { x: nx, y: ny },
+          }));
+        }
 
-      const rowDrag = rowDraggingRef.current;
-      if (rowDrag) {
-        const dx = e.clientX - rowDrag.startX;
-        const dy = e.clientY - rowDrag.startY;
-        const row = rowDrag.row;
-        const nx = rowDrag.origX + dx;
-        const ny = rowDrag.origY + dy;
-        setRowTransforms(prev => {
-          if (row < 0) return prev;
-          const next = prev.slice();
-          while (next.length <= row) next.push({ x: 0, y: 0, rotation: 0 });
-          next[row] = { ...next[row], x: nx, y: ny };
-          return next;
-        });
+        const rowDrag = rowDraggingRef.current;
+        if (rowDrag) {
+          const dx = e.clientX - rowDrag.startX;
+          const dy = e.clientY - rowDrag.startY;
+          const row = rowDrag.row;
+          if (!Number.isFinite(row) || row < 0) return;
+          const nx = rowDrag.origX + dx;
+          const ny = rowDrag.origY + dy;
+          setRowTransforms(prev => {
+            const next = prev.slice();
+            while (next.length <= row) next.push({ x: 0, y: 0, rotation: 0 });
+            const existing = next[row] ?? { x: 0, y: 0, rotation: 0 };
+            next[row] = { ...existing, x: nx, y: ny };
+            return next;
+          });
+        }
+      } catch (err) {
+        console.error('[ComputerLab] mousemove handler error', err);
+        refDraggingRef.current = null;
+        rowDraggingRef.current = null;
+        seatDraggingRef.current = false;
       }
     };
 
@@ -492,14 +500,15 @@ export default function ComputerLab({ students }: Props) {
 
   const startRowDrag = (e: ReactMouseEvent, row: number) => {
     if (seatDraggingRef.current) return;
+    if (!Number.isFinite(row) || row < 0) return;
     e.stopPropagation();
-    const current = rowTransforms[row] || { x: 0, y: 0, rotation: 0 };
+    const current = rowTransforms[row] ?? { x: 0, y: 0, rotation: 0 };
     rowDraggingRef.current = {
       row,
       startX: e.clientX,
       startY: e.clientY,
-      origX: current.x,
-      origY: current.y,
+      origX: current.x ?? 0,
+      origY: current.y ?? 0,
     };
   };
 
@@ -534,22 +543,33 @@ export default function ComputerLab({ students }: Props) {
           }
 
           setAssignment(prev => {
-            const next = prev.map(group => ({ ...group, students: [...group.students] }));
-            const [fr, fs, fc] = from.split('-');
-            const [tr, ts, tc] = to.split('-');
-            const fromRow = Number(fr);
-            const toRow = Number(tr);
-            const fromCol = Number(fc);
-            const toCol = Number(tc);
+            try {
+              const next = prev.map(group => ({ ...group, students: [...(group.students ?? [])] }));
+              const [fr, fs, fc] = from.split('-');
+              const [tr, ts, tc] = to.split('-');
+              const fromRow = Number(fr);
+              const toRow = Number(tr);
+              const fromCol = Number(fc);
+              const toCol = Number(tc);
+              if (!Number.isFinite(fromRow) || !Number.isFinite(toRow) || !Number.isFinite(fromCol) || !Number.isFinite(toCol)) return prev;
+              if (fs !== 'top' && fs !== 'bottom') return prev;
+              if (ts !== 'top' && ts !== 'bottom') return prev;
 
-            const fromGroup = next.find(g => g.rowIndex === fromRow && g.side === fs);
-            const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
-            if (!fromGroup || !toGroup) return prev;
+              const fromGroup = next.find(g => g.rowIndex === fromRow && g.side === fs);
+              const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
+              if (!fromGroup || !toGroup) return prev;
+              if (fromCol < 0 || toCol < 0) return prev;
+              while (fromGroup.students.length <= fromCol) fromGroup.students.push('');
+              while (toGroup.students.length <= toCol) toGroup.students.push('');
 
-            const temp = fromGroup.students[fromCol] || '';
-            fromGroup.students[fromCol] = toGroup.students[toCol] || '';
-            toGroup.students[toCol] = temp;
-            return next;
+              const temp = fromGroup.students[fromCol] || '';
+              fromGroup.students[fromCol] = toGroup.students[toCol] || '';
+              toGroup.students[toCol] = temp;
+              return next;
+            } catch (err) {
+              console.error('[ComputerLab] seat swap error', err);
+              return prev;
+            }
           });
 
           setDragFrom(null);
