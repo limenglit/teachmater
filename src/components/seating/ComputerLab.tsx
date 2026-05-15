@@ -836,6 +836,10 @@ export default function ComputerLab({ students }: Props) {
                   return (
                     <g
                       key={`row-${rowIdx}`}
+                      data-testid={`computerlab-row-${rowIdx}`}
+                      data-row-x={transform.x}
+                      data-row-y={transform.y}
+                      data-row-rotation={transform.rotation}
                       transform={`translate(${transform.x} ${transform.y})`}
                       onMouseDown={e => startRowDrag(e, rowIdx)}
                       style={{ cursor: 'move' }}
