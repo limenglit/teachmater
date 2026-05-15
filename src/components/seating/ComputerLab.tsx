@@ -500,14 +500,15 @@ export default function ComputerLab({ students }: Props) {
 
   const startRowDrag = (e: ReactMouseEvent, row: number) => {
     if (seatDraggingRef.current) return;
+    if (!Number.isFinite(row) || row < 0) return;
     e.stopPropagation();
-    const current = rowTransforms[row] || { x: 0, y: 0, rotation: 0 };
+    const current = rowTransforms[row] ?? { x: 0, y: 0, rotation: 0 };
     rowDraggingRef.current = {
       row,
       startX: e.clientX,
       startY: e.clientY,
-      origX: current.x,
-      origY: current.y,
+      origX: current.x ?? 0,
+      origY: current.y ?? 0,
     };
   };
 
