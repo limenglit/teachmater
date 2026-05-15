@@ -529,6 +529,9 @@ export default function ComputerLab({ students }: Props) {
     return (
       <g
         key={slot}
+        data-testid={`computerlab-seat-${slot}`}
+        data-seat-name={name}
+        data-seat-closed={isClosed ? 'true' : 'false'}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
         onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
         onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
