@@ -46,9 +46,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: userData, error: userError } = await authClient.auth.getUser();
+    if (userError || !userData?.user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -57,7 +56,7 @@ serve(async (req) => {
 
     // Server-side AI quota
     const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: claimsData.claims.sub });
+    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: userData.user.id });
     if (quotaOk === false) {
       return new Response(JSON.stringify({ error: '已达今日 AI 使用上限' }), {
         status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
