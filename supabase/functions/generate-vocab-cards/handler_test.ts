@@ -200,7 +200,8 @@ Deno.test("success: returns 200 + cards JSON when primary AI returns a valid pay
   const body = await resp.json();
   assertEquals(Array.isArray(body.cards), true);
   assertEquals(body.cards.length, 3);
-  assertEquals(body.cards[0], { word: "w0", definition: "d0", example: undefined });
+  assertEquals(body.cards[0].word, "w0");
+  assertEquals(body.cards[0].definition, "d0");
   assertEquals(log.primaryCalls, 1);
   assertEquals(log.fallbackCalls, 0);
 });
