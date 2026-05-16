@@ -3,13 +3,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { internalErrorResponse } from '../_shared/responses.ts';
 import { callDeepSeek, callLovableAI, cardsToResponse } from './lib.ts';
 
-const CORS_HEADERS = {
+export const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-interface Body {
+export interface Body {
   topic: string;
   count?: number;
   audience?: string;
@@ -23,17 +23,33 @@ const SYSTEM_PROMPT = `你是教学词库设计助手。根据用户给出的主
 - 必要时可附 example（一句话示例，可省略）。
 仅通过 emit_cards 工具返回结果，不要输出其他文本。`;
 
-function buildPrompt(b: Body): string {
+export function buildPrompt(b: Body): string {
   const audience = b.audience ? `适用对象：${b.audience}。` : '';
   const hint = b.hint ? `补充说明：${b.hint}。` : '';
   const count = Math.max(2, Math.min(40, b.count ?? 10));
   return `${audience}${hint}请围绕主题"${b.topic}"，生成 ${count} 对匹配卡片，调用 emit_cards 返回。`;
 }
 
-serve(async (req) => {
+// deno-lint-ignore no-explicit-any
+type Json = any;
+
+export interface HandlerDeps {
+  /** Resolve the calling user from the Authorization header. Return null when invalid. */
+  getUserFromAuth: (authHeader: string) => Promise<{ id: string } | null>;
+  /** Server-side quota check. Return false when the user is over the limit. */
+  consumeQuota: (userId: string) => Promise<boolean>;
+  /** Primary AI call (Lovable Gateway). May throw 'RATE_LIMIT' or other errors. */
+  callPrimary: (messages: Json[]) => Promise<Json>;
+  /** Fallback AI call (DeepSeek). May throw on failure. */
+  callFallback: (messages: Json[]) => Promise<Json>;
+}
+
+export async function handleRequest(
+  req: Request,
+  deps: HandlerDeps,
+): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS });
   try {
-    // Require authenticated user to prevent anonymous abuse of AI credits
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -41,22 +57,15 @@ serve(async (req) => {
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
-    const authClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: userData, error: userError } = await authClient.auth.getUser();
-    if (userError || !userData?.user) {
+    const user = await deps.getUserFromAuth(authHeader);
+    if (!user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
-    // Server-side AI quota
-    const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: userData.user.id });
+    const quotaOk = await deps.consumeQuota(user.id);
     if (quotaOk === false) {
       return new Response(JSON.stringify({ error: '已达今日 AI 使用上限' }), {
         status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -75,22 +84,21 @@ serve(async (req) => {
       { role: 'user', content: buildPrompt(body) },
     ];
 
-    let json: any;
+    let json: Json;
     try {
-      json = await callLovableAI(messages);
-    } catch (e: any) {
-      const msg = String(e?.message || '');
+      json = await deps.callPrimary(messages);
+    } catch (e) {
+      const msg = String((e as Error)?.message || '');
       if (msg === 'RATE_LIMIT') {
         return new Response(JSON.stringify({ error: 'AI 请求过于频繁，请稍后重试' }), {
           status: 429,
           headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
         });
       }
-      // Fallback to DeepSeek on 402 / other errors
       console.warn('Lovable AI failed, falling back to DeepSeek:', msg);
       try {
-        json = await callDeepSeek(messages);
-      } catch (e2: any) {
+        json = await deps.callFallback(messages);
+      } catch (e2) {
         console.error('DeepSeek fallback failed:', e2);
         return new Response(JSON.stringify({ error: 'AI 生成失败，请稍后重试' }), {
           status: 500,
@@ -100,8 +108,36 @@ serve(async (req) => {
     }
 
     return cardsToResponse(json, CORS_HEADERS);
-  } catch (e: any) {
+  } catch (e) {
     console.error('generate-vocab-cards error:', e);
     return internalErrorResponse(CORS_HEADERS);
   }
-});
+}
+
+/** Default production dependencies — wired to live Supabase + AI providers. */
+function defaultDeps(authHeader: string): HandlerDeps {
+  const authClient = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const svc = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  );
+  return {
+    getUserFromAuth: async () => {
+      const { data, error } = await authClient.auth.getUser();
+      if (error || !data?.user) return null;
+      return { id: data.user.id };
+    },
+    consumeQuota: async (userId) => {
+      const { data } = await svc.rpc('consume_ai_quota', { p_user_id: userId });
+      return data !== false;
+    },
+    callPrimary: callLovableAI,
+    callFallback: callDeepSeek,
+  };
+}
+
+serve((req) => handleRequest(req, defaultDeps(req.headers.get('Authorization') ?? '')));
