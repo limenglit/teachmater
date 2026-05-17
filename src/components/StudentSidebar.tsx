@@ -52,18 +52,65 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      importFromText(text);
-      setImportOpen(false);
+      setImportText(text);
     };
     reader.readAsText(file);
   };
 
+  // Parse + validate the current import text on the fly.
+  const preview = useMemo(() => {
+    const parsed = parseStudentsFromText(importText);
+    const rawLineCount = importText
+      .replace(/^\uFEFF/, '')
+      .split(/\r\n|[\n\r\u2028\u2029]/)
+      .map(l => l.trim())
+      .filter(Boolean).length;
+    // Header row is stripped by the parser when detected, so account for it.
+    const hasHeader = /姓名|name/i.test(importText.split(/\r?\n/)[0] ?? '');
+    const expected = hasHeader ? Math.max(0, rawLineCount - 1) : rawLineCount;
+    const skipped = Math.max(0, expected - parsed.length);
+
+    const existingNames = new Set(students.map(s => s.name.trim()));
+    const seen = new Map<string, number>();
+    const rows = parsed.map((s) => {
+      const name = s.name.trim();
+      const issues: Array<{ kind: 'error' | 'warn' | 'info'; key: string }> = [];
+      if (!name) issues.push({ kind: 'error', key: 'sidebar.issueMissingName' });
+      const prev = seen.get(name) ?? 0;
+      if (prev > 0) issues.push({ kind: 'error', key: 'sidebar.issueDupInImport' });
+      seen.set(name, prev + 1);
+      if (existingNames.has(name)) issues.push({ kind: 'warn', key: 'sidebar.issueDupInRoster' });
+      if (!s.gender || s.gender === 'unknown') issues.push({ kind: 'info', key: 'sidebar.issueOptionalMissing' });
+      return { student: s, issues };
+    });
+
+    const dupCount = rows.filter(r => r.issues.some(i => i.key === 'sidebar.issueDupInImport')).length;
+    const validCount = rows.filter(r => !r.issues.some(i => i.kind === 'error')).length;
+    return { rows, skipped, dupCount, validCount, total: rows.length };
+  }, [importText, students]);
+
   const handleImport = () => {
-    if (importText.trim()) {
-      importFromText(importText);
-      setImportText('');
-      setImportOpen(false);
+    if (preview.validCount === 0) {
+      toast({ title: t('sidebar.importNothing'), variant: 'destructive' });
+      return;
     }
+    // De-duplicate within the import while preserving order.
+    const seen = new Set<string>();
+    const deduped: Student[] = [];
+    preview.rows.forEach(({ student }) => {
+      const name = student.name.trim();
+      if (!name || seen.has(name)) return;
+      seen.add(name);
+      deduped.push(student);
+    });
+    const text = deduped
+      .map(s => [s.name, s.gender ?? '', s.organization ?? '', s.title ?? ''].join(','))
+      .join('\n');
+    // Prepend a header row so the parser keeps gender/org/title columns.
+    importFromText(`姓名,性别,单位,职务\n${text}`);
+    setImportText('');
+    setImportOpen(false);
+    toast({ title: t('sidebar.importConfirm'), description: `${deduped.length} ${t('sidebar.persons')}` });
   };
 
   const handlePasteFromClipboard = async () => {
