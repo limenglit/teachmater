@@ -90,6 +90,26 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     toast({ title: t('sidebar.downloadSuccess') });
   };
 
+  const handleDownloadTemplate = () => {
+    // UTF-8 BOM so Excel renders Chinese headers correctly
+    const BOM = '\uFEFF';
+    const rows = [
+      ['姓名', '性别', '单位', '职务'],
+      ['张三', '男', '物理学院', '组长'],
+      ['李四', '女', '化学学院', '组员'],
+      ['王五', '男', '生物学院', '副组长'],
+    ];
+    const csv = BOM + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = '学生名单导入模板.csv';
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast({ title: t('sidebar.downloadSuccess') });
+  };
+
   if (collapsed) {
     return (
       <TooltipProvider delayDuration={250}>
@@ -241,7 +261,13 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                 </div>
                 <div className="border-t border-border pt-4">
                   <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importFile')}</p>
-                  <input ref={fileRef} type="file" accept=".txt" onChange={handleFileUpload} className="text-sm" />
+                  <input ref={fileRef} type="file" accept=".txt,.csv" onChange={handleFileUpload} className="text-sm" />
+                </div>
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground mb-2">{t('sidebar.templateHint')}</p>
+                  <Button onClick={handleDownloadTemplate} variant="outline" size="sm" className="w-full">
+                    <Download className="w-3 h-3 mr-1.5" /> {t('sidebar.downloadTemplate')}
+                  </Button>
                 </div>
               </div>
             </DialogContent>
