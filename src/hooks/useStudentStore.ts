@@ -76,7 +76,7 @@ const normalizeGender = (raw?: string): StudentGender => {
   return 'unknown';
 };
 
-const parseStudentsFromText = (text: string): Student[] => {
+export const parseStudentsFromText = (text: string): Student[] => {
   const normalizedText = text
     .replace(/^\uFEFF/, '')
     .replace(/\u0000/g, '');
