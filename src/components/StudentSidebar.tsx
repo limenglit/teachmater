@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen, ClipboardPaste, Download, Building2 } from 'lucide-react';
+import { parseStudentsFromText, type Student } from '@/hooks/useStudentStore';
+import { User, Plus, Trash2, Upload, X, PanelLeftClose, PanelLeftOpen, ClipboardPaste, Download, Building2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
