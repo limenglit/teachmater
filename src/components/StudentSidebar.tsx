@@ -261,7 +261,13 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                 </div>
                 <div className="border-t border-border pt-4">
                   <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importFile')}</p>
-                  <input ref={fileRef} type="file" accept=".txt" onChange={handleFileUpload} className="text-sm" />
+                  <input ref={fileRef} type="file" accept=".txt,.csv" onChange={handleFileUpload} className="text-sm" />
+                </div>
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs text-muted-foreground mb-2">{t('sidebar.templateHint')}</p>
+                  <Button onClick={handleDownloadTemplate} variant="outline" size="sm" className="w-full">
+                    <Download className="w-3 h-3 mr-1.5" /> {t('sidebar.downloadTemplate')}
+                  </Button>
                 </div>
               </div>
             </DialogContent>
