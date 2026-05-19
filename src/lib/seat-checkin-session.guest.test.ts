@@ -23,23 +23,23 @@ import { createSeatCheckinSession, getSeatCheckinSessionToken } from './seat-che
 
 type SupabaseModule = typeof import('@/integrations/supabase/client');
 
-const rpcMock = vi.fn();
-const singleMock = vi.fn();
-const selectMock = vi.fn(() => ({ single: singleMock }));
-const insertMock = vi.fn(() => ({ select: selectMock }));
-const fromMock = vi.fn(() => ({ insert: insertMock }));
+const mockRpc = vi.fn();
+const mockSingle = vi.fn();
+const mockSelect = vi.fn(() => ({ single: mockSingle }));
+const mockInsert = vi.fn(() => ({ select: mockSelect }));
+const mockFrom = vi.fn(() => ({ insert: mockInsert }));
 
 vi.mock('@/integrations/supabase/client', () => {
   const supabase = {
-    // Guest (anonymous) — no authenticated user.
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
     },
-    rpc: rpcMock,
-    from: fromMock,
+    rpc: mockRpc,
+    from: mockFrom,
   } as unknown as SupabaseModule['supabase'];
   return { supabase } satisfies SupabaseModule;
 });
+
 
 // Mirror the PostgREST shape of an RLS violation so the fallback paths
 // behave exactly like the production failure mode.
