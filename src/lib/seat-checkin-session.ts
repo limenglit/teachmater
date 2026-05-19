@@ -172,8 +172,34 @@ export async function createSeatCheckinSession({
     let data: any = null;
     let error: any = null;
 
-    // Preferred path: explicit inserts bypass broken database defaults such as
-    // creator_token DEFAULT encode(gen_random_bytes(...), 'hex').
+    // Preferred path: SECURITY DEFINER RPC. Works for both anon and
+    // authenticated users, generates a secure creator_token server-side, and
+    // returns the row directly so we don't depend on post-insert SELECT
+    // visibility under RLS (which silently fails for guest users).
+    try {
+      const rpcResult = await (supabase.rpc as any)('create_seat_checkin_session', {
+        p_seat_data: baseInsertData.seat_data,
+        p_student_names: baseInsertData.student_names,
+        p_scene_config: baseInsertData.scene_config,
+        p_scene_type: baseInsertData.scene_type,
+        p_duration_minutes: enhancedInsertData.duration_minutes,
+        p_class_name: className?.trim() || '',
+      });
+
+      if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
+        data = rpcResult.data[0];
+      } else if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === 'object') {
+        data = rpcResult.data;
+      } else if (rpcResult.error) {
+        error = rpcResult.error;
+      }
+    } catch (rpcError) {
+      error = rpcError;
+    }
+
+    // Fallback: direct insert with explicit creator_token. Used when the RPC is
+    // missing on older deployments. Returning a row requires the caller to
+    // satisfy the SELECT policy (i.e. authenticated session owner).
     if (!data?.id) {
       const legacyResult = await supabase
         .from('seat_checkin_sessions')
@@ -189,9 +215,6 @@ export async function createSeatCheckinSession({
       }
     }
 
-    // Some deployed schemas already have creator_token but do not yet have the
-    // newer duration/class columns. Insert the explicit token without touching
-    // those newer columns so we still bypass the broken default.
     if (!data?.id) {
       const tokenOnlyResult = await supabase
         .from('seat_checkin_sessions')
@@ -207,8 +230,6 @@ export async function createSeatCheckinSession({
       }
     }
 
-    // Older schemas may not have the new columns yet; fall back again to the
-    // minimal insert shape so existing installations keep working.
     if (!data?.id) {
       const minimalResult = await supabase
         .from('seat_checkin_sessions')
@@ -221,36 +242,6 @@ export async function createSeatCheckinSession({
         error = null;
       } else if (!error) {
         error = minimalResult.error;
-      }
-    }
-
-    // Last resort: some environments may reject post-insert row selection via
-    // RLS but still expose the RPC helper. Try it only after the explicit
-    // insert paths so unsupported gen_random_bytes() never blocks creation.
-    if (!data?.id) {
-      try {
-        const rpcResult = await (supabase.rpc as any)('create_seat_checkin_session', {
-          p_seat_data: baseInsertData.seat_data,
-          p_student_names: baseInsertData.student_names,
-          p_scene_config: baseInsertData.scene_config,
-          p_scene_type: baseInsertData.scene_type,
-          p_duration_minutes: enhancedInsertData.duration_minutes,
-          p_class_name: className?.trim() || '',
-        });
-
-        if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
-          data = rpcResult.data[0];
-          error = null;
-        } else if (!rpcResult.error && rpcResult.data && typeof rpcResult.data === 'object') {
-          data = rpcResult.data;
-          error = null;
-        } else if (!error) {
-          error = rpcResult.error;
-        }
-      } catch (rpcError) {
-        if (!error) {
-          error = rpcError;
-        }
       }
     }
 
