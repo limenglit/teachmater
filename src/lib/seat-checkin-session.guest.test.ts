@@ -23,11 +23,19 @@ import { createSeatCheckinSession, getSeatCheckinSessionToken } from './seat-che
 
 type SupabaseModule = typeof import('@/integrations/supabase/client');
 
-const mockRpc = vi.fn();
-const mockSingle = vi.fn();
-const mockSelect = vi.fn(() => ({ single: mockSingle }));
-const mockInsert = vi.fn(() => ({ select: mockSelect }));
-const mockFrom = vi.fn(() => ({ insert: mockInsert }));
+const { mockRpc, mockSingle, mockSelect, mockInsert, mockFrom } = vi.hoisted(() => {
+  const singleFn = vi.fn();
+  const selectFn = vi.fn(() => ({ single: singleFn }));
+  const insertFn = vi.fn(() => ({ select: selectFn }));
+  const fromFn = vi.fn(() => ({ insert: insertFn }));
+  return {
+    mockRpc: vi.fn(),
+    mockSingle: singleFn,
+    mockSelect: selectFn,
+    mockInsert: insertFn,
+    mockFrom: fromFn,
+  };
+});
 
 vi.mock('@/integrations/supabase/client', () => {
   const supabase = {
@@ -39,6 +47,7 @@ vi.mock('@/integrations/supabase/client', () => {
   } as unknown as SupabaseModule['supabase'];
   return { supabase } satisfies SupabaseModule;
 });
+
 
 
 // Mirror the PostgREST shape of an RLS violation so the fallback paths
