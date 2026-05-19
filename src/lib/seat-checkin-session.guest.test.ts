@@ -121,7 +121,7 @@ describe('createSeatCheckinSession — guest regression for 42501', () => {
     localStorage.clear();
 
     // RPC succeeds — this is the only path that works for anon users.
-    rpcMock.mockImplementation((fnName: string, params: Record<string, unknown>) => {
+    mockRpc.mockImplementation((fnName: string, params: Record<string, unknown>) => {
       if (fnName !== 'create_seat_checkin_session') {
         return Promise.resolve({ data: null, error: { message: `unexpected rpc ${fnName}` } });
       }
@@ -144,7 +144,7 @@ describe('createSeatCheckinSession — guest regression for 42501', () => {
     });
 
     // Any direct insert path is rejected by RLS — exactly like prod for anon.
-    singleMock.mockResolvedValue({ data: null, error: rlsError });
+    mockSingle.mockResolvedValue({ data: null, error: rlsError });
   });
 
   it.each(SCENARIOS)(
@@ -160,7 +160,7 @@ describe('createSeatCheckinSession — guest regression for 42501', () => {
       });
 
       // RPC path was used — no 42501 ever bubbled up.
-      expect(rpcMock).toHaveBeenCalledWith(
+      expect(mockRpc).toHaveBeenCalledWith(
         'create_seat_checkin_session',
         expect.objectContaining({
           p_scene_type: scenario.sceneType,
@@ -170,7 +170,7 @@ describe('createSeatCheckinSession — guest regression for 42501', () => {
       );
       // Direct insert fallback must NOT be exercised on the happy RPC path,
       // otherwise the 42501 would have surfaced to the user.
-      expect(insertMock).not.toHaveBeenCalled();
+      expect(mockInsert).not.toHaveBeenCalled();
 
       // Session is returned with a usable id + checkin URL.
       expect(result.sessionId).toMatch(/^session-/);
@@ -191,13 +191,13 @@ describe('createSeatCheckinSession — guest regression for 42501', () => {
       expect(indexedIds).toContain(result.sessionId);
 
       // Duration is normalized to >= 1 minute even when caller passes 0.
-      const rpcCall = rpcMock.mock.calls.find(([name]) => name === 'create_seat_checkin_session');
+      const rpcCall = mockRpc.mock.calls.find(([name]) => name === 'create_seat_checkin_session');
       expect(rpcCall?.[1]?.p_duration_minutes).toBeGreaterThanOrEqual(1);
     },
   );
 
   it('surfaces a clear error (no orphan roster) when RPC and every insert fallback are blocked by 42501', async () => {
-    rpcMock.mockResolvedValue({ data: null, error: rlsError });
+    mockRpc.mockResolvedValue({ data: null, error: rlsError });
 
     await expect(
       createSeatCheckinSession({
