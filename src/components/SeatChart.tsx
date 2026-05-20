@@ -12,6 +12,7 @@ import ConcertHall from '@/components/seating/ConcertHall';
 import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 import ArtStudio from '@/components/seating/ArtStudio';
+import CustomLayout from '@/components/seating/CustomLayout';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
@@ -28,7 +29,7 @@ import {
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
 import { deleteSeatHistoryLocal, renameSeatHistoryLocal } from '@/lib/teamwork-local';
 
-type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio';
+type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
 type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type EntryDoorMode = 'front' | 'back' | 'both';
 type StartFrom = 'door' | 'window' | 'center';
@@ -65,6 +66,7 @@ export default function SeatChart() {
     { id: 'banquet', label: t('scene.banquet'), desc: t('scene.banquetDesc') },
     { id: 'computerLab', label: t('scene.computerLab'), desc: t('scene.computerLabDesc') },
     { id: 'artStudio', label: t('scene.artStudio'), desc: t('scene.artStudioDesc') },
+    { id: 'customLayout', label: t('scene.customLayout'), desc: t('scene.customLayoutDesc') },
   ];
 
   const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string }[] = [
@@ -1342,6 +1344,7 @@ export default function SeatChart() {
         {scene === 'banquet' && <BanquetHall students={students} />}
         {scene === 'computerLab' && <ComputerLab students={students} />}
         {scene === 'artStudio' && <ArtStudio students={students} />}
+        {scene === 'customLayout' && <CustomLayout students={students} />}
       </div>
     </div>
   );
