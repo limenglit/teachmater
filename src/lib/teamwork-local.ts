@@ -467,7 +467,8 @@ export type SeatHistoryScene =
   | 'banquet'
   | 'conference'
   | 'computer_lab'
-  | 'concert';
+  | 'concert'
+  | 'custom_layout';
 
 const SCENE_HISTORY_KEYS: Record<SeatHistoryScene, string> = {
   classroom: CLASSROOM_HISTORY_KEY,
@@ -476,7 +477,41 @@ const SCENE_HISTORY_KEYS: Record<SeatHistoryScene, string> = {
   conference: CONFERENCE_ROOM_HISTORY_KEY,
   computer_lab: COMPUTER_LAB_HISTORY_KEY,
   concert: CONCERT_HALL_HISTORY_KEY,
+  custom_layout: CUSTOM_LAYOUT_HISTORY_KEY,
 };
+
+export function loadCustomLayoutSnapshot(): CustomLayoutSnapshot | null {
+  const parsed = safeParse<CustomLayoutSnapshot>(localStorage.getItem(CUSTOM_LAYOUT_KEY));
+  if (!parsed) return null;
+  if (!Array.isArray(parsed.rowCols) || !Array.isArray(parsed.seats)) return null;
+  return parsed;
+}
+
+export function saveCustomLayoutSnapshot(snapshot: CustomLayoutSnapshot) {
+  localStorage.setItem(CUSTOM_LAYOUT_KEY, JSON.stringify(snapshot));
+}
+
+export function loadCustomLayoutHistory(): CustomLayoutHistoryItem[] {
+  const parsed = safeParse<CustomLayoutHistoryItem[]>(localStorage.getItem(CUSTOM_LAYOUT_HISTORY_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && item.snapshot)
+    .slice(0, 50);
+}
+
+export function saveCustomLayoutHistory(name: string, snapshot: CustomLayoutSnapshot) {
+  const current = loadCustomLayoutHistory();
+  const now = new Date().toISOString();
+  const item: CustomLayoutHistoryItem = {
+    id: `custom_${Date.now()}`,
+    name,
+    createdAt: now,
+    snapshot: { ...snapshot, updatedAt: now },
+  };
+  const next = [item, ...current].slice(0, 50);
+  localStorage.setItem(CUSTOM_LAYOUT_HISTORY_KEY, JSON.stringify(next));
+  return item;
+}
 
 export function deleteSeatHistoryLocal(scene: SeatHistoryScene, id: string) {
   const key = SCENE_HISTORY_KEYS[scene];
