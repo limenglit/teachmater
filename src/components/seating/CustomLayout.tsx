@@ -1,17 +1,40 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Minus, Shuffle, RotateCcw, DoorOpen, Presentation, Wind } from 'lucide-react';
+import { Plus, Minus, Shuffle, RotateCcw, DoorOpen, Presentation, Wind, Save, QrCode, Trash2, Pencil } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
+import ExportButtons from '@/components/ExportButtons';
+import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import { useSeatExportQr } from './useSeatExportQr';
+import { buildOrganizationColorResolver } from '@/lib/org-color';
+import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
+import TitleRankConfigDialog from './TitleRankConfigDialog';
+import {
+  loadCustomLayoutSnapshot,
+  saveCustomLayoutSnapshot,
+  loadCustomLayoutHistory,
+  saveCustomLayoutHistory,
+  deleteSeatHistoryLocal,
+  renameSeatHistoryLocal,
+  type CustomLayoutSnapshot,
+  type CustomLayoutHistoryItem,
+} from '@/lib/teamwork-local';
+import {
+  saveCloudSeatHistory,
+  fetchCloudSeatHistory,
+  migrateLocalToCloudOnce,
+  deleteCloudSeatHistory,
+  renameCloudSeatHistory,
+} from '@/lib/seat-history-cloud';
 
 interface Student { id: string; name: string; organization?: string; gender?: string; title?: string }
 interface Props { students: Student[] }
 
 type Side = 'top' | 'bottom' | 'left' | 'right';
 type WinSide = 'left' | 'right';
-
+type Strategy = 'sequential' | 'random' | 'byOrg' | 'byTitle' | 'byOrgTitle';
 interface DoorDef { id: string; label: string; side: Side }
 
 const MAX_COLS_PER_ROW = 30;
@@ -20,33 +43,47 @@ const MAX_ROWS = 30;
 export default function CustomLayout({ students }: Props) {
   const { t } = useLanguage();
 
-  // Layout state: cols per row
   const [rowCols, setRowCols] = useState<number[]>([6, 6, 8, 8, 8]);
-  // Horizontal aisle: gap inserted AFTER given row index
   const [rowAisles, setRowAisles] = useState<number[]>([1]);
-  // Vertical aisle: gap inserted AFTER given global column index (applied within each row if that column exists)
   const [colAisles, setColAisles] = useState<number[]>([]);
-
-  // Doors / podium / window
-  const [doors, setDoors] = useState<DoorDef[]>([
-    { id: 'front', label: t('seat.nav.frontDoor') || '前门', side: 'top' },
-  ]);
+  const [doors, setDoors] = useState<DoorDef[]>([{ id: 'front', label: t('seat.nav.frontDoor') || '前门', side: 'top' }]);
   const [podiumSide, setPodiumSide] = useState<Side | 'none'>('top');
   const [windowSide, setWindowSide] = useState<WinSide>('left');
-
-  // Seat grid mirrors rowCols structure: seats[r][c] or null/disabled
+  const [strategy, setStrategy] = useState<Strategy>('sequential');
   const [seats, setSeats] = useState<(string | null)[][]>([]);
   const [disabled, setDisabled] = useState<Set<string>>(new Set());
-  const seatKey = (r: number, c: number) => `${r}-${c}`;
+  const [recordName, setRecordName] = useState('');
+  const [historyItems, setHistoryItems] = useState<CustomLayoutHistoryItem[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState('');
+  const [checkinOpen, setCheckinOpen] = useState(false);
+  const [showOrgColorMark, setShowOrgColorMark] = useState(true);
+  const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('customLayout'));
 
-  // Drag swap
+  const seatKey = (r: number, c: number) => `${r}-${c}`;
   const dragFromRef = useRef<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+  const restoredOnceRef = useRef(false);
 
   const totalSeats = useMemo(
     () => rowCols.reduce((s, n, r) => s + n - Array.from({ length: n }, (_, c) => disabled.has(seatKey(r, c)) ? 1 : 0).reduce((a, b) => a + b, 0), 0),
     [rowCols, disabled]
   );
+  const maxCols = useMemo(() => Math.max(0, ...rowCols), [rowCols]);
+
+  const scoreTitle = useMemo(() => buildTitleScorer(titleRankRuleText), [titleRankRuleText]);
+
+  const orgByName = useMemo(() => {
+    const map = new Map<string, string>();
+    students.forEach(s => { const org = s.organization?.trim(); if (org) map.set(s.name, org); });
+    return map;
+  }, [students]);
+  const resolveOrgColor = useMemo(() => buildOrganizationColorResolver(Array.from(orgByName.values())), [orgByName]);
+  const getNameColor = (name: string) => {
+    if (!showOrgColorMark) return undefined;
+    const org = orgByName.get(name);
+    return org ? resolveOrgColor(org) : undefined;
+  };
 
   const setRowColCount = (r: number, raw: string) => {
     const n = Math.max(1, Math.min(MAX_COLS_PER_ROW, Math.floor(Number(raw) || 1)));
@@ -61,11 +98,7 @@ export default function CustomLayout({ students }: Props) {
     });
   };
 
-  const addRow = () => {
-    if (rowCols.length >= MAX_ROWS) return;
-    setRowCols(prev => [...prev, prev[prev.length - 1] ?? 6]);
-  };
-
+  const addRow = () => { if (rowCols.length < MAX_ROWS) setRowCols(prev => [...prev, prev[prev.length - 1] ?? 6]); };
   const removeRow = (r: number) => {
     if (rowCols.length <= 1) return;
     setRowCols(prev => prev.filter((_, i) => i !== r));
@@ -83,15 +116,10 @@ export default function CustomLayout({ students }: Props) {
     });
   };
 
-  const toggleRowAisle = (afterRow: number) => {
+  const toggleRowAisle = (afterRow: number) =>
     setRowAisles(prev => (prev.includes(afterRow) ? prev.filter(a => a !== afterRow) : [...prev, afterRow].sort((a, b) => a - b)));
-  };
-
-  const toggleColAisle = (afterCol: number) => {
+  const toggleColAisle = (afterCol: number) =>
     setColAisles(prev => (prev.includes(afterCol) ? prev.filter(a => a !== afterCol) : [...prev, afterCol].sort((a, b) => a - b)));
-  };
-
-  const maxCols = useMemo(() => Math.max(0, ...rowCols), [rowCols]);
 
   const toggleDisabled = (r: number, c: number) => {
     setDisabled(prev => {
@@ -110,8 +138,47 @@ export default function CustomLayout({ students }: Props) {
     });
   };
 
+  /** Order students by selected strategy. */
+  const orderedNames = (shuffle: boolean): string[] => {
+    if (shuffle || strategy === 'random') {
+      return [...students.map(s => s.name)].sort(() => Math.random() - 0.5);
+    }
+    if (strategy === 'byOrg') {
+      const grouped = new Map<string, string[]>();
+      students.forEach(s => {
+        const k = s.organization?.trim() || t('seat.editor.common.unassignedOrg') || '未指定';
+        if (!grouped.has(k)) grouped.set(k, []);
+        grouped.get(k)!.push(s.name);
+      });
+      // larger orgs first, keeps each contiguous
+      return Array.from(grouped.values()).sort((a, b) => b.length - a.length).flat();
+    }
+    if (strategy === 'byTitle') {
+      return [...students].sort((a, b) => scoreTitle(b.title) - scoreTitle(a.title)).map(s => s.name);
+    }
+    if (strategy === 'byOrgTitle') {
+      const grouped = new Map<string, Student[]>();
+      students.forEach(s => {
+        const k = s.organization?.trim() || t('seat.editor.common.unassignedOrg') || '未指定';
+        if (!grouped.has(k)) grouped.set(k, []);
+        grouped.get(k)!.push(s);
+      });
+      // org buckets sorted by top-title score desc, then size desc; within bucket by title score desc
+      return Array.from(grouped.values())
+        .map(g => g.slice().sort((a, b) => scoreTitle(b.title) - scoreTitle(a.title)))
+        .sort((a, b) => {
+          const top = scoreTitle(b[0]?.title) - scoreTitle(a[0]?.title);
+          if (top !== 0) return top;
+          return b.length - a.length;
+        })
+        .flat()
+        .map(s => s.name);
+    }
+    return students.map(s => s.name);
+  };
+
   const autoSeat = (shuffle = false) => {
-    const names = shuffle ? [...students.map(s => s.name)].sort(() => Math.random() - 0.5) : students.map(s => s.name);
+    const names = orderedNames(shuffle);
     const grid: (string | null)[][] = rowCols.map(n => Array.from({ length: n }, () => null));
     let idx = 0;
     for (let r = 0; r < rowCols.length && idx < names.length; r++) {
@@ -127,15 +194,8 @@ export default function CustomLayout({ students }: Props) {
 
   const clearSeats = () => setSeats(rowCols.map(n => Array.from({ length: n }, () => null)));
 
-  const handleDragStart = (r: number, c: number) => {
-    if (!seats[r]?.[c]) return;
-    dragFromRef.current = { r, c };
-  };
-  const handleDragOver = (e: React.DragEvent, r: number, c: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setDropTarget({ r, c });
-  };
+  const handleDragStart = (r: number, c: number) => { if (seats[r]?.[c]) dragFromRef.current = { r, c }; };
+  const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
   const handleDrop = (e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
     const from = dragFromRef.current;
@@ -150,10 +210,7 @@ export default function CustomLayout({ students }: Props) {
     dragFromRef.current = null;
     setDropTarget(null);
   };
-  const handleDragEnd = () => {
-    dragFromRef.current = null;
-    setDropTarget(null);
-  };
+  const handleDragEnd = () => { dragFromRef.current = null; setDropTarget(null); };
 
   const addDoor = () => {
     const idx = doors.length + 1;
@@ -162,7 +219,108 @@ export default function CustomLayout({ students }: Props) {
   const removeDoor = (id: string) => setDoors(prev => prev.filter(d => d.id !== id));
   const updateDoor = (id: string, patch: Partial<DoorDef>) => setDoors(prev => prev.map(d => (d.id === id ? { ...d, ...patch } : d)));
 
-  // Visual: render each row centered, with vertical aisle gaps and disabled cells
+  /* -------- snapshot + history (local + cloud) -------- */
+  const buildSnapshot = (): CustomLayoutSnapshot => ({
+    rowCols, rowAisles, colAisles, doors, podiumSide, windowSide, strategy,
+    seats, disabledSeats: Array.from(disabled), updatedAt: new Date().toISOString(),
+  });
+
+  // restore last snapshot once
+  useEffect(() => {
+    if (restoredOnceRef.current) return;
+    const snap = loadCustomLayoutSnapshot();
+    if (snap && Array.isArray(snap.rowCols) && snap.rowCols.length > 0) {
+      const validNames = new Set(students.map(s => s.name));
+      const sanitized = (snap.seats || []).map(row => row.map(n => (n && validNames.has(n) ? n : null)));
+      setRowCols(snap.rowCols);
+      setRowAisles(snap.rowAisles || []);
+      setColAisles(snap.colAisles || []);
+      setDoors(snap.doors?.length ? snap.doors : doors);
+      setPodiumSide(snap.podiumSide || 'top');
+      setWindowSide(snap.windowSide || 'left');
+      setStrategy(snap.strategy || 'sequential');
+      setSeats(sanitized);
+      setDisabled(new Set(snap.disabledSeats || []));
+    }
+    restoredOnceRef.current = true;
+  }, [students]);
+
+  // persist snapshot when meaningful state changes
+  useEffect(() => {
+    if (!restoredOnceRef.current) return;
+    saveCustomLayoutSnapshot(buildSnapshot());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowCols, rowAisles, colAisles, doors, podiumSide, windowSide, strategy, seats, disabled]);
+
+  // load history (local + cloud)
+  useEffect(() => {
+    setHistoryItems(loadCustomLayoutHistory());
+    (async () => {
+      await migrateLocalToCloudOnce('custom_layout');
+      const cloud = await fetchCloudSeatHistory<CustomLayoutSnapshot>('custom_layout');
+      if (cloud) setHistoryItems(cloud.map(r => ({ id: r.id, name: r.name, createdAt: r.createdAt, snapshot: r.snapshot })));
+    })();
+  }, []);
+
+  const saveToHistory = async () => {
+    const hasAny = seats.some(row => row.some(n => !!n));
+    if (!hasAny) { toast.error(t('seat.editor.common.noSeatsToSave') || '尚未排座，无法保存'); return; }
+    const name = recordName.trim() || `${t('seat.editor.scene.custom') || '自定义场景'}-${new Date().toLocaleString()}`;
+    const item = saveCustomLayoutHistory(name, buildSnapshot());
+    let saved: CustomLayoutHistoryItem = item;
+    const cloud = await saveCloudSeatHistory('custom_layout', name, item.snapshot);
+    if (cloud) saved = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot as CustomLayoutSnapshot };
+    setHistoryItems(prev => [saved, ...prev].slice(0, 50));
+    setSelectedHistoryId(saved.id);
+    setRecordName(name);
+    toast.success(cloud ? (t('seat.editor.common.savedHistoryCloud') || '已保存到云端') : (t('seat.editor.common.savedHistoryLocal') || '已保存到本地'));
+  };
+
+  const restoreFromHistory = () => {
+    const item = historyItems.find(h => h.id === selectedHistoryId);
+    if (!item) { toast.error(t('seat.editor.common.noHistorySelected') || '请选择记录'); return; }
+    const snap = item.snapshot;
+    const validNames = new Set(students.map(s => s.name));
+    const sanitized = (snap.seats || []).map(row => row.map(n => (n && validNames.has(n) ? n : null)));
+    setRowCols(snap.rowCols || [6]);
+    setRowAisles(snap.rowAisles || []);
+    setColAisles(snap.colAisles || []);
+    setDoors(snap.doors?.length ? snap.doors : doors);
+    setPodiumSide(snap.podiumSide || 'top');
+    setWindowSide(snap.windowSide || 'left');
+    setStrategy(snap.strategy || 'sequential');
+    setSeats(sanitized);
+    setDisabled(new Set(snap.disabledSeats || []));
+    setRecordName(item.name);
+    toast.success(t('seat.editor.common.restoredHistory') || '记录已恢复');
+  };
+
+  /* -------- export + check-in QR -------- */
+  const exportSceneConfig = useMemo(() => ({
+    rows: rowCols.length,
+    cols: maxCols,
+    windowOnLeft: windowSide === 'left',
+    colAisles,
+    rowAisles,
+    disabledSeats: Array.from(disabled),
+    entryDoorMode: 'front' as const,
+    frontDoorPosition: (doors[0]?.side || 'top') as Side,
+    backDoorPosition: ((doors.find(d => d.id !== doors[0]?.id)?.side) || 'bottom') as Side,
+    rowCols,
+  }), [rowCols, maxCols, windowSide, colAisles, rowAisles, disabled, doors]);
+
+  const studentNames = useMemo(() => students.map(s => s.name), [students]);
+  const seatAssignmentReady = seats.some(row => row.some(n => !!n));
+
+  const { resolveQrCode, handleSessionCreated } = useSeatExportQr({
+    seatData: seats,
+    studentNames,
+    seatAssignmentReady,
+    sceneConfig: exportSceneConfig,
+    sceneType: 'classroom',
+  });
+
+  /* -------- render seat row -------- */
   const renderRow = (r: number) => {
     const cellCount = rowCols[r];
     const cells: React.ReactNode[] = [];
@@ -189,11 +347,11 @@ export default function CustomLayout({ students }: Props) {
                 : 'bg-muted/20 border-border/40 text-muted-foreground',
             isDropTarget ? 'ring-2 ring-primary' : '',
           ].join(' ')}
+          style={name ? { color: getNameColor(name) } : undefined}
         >
           {isDisabled ? '✕' : (name || `${r + 1}-${c + 1}`)}
         </div>
       );
-      // vertical aisle gap (after column c, only if exists in this row)
       if (colAisles.includes(c) && c < cellCount - 1) {
         cells.push(<div key={`v-${r}-${c}`} className="w-4 shrink-0" aria-hidden />);
       }
@@ -237,9 +395,112 @@ export default function CustomLayout({ students }: Props) {
           <Button size="sm" onClick={() => autoSeat(false)}>{t('seat.custom.autoSeat') || '一键排座'}</Button>
           <Button size="sm" variant="secondary" onClick={() => autoSeat(true)}><Shuffle className="w-3.5 h-3.5 mr-1" />{t('seat.custom.shuffle') || '随机'}</Button>
           <Button size="sm" variant="outline" onClick={clearSeats}><RotateCcw className="w-3.5 h-3.5 mr-1" />{t('seat.custom.clear') || '清空'}</Button>
+
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            {t('seat.editor.common.mode') || '策略'}
+            <select
+              value={strategy}
+              onChange={(e) => setStrategy(e.target.value as Strategy)}
+              className="h-7 text-xs px-2 rounded border border-input bg-background"
+            >
+              <option value="sequential">{t('seat.custom.stratSequential') || '顺序排座'}</option>
+              <option value="random">{t('seat.custom.stratRandom') || '随机排座'}</option>
+              <option value="byOrg">{t('seat.custom.stratByOrg') || '按单位集中'}</option>
+              <option value="byTitle">{t('seat.custom.stratByTitle') || '按职务排序（前排优先）'}</option>
+              <option value="byOrgTitle">{t('seat.custom.stratByOrgTitle') || '单位集中＋职务排序'}</option>
+            </select>
+          </label>
+
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+            <input type="checkbox" checked={showOrgColorMark} onChange={(e) => setShowOrgColorMark(e.target.checked)} className="accent-primary" />
+            {t('seat.editor.common.orgColor') || '单位上色'}
+          </label>
+
+          <TitleRankConfigDialog
+            value={titleRankRuleText}
+            sceneLabel={t('seat.editor.scene.custom') || '自定义场景'}
+            onSave={(next) => { const saved = saveTitleRankRuleText(next, 'customLayout'); setTitleRankRuleText(saved); }}
+          />
+
           <span className="text-xs text-muted-foreground ml-auto">
             {t('seat.custom.totalSeats') || '可用座位'}: <b>{totalSeats}</b> · {t('seat.custom.totalStudents') || '名单'}: <b>{students.length}</b>
           </span>
+        </div>
+
+        {/* Save / history / checkin / export */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-2">
+          <Input
+            type="text"
+            value={recordName}
+            onChange={(e) => setRecordName(e.target.value)}
+            placeholder={t('seat.editor.common.namePlaceholder') || '记录名称'}
+            className="h-8 w-full sm:w-56 text-xs"
+          />
+          <Button size="sm" variant="outline" onClick={saveToHistory} disabled={!seatAssignmentReady} className="gap-1.5 h-8">
+            <Save className="w-3.5 h-3.5" />{t('seat.editor.common.saveHistory') || '保存历史'}
+          </Button>
+          <select
+            value={selectedHistoryId}
+            onChange={(e) => setSelectedHistoryId(e.target.value)}
+            className="h-8 text-xs px-2 rounded border border-input bg-background flex-1 sm:flex-none sm:min-w-[14rem] sm:max-w-72"
+          >
+            <option value="">{t('seat.editor.common.selectHistory') || '选择历史记录'}</option>
+            {historyItems.map(item => (
+              <option key={item.id} value={item.id}>{item.name}（{new Date(item.createdAt).toLocaleString()}）</option>
+            ))}
+          </select>
+          <Button size="sm" variant="outline" disabled={!selectedHistoryId} onClick={restoreFromHistory} className="gap-1.5 h-8">
+            <RotateCcw className="w-3.5 h-3.5" />{t('seat.editor.common.restoreHistory') || '恢复'}
+          </Button>
+          <Button
+            size="icon" variant="outline" className="h-8 w-8" disabled={!selectedHistoryId}
+            title={t('seat.editor.common.renameTitle') || '重命名'}
+            onClick={async () => {
+              const id = selectedHistoryId;
+              const current = historyItems.find(h => h.id === id);
+              if (!id || !current) return;
+              const next = window.prompt(t('seat.editor.common.renamePrompt') || '请输入新名称', current.name)?.trim();
+              if (!next || next === current.name) return;
+              await renameCloudSeatHistory(id, next);
+              renameSeatHistoryLocal('custom_layout', id, next);
+              setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
+              toast.success(t('seat.editor.common.renamed') || '已重命名');
+            }}
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          <Button
+            size="icon" variant="outline" className="h-8 w-8 text-destructive hover:text-destructive" disabled={!selectedHistoryId}
+            title={t('seat.editor.common.deleteTitle') || '删除'}
+            onClick={async () => {
+              const id = selectedHistoryId;
+              if (!id) return;
+              if (!window.confirm(t('seat.editor.common.deleteConfirm') || '确定删除？')) return;
+              await deleteCloudSeatHistory(id);
+              deleteSeatHistoryLocal('custom_layout', id);
+              setHistoryItems(prev => prev.filter(h => h.id !== id));
+              setSelectedHistoryId('');
+              toast.success(t('seat.editor.common.deleted') || '已删除');
+            }}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+
+          {seatAssignmentReady && (
+            <>
+              <ExportButtons
+                targetRef={printRef}
+                filename={recordName.trim() || (t('seat.editor.scene.custom') || '自定义座次表')}
+                resolveQrCode={resolveQrCode}
+                titleValue={recordName}
+                onTitleChange={setRecordName}
+                hideTitleInput
+              />
+              <Button size="sm" variant="outline" onClick={() => setCheckinOpen(true)} className="gap-1.5 h-8">
+                <QrCode className="w-3.5 h-3.5" />{t('seat.editor.common.checkin') || '签到'}
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Row config */}
@@ -333,14 +594,12 @@ export default function CustomLayout({ students }: Props) {
         </p>
       </div>
 
-      {/* Stage */}
-      <div className="rounded-2xl border border-border bg-muted/10 p-3 overflow-x-auto">
-        {/* Top side decorations */}
+      {/* Stage (exported area) */}
+      <div ref={printRef} className="rounded-2xl border border-border bg-muted/10 p-3 overflow-x-auto">
         {podiumBadge('top')}
         {doorBadge('top')}
 
         <div className="flex">
-          {/* Left side decorations */}
           <div className="flex flex-col items-center justify-center gap-2 pr-2 shrink-0">
             {windowSide === 'left' && <div className="text-[10px] text-muted-foreground -rotate-90 whitespace-nowrap">🪟 {t('seat.nav.window') || '窗'}</div>}
             {doors.filter(d => d.side === 'left').map(d => (
@@ -349,7 +608,6 @@ export default function CustomLayout({ students }: Props) {
             {podiumSide === 'left' && <span className="text-[10px] bg-accent/30 px-2 py-0.5 rounded">{t('seat.nav.podium') || '讲台'}</span>}
           </div>
 
-          {/* Seat rows */}
           <div className="flex-1 min-w-0">
             <div className="flex flex-col gap-1.5">
               {rowCols.map((_, r) => (
@@ -367,7 +625,6 @@ export default function CustomLayout({ students }: Props) {
             </div>
           </div>
 
-          {/* Right side decorations */}
           <div className="flex flex-col items-center justify-center gap-2 pl-2 shrink-0">
             {windowSide === 'right' && <div className="text-[10px] text-muted-foreground -rotate-90 whitespace-nowrap">🪟 {t('seat.nav.window') || '窗'}</div>}
             {doors.filter(d => d.side === 'right').map(d => (
@@ -377,10 +634,22 @@ export default function CustomLayout({ students }: Props) {
           </div>
         </div>
 
-        {/* Bottom side decorations */}
         {doorBadge('bottom')}
         {podiumBadge('bottom')}
       </div>
+
+      <SeatCheckinDialog
+        open={checkinOpen}
+        onOpenChange={setCheckinOpen}
+        seatData={seats}
+        studentNames={studentNames}
+        seatAssignmentReady={seatAssignmentReady}
+        sceneConfig={exportSceneConfig}
+        sceneType="classroom"
+        className={recordName.trim() || (t('seat.editor.scene.custom') || '自定义场景')}
+        pngFileName={recordName.trim() || (t('seat.editor.scene.custom') || '自定义场景')}
+        onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
+      />
     </div>
   );
 }

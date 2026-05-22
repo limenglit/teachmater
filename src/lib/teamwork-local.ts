@@ -176,6 +176,26 @@ export interface ConcertHallHistoryItem {
   snapshot: ConcertHallSnapshot;
 }
 
+export interface CustomLayoutSnapshot {
+  rowCols: number[];
+  rowAisles: number[];
+  colAisles: number[];
+  doors: Array<{ id: string; label: string; side: 'top' | 'bottom' | 'left' | 'right' }>;
+  podiumSide: 'top' | 'bottom' | 'left' | 'right' | 'none';
+  windowSide: 'left' | 'right';
+  strategy: 'sequential' | 'random' | 'byOrg' | 'byTitle' | 'byOrgTitle';
+  seats: (string | null)[][];
+  disabledSeats: string[];
+  updatedAt: string;
+}
+
+export interface CustomLayoutHistoryItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: CustomLayoutSnapshot;
+}
+
 const GROUPS_KEY = 'teachmate_groups_last';
 const TEAMS_KEY = 'teachmate_teams_last';
 const SMART_CLASSROOM_KEY = 'teachmate_smart_classroom_last';
@@ -190,6 +210,8 @@ const COMPUTER_LAB_KEY = 'teachmate_computer_lab_last';
 const COMPUTER_LAB_HISTORY_KEY = 'teachmate_computer_lab_history';
 const CONCERT_HALL_KEY = 'teachmate_concert_hall_last';
 const CONCERT_HALL_HISTORY_KEY = 'teachmate_concert_hall_history';
+const CUSTOM_LAYOUT_KEY = 'teachmate_custom_layout_last';
+const CUSTOM_LAYOUT_HISTORY_KEY = 'teachmate_custom_layout_history';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -445,7 +467,8 @@ export type SeatHistoryScene =
   | 'banquet'
   | 'conference'
   | 'computer_lab'
-  | 'concert';
+  | 'concert'
+  | 'custom_layout';
 
 const SCENE_HISTORY_KEYS: Record<SeatHistoryScene, string> = {
   classroom: CLASSROOM_HISTORY_KEY,
@@ -454,7 +477,41 @@ const SCENE_HISTORY_KEYS: Record<SeatHistoryScene, string> = {
   conference: CONFERENCE_ROOM_HISTORY_KEY,
   computer_lab: COMPUTER_LAB_HISTORY_KEY,
   concert: CONCERT_HALL_HISTORY_KEY,
+  custom_layout: CUSTOM_LAYOUT_HISTORY_KEY,
 };
+
+export function loadCustomLayoutSnapshot(): CustomLayoutSnapshot | null {
+  const parsed = safeParse<CustomLayoutSnapshot>(localStorage.getItem(CUSTOM_LAYOUT_KEY));
+  if (!parsed) return null;
+  if (!Array.isArray(parsed.rowCols) || !Array.isArray(parsed.seats)) return null;
+  return parsed;
+}
+
+export function saveCustomLayoutSnapshot(snapshot: CustomLayoutSnapshot) {
+  localStorage.setItem(CUSTOM_LAYOUT_KEY, JSON.stringify(snapshot));
+}
+
+export function loadCustomLayoutHistory(): CustomLayoutHistoryItem[] {
+  const parsed = safeParse<CustomLayoutHistoryItem[]>(localStorage.getItem(CUSTOM_LAYOUT_HISTORY_KEY));
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && item.snapshot)
+    .slice(0, 50);
+}
+
+export function saveCustomLayoutHistory(name: string, snapshot: CustomLayoutSnapshot) {
+  const current = loadCustomLayoutHistory();
+  const now = new Date().toISOString();
+  const item: CustomLayoutHistoryItem = {
+    id: `custom_${Date.now()}`,
+    name,
+    createdAt: now,
+    snapshot: { ...snapshot, updatedAt: now },
+  };
+  const next = [item, ...current].slice(0, 50);
+  localStorage.setItem(CUSTOM_LAYOUT_HISTORY_KEY, JSON.stringify(next));
+  return item;
+}
 
 export function deleteSeatHistoryLocal(scene: SeatHistoryScene, id: string) {
   const key = SCENE_HISTORY_KEYS[scene];
