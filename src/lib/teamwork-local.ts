@@ -176,6 +176,26 @@ export interface ConcertHallHistoryItem {
   snapshot: ConcertHallSnapshot;
 }
 
+export interface CustomLayoutSnapshot {
+  rowCols: number[];
+  rowAisles: number[];
+  colAisles: number[];
+  doors: Array<{ id: string; label: string; side: 'top' | 'bottom' | 'left' | 'right' }>;
+  podiumSide: 'top' | 'bottom' | 'left' | 'right' | 'none';
+  windowSide: 'left' | 'right';
+  strategy: 'sequential' | 'random' | 'byOrg' | 'byTitle' | 'byOrgTitle';
+  seats: (string | null)[][];
+  disabledSeats: string[];
+  updatedAt: string;
+}
+
+export interface CustomLayoutHistoryItem {
+  id: string;
+  name: string;
+  createdAt: string;
+  snapshot: CustomLayoutSnapshot;
+}
+
 const GROUPS_KEY = 'teachmate_groups_last';
 const TEAMS_KEY = 'teachmate_teams_last';
 const SMART_CLASSROOM_KEY = 'teachmate_smart_classroom_last';
@@ -190,6 +210,8 @@ const COMPUTER_LAB_KEY = 'teachmate_computer_lab_last';
 const COMPUTER_LAB_HISTORY_KEY = 'teachmate_computer_lab_history';
 const CONCERT_HALL_KEY = 'teachmate_concert_hall_last';
 const CONCERT_HALL_HISTORY_KEY = 'teachmate_concert_hall_history';
+const CUSTOM_LAYOUT_KEY = 'teachmate_custom_layout_last';
+const CUSTOM_LAYOUT_HISTORY_KEY = 'teachmate_custom_layout_history';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
