@@ -527,20 +527,41 @@ export default function CustomLayout({ students }: Props) {
           </Button>
         </div>
 
-        {/* Vertical aisles */}
-        <div className="space-y-1.5">
-          <div className="text-xs font-medium text-foreground/80">{t('seat.custom.colAislesConfig') || '纵向走道（在第 N 列后）'}</div>
-          <div className="flex flex-wrap gap-1.5">
-            {Array.from({ length: Math.max(0, maxCols - 1) }, (_, i) => (
-              <button
-                key={`ca-${i}`}
-                type="button"
-                onClick={() => toggleColAisle(i)}
-                className={`text-[11px] px-2 py-0.5 rounded-full border ${colAisles.includes(i) ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}
-              >
-                {i + 1}↦
-              </button>
-            ))}
+        {/* Aisles: vertical + horizontal */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium text-foreground/80">{t('seat.custom.colAislesConfig')}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: Math.max(0, maxCols - 1) }, (_, i) => (
+                <button
+                  key={`ca-${i}`}
+                  type="button"
+                  onClick={() => toggleColAisle(i)}
+                  className={`text-[11px] px-2 py-0.5 rounded-full border ${colAisles.includes(i) ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}
+                >
+                  {i + 1}↦
+                </button>
+              ))}
+              {maxCols <= 1 && <span className="text-[11px] text-muted-foreground/60">—</span>}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="text-xs font-medium text-foreground/80">{t('seat.custom.rowAislesConfig')}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: Math.max(0, rowCols.length - 1) }, (_, i) => (
+                <button
+                  key={`ra-${i}`}
+                  type="button"
+                  onClick={() => toggleRowAisle(i)}
+                  className={`text-[11px] px-2 py-0.5 rounded-full border ${rowAisles.includes(i) ? 'bg-primary/10 border-primary text-primary' : 'border-border text-muted-foreground hover:border-primary/40'}`}
+                  title={t('seat.custom.toggleRowAisle')}
+                >
+                  {i + 1}↧
+                </button>
+              ))}
+              {rowCols.length <= 1 && <span className="text-[11px] text-muted-foreground/60">—</span>}
+            </div>
           </div>
         </div>
 
