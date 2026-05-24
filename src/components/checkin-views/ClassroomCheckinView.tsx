@@ -231,6 +231,32 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 className="fill-primary text-[10px] font-medium">{t('seat.nav.podium')}</text>
             </g>
 
+            {/* Aisle guides (vertical) */}
+            {colAisleSet.map((a) => {
+              const x = roomOx + seatX(a) + seatW + gapX / 2 + aisleGap / 2;
+              return (
+                <g key={`va-${a}`}>
+                  <line x1={x} y1={roomOy + padY / 2} x2={x} y2={roomOy + roomH - padY / 2}
+                    className="stroke-muted-foreground/30" strokeWidth={1} strokeDasharray="3 3" />
+                  <text x={x} y={roomOy + padY / 2 - 2} textAnchor="middle"
+                    className="fill-muted-foreground/70 text-[7px]">{t('seat.custom.aisle') || t('seat.nav.entry')}</text>
+                </g>
+              );
+            })}
+            {/* Aisle guides (horizontal) */}
+            {rowAisleSet.map((a) => {
+              const y = roomOy + seatY(a) + seatH + gapY / 2 + aisleGap / 2;
+              return (
+                <g key={`ha-${a}`}>
+                  <line x1={roomOx + padX / 2} y1={y} x2={roomOx + roomW - padX / 2} y2={y}
+                    className="stroke-muted-foreground/30" strokeWidth={1} strokeDasharray="3 3" />
+                  <text x={roomOx + padX / 2 - 2} y={y} textAnchor="end" dominantBaseline="middle"
+                    className="fill-muted-foreground/70 text-[7px]">{t('seat.custom.aisle') || t('seat.nav.entry')}</text>
+                </g>
+              );
+            })}
+
+
             {/* Window indicator on the side opposite to the side door (or per config) */}
             <text x={windowOnLeft ? roomOx + 6 : roomOx + roomW - 6}
                   y={roomOy + roomH / 2}
