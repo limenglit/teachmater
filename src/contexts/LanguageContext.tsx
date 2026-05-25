@@ -6668,6 +6668,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.custom.stratByTitle': '役職順（前列優先）',
     'seat.custom.stratByOrgTitle': '所属＋役職順',
     'seat.custom.rowAislesConfig': '横通路（第 N 行の後ろ）',
+    'seat.custom.aisleGap': '通路の幅 (px)',
     'seat.editor.scene.custom': 'カスタムレイアウト',
     'seat.nav.tableShort': '卓',
     'seat.nav.rowShort': '列',
