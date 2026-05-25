@@ -305,12 +305,13 @@ export default function CustomLayout({ students }: Props) {
     windowOnLeft: windowSide === 'left',
     colAisles,
     rowAisles,
+    aisleGap,
     disabledSeats: Array.from(disabled),
     entryDoorMode: 'front' as const,
     frontDoorPosition: (doors[0]?.side || 'top') as Side,
     backDoorPosition: ((doors.find(d => d.id !== doors[0]?.id)?.side) || 'bottom') as Side,
     rowCols,
-  }), [rowCols, maxCols, windowSide, colAisles, rowAisles, disabled, doors]);
+  }), [rowCols, maxCols, windowSide, colAisles, rowAisles, aisleGap, disabled, doors]);
 
   const studentNames = useMemo(() => students.map(s => s.name), [students]);
   const seatAssignmentReady = seats.some(row => row.some(n => !!n));
