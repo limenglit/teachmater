@@ -728,7 +728,7 @@ export default function CustomLayout({ students }: Props) {
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          {t('seat.custom.tips') || '提示：按住 Shift 点击座位可临时禁用；拖动姓名可互换座位；行/列走道按需开关。'}
+          {t('seat.custom.tips') || '提示：Shift+点击座位可关闭/开放单个座位；Shift+点击行号或列号可关闭/开放整行或整列；拖动姓名可互换座位；行/列走道按需开关。'}
         </p>
       </div>
 
