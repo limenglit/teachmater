@@ -748,6 +748,7 @@ export default function CustomLayout({ students }: Props) {
 
           <div className="flex-1 min-w-0">
             <div className="flex flex-col gap-1.5">
+              {renderColHeader()}
               {rowCols.map((_, r) => (
                 <div key={`row-wrap-${r}`}>
                   {renderRow(r)}
