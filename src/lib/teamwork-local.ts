@@ -180,6 +180,7 @@ export interface CustomLayoutSnapshot {
   rowCols: number[];
   rowAisles: number[];
   colAisles: number[];
+  aisleGap?: number;
   doors: Array<{ id: string; label: string; side: 'top' | 'bottom' | 'left' | 'right' }>;
   podiumSide: 'top' | 'bottom' | 'left' | 'right' | 'none';
   windowSide: 'left' | 'right';

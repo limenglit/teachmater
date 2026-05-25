@@ -46,6 +46,7 @@ export default function CustomLayout({ students }: Props) {
   const [rowCols, setRowCols] = useState<number[]>([6, 6, 8, 8, 8]);
   const [rowAisles, setRowAisles] = useState<number[]>([1]);
   const [colAisles, setColAisles] = useState<number[]>([]);
+  const [aisleGap, setAisleGap] = useState<number>(16);
   const [doors, setDoors] = useState<DoorDef[]>([{ id: 'front', label: t('seat.nav.frontDoor') || '前门', side: 'top' }]);
   const [podiumSide, setPodiumSide] = useState<Side | 'none'>('top');
   const [windowSide, setWindowSide] = useState<WinSide>('left');
@@ -221,7 +222,7 @@ export default function CustomLayout({ students }: Props) {
 
   /* -------- snapshot + history (local + cloud) -------- */
   const buildSnapshot = (): CustomLayoutSnapshot => ({
-    rowCols, rowAisles, colAisles, doors, podiumSide, windowSide, strategy,
+    rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy,
     seats, disabledSeats: Array.from(disabled), updatedAt: new Date().toISOString(),
   });
 
@@ -235,6 +236,7 @@ export default function CustomLayout({ students }: Props) {
       setRowCols(snap.rowCols);
       setRowAisles(snap.rowAisles || []);
       setColAisles(snap.colAisles || []);
+      if (typeof snap.aisleGap === 'number') setAisleGap(Math.max(4, Math.min(48, snap.aisleGap)));
       setDoors(snap.doors?.length ? snap.doors : doors);
       setPodiumSide(snap.podiumSide || 'top');
       setWindowSide(snap.windowSide || 'left');
@@ -250,7 +252,7 @@ export default function CustomLayout({ students }: Props) {
     if (!restoredOnceRef.current) return;
     saveCustomLayoutSnapshot(buildSnapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowCols, rowAisles, colAisles, doors, podiumSide, windowSide, strategy, seats, disabled]);
+  }, [rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy, seats, disabled]);
 
   // load history (local + cloud)
   useEffect(() => {
@@ -285,6 +287,7 @@ export default function CustomLayout({ students }: Props) {
     setRowCols(snap.rowCols || [6]);
     setRowAisles(snap.rowAisles || []);
     setColAisles(snap.colAisles || []);
+    if (typeof snap.aisleGap === 'number') setAisleGap(Math.max(4, Math.min(48, snap.aisleGap)));
     setDoors(snap.doors?.length ? snap.doors : doors);
     setPodiumSide(snap.podiumSide || 'top');
     setWindowSide(snap.windowSide || 'left');
@@ -302,12 +305,13 @@ export default function CustomLayout({ students }: Props) {
     windowOnLeft: windowSide === 'left',
     colAisles,
     rowAisles,
+    aisleGap,
     disabledSeats: Array.from(disabled),
     entryDoorMode: 'front' as const,
     frontDoorPosition: (doors[0]?.side || 'top') as Side,
     backDoorPosition: ((doors.find(d => d.id !== doors[0]?.id)?.side) || 'bottom') as Side,
     rowCols,
-  }), [rowCols, maxCols, windowSide, colAisles, rowAisles, disabled, doors]);
+  }), [rowCols, maxCols, windowSide, colAisles, rowAisles, aisleGap, disabled, doors]);
 
   const studentNames = useMemo(() => students.map(s => s.name), [students]);
   const seatAssignmentReady = seats.some(row => row.some(n => !!n));
@@ -353,7 +357,7 @@ export default function CustomLayout({ students }: Props) {
         </div>
       );
       if (colAisles.includes(c) && c < cellCount - 1) {
-        cells.push(<div key={`v-${r}-${c}`} className="w-4 shrink-0" aria-hidden />);
+        cells.push(<div key={`v-${r}-${c}`} className="shrink-0" style={{ width: aisleGap }} aria-hidden />);
       }
     }
     return (
@@ -565,6 +569,32 @@ export default function CustomLayout({ students }: Props) {
           </div>
         </div>
 
+        {/* Aisle gap width */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Label className="text-xs font-medium text-foreground/80">
+            {t('seat.custom.aisleGap') || '走道间距'}
+          </Label>
+          <input
+            type="range"
+            min={4}
+            max={48}
+            step={1}
+            value={aisleGap}
+            onChange={(e) => setAisleGap(Math.max(4, Math.min(48, Number(e.target.value) || 16)))}
+            className="accent-primary w-40"
+            aria-label={t('seat.custom.aisleGap') || '走道间距'}
+          />
+          <Input
+            type="number"
+            min={4}
+            max={48}
+            value={aisleGap}
+            onChange={(e) => setAisleGap(Math.max(4, Math.min(48, Number(e.target.value) || 16)))}
+            className="h-7 w-16 text-xs px-2"
+          />
+          <span className="text-[11px] text-muted-foreground">px</span>
+        </div>
+
         {/* Doors / podium / window */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="space-y-1.5">
@@ -635,7 +665,7 @@ export default function CustomLayout({ students }: Props) {
                 <div key={`row-wrap-${r}`}>
                   {renderRow(r)}
                   {rowAisles.includes(r) && r < rowCols.length - 1 && (
-                    <div className="my-1.5 border-t border-dashed border-muted-foreground/30 relative">
+                    <div className="border-t border-dashed border-muted-foreground/30 relative" style={{ marginTop: aisleGap / 2, marginBottom: aisleGap / 2 }}>
                       <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-muted px-1.5 text-[9px] text-muted-foreground rounded">
                         {t('seat.custom.aisle') || '走道'}
                       </span>

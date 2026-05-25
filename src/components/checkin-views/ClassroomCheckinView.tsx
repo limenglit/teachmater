@@ -29,7 +29,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const seats = seatData as (string | null)[][];
   const config = sceneConfig as {
     rows: number; cols: number; windowOnLeft: boolean;
-    colAisles?: number[]; rowAisles?: number[];
+    colAisles?: number[]; rowAisles?: number[]; aisleGap?: number;
     entryDoorMode?: 'front' | 'back' | 'both';
     frontDoorPosition?: DoorSide;
     backDoorPosition?: DoorSide;
@@ -102,7 +102,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const gapY = 8;
   const padX = 40; // room interior horizontal padding
   const padY = 36; // room interior vertical padding
-  const aisleGap = 14; // extra spacing inserted for row/col aisles
+  const aisleGap = Math.max(4, Math.min(48, Number(config.aisleGap) || 14)); // configurable spacing for row/col aisles
 
   if (!myPosition) return <p className="text-center text-muted-foreground">{t('seat.nav.notFound')}</p>;
 
