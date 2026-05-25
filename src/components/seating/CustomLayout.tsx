@@ -565,7 +565,33 @@ export default function CustomLayout({ students }: Props) {
                 </button>
               ))}
               {rowCols.length <= 1 && <span className="text-[11px] text-muted-foreground/60">—</span>}
-            </div>
+        </div>
+
+        {/* Aisle gap width */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Label className="text-xs font-medium text-foreground/80">
+            {t('seat.custom.aisleGap') || '走道间距'}
+          </Label>
+          <input
+            type="range"
+            min={4}
+            max={48}
+            step={1}
+            value={aisleGap}
+            onChange={(e) => setAisleGap(Math.max(4, Math.min(48, Number(e.target.value) || 16)))}
+            className="accent-primary w-40"
+            aria-label={t('seat.custom.aisleGap') || '走道间距'}
+          />
+          <Input
+            type="number"
+            min={4}
+            max={48}
+            value={aisleGap}
+            onChange={(e) => setAisleGap(Math.max(4, Math.min(48, Number(e.target.value) || 16)))}
+            className="h-7 w-16 text-xs px-2"
+          />
+          <span className="text-[11px] text-muted-foreground">px</span>
+        </div>
           </div>
         </div>
 
