@@ -46,6 +46,7 @@ export default function CustomLayout({ students }: Props) {
   const [rowCols, setRowCols] = useState<number[]>([6, 6, 8, 8, 8]);
   const [rowAisles, setRowAisles] = useState<number[]>([1]);
   const [colAisles, setColAisles] = useState<number[]>([]);
+  const [aisleGap, setAisleGap] = useState<number>(16);
   const [doors, setDoors] = useState<DoorDef[]>([{ id: 'front', label: t('seat.nav.frontDoor') || '前门', side: 'top' }]);
   const [podiumSide, setPodiumSide] = useState<Side | 'none'>('top');
   const [windowSide, setWindowSide] = useState<WinSide>('left');
