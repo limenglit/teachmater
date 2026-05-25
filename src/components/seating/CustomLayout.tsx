@@ -415,11 +415,45 @@ export default function CustomLayout({ students }: Props) {
     }
     return (
       <div className="flex items-center justify-center gap-1.5">
-        <span className="text-[10px] text-muted-foreground w-6 text-right">{r + 1}</span>
+        <span
+          className="text-[10px] text-muted-foreground w-6 text-right cursor-pointer hover:text-primary select-none"
+          onClick={(e) => { if (e.shiftKey) toggleRowDisabled(r); }}
+          title={t('seat.custom.toggleRowDisabled') || 'Shift+点击 关闭/开放整行'}
+        >
+          {r + 1}
+        </span>
         <div className="flex items-center gap-1.5 flex-wrap justify-center">{cells}</div>
         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeRow(r)} title={t('seat.custom.removeRow') || '删除该行'}>
           <Minus className="w-3 h-3" />
         </Button>
+      </div>
+    );
+  };
+
+  /* -------- column header row (shift+click to toggle whole column) -------- */
+  const renderColHeader = () => {
+    if (maxCols <= 0) return null;
+    const cells: React.ReactNode[] = [];
+    for (let c = 0; c < maxCols; c++) {
+      cells.push(
+        <div
+          key={`h-${c}`}
+          className="text-[10px] text-muted-foreground w-[60px] text-center cursor-pointer hover:text-primary select-none"
+          onClick={(e) => { if (e.shiftKey) toggleColDisabled(c); }}
+          title={t('seat.custom.toggleColDisabled') || 'Shift+点击 关闭/开放整列'}
+        >
+          {c + 1}
+        </div>
+      );
+      if (colAisles.includes(c) && c < maxCols - 1) {
+        cells.push(<div key={`hv-${c}`} className="shrink-0" style={{ width: aisleGap }} aria-hidden />);
+      }
+    }
+    return (
+      <div className="flex items-center justify-center gap-1.5 pb-1">
+        <span className="w-6 shrink-0" aria-hidden />
+        <div className="flex items-center gap-1.5 flex-wrap justify-center">{cells}</div>
+        <span className="w-6 shrink-0" aria-hidden />
       </div>
     );
   };
