@@ -565,6 +565,8 @@ export default function CustomLayout({ students }: Props) {
                 </button>
               ))}
               {rowCols.length <= 1 && <span className="text-[11px] text-muted-foreground/60">—</span>}
+            </div>
+          </div>
         </div>
 
         {/* Aisle gap width */}
@@ -591,8 +593,6 @@ export default function CustomLayout({ students }: Props) {
             className="h-7 w-16 text-xs px-2"
           />
           <span className="text-[11px] text-muted-foreground">px</span>
-        </div>
-          </div>
         </div>
 
         {/* Doors / podium / window */}
