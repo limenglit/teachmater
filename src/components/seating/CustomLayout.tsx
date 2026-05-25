@@ -222,7 +222,7 @@ export default function CustomLayout({ students }: Props) {
 
   /* -------- snapshot + history (local + cloud) -------- */
   const buildSnapshot = (): CustomLayoutSnapshot => ({
-    rowCols, rowAisles, colAisles, doors, podiumSide, windowSide, strategy,
+    rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy,
     seats, disabledSeats: Array.from(disabled), updatedAt: new Date().toISOString(),
   });
 
