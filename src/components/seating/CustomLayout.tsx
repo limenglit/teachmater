@@ -139,6 +139,59 @@ export default function CustomLayout({ students }: Props) {
     });
   };
 
+  /** Shift+click on a row label: toggle the whole row's disabled state. */
+  const toggleRowDisabled = (r: number) => {
+    const count = rowCols[r] || 0;
+    if (count <= 0) return;
+    const allDisabled = Array.from({ length: count }, (_, c) => disabled.has(seatKey(r, c))).every(Boolean);
+    setDisabled(prev => {
+      const next = new Set(prev);
+      for (let c = 0; c < count; c++) {
+        const k = seatKey(r, c);
+        if (allDisabled) next.delete(k);
+        else next.add(k);
+      }
+      return next;
+    });
+    if (!allDisabled) {
+      setSeats(s => {
+        const g = s.map(row => [...row]);
+        if (g[r]) for (let c = 0; c < count; c++) g[r][c] = null;
+        return g;
+      });
+    }
+    toast.success(allDisabled
+      ? (t('seat.custom.rowEnabled') || `第 ${r + 1} 行已开放`)
+      : (t('seat.custom.rowDisabled') || `第 ${r + 1} 行已关闭`));
+  };
+
+  /** Shift+click on a column label: toggle the whole column's disabled state. */
+  const toggleColDisabled = (c: number) => {
+    const keys: Array<[number, number]> = [];
+    for (let r = 0; r < rowCols.length; r++) if (c < (rowCols[r] || 0)) keys.push([r, c]);
+    if (keys.length === 0) return;
+    const allDisabled = keys.every(([r, cc]) => disabled.has(seatKey(r, cc)));
+    setDisabled(prev => {
+      const next = new Set(prev);
+      keys.forEach(([r, cc]) => {
+        const k = seatKey(r, cc);
+        if (allDisabled) next.delete(k);
+        else next.add(k);
+      });
+      return next;
+    });
+    if (!allDisabled) {
+      setSeats(s => {
+        const g = s.map(row => [...row]);
+        keys.forEach(([r, cc]) => { if (g[r]) g[r][cc] = null; });
+        return g;
+      });
+    }
+    toast.success(allDisabled
+      ? (t('seat.custom.colEnabled') || `第 ${c + 1} 列已开放`)
+      : (t('seat.custom.colDisabled') || `第 ${c + 1} 列已关闭`));
+  };
+
   /** Order students by selected strategy. */
   const orderedNames = (shuffle: boolean): string[] => {
     if (shuffle || strategy === 'random') {
@@ -362,11 +415,45 @@ export default function CustomLayout({ students }: Props) {
     }
     return (
       <div className="flex items-center justify-center gap-1.5">
-        <span className="text-[10px] text-muted-foreground w-6 text-right">{r + 1}</span>
+        <span
+          className="text-[10px] text-muted-foreground w-6 text-right cursor-pointer hover:text-primary select-none"
+          onClick={(e) => { if (e.shiftKey) toggleRowDisabled(r); }}
+          title={t('seat.custom.toggleRowDisabled') || 'Shift+点击 关闭/开放整行'}
+        >
+          {r + 1}
+        </span>
         <div className="flex items-center gap-1.5 flex-wrap justify-center">{cells}</div>
         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeRow(r)} title={t('seat.custom.removeRow') || '删除该行'}>
           <Minus className="w-3 h-3" />
         </Button>
+      </div>
+    );
+  };
+
+  /* -------- column header row (shift+click to toggle whole column) -------- */
+  const renderColHeader = () => {
+    if (maxCols <= 0) return null;
+    const cells: React.ReactNode[] = [];
+    for (let c = 0; c < maxCols; c++) {
+      cells.push(
+        <div
+          key={`h-${c}`}
+          className="text-[10px] text-muted-foreground w-[60px] text-center cursor-pointer hover:text-primary select-none"
+          onClick={(e) => { if (e.shiftKey) toggleColDisabled(c); }}
+          title={t('seat.custom.toggleColDisabled') || 'Shift+点击 关闭/开放整列'}
+        >
+          {c + 1}
+        </div>
+      );
+      if (colAisles.includes(c) && c < maxCols - 1) {
+        cells.push(<div key={`hv-${c}`} className="shrink-0" style={{ width: aisleGap }} aria-hidden />);
+      }
+    }
+    return (
+      <div className="flex items-center justify-center gap-1.5 pb-1">
+        <span className="w-6 shrink-0" aria-hidden />
+        <div className="flex items-center gap-1.5 flex-wrap justify-center">{cells}</div>
+        <span className="w-6 shrink-0" aria-hidden />
       </div>
     );
   };
@@ -641,7 +728,7 @@ export default function CustomLayout({ students }: Props) {
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          {t('seat.custom.tips') || '提示：按住 Shift 点击座位可临时禁用；拖动姓名可互换座位；行/列走道按需开关。'}
+          {t('seat.custom.tips') || '提示：Shift+点击座位可关闭/开放单个座位；Shift+点击行号或列号可关闭/开放整行或整列；拖动姓名可互换座位；行/列走道按需开关。'}
         </p>
       </div>
 
@@ -661,6 +748,7 @@ export default function CustomLayout({ students }: Props) {
 
           <div className="flex-1 min-w-0">
             <div className="flex flex-col gap-1.5">
+              {renderColHeader()}
               {rowCols.map((_, r) => (
                 <div key={`row-wrap-${r}`}>
                   {renderRow(r)}
