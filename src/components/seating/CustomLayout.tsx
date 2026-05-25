@@ -357,7 +357,7 @@ export default function CustomLayout({ students }: Props) {
         </div>
       );
       if (colAisles.includes(c) && c < cellCount - 1) {
-        cells.push(<div key={`v-${r}-${c}`} className="w-4 shrink-0" aria-hidden />);
+        cells.push(<div key={`v-${r}-${c}`} className="shrink-0" style={{ width: aisleGap }} aria-hidden />);
       }
     }
     return (
