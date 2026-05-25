@@ -5286,6 +5286,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.custom.stratByTitle': 'По должности (передние ряды)',
     'seat.custom.stratByOrgTitle': 'По организации + должности',
     'seat.custom.rowAislesConfig': 'Горизонтальные проходы (после ряда N)',
+    'seat.custom.aisleGap': 'Ширина прохода (px)',
     'seat.editor.scene.custom': 'Произвольная схема',
     'seat.nav.tableShort': '',
     'seat.nav.rowShort': 'Ряд',
