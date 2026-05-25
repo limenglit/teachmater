@@ -29,7 +29,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const seats = seatData as (string | null)[][];
   const config = sceneConfig as {
     rows: number; cols: number; windowOnLeft: boolean;
-    colAisles?: number[]; rowAisles?: number[];
+    colAisles?: number[]; rowAisles?: number[]; aisleGap?: number;
     entryDoorMode?: 'front' | 'back' | 'both';
     frontDoorPosition?: DoorSide;
     backDoorPosition?: DoorSide;
