@@ -252,7 +252,7 @@ export default function CustomLayout({ students }: Props) {
     if (!restoredOnceRef.current) return;
     saveCustomLayoutSnapshot(buildSnapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowCols, rowAisles, colAisles, doors, podiumSide, windowSide, strategy, seats, disabled]);
+  }, [rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy, seats, disabled]);
 
   // load history (local + cloud)
   useEffect(() => {
