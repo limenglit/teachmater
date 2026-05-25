@@ -236,6 +236,7 @@ export default function CustomLayout({ students }: Props) {
       setRowCols(snap.rowCols);
       setRowAisles(snap.rowAisles || []);
       setColAisles(snap.colAisles || []);
+      if (typeof snap.aisleGap === 'number') setAisleGap(Math.max(4, Math.min(48, snap.aisleGap)));
       setDoors(snap.doors?.length ? snap.doors : doors);
       setPodiumSide(snap.podiumSide || 'top');
       setWindowSide(snap.windowSide || 'left');
