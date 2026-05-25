@@ -8049,6 +8049,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.custom.stratByTitle': '직급순 (앞줄 우선)',
     'seat.custom.stratByOrgTitle': '소속 모으기 + 직급순',
     'seat.custom.rowAislesConfig': '가로 통로 (N행 뒤에 추가)',
+    'seat.custom.aisleGap': '통로 간격 (px)',
     'seat.editor.scene.custom': '사용자 정의 배치',
     'seat.nav.tableShort': '',
     'seat.nav.rowShort': '열',
