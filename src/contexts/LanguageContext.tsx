@@ -9655,6 +9655,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.custom.stratByTitle': 'Por cargo (filas delanteras)',
     'seat.custom.stratByOrgTitle': 'Por organización + cargo',
     'seat.custom.rowAislesConfig': 'Pasillos horizontales (tras fila N)',
+    'seat.custom.aisleGap': 'Ancho del pasillo (px)',
     'seat.editor.scene.custom': 'Disposición personalizada',
     'seat.nav.tableShort': '',
     'seat.nav.rowShort': 'Fila',
