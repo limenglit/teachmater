@@ -139,6 +139,59 @@ export default function CustomLayout({ students }: Props) {
     });
   };
 
+  /** Shift+click on a row label: toggle the whole row's disabled state. */
+  const toggleRowDisabled = (r: number) => {
+    const count = rowCols[r] || 0;
+    if (count <= 0) return;
+    const allDisabled = Array.from({ length: count }, (_, c) => disabled.has(seatKey(r, c))).every(Boolean);
+    setDisabled(prev => {
+      const next = new Set(prev);
+      for (let c = 0; c < count; c++) {
+        const k = seatKey(r, c);
+        if (allDisabled) next.delete(k);
+        else next.add(k);
+      }
+      return next;
+    });
+    if (!allDisabled) {
+      setSeats(s => {
+        const g = s.map(row => [...row]);
+        if (g[r]) for (let c = 0; c < count; c++) g[r][c] = null;
+        return g;
+      });
+    }
+    toast.success(allDisabled
+      ? (t('seat.custom.rowEnabled') || `第 ${r + 1} 行已开放`)
+      : (t('seat.custom.rowDisabled') || `第 ${r + 1} 行已关闭`));
+  };
+
+  /** Shift+click on a column label: toggle the whole column's disabled state. */
+  const toggleColDisabled = (c: number) => {
+    const keys: Array<[number, number]> = [];
+    for (let r = 0; r < rowCols.length; r++) if (c < (rowCols[r] || 0)) keys.push([r, c]);
+    if (keys.length === 0) return;
+    const allDisabled = keys.every(([r, cc]) => disabled.has(seatKey(r, cc)));
+    setDisabled(prev => {
+      const next = new Set(prev);
+      keys.forEach(([r, cc]) => {
+        const k = seatKey(r, cc);
+        if (allDisabled) next.delete(k);
+        else next.add(k);
+      });
+      return next;
+    });
+    if (!allDisabled) {
+      setSeats(s => {
+        const g = s.map(row => [...row]);
+        keys.forEach(([r, cc]) => { if (g[r]) g[r][cc] = null; });
+        return g;
+      });
+    }
+    toast.success(allDisabled
+      ? (t('seat.custom.colEnabled') || `第 ${c + 1} 列已开放`)
+      : (t('seat.custom.colDisabled') || `第 ${c + 1} 列已关闭`));
+  };
+
   /** Order students by selected strategy. */
   const orderedNames = (shuffle: boolean): string[] => {
     if (shuffle || strategy === 'random') {
