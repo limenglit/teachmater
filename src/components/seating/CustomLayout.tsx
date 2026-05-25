@@ -639,7 +639,7 @@ export default function CustomLayout({ students }: Props) {
                 <div key={`row-wrap-${r}`}>
                   {renderRow(r)}
                   {rowAisles.includes(r) && r < rowCols.length - 1 && (
-                    <div className="my-1.5 border-t border-dashed border-muted-foreground/30 relative">
+                    <div className="border-t border-dashed border-muted-foreground/30 relative" style={{ marginTop: aisleGap / 2, marginBottom: aisleGap / 2 }}>
                       <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-muted px-1.5 text-[9px] text-muted-foreground rounded">
                         {t('seat.custom.aisle') || '走道'}
                       </span>
