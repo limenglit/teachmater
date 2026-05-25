@@ -1793,6 +1793,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.custom.stratByTitle': '按职务排序（前排优先）',
     'seat.custom.stratByOrgTitle': '单位集中＋职务排序',
     'seat.custom.rowAislesConfig': '横向走道（在第 N 行后添加）',
+    'seat.custom.aisleGap': '走道间距 (px)',
     'seat.editor.scene.custom': '自定义场景',
     'seat.nav.tableShort': '桌',
     'seat.nav.rowShort': '排',
