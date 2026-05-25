@@ -3877,6 +3877,7 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seat.custom.stratByTitle': 'By title (front rows first)',
     'seat.custom.stratByOrgTitle': 'Cluster by org + title order',
     'seat.custom.rowAislesConfig': 'Horizontal aisles (after row N)',
+    'seat.custom.aisleGap': 'Aisle width (px)',
     'seat.editor.scene.custom': 'Custom layout',
     'seat.nav.tableShort': '',
     'seat.nav.rowShort': 'Row',
