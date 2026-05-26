@@ -89,16 +89,12 @@ export const parseStudentsFromText = (text: string): Student[] => {
   if (lines.length === 0) return [];
 
   const splitParts = (line: string) => {
-    const byDelimiter = line
-      .split(/[\t,，]/)
-      .map(part => part.trim())
-      .filter(Boolean);
-
-    // Fallback: support "姓名 空格 性别 单位 职务" style lines.
-    if (byDelimiter.length <= 1) {
-      return line.split(/\s+/).map(part => part.trim()).filter(Boolean);
+    // Keep empty cells so column indices stay aligned (e.g., empty 性别 column in CSV).
+    if (/[\t,，]/.test(line)) {
+      return line.split(/[\t,，]/).map(part => part.trim());
     }
-    return byDelimiter;
+    // Fallback: support "姓名 空格 性别 单位 职务" style lines.
+    return line.split(/\s+/).map(part => part.trim()).filter(Boolean);
   };
 
   const headerParts = splitParts(lines[0]).map(part => part.toLowerCase());
