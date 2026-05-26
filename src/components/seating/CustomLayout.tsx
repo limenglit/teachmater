@@ -399,7 +399,10 @@ export default function CustomLayout({ students }: Props) {
     setWindowSide(snap.windowSide || 'left');
     setStrategy(snap.strategy || 'sequential');
     setSeats(sanitized);
-    setDisabled(new Set(snap.disabledSeats || []));
+    const rc = snap.rowCols || [6];
+    const restoredSet = new Set(sanitizeDisabledKeys(snap.disabledSeats || [], rc));
+    applyFullyDisabled(restoredSet, rc, snap.disabledRows, snap.disabledCols);
+    setDisabled(restoredSet);
     setRecordName(item.name);
     toast.success(t('seat.editor.common.restoredHistory') || '记录已恢复');
   };
