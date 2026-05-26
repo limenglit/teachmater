@@ -53,6 +53,8 @@ export default function CustomLayout({ students }: Props) {
   const [strategy, setStrategy] = useState<Strategy>('sequential');
   const [seats, setSeats] = useState<(string | null)[][]>([]);
   const [disabled, setDisabled] = useState<Set<string>>(new Set());
+  const [flashRow, setFlashRow] = useState<{ index: number; mode: 'enable' | 'disable' } | null>(null);
+  const [flashCol, setFlashCol] = useState<{ index: number; mode: 'enable' | 'disable' } | null>(null);
   const [recordName, setRecordName] = useState('');
   const [historyItems, setHistoryItems] = useState<CustomLayoutHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
@@ -160,9 +162,14 @@ export default function CustomLayout({ students }: Props) {
         return g;
       });
     }
-    toast.success(allDisabled
-      ? (t('seat.custom.rowEnabled') || `第 ${r + 1} 行已开放`)
-      : (t('seat.custom.rowDisabled') || `第 ${r + 1} 行已关闭`));
+    const mode = allDisabled ? 'enable' : 'disable';
+    setFlashRow({ index: r, mode });
+    setTimeout(() => setFlashRow(null), 1200);
+    if (allDisabled) {
+      toast.success(t('seat.custom.rowEnabledDetail')?.replace('{0}', String(r + 1)).replace('{1}', String(count)) || `第 ${r + 1} 行已开放，恢复 ${count} 个座位`);
+    } else {
+      toast.success(t('seat.custom.rowDisabledDetail')?.replace('{0}', String(r + 1)).replace('{1}', String(count)) || `第 ${r + 1} 行已关闭，关闭 ${count} 个座位`);
+    }
   };
 
   /** Shift+click on a column label: toggle the whole column's disabled state. */
@@ -187,9 +194,14 @@ export default function CustomLayout({ students }: Props) {
         return g;
       });
     }
-    toast.success(allDisabled
-      ? (t('seat.custom.colEnabled') || `第 ${c + 1} 列已开放`)
-      : (t('seat.custom.colDisabled') || `第 ${c + 1} 列已关闭`));
+    const mode = allDisabled ? 'enable' : 'disable';
+    setFlashCol({ index: c, mode });
+    setTimeout(() => setFlashCol(null), 1200);
+    if (allDisabled) {
+      toast.success(t('seat.custom.colEnabledDetail')?.replace('{0}', String(c + 1)).replace('{1}', String(keys.length)) || `第 ${c + 1} 列已开放，恢复 ${keys.length} 个座位`);
+    } else {
+      toast.success(t('seat.custom.colDisabledDetail')?.replace('{0}', String(c + 1)).replace('{1}', String(keys.length)) || `第 ${c + 1} 列已关闭，关闭 ${keys.length} 个座位`);
+    }
   };
 
   /** Order students by selected strategy. */
@@ -476,10 +488,16 @@ export default function CustomLayout({ students }: Props) {
         cells.push(<div key={`v-${r}-${c}`} className="shrink-0" style={{ width: aisleGap }} aria-hidden />);
       }
     }
+    const isRowFlashing = flashRow?.index === r;
+    const rowFlashClass = isRowFlashing
+      ? (flashRow?.mode === 'disable'
+        ? 'text-destructive bg-destructive/15 ring-1 ring-destructive/30 rounded px-0.5'
+        : 'text-primary bg-primary/15 ring-1 ring-primary/30 rounded px-0.5')
+      : '';
     return (
       <div className="flex items-center justify-center gap-1.5">
         <span
-          className="text-[10px] text-muted-foreground w-6 text-right cursor-pointer hover:text-primary select-none"
+          className={`text-[10px] text-muted-foreground w-6 text-right cursor-pointer hover:text-primary select-none ${rowFlashClass}`}
           onClick={(e) => { if (e.shiftKey) toggleRowDisabled(r); }}
           title={t('seat.custom.toggleRowDisabled') || 'Shift+点击 关闭/开放整行'}
         >
@@ -498,10 +516,16 @@ export default function CustomLayout({ students }: Props) {
     if (maxCols <= 0) return null;
     const cells: React.ReactNode[] = [];
     for (let c = 0; c < maxCols; c++) {
+      const isColFlashing = flashCol?.index === c;
+      const colFlashClass = isColFlashing
+        ? (flashCol?.mode === 'disable'
+          ? 'text-destructive bg-destructive/15 ring-1 ring-destructive/30 rounded px-0.5'
+          : 'text-primary bg-primary/15 ring-1 ring-primary/30 rounded px-0.5')
+        : '';
       cells.push(
         <div
           key={`h-${c}`}
-          className="text-[10px] text-muted-foreground w-[60px] text-center cursor-pointer hover:text-primary select-none"
+          className={`text-[10px] text-muted-foreground w-[60px] text-center cursor-pointer hover:text-primary select-none ${colFlashClass}`}
           onClick={(e) => { if (e.shiftKey) toggleColDisabled(c); }}
           title={t('seat.custom.toggleColDisabled') || 'Shift+点击 关闭/开放整列'}
         >
