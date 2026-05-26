@@ -187,6 +187,10 @@ export interface CustomLayoutSnapshot {
   strategy: 'sequential' | 'random' | 'byOrg' | 'byTitle' | 'byOrgTitle';
   seats: (string | null)[][];
   disabledSeats: string[];
+  /** Fully-disabled row indices (derived from disabledSeats; persisted for clarity & consistency checks). */
+  disabledRows?: number[];
+  /** Fully-disabled column indices (derived from disabledSeats; persisted for clarity & consistency checks). */
+  disabledCols?: number[];
   updatedAt: string;
 }
 
