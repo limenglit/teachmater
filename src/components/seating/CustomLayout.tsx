@@ -346,7 +346,9 @@ export default function CustomLayout({ students }: Props) {
       setWindowSide(snap.windowSide || 'left');
       setStrategy(snap.strategy || 'sequential');
       setSeats(sanitized);
-      setDisabled(new Set(snap.disabledSeats || []));
+      const restoredSet = new Set(sanitizeDisabledKeys(snap.disabledSeats || [], snap.rowCols));
+      applyFullyDisabled(restoredSet, snap.rowCols, snap.disabledRows, snap.disabledCols);
+      setDisabled(restoredSet);
     }
     restoredOnceRef.current = true;
   }, [students]);
