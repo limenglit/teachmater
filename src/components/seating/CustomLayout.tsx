@@ -274,10 +274,61 @@ export default function CustomLayout({ students }: Props) {
   const updateDoor = (id: string, patch: Partial<DoorDef>) => setDoors(prev => prev.map(d => (d.id === id ? { ...d, ...patch } : d)));
 
   /* -------- snapshot + history (local + cloud) -------- */
-  const buildSnapshot = (): CustomLayoutSnapshot => ({
-    rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy,
-    seats, disabledSeats: Array.from(disabled), updatedAt: new Date().toISOString(),
-  });
+  /**
+   * Drop disabled-seat keys that fall outside the given row/col bounds.
+   * Keeps persistence stable when the grid shrinks between sessions.
+   */
+  const sanitizeDisabledKeys = (keys: Iterable<string>, rc: number[]): string[] => {
+    const out: string[] = [];
+    for (const k of keys) {
+      const [rs, cs] = String(k).split('-');
+      const r = Number(rs); const c = Number(cs);
+      if (!Number.isFinite(r) || !Number.isFinite(c)) continue;
+      if (r < 0 || r >= rc.length) continue;
+      if (c < 0 || c >= (rc[r] || 0)) continue;
+      out.push(`${r}-${c}`);
+    }
+    return Array.from(new Set(out));
+  };
+
+  /** Derive fully-disabled row / column indices from a disabled-keys set. */
+  const deriveFullyDisabled = (set: Set<string>, rc: number[]) => {
+    const rows: number[] = [];
+    for (let r = 0; r < rc.length; r++) {
+      const n = rc[r] || 0;
+      if (n > 0 && Array.from({ length: n }, (_, c) => set.has(`${r}-${c}`)).every(Boolean)) rows.push(r);
+    }
+    const cols: number[] = [];
+    const mc = Math.max(0, ...rc);
+    for (let c = 0; c < mc; c++) {
+      const applicable: Array<[number, number]> = [];
+      for (let r = 0; r < rc.length; r++) if (c < (rc[r] || 0)) applicable.push([r, c]);
+      if (applicable.length > 0 && applicable.every(([r, cc]) => set.has(`${r}-${cc}`))) cols.push(c);
+    }
+    return { rows, cols };
+  };
+
+  /** Re-apply fully-disabled rows/cols on top of a disabled set (used during restore for consistency). */
+  const applyFullyDisabled = (set: Set<string>, rc: number[], rows: number[] | undefined, cols: number[] | undefined) => {
+    (rows || []).forEach(r => {
+      const n = rc[r] || 0;
+      for (let c = 0; c < n; c++) set.add(`${r}-${c}`);
+    });
+    (cols || []).forEach(c => {
+      for (let r = 0; r < rc.length; r++) if (c < (rc[r] || 0)) set.add(`${r}-${c}`);
+    });
+  };
+
+  const buildSnapshot = (): CustomLayoutSnapshot => {
+    const sanitized = sanitizeDisabledKeys(disabled, rowCols);
+    const set = new Set(sanitized);
+    const { rows: disabledRows, cols: disabledCols } = deriveFullyDisabled(set, rowCols);
+    return {
+      rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy,
+      seats, disabledSeats: sanitized, disabledRows, disabledCols,
+      updatedAt: new Date().toISOString(),
+    };
+  };
 
   // restore last snapshot once
   useEffect(() => {
