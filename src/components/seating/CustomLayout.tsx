@@ -62,6 +62,54 @@ export default function CustomLayout({ students }: Props) {
   const [showOrgColorMark, setShowOrgColorMark] = useState(true);
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('customLayout'));
 
+  /** Undo/redo stack for bulk row/col disable operations. Snapshots { disabled, seats }. */
+  type BulkSnap = { disabled: string[]; seats: (string | null)[][] };
+  const [undoStack, setUndoStack] = useState<BulkSnap[]>([]);
+  const [redoStack, setRedoStack] = useState<BulkSnap[]>([]);
+  const MAX_UNDO = 50;
+  const snapNow = (): BulkSnap => ({
+    disabled: Array.from(disabled),
+    seats: seats.map(row => [...row]),
+  });
+  const pushUndo = () => {
+    setUndoStack(prev => {
+      const next = [...prev, snapNow()];
+      if (next.length > MAX_UNDO) next.shift();
+      return next;
+    });
+    setRedoStack([]);
+  };
+  const applySnap = (s: BulkSnap) => {
+    setDisabled(new Set(s.disabled));
+    setSeats(s.seats.map(row => [...row]));
+  };
+  const undoBulk = () => {
+    setUndoStack(prev => {
+      if (prev.length === 0) {
+        toast.info(t('seat.custom.undoEmpty') || '没有可撤销的批量操作');
+        return prev;
+      }
+      const last = prev[prev.length - 1];
+      setRedoStack(r => [...r, snapNow()]);
+      applySnap(last);
+      toast.success(t('seat.custom.undoDone') || '已撤销批量操作');
+      return prev.slice(0, -1);
+    });
+  };
+  const redoBulk = () => {
+    setRedoStack(prev => {
+      if (prev.length === 0) {
+        toast.info(t('seat.custom.redoEmpty') || '没有可重做的批量操作');
+        return prev;
+      }
+      const last = prev[prev.length - 1];
+      setUndoStack(u => [...u, snapNow()]);
+      applySnap(last);
+      toast.success(t('seat.custom.redoDone') || '已重做批量操作');
+      return prev.slice(0, -1);
+    });
+  };
+
   const seatKey = (r: number, c: number) => `${r}-${c}`;
   const dragFromRef = useRef<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
