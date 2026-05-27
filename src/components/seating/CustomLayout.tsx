@@ -218,6 +218,7 @@ export default function CustomLayout({ students }: Props) {
   const toggleRowDisabled = (r: number) => {
     const count = rowCols[r] || 0;
     if (count <= 0) return;
+    pushUndo();
     const allDisabled = Array.from({ length: count }, (_, c) => disabled.has(seatKey(r, c))).every(Boolean);
     setDisabled(prev => {
       const next = new Set(prev);
