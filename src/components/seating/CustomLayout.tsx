@@ -478,6 +478,22 @@ export default function CustomLayout({ students }: Props) {
     })();
   }, []);
 
+  // Keyboard shortcuts for bulk undo/redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z or Ctrl+Y)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.ctrlKey || e.metaKey;
+      if (!meta) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undoBulk(); }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redoBulk(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled, seats, undoStack, redoStack]);
+
   const saveToHistory = async () => {
     const hasAny = seats.some(row => row.some(n => !!n));
     if (!hasAny) { toast.error(t('seat.editor.common.noSeatsToSave') || '尚未排座，无法保存'); return; }
