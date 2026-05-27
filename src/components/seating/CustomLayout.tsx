@@ -685,6 +685,24 @@ export default function CustomLayout({ students }: Props) {
           <Button size="sm" onClick={() => autoSeat(false)}>{t('seat.custom.autoSeat') || '一键排座'}</Button>
           <Button size="sm" variant="secondary" onClick={() => autoSeat(true)}><Shuffle className="w-3.5 h-3.5 mr-1" />{t('seat.custom.shuffle') || '随机'}</Button>
           <Button size="sm" variant="outline" onClick={clearSeats}><RotateCcw className="w-3.5 h-3.5 mr-1" />{t('seat.custom.clear') || '清空'}</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={undoBulk}
+            disabled={undoStack.length === 0}
+            title={t('seat.custom.undoBulk') || '撤销批量行/列开关 (Ctrl+Z)'}
+          >
+            <Undo2 className="w-3.5 h-3.5 mr-1" />{t('seat.custom.undo') || '撤销'}{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={redoBulk}
+            disabled={redoStack.length === 0}
+            title={t('seat.custom.redoBulk') || '重做批量行/列开关 (Ctrl+Shift+Z)'}
+          >
+            <Redo2 className="w-3.5 h-3.5 mr-1" />{t('seat.custom.redo') || '重做'}{redoStack.length > 0 ? ` (${redoStack.length})` : ''}
+          </Button>
 
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {t('seat.editor.common.mode') || '策略'}
