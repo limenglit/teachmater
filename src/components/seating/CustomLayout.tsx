@@ -141,6 +141,31 @@ export default function CustomLayout({ students }: Props) {
     });
   };
 
+  /**
+   * Refill previously-cleared seats when re-enabling a row/col.
+   * Uses current strategy order; only fills names not already placed on the grid.
+   * Returns { filled, remaining } where remaining = re-enabled seats left empty due to no candidates.
+   */
+  const refillSeats = (
+    targets: Array<[number, number]>,
+    baseSeats: (string | null)[][]
+  ): { grid: (string | null)[][]; filled: number; remaining: number } => {
+    const grid = baseSeats.map(row => [...row]);
+    const placed = new Set<string>();
+    grid.forEach(row => row.forEach(n => { if (n) placed.add(n); }));
+    const pool = orderedNames(false).filter(n => !placed.has(n));
+    let i = 0;
+    let filled = 0;
+    for (const [r, c] of targets) {
+      if (!grid[r]) continue;
+      if (grid[r][c]) continue; // safety: don't overwrite
+      if (i >= pool.length) break;
+      grid[r][c] = pool[i++];
+      filled++;
+    }
+    return { grid, filled, remaining: targets.length - filled };
+  };
+
   /** Shift+click on a row label: toggle the whole row's disabled state. */
   const toggleRowDisabled = (r: number) => {
     const count = rowCols[r] || 0;
@@ -155,18 +180,30 @@ export default function CustomLayout({ students }: Props) {
       }
       return next;
     });
+    let refilled = 0;
     if (!allDisabled) {
+      // Disable path: clear all names in the row.
       setSeats(s => {
         const g = s.map(row => [...row]);
         if (g[r]) for (let c = 0; c < count; c++) g[r][c] = null;
         return g;
+      });
+    } else {
+      // Enable path: refill cleared seats from unassigned pool for consistency.
+      setSeats(s => {
+        const targets: Array<[number, number]> = [];
+        for (let c = 0; c < count; c++) if (!s[r]?.[c]) targets.push([r, c]);
+        const { grid, filled } = refillSeats(targets, s);
+        refilled = filled;
+        return grid;
       });
     }
     const mode = allDisabled ? 'enable' : 'disable';
     setFlashRow({ index: r, mode });
     setTimeout(() => setFlashRow(null), 1200);
     if (allDisabled) {
-      toast.success(t('seat.custom.rowEnabledDetail')?.replace('{0}', String(r + 1)).replace('{1}', String(count)) || `第 ${r + 1} 行已开放，恢复 ${count} 个座位`);
+      const base = t('seat.custom.rowEnabledDetail')?.replace('{0}', String(r + 1)).replace('{1}', String(count)) || `第 ${r + 1} 行已开放，恢复 ${count} 个座位`;
+      toast.success(refilled > 0 ? `${base}（回填 ${refilled} 人）` : base);
     } else {
       toast.success(t('seat.custom.rowDisabledDetail')?.replace('{0}', String(r + 1)).replace('{1}', String(count)) || `第 ${r + 1} 行已关闭，关闭 ${count} 个座位`);
     }
@@ -187,18 +224,27 @@ export default function CustomLayout({ students }: Props) {
       });
       return next;
     });
+    let refilled = 0;
     if (!allDisabled) {
       setSeats(s => {
         const g = s.map(row => [...row]);
         keys.forEach(([r, cc]) => { if (g[r]) g[r][cc] = null; });
         return g;
       });
+    } else {
+      setSeats(s => {
+        const targets = keys.filter(([r, cc]) => !s[r]?.[cc]);
+        const { grid, filled } = refillSeats(targets, s);
+        refilled = filled;
+        return grid;
+      });
     }
     const mode = allDisabled ? 'enable' : 'disable';
     setFlashCol({ index: c, mode });
     setTimeout(() => setFlashCol(null), 1200);
     if (allDisabled) {
-      toast.success(t('seat.custom.colEnabledDetail')?.replace('{0}', String(c + 1)).replace('{1}', String(keys.length)) || `第 ${c + 1} 列已开放，恢复 ${keys.length} 个座位`);
+      const base = t('seat.custom.colEnabledDetail')?.replace('{0}', String(c + 1)).replace('{1}', String(keys.length)) || `第 ${c + 1} 列已开放，恢复 ${keys.length} 个座位`;
+      toast.success(refilled > 0 ? `${base}（回填 ${refilled} 人）` : base);
     } else {
       toast.success(t('seat.custom.colDisabledDetail')?.replace('{0}', String(c + 1)).replace('{1}', String(keys.length)) || `第 ${c + 1} 列已关闭，关闭 ${keys.length} 个座位`);
     }
