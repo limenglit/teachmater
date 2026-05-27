@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Minus, Shuffle, RotateCcw, DoorOpen, Presentation, Wind, Save, QrCode, Trash2, Pencil } from 'lucide-react';
+import { Plus, Minus, Shuffle, RotateCcw, DoorOpen, Presentation, Wind, Save, QrCode, Trash2, Pencil, Undo2, Redo2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import ExportButtons from '@/components/ExportButtons';
@@ -61,6 +61,54 @@ export default function CustomLayout({ students }: Props) {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [showOrgColorMark, setShowOrgColorMark] = useState(true);
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('customLayout'));
+
+  /** Undo/redo stack for bulk row/col disable operations. Snapshots { disabled, seats }. */
+  type BulkSnap = { disabled: string[]; seats: (string | null)[][] };
+  const [undoStack, setUndoStack] = useState<BulkSnap[]>([]);
+  const [redoStack, setRedoStack] = useState<BulkSnap[]>([]);
+  const MAX_UNDO = 50;
+  const snapNow = (): BulkSnap => ({
+    disabled: Array.from(disabled),
+    seats: seats.map(row => [...row]),
+  });
+  const pushUndo = () => {
+    setUndoStack(prev => {
+      const next = [...prev, snapNow()];
+      if (next.length > MAX_UNDO) next.shift();
+      return next;
+    });
+    setRedoStack([]);
+  };
+  const applySnap = (s: BulkSnap) => {
+    setDisabled(new Set(s.disabled));
+    setSeats(s.seats.map(row => [...row]));
+  };
+  const undoBulk = () => {
+    setUndoStack(prev => {
+      if (prev.length === 0) {
+        toast.info(t('seat.custom.undoEmpty') || '没有可撤销的批量操作');
+        return prev;
+      }
+      const last = prev[prev.length - 1];
+      setRedoStack(r => [...r, snapNow()]);
+      applySnap(last);
+      toast.success(t('seat.custom.undoDone') || '已撤销批量操作');
+      return prev.slice(0, -1);
+    });
+  };
+  const redoBulk = () => {
+    setRedoStack(prev => {
+      if (prev.length === 0) {
+        toast.info(t('seat.custom.redoEmpty') || '没有可重做的批量操作');
+        return prev;
+      }
+      const last = prev[prev.length - 1];
+      setUndoStack(u => [...u, snapNow()]);
+      applySnap(last);
+      toast.success(t('seat.custom.redoDone') || '已重做批量操作');
+      return prev.slice(0, -1);
+    });
+  };
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
   const dragFromRef = useRef<{ r: number; c: number } | null>(null);
@@ -170,6 +218,7 @@ export default function CustomLayout({ students }: Props) {
   const toggleRowDisabled = (r: number) => {
     const count = rowCols[r] || 0;
     if (count <= 0) return;
+    pushUndo();
     const allDisabled = Array.from({ length: count }, (_, c) => disabled.has(seatKey(r, c))).every(Boolean);
     setDisabled(prev => {
       const next = new Set(prev);
@@ -214,6 +263,7 @@ export default function CustomLayout({ students }: Props) {
     const keys: Array<[number, number]> = [];
     for (let r = 0; r < rowCols.length; r++) if (c < (rowCols[r] || 0)) keys.push([r, c]);
     if (keys.length === 0) return;
+    pushUndo();
     const allDisabled = keys.every(([r, cc]) => disabled.has(seatKey(r, cc)));
     setDisabled(prev => {
       const next = new Set(prev);
@@ -428,6 +478,22 @@ export default function CustomLayout({ students }: Props) {
     })();
   }, []);
 
+  // Keyboard shortcuts for bulk undo/redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z or Ctrl+Y)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const meta = e.ctrlKey || e.metaKey;
+      if (!meta) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undoBulk(); }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redoBulk(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [disabled, seats, undoStack, redoStack]);
+
   const saveToHistory = async () => {
     const hasAny = seats.some(row => row.some(n => !!n));
     if (!hasAny) { toast.error(t('seat.editor.common.noSeatsToSave') || '尚未排座，无法保存'); return; }
@@ -619,6 +685,24 @@ export default function CustomLayout({ students }: Props) {
           <Button size="sm" onClick={() => autoSeat(false)}>{t('seat.custom.autoSeat') || '一键排座'}</Button>
           <Button size="sm" variant="secondary" onClick={() => autoSeat(true)}><Shuffle className="w-3.5 h-3.5 mr-1" />{t('seat.custom.shuffle') || '随机'}</Button>
           <Button size="sm" variant="outline" onClick={clearSeats}><RotateCcw className="w-3.5 h-3.5 mr-1" />{t('seat.custom.clear') || '清空'}</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={undoBulk}
+            disabled={undoStack.length === 0}
+            title={t('seat.custom.undoBulk') || '撤销批量行/列开关 (Ctrl+Z)'}
+          >
+            <Undo2 className="w-3.5 h-3.5 mr-1" />{t('seat.custom.undo') || '撤销'}{undoStack.length > 0 ? ` (${undoStack.length})` : ''}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={redoBulk}
+            disabled={redoStack.length === 0}
+            title={t('seat.custom.redoBulk') || '重做批量行/列开关 (Ctrl+Shift+Z)'}
+          >
+            <Redo2 className="w-3.5 h-3.5 mr-1" />{t('seat.custom.redo') || '重做'}{redoStack.length > 0 ? ` (${redoStack.length})` : ''}
+          </Button>
 
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {t('seat.editor.common.mode') || '策略'}
