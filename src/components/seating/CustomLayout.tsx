@@ -263,6 +263,7 @@ export default function CustomLayout({ students }: Props) {
     const keys: Array<[number, number]> = [];
     for (let r = 0; r < rowCols.length; r++) if (c < (rowCols[r] || 0)) keys.push([r, c]);
     if (keys.length === 0) return;
+    pushUndo();
     const allDisabled = keys.every(([r, cc]) => disabled.has(seatKey(r, cc)));
     setDisabled(prev => {
       const next = new Set(prev);
