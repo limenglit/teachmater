@@ -56,6 +56,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
 
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const html = ext === 'html' || ext === 'htm';
     const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
 
     const { promise } = uploadProgress.addUpload(file, { boardId });
@@ -65,6 +66,10 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
         setMediaUrl(result.publicUrl);
         setFileName(file.name);
         setFileCategory(category);
+        setIsHtml(html);
+        if (html) {
+          toast({ title: t('board.htmlUploaded'), description: t('board.htmlUploadedHint') });
+        }
       }
     } finally {
       setUploading(false);
@@ -75,6 +80,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const clearMedia = () => {
     setMediaUrl('');
     setFileName('');
+    setIsHtml(false);
   };
 
   const handleSubmit = () => {
