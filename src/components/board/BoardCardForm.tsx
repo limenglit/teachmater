@@ -90,7 +90,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
       url: url.trim(),
       color,
       author_nickname: nickname.trim() || t('board.anonymous'),
-      card_type: mediaUrl ? getCardType(fileCategory) : url.trim() ? 'url' : 'text',
+      card_type: mediaUrl ? (isHtml ? 'html' : getCardType(fileCategory)) : url.trim() ? 'url' : 'text',
       column_id: columnId,
       media_url: mediaUrl,
     });
