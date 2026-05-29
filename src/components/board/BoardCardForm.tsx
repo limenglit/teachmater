@@ -128,11 +128,20 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
                 <span className="truncate max-w-[120px]">{fileName}</span>
               </div>
             )}
-            {fileCategory === 'code' && (
+            {fileCategory === 'code' && !isHtml && (
               <div className="h-16 px-3 rounded-lg bg-muted flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="text-base">{getCodeIcon(fileName.split('.').pop() || '')}</span>
                 <span className="truncate max-w-[100px]">{fileName}</span>
                 <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-mono">{getCodeLanguage(fileName.split('.').pop() || '')}</span>
+              </div>
+            )}
+            {isHtml && (
+              <div className="h-16 px-3 rounded-lg bg-primary/5 border border-primary/30 flex items-center gap-2 text-xs text-foreground">
+                <Globe className="w-4 h-4 text-primary" />
+                <div className="flex flex-col leading-tight">
+                  <span className="truncate max-w-[140px] font-medium">{fileName}</span>
+                  <span className="text-[10px] text-muted-foreground">{t('board.htmlPage')}</span>
+                </div>
               </div>
             )}
             <button onClick={clearMedia} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
