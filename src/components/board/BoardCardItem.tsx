@@ -113,6 +113,22 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [codeContent, setCodeContent] = useState<string | null>(null);
   const [codeExpanded, setCodeExpanded] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false);
+  const [htmlLinkCopied, setHtmlLinkCopied] = useState(false);
+
+  const htmlExt = card.media_url ? getFileExtFromUrl(card.media_url).toLowerCase() : '';
+  const isHtmlPage = card.media_url && (htmlExt === 'html' || htmlExt === 'htm');
+
+  const copyHtmlLink = async () => {
+    if (!card.media_url) return;
+    try {
+      await navigator.clipboard.writeText(card.media_url);
+      setHtmlLinkCopied(true);
+      setTimeout(() => setHtmlLinkCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const loadCodeContent = async () => {
     if (!card.media_url || codeContent !== null) return;
