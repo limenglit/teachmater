@@ -135,6 +135,15 @@ const Index = () => {
                 <span className="text-base">📋</span>
               </button>
               {/* Auth button */}
+              {isApproved && (
+                <button
+                  onClick={() => navigate('/pages')}
+                  className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                  title="Page 发布"
+                >
+                  🌐
+                </button>
+              )}
               {isAdmin && (
                 <button
                   onClick={() => navigate('/admin')}
