@@ -707,6 +707,7 @@ export type Database = {
           nickname: string | null
           status: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -715,6 +716,7 @@ export type Database = {
           nickname?: string | null
           status?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -723,6 +725,7 @@ export type Database = {
           nickname?: string | null
           status?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -1290,6 +1293,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_pages: {
+        Row: {
+          created_at: string
+          html_content: string
+          id: string
+          is_public: boolean
+          slug: string
+          title: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          html_content?: string
+          id?: string
+          is_public?: boolean
+          slug: string
+          title?: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          html_content?: string
+          id?: string
+          is_public?: boolean
+          slug?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1584,6 +1623,7 @@ export type Database = {
         }
       }
       get_my_status: { Args: never; Returns: string }
+      get_my_username: { Args: never; Returns: string }
       get_pending_users: {
         Args: never
         Returns: {
@@ -1610,6 +1650,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_public_page: {
+        Args: { p_slug: string; p_username: string }
+        Returns: {
+          html_content: string
+          title: string
+          updated_at: string
+        }[]
       }
       get_quiz_session_for_student: {
         Args: { p_session_id: string }
@@ -1744,6 +1792,7 @@ export type Database = {
         Args: { p_reason: string; p_set_id: string }
         Returns: undefined
       }
+      set_my_username: { Args: { p_username: string }; Returns: undefined }
       submit_quiz_answers: {
         Args: { p_answers: Json; p_session_id: string; p_student_name: string }
         Returns: undefined
