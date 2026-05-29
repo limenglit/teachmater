@@ -28,6 +28,8 @@ const BOARD_MEDIA_CONTENT_TYPES: Record<string, string> = {
   webp: 'image/webp',
   bmp: 'image/bmp',
   svg: 'image/svg+xml',
+  html: 'text/html',
+  htm: 'text/html',
 };
 
 const MIME_PRIMARY_EXTENSIONS: Record<string, string> = {
