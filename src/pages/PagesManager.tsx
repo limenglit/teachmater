@@ -85,33 +85,34 @@ export default function PagesManager() {
         html_content: html,
         is_public: true,
       };
-      const { data, error } = await supabase
+      // 查找是否已存在同 slug 的记录（同一用户）
+      const { data: existing } = await supabase
         .from('user_pages')
-        .upsert(payload, { onConflict: 'user_id,slug' as any })
-        .select('id, username, slug, title, is_public, updated_at')
-        .single();
-      if (error) {
-        // Fall back: try plain insert; if dup, update
-        const { data: existing } = await supabase
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('slug', slug)
+        .maybeSingle();
+      let saved: UserPage | null = null;
+      if (existing?.id) {
+        const { data: updated, error: upErr } = await supabase
           .from('user_pages')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('slug', slug)
-          .maybeSingle();
-        if (existing?.id) {
-          const { data: updated, error: upErr } = await supabase
-            .from('user_pages')
-            .update(payload)
-            .eq('id', existing.id)
-            .select('id, username, slug, title, is_public, updated_at')
-            .single();
-          if (upErr) throw upErr;
-          setPages((prev) => [updated as UserPage, ...prev.filter((p) => p.id !== existing.id)]);
-        } else {
-          throw error;
-        }
-      } else if (data) {
-        setPages((prev) => [data as UserPage, ...prev.filter((p) => p.id !== (data as any).id)]);
+          .update(payload)
+          .eq('id', existing.id)
+          .select('id, username, slug, title, is_public, updated_at')
+          .single();
+        if (upErr) throw upErr;
+        saved = updated as UserPage;
+      } else {
+        const { data: inserted, error: insErr } = await supabase
+          .from('user_pages')
+          .insert(payload)
+          .select('id, username, slug, title, is_public, updated_at')
+          .single();
+        if (insErr) throw insErr;
+        saved = inserted as UserPage;
+      }
+      if (saved) {
+        setPages((prev) => [saved!, ...prev.filter((p) => p.id !== saved!.id)]);
       }
       setSlugInput('');
       setTitleInput('');
