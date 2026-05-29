@@ -1,7 +1,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
+import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp, Maximize2, Minimize2, Globe, Copy, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategoryFromUrl, getFileNameFromUrl, getFileExtFromUrl, getDocIcon, getCodeIcon, getCodeLanguage } from '@/lib/board-file-utils';
@@ -113,6 +113,22 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [codeContent, setCodeContent] = useState<string | null>(null);
   const [codeExpanded, setCodeExpanded] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false);
+  const [htmlLinkCopied, setHtmlLinkCopied] = useState(false);
+
+  const htmlExt = card.media_url ? getFileExtFromUrl(card.media_url).toLowerCase() : '';
+  const isHtmlPage = card.media_url && (htmlExt === 'html' || htmlExt === 'htm');
+
+  const copyHtmlLink = async () => {
+    if (!card.media_url) return;
+    try {
+      await navigator.clipboard.writeText(card.media_url);
+      setHtmlLinkCopied(true);
+      setTimeout(() => setHtmlLinkCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const loadCodeContent = async () => {
     if (!card.media_url || codeContent !== null) return;
@@ -238,8 +254,69 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         </a>
       )}
 
+      {/* HTML web page rendering — treat as a hosted web page */}
+      {isHtmlPage && (
+        <div className="mb-2 rounded-lg border border-border/50 overflow-hidden bg-card">
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/80 border-b border-border/50">
+            <Globe className="w-4 h-4 text-primary shrink-0" />
+            <span className="flex-1 text-xs font-medium text-foreground truncate" title={getFileNameFromUrl(card.media_url!)}>
+              {getFileNameFromUrl(card.media_url!)}
+            </span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{t('board.htmlPage')}</span>
+            <button
+              onClick={() => setHtmlPreviewOpen(v => !v)}
+              className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              title={htmlPreviewOpen ? t('board.collapse') : t('board.preview')}
+              aria-label={htmlPreviewOpen ? t('board.collapse') : t('board.preview')}
+            >
+              {htmlPreviewOpen ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+            </button>
+            <button
+              onClick={copyHtmlLink}
+              className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              title={htmlLinkCopied ? t('board.linkCopied') : t('board.copyLink')}
+              aria-label={t('board.copyLink')}
+            >
+              {htmlLinkCopied
+                ? <Check className="w-3.5 h-3.5 text-emerald-600" />
+                : <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />}
+            </button>
+            <a
+              href={card.media_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              title={t('board.openInNewTab')}
+              onClick={e => e.stopPropagation()}
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />
+            </a>
+            <a
+              href={card.media_url}
+              download
+              className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+              onClick={e => e.stopPropagation()}
+              title={t('board.downloadFile')}
+            >
+              <Download className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />
+            </a>
+          </div>
+          <div className="px-3 py-1.5 text-[11px] text-muted-foreground bg-muted/40 truncate border-b border-border/50" title={card.media_url}>
+            {card.media_url}
+          </div>
+          {htmlPreviewOpen && (
+            <iframe
+              src={card.media_url}
+              title={getFileNameFromUrl(card.media_url!)}
+              sandbox="allow-scripts allow-forms allow-popups allow-same-origin"
+              className="w-full h-72 bg-white"
+            />
+          )}
+        </div>
+      )}
+
       {/* Code file rendering */}
-      {card.media_url && mediaCategory === 'code' && (() => {
+      {card.media_url && !isHtmlPage && mediaCategory === 'code' && (() => {
         const ext = getFileExtFromUrl(card.media_url);
         const lang = getCodeLanguage(ext);
         const icon = getCodeIcon(ext);
