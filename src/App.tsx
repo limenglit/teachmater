@@ -28,6 +28,8 @@ const TeamLookupPage = lazyRetry(() => import("./pages/TeamLookupPage"));
 const APIDocsPage = lazyRetry(() => import("./pages/APIDocsPage"));
 const VocabSessionPage = lazyRetry(() => import("./pages/VocabSessionPage"));
 const SeatingRuleValidator = lazyRetry(() => import("./pages/SeatingRuleValidator"));
+const PagesManager = lazyRetry(() => import("./pages/PagesManager"));
+const UserPageView = lazyRetry(() => import("./pages/UserPageView"));
 
 const queryClient = new QueryClient();
 
@@ -61,6 +63,9 @@ const App = () => (
                 <Route path="/team-lookup/:sessionId" element={<Suspense fallback={<Loading />}><TeamLookupPage /></Suspense>} />
                 <Route path="/api-docs" element={<Suspense fallback={<Loading />}><APIDocsPage /></Suspense>} />
                 <Route path="/seating-rule-check" element={<Suspense fallback={<Loading />}><SeatingRuleValidator /></Suspense>} />
+                <Route path="/pages" element={<Suspense fallback={<Loading />}><PagesManager /></Suspense>} />
+                {/* 公开 Page 访问：/用户名/页面名 — 必须放在 catch-all 之前、其它具名路由之后 */}
+                <Route path="/:username/:slug" element={<Suspense fallback={<Loading />}><UserPageView /></Suspense>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
