@@ -3,7 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ImagePlus, Paperclip, X } from 'lucide-react';
+import { ImagePlus, Paperclip, X, Globe } from 'lucide-react';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getCodeIcon, getCodeLanguage, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 import { compressImage, validateFile } from '@/lib/upload-queue';
