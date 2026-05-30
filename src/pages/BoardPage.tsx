@@ -41,7 +41,7 @@ export default function BoardPage() {
 
     // Load board + first page of cards
     Promise.all([
-      supabase.from('boards').select('*').eq('id', boardId).single(),
+      supabase.rpc('get_board_for_student' as any, { p_board_id: boardId }),
       loadCards(boardId),
     ]).then(([boardRes]) => {
       if (boardRes.data) setBoard(boardRes.data as any);
