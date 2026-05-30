@@ -232,7 +232,7 @@ export default function PagesManager() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
               <div>
                 <label className="text-xs text-muted-foreground">页面名 (slug)</label>
-                <Input value={slugInput} onChange={(e) => setSlugInput(e.target.value.toLowerCase())} placeholder="例如：about、portfolio" className="h-9" />
+                <Input value={slugInput} onChange={(e) => setSlugInput(e.target.value)} placeholder="例如：about、portfolio、关于我" className="h-9" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">标题（可选）</label>
