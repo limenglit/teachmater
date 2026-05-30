@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import AdminConfigPanel from '@/components/AdminConfigPanel';
 import AdminAIQuotaPanel from '@/components/AdminAIQuotaPanel';
 import AdminVocabReview from '@/components/AdminVocabReview';
+import { useDocumentHead } from '@/hooks/useDocumentHead';
 
 interface PendingUser {
   user_id: string;
@@ -21,6 +22,10 @@ interface PendingUser {
 }
 
 export default function AdminPage() {
+  useDocumentHead({
+    title: '管理后台 — 教创搭子 TeacherMate',
+    description: '教师审核、AI 配额、功能开关与系统配置的内部管理后台。仅限管理员访问。',
+  });
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();

@@ -119,10 +119,11 @@ const Index = () => {
 
           {/* Header */}
           <header className="flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
+            <h1 className="sr-only">教创搭子 TeacherMate — 教师智能教学辅助平台：随机点名、座位编排、小组管理、互动签到、白板协作、AI 测验生成</h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <picture>
                 <source srcSet="/logo.webp" type="image/webp" />
-                <img src="/logo.png" alt="教创搭子" width="160" height="56" decoding="async" fetchPriority="high" className="h-14 w-auto transition-[filter] duration-300" style={{ filter: 'hue-rotate(var(--logo-hue-rotate, 0deg))' }} />
+                <img src="/logo.png" alt="教创搭子 TeacherMate 平台 Logo" width="160" height="56" decoding="async" fetchPriority="high" className="h-14 w-auto transition-[filter] duration-300" style={{ filter: 'hue-rotate(var(--logo-hue-rotate, 0deg))' }} />
               </picture>
               <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">{t('app.subtitle')}</span>
             </div>
@@ -131,8 +132,10 @@ const Index = () => {
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                aria-label="打开学生名单侧边栏"
+                title="学生名单"
               >
-                <span className="text-base">📋</span>
+                <span className="text-base" aria-hidden="true">📋</span>
               </button>
               {/* Auth button */}
               {isApproved && (
@@ -140,8 +143,9 @@ const Index = () => {
                   onClick={() => navigate('/pages')}
                   className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
                   title="Page 发布"
+                  aria-label="进入 Page 发布管理"
                 >
-                  🌐
+                  <span aria-hidden="true">🌐</span>
                 </button>
               )}
               {isAdmin && (
@@ -149,8 +153,9 @@ const Index = () => {
                   onClick={() => navigate('/admin')}
                   className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
                   title={t('header.admin')}
+                  aria-label={t('header.admin')}
                 >
-                  🛡️
+                  <span aria-hidden="true">🛡️</span>
                 </button>
               )}
               {user ? (
@@ -162,14 +167,16 @@ const Index = () => {
                   onClick={() => navigate('/auth')}
                   className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
                   title={t('header.login')}
+                  aria-label={t('header.login')}
                 >
-                  <LogIn className="w-5 h-5" />
+                  <LogIn className="w-5 h-5" aria-hidden="true" />
                 </button>
               )}
               <SettingsPanel />
               <LanguageSelector />
             </div>
           </header>
+
 
           {/* Tab Navigation */}
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!isApproved} userEmail={user?.email} />

@@ -234,8 +234,8 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
               </Tooltip>
             )}
             {onClose && (
-              <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-muted transition-colors text-muted-foreground">
-                <X className="w-4 h-4" />
+              <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-muted transition-colors text-muted-foreground" aria-label="关闭学生名单侧边栏">
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             )}
           </div>
@@ -249,14 +249,16 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
             key={student.id}
             className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
           >
-            <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+            <User className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
             <span className="flex-1 text-sm text-foreground truncate">{student.name}</span>
             <button
               onClick={() => removeStudent(student.id)}
               className="opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label={`移除学生 ${student.name}`}
             >
-              <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+              <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" aria-hidden="true" />
             </button>
+
           </div>
         ))}
         {students.length === 0 && (

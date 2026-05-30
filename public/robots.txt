@@ -12,3 +12,8 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /reset-password
+Disallow: /go
+
+Sitemap: https://teachermate.org.cn/sitemap.xml

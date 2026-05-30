@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useDocumentHead } from '@/hooks/useDocumentHead';
 
 export default function UserPageView() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
@@ -45,6 +46,27 @@ export default function UserPageView() {
   }, [username, slug]);
 
   useEffect(() => { if (title) document.title = title; }, [title]);
+
+  const pageUrl = username && slug ? `https://teachermate.org.cn/${username}/${slug}` : undefined;
+  useDocumentHead({
+    title: title ? `${title} — ${username}` : undefined,
+    description: title ? `${username} 在教创搭子上发布的页面：${title}` : undefined,
+    canonical: pageUrl,
+    ogTitle: title || undefined,
+    ogDescription: title ? `${username} 在教创搭子上发布的页面：${title}` : undefined,
+    ogUrl: pageUrl,
+    ogType: 'article',
+    jsonLd: title && pageUrl
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: title,
+          author: { '@type': 'Person', name: username },
+          url: pageUrl,
+          mainEntityOfPage: pageUrl,
+        }
+      : undefined,
+  });
 
   if (notFound) {
     return (
