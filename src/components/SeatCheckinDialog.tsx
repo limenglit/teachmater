@@ -9,6 +9,7 @@ import {
   createSeatCheckinSession,
   deleteSeatCheckinSession,
   endSeatCheckinSession,
+  getSeatCheckinSessionToken,
   loadSeatCheckinRecords,
   loadSeatCheckinSessionHistory,
   type SeatCheckinRecord,
