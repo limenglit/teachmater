@@ -95,10 +95,12 @@ export default function PagesManager() {
       if (fileRef.current) fileRef.current.value = '';
       return;
     }
+    setUploading(true);
     try {
       const html = await normalizeHtmlFileToUtf8(file);
-      // 上传到 user-pages 存储桶，路径：{user_id}/{slug}.html
-      const storagePath = `${user.id}/${slug}.html`;
+      // 存储路径对中文等非 ASCII 字符做 URL 编码，避免 Supabase Storage key 限制
+      const safeKey = encodeURIComponent(slug);
+      const storagePath = `${user.id}/${safeKey}.html`;
       const htmlBlob = new Blob([html], { type: 'text/html; charset=utf-8' });
       const { error: upErr } = await supabase.storage
         .from('user-pages')
