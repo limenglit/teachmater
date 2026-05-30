@@ -7,8 +7,18 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Mail, Lock, User, ArrowLeft, Clock, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useDocumentHead } from '@/hooks/useDocumentHead';
 
 export default function AuthPage() {
+  useDocumentHead({
+    title: '登录 / 注册 — 教创搭子 TeacherMate',
+    description: '登录或注册教创搭子账号，开启随机点名、座位编排、白板协作、AI 测验生成等课堂工具的完整教学体验。',
+    canonical: 'https://teachermate.org.cn/auth',
+    ogTitle: '登录 / 注册 — 教创搭子 TeacherMate',
+    ogDescription: '登录或注册教创搭子账号，使用面向教师的智能课堂工具集。',
+    ogUrl: 'https://teachermate.org.cn/auth',
+    ogType: 'website',
+  });
   const { user, approvalStatus, isAdmin, signOut } = useAuth();
   const { t } = useLanguage();
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
