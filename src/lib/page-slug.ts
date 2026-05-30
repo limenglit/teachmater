@@ -27,8 +27,14 @@ export function validatePageSlug(slug: string): string | null {
   return null;
 }
 
+function toUtf8Hex(value: string): string {
+  return Array.from(new TextEncoder().encode(value.normalize('NFC')))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export function getPageStoragePath(userId: string, slug: string): string {
-  return `${userId}/${encodeURIComponent(slug)}.html`;
+  return `${userId}/${toUtf8Hex(slug)}.html`;
 }
 
 export function getPublicPageUrl(origin: string, username: string, slug: string): string {

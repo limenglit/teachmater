@@ -89,23 +89,29 @@ export default function PagesManager() {
     try {
       const html = await normalizeHtmlFileToUtf8(file);
       const storagePath = getPageStoragePath(user.id, slug);
+      let savedStoragePath: string | null = null;
       const htmlBlob = new Blob([html], { type: 'text/html; charset=utf-8' });
-      const { error: upErr } = await supabase.storage
-        .from('user-pages')
-        .upload(storagePath, htmlBlob, {
-          upsert: true,
-          contentType: 'text/html; charset=utf-8',
-          cacheControl: '60',
-        });
-      if (upErr) throw upErr;
+      try {
+        const { error: upErr } = await supabase.storage
+          .from('user-pages')
+          .upload(storagePath, htmlBlob, {
+            upsert: true,
+            contentType: 'text/html; charset=utf-8',
+            cacheControl: '60',
+          });
+        if (upErr) throw upErr;
+        savedStoragePath = storagePath;
+      } catch (uploadErr) {
+        console.warn('HTML storage upload failed, falling back to database content.', uploadErr);
+      }
 
       const payload = {
         user_id: user.id,
         username,
         slug,
         title: titleInput.trim() || slug,
-        storage_path: storagePath,
-        html_content: null as string | null,
+        storage_path: savedStoragePath,
+        html_content: savedStoragePath ? null : html,
         is_public: true,
       };
       const { data: existing } = await supabase
