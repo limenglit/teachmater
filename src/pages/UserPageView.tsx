@@ -2,27 +2,30 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDocumentHead } from '@/hooks/useDocumentHead';
+import { decodePageRouteParam, getPublicPageUrl } from '@/lib/page-slug';
 
 export default function UserPageView() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
+  const decodedUsername = username ? decodePageRouteParam(username) : '';
+  const decodedSlug = slug ? decodePageRouteParam(slug) : '';
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!username || !slug) return;
+    if (!decodedUsername || !decodedSlug) return;
     let revoke: string | null = null;
     (async () => {
       const { data, error } = await supabase.rpc('get_public_page', {
-        p_username: username,
-        p_slug: slug,
+        p_username: decodedUsername,
+        p_slug: decodedSlug,
       });
       if (error || !data || (Array.isArray(data) && data.length === 0)) {
         setNotFound(true);
         return;
       }
       const row: any = Array.isArray(data) ? data[0] : data;
-      setTitle(row.title || `${username}/${slug}`);
+      setTitle(row.title || `${decodedUsername}/${decodedSlug}`);
 
       let htmlText = '';
       if (row.storage_path) {
@@ -43,17 +46,17 @@ export default function UserPageView() {
       setBlobUrl(url);
     })();
     return () => { if (revoke) URL.revokeObjectURL(revoke); };
-  }, [username, slug]);
+  }, [decodedUsername, decodedSlug]);
 
   useEffect(() => { if (title) document.title = title; }, [title]);
 
-  const pageUrl = username && slug ? `https://teachermate.org.cn/${username}/${slug}` : undefined;
+  const pageUrl = decodedUsername && decodedSlug ? getPublicPageUrl('https://teachermate.org.cn', decodedUsername, decodedSlug) : undefined;
   useDocumentHead({
-    title: title ? `${title} — ${username}` : undefined,
-    description: title ? `${username} 在教创搭子上发布的页面：${title}` : undefined,
+    title: title ? `${title} — ${decodedUsername}` : undefined,
+    description: title ? `${decodedUsername} 在教创搭子上发布的页面：${title}` : undefined,
     canonical: pageUrl,
     ogTitle: title || undefined,
-    ogDescription: title ? `${username} 在教创搭子上发布的页面：${title}` : undefined,
+    ogDescription: title ? `${decodedUsername} 在教创搭子上发布的页面：${title}` : undefined,
     ogUrl: pageUrl,
     ogType: 'article',
     jsonLd: title && pageUrl
@@ -61,7 +64,7 @@ export default function UserPageView() {
           '@context': 'https://schema.org',
           '@type': 'Article',
           headline: title,
-          author: { '@type': 'Person', name: username },
+          author: { '@type': 'Person', name: decodedUsername },
           url: pageUrl,
           mainEntityOfPage: pageUrl,
         }
@@ -72,7 +75,7 @@ export default function UserPageView() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground gap-2">
         <h1 className="text-2xl font-semibold">404</h1>
-        <p className="text-sm text-muted-foreground">页面不存在：/{username}/{slug}</p>
+        <p className="text-sm text-muted-foreground">页面不存在：/{decodedUsername}/{decodedSlug}</p>
       </div>
     );
   }
