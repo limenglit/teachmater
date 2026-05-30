@@ -1296,10 +1296,11 @@ export type Database = {
       user_pages: {
         Row: {
           created_at: string
-          html_content: string
+          html_content: string | null
           id: string
           is_public: boolean
           slug: string
+          storage_path: string | null
           title: string
           updated_at: string
           user_id: string
@@ -1307,10 +1308,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          html_content?: string
+          html_content?: string | null
           id?: string
           is_public?: boolean
           slug: string
+          storage_path?: string | null
           title?: string
           updated_at?: string
           user_id: string
@@ -1318,10 +1320,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          html_content?: string
+          html_content?: string | null
           id?: string
           is_public?: boolean
           slug?: string
+          storage_path?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -1655,6 +1658,7 @@ export type Database = {
         Args: { p_slug: string; p_username: string }
         Returns: {
           html_content: string
+          storage_path: string
           title: string
           updated_at: string
         }[]

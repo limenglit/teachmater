@@ -77,15 +77,27 @@ export default function PagesManager() {
     setUploading(true);
     try {
       const html = await normalizeHtmlFileToUtf8(file);
+      // 上传到 user-pages 存储桶，路径：{user_id}/{slug}.html
+      const storagePath = `${user.id}/${slug}.html`;
+      const htmlBlob = new Blob([html], { type: 'text/html; charset=utf-8' });
+      const { error: upErr } = await supabase.storage
+        .from('user-pages')
+        .upload(storagePath, htmlBlob, {
+          upsert: true,
+          contentType: 'text/html; charset=utf-8',
+          cacheControl: '60',
+        });
+      if (upErr) throw upErr;
+
       const payload = {
         user_id: user.id,
         username,
         slug,
         title: titleInput.trim() || slug,
-        html_content: html,
+        storage_path: storagePath,
+        html_content: null as string | null,
         is_public: true,
       };
-      // 查找是否已存在同 slug 的记录（同一用户）
       const { data: existing } = await supabase
         .from('user_pages')
         .select('id')
@@ -94,21 +106,21 @@ export default function PagesManager() {
         .maybeSingle();
       let saved: UserPage | null = null;
       if (existing?.id) {
-        const { data: updated, error: upErr } = await supabase
+        const { data: updated, error: e2 } = await supabase
           .from('user_pages')
           .update(payload)
           .eq('id', existing.id)
           .select('id, username, slug, title, is_public, updated_at')
           .single();
-        if (upErr) throw upErr;
+        if (e2) throw e2;
         saved = updated as UserPage;
       } else {
-        const { data: inserted, error: insErr } = await supabase
+        const { data: inserted, error: e3 } = await supabase
           .from('user_pages')
           .insert(payload)
           .select('id, username, slug, title, is_public, updated_at')
           .single();
-        if (insErr) throw insErr;
+        if (e3) throw e3;
         saved = inserted as UserPage;
       }
       if (saved) {
