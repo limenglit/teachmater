@@ -1788,7 +1788,12 @@ export type Database = {
         Returns: undefined
       }
       merge_seat_checkin_guests: {
-        Args: { p_seat_data: Json; p_session_id: string; p_student_names: Json }
+        Args: {
+          p_seat_data: Json
+          p_session_id: string
+          p_student_names: Json
+          p_token: string
+        }
         Returns: undefined
       }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
@@ -1867,15 +1872,10 @@ export type Database = {
             }
             Returns: undefined
           }
-      update_seat_checkin_session:
-        | {
-            Args: { p_session_id: string; p_status?: string }
-            Returns: undefined
-          }
-        | {
-            Args: { p_session_id: string; p_status: string; p_token: string }
-            Returns: undefined
-          }
+      update_seat_checkin_session: {
+        Args: { p_session_id: string; p_status: string; p_token: string }
+        Returns: undefined
+      }
       update_task_session: {
         Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined
