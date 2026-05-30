@@ -79,12 +79,22 @@ export default function PagesManager() {
       toast({ title: '只支持 .html / .htm 文件', variant: 'destructive' });
       return;
     }
-    const slug = (slugInput.trim() || file.name.replace(/\.(html?|HTM L?)$/i, '')).toLowerCase().replace(/\s+/g, '-');
-    if (!SLUG_RE.test(slug) || slug.length < 2 || slug.length > 64) {
-      toast({ title: '页面名不合法', description: '仅支持小写字母、数字、- 和 _，长度 2-64', variant: 'destructive' });
+    const slug = normalizeSlug(slugInput || file.name);
+    if (!SLUG_RE.test(slug) || [...slug].length < 2 || [...slug].length > 64) {
+      toast({ title: '页面名不合法', description: '支持中文、英文字母、数字、- 和 _，长度 2-64', variant: 'destructive' });
       return;
     }
-    setUploading(true);
+    // 重名检查：提示用户修改后再上传，不再静默覆盖
+    const duplicate = pages.find((p) => p.slug === slug);
+    if (duplicate) {
+      toast({
+        title: '文件名重复',
+        description: `已存在同名页面 /${duplicate.username}/${duplicate.slug}，请修改"页面名 (slug)"后重新上传，或先在下方列表中删除原页面。`,
+        variant: 'destructive',
+      });
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     try {
       const html = await normalizeHtmlFileToUtf8(file);
       // 上传到 user-pages 存储桶，路径：{user_id}/{slug}.html
