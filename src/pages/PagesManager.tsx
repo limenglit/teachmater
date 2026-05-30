@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { normalizeHtmlFileToUtf8 } from '@/lib/html-normalize';
+import { getPageStoragePath, getPublicPageUrl, normalizePageSlug, validatePageSlug } from '@/lib/page-slug';
 import { Upload, Trash2, ExternalLink, Copy, Check, ArrowLeft, Globe, Lock, Eye } from 'lucide-react';
 
 interface UserPage {
@@ -16,18 +17,6 @@ interface UserPage {
   is_public: boolean;
   updated_at: string;
   html_content?: string;
-}
-
-// 支持中文/Unicode 字母、数字、- 和 _；首尾不能是 - 或 _
-const SLUG_RE = /^[\p{L}\p{N}](?:[\p{L}\p{N}_-]*[\p{L}\p{N}])?$/u;
-
-function normalizeSlug(raw: string): string {
-  return raw
-    .trim()
-    .replace(/\.(html?|HTM L?)$/i, '')
-    .replace(/\s+/g, '-')
-    // 仅对 ASCII 字母转小写，保留中文等 Unicode 原样
-    .replace(/[A-Z]/g, (c) => c.toLowerCase());
 }
 
 export default function PagesManager() {
@@ -79,9 +68,10 @@ export default function PagesManager() {
       toast({ title: '只支持 .html / .htm 文件', variant: 'destructive' });
       return;
     }
-    const slug = normalizeSlug(slugInput || file.name);
-    if (!SLUG_RE.test(slug) || [...slug].length < 2 || [...slug].length > 64) {
-      toast({ title: '页面名不合法', description: '支持中文、英文字母、数字、- 和 _，长度 2-64', variant: 'destructive' });
+    const slug = normalizePageSlug(slugInput || file.name);
+    const validationError = validatePageSlug(slug);
+    if (validationError) {
+      toast({ title: '页面名不合法', description: validationError, variant: 'destructive' });
       return;
     }
     // 重名检查：提示用户修改后再上传，不再静默覆盖
@@ -98,9 +88,7 @@ export default function PagesManager() {
     setUploading(true);
     try {
       const html = await normalizeHtmlFileToUtf8(file);
-      // 存储路径对中文等非 ASCII 字符做 URL 编码，避免 Supabase Storage key 限制
-      const safeKey = encodeURIComponent(slug);
-      const storagePath = `${user.id}/${safeKey}.html`;
+      const storagePath = getPageStoragePath(user.id, slug);
       const htmlBlob = new Blob([html], { type: 'text/html; charset=utf-8' });
       const { error: upErr } = await supabase.storage
         .from('user-pages')
@@ -175,7 +163,7 @@ export default function PagesManager() {
     setPages((prev) => prev.filter((p) => p.id !== page.id));
   };
 
-  const pageUrl = (p: UserPage) => `${window.location.origin}/${p.username}/${p.slug}`;
+  const pageUrl = (p: UserPage) => getPublicPageUrl(window.location.origin, p.username, p.slug);
   const copyUrl = async (p: UserPage) => {
     await navigator.clipboard.writeText(pageUrl(p));
     setCopiedId(p.id);
@@ -232,7 +220,7 @@ export default function PagesManager() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
               <div>
                 <label className="text-xs text-muted-foreground">页面名 (slug)</label>
-                <Input value={slugInput} onChange={(e) => setSlugInput(e.target.value)} placeholder="例如：about、portfolio、关于我" className="h-9" />
+                <Input value={slugInput} onChange={(e) => setSlugInput(e.target.value)} placeholder="可留空，自动使用文件名：课堂导入、我的页面.html" className="h-9" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">标题（可选）</label>
@@ -243,7 +231,7 @@ export default function PagesManager() {
             <Button onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
               <Upload className="w-4 h-4" /> {uploading ? '上传中…' : '选择 HTML 文件并发布'}
             </Button>
-            <p className="text-xs text-muted-foreground mt-2">支持中文文件名作为页面名；自动识别 GBK/GB2312/UTF-8 编码并转换为 UTF-8。若已存在同名页面，会提示你修改后再上传，不会自动覆盖。</p>
+            <p className="text-xs text-muted-foreground mt-2">支持中文文件名作为页面名（如：课堂导入.html）；空格和标点会自动规范化。若已存在同名页面，会提示你修改后再上传，不会自动覆盖。</p>
           </section>
         )}
 
