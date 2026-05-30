@@ -243,7 +243,7 @@ export default function PagesManager() {
             <Button onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
               <Upload className="w-4 h-4" /> {uploading ? '上传中…' : '选择 HTML 文件并发布'}
             </Button>
-            <p className="text-xs text-muted-foreground mt-2">上传后会自动识别 GBK/GB2312/UTF-8 编码并转换为 UTF-8，确保中文正常显示。同名 slug 会被覆盖更新。</p>
+            <p className="text-xs text-muted-foreground mt-2">支持中文文件名作为页面名；自动识别 GBK/GB2312/UTF-8 编码并转换为 UTF-8。若已存在同名页面，会提示你修改后再上传，不会自动覆盖。</p>
           </section>
         )}
 
