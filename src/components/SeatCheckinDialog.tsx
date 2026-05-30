@@ -573,8 +573,10 @@ export default function SeatCheckinDialog({
         nextSeatData = cloneSeatDataSequential(baseSeatData, entries.map(e => e.name));
       }
       const mergedNames = Array.from(new Set([...currentStudentNames, ...entries.map(e => e.name)]));
+      const sessionToken = getSeatCheckinSessionToken(currentSession.id) || '';
       const { error } = await supabase.rpc('merge_seat_checkin_guests', {
         p_session_id: currentSession.id,
+        p_token: sessionToken,
         p_seat_data: nextSeatData as never,
         p_student_names: mergedNames as never,
       });
