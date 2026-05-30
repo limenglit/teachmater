@@ -18,7 +18,17 @@ interface UserPage {
   html_content?: string;
 }
 
-const SLUG_RE = /^[a-z0-9][a-z0-9_-]*[a-z0-9]$/;
+// 支持中文/Unicode 字母、数字、- 和 _；首尾不能是 - 或 _
+const SLUG_RE = /^[\p{L}\p{N}](?:[\p{L}\p{N}_-]*[\p{L}\p{N}])?$/u;
+
+function normalizeSlug(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\.(html?|HTM L?)$/i, '')
+    .replace(/\s+/g, '-')
+    // 仅对 ASCII 字母转小写，保留中文等 Unicode 原样
+    .replace(/[A-Z]/g, (c) => c.toLowerCase());
+}
 
 export default function PagesManager() {
   const { user, loading: authLoading, approvalStatus } = useAuth();
@@ -69,16 +79,28 @@ export default function PagesManager() {
       toast({ title: '只支持 .html / .htm 文件', variant: 'destructive' });
       return;
     }
-    const slug = (slugInput.trim() || file.name.replace(/\.(html?|HTM L?)$/i, '')).toLowerCase().replace(/\s+/g, '-');
-    if (!SLUG_RE.test(slug) || slug.length < 2 || slug.length > 64) {
-      toast({ title: '页面名不合法', description: '仅支持小写字母、数字、- 和 _，长度 2-64', variant: 'destructive' });
+    const slug = normalizeSlug(slugInput || file.name);
+    if (!SLUG_RE.test(slug) || [...slug].length < 2 || [...slug].length > 64) {
+      toast({ title: '页面名不合法', description: '支持中文、英文字母、数字、- 和 _，长度 2-64', variant: 'destructive' });
+      return;
+    }
+    // 重名检查：提示用户修改后再上传，不再静默覆盖
+    const duplicate = pages.find((p) => p.slug === slug);
+    if (duplicate) {
+      toast({
+        title: '文件名重复',
+        description: `已存在同名页面 /${duplicate.username}/${duplicate.slug}，请修改"页面名 (slug)"后重新上传，或先在下方列表中删除原页面。`,
+        variant: 'destructive',
+      });
+      if (fileRef.current) fileRef.current.value = '';
       return;
     }
     setUploading(true);
     try {
       const html = await normalizeHtmlFileToUtf8(file);
-      // 上传到 user-pages 存储桶，路径：{user_id}/{slug}.html
-      const storagePath = `${user.id}/${slug}.html`;
+      // 存储路径对中文等非 ASCII 字符做 URL 编码，避免 Supabase Storage key 限制
+      const safeKey = encodeURIComponent(slug);
+      const storagePath = `${user.id}/${safeKey}.html`;
       const htmlBlob = new Blob([html], { type: 'text/html; charset=utf-8' });
       const { error: upErr } = await supabase.storage
         .from('user-pages')
@@ -210,7 +232,7 @@ export default function PagesManager() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
               <div>
                 <label className="text-xs text-muted-foreground">页面名 (slug)</label>
-                <Input value={slugInput} onChange={(e) => setSlugInput(e.target.value.toLowerCase())} placeholder="例如：about、portfolio" className="h-9" />
+                <Input value={slugInput} onChange={(e) => setSlugInput(e.target.value)} placeholder="例如：about、portfolio、关于我" className="h-9" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">标题（可选）</label>
@@ -221,7 +243,7 @@ export default function PagesManager() {
             <Button onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-2">
               <Upload className="w-4 h-4" /> {uploading ? '上传中…' : '选择 HTML 文件并发布'}
             </Button>
-            <p className="text-xs text-muted-foreground mt-2">上传后会自动识别 GBK/GB2312/UTF-8 编码并转换为 UTF-8，确保中文正常显示。同名 slug 会被覆盖更新。</p>
+            <p className="text-xs text-muted-foreground mt-2">支持中文文件名作为页面名；自动识别 GBK/GB2312/UTF-8 编码并转换为 UTF-8。若已存在同名页面，会提示你修改后再上传，不会自动覆盖。</p>
           </section>
         )}
 
