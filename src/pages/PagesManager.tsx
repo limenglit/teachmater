@@ -18,7 +18,17 @@ interface UserPage {
   html_content?: string;
 }
 
-const SLUG_RE = /^[a-z0-9][a-z0-9_-]*[a-z0-9]$/;
+// 支持中文/Unicode 字母、数字、- 和 _；首尾不能是 - 或 _
+const SLUG_RE = /^[\p{L}\p{N}](?:[\p{L}\p{N}_-]*[\p{L}\p{N}])?$/u;
+
+function normalizeSlug(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\.(html?|HTM L?)$/i, '')
+    .replace(/\s+/g, '-')
+    // 仅对 ASCII 字母转小写，保留中文等 Unicode 原样
+    .replace(/[A-Z]/g, (c) => c.toLowerCase());
+}
 
 export default function PagesManager() {
   const { user, loading: authLoading, approvalStatus } = useAuth();
