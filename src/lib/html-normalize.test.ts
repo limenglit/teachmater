@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { normalizeHtmlFileToUtf8 } from './html-normalize';
 
-function blobFromBytes(bytes: Uint8Array, type = 'text/html'): Blob {
-  return new Blob([bytes.buffer.slice(0) as ArrayBuffer], { type });
+function blobFromBytes(bytes: Uint8Array): Blob {
+  return {
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+  } as unknown as Blob;
 }
 
 describe('normalizeHtmlFileToUtf8', () => {
