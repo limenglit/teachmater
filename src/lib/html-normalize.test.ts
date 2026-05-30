@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { normalizeHtmlFileToUtf8 } from './html-normalize';
 
 function blobFromBytes(bytes: Uint8Array, type = 'text/html'): Blob {
-  return new Blob([bytes], { type });
+  return new Blob([bytes.buffer.slice(0) as ArrayBuffer], { type });
 }
 
 describe('normalizeHtmlFileToUtf8', () => {
