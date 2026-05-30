@@ -363,62 +363,35 @@ export async function loadSeatCheckinRecords(sessionId: string) {
 
 export async function endSeatCheckinSession(sessionId: string) {
   const token = getSeatCheckinSessionToken(sessionId);
-
-  // New RPC signature with token.
-  if (token) {
-    const next = await supabase.rpc('update_seat_checkin_session', {
-      p_session_id: sessionId,
-      p_token: token,
-      p_status: 'ended',
-    } as any);
-    if (!next.error) return;
-  }
-
-  // Legacy fallback: update_seat_checkin_session(p_session_id, p_status)
-  const legacy = await supabase.rpc('update_seat_checkin_session', {
+  if (!token) throw new Error('Missing session token');
+  const { error } = await supabase.rpc('update_seat_checkin_session', {
     p_session_id: sessionId,
+    p_token: token,
     p_status: 'ended',
   } as any);
-
-  if (legacy.error) throw legacy.error;
+  if (error) throw error;
 }
 
 export async function deleteSeatCheckinSession(sessionId: string) {
   const token = getSeatCheckinSessionToken(sessionId);
+  if (!token) throw new Error('Missing session token');
 
   // Preferred hard delete path (new migration).
-  if (token) {
-    const hardDelete = await (supabase.rpc as any)('delete_seat_checkin_session', {
-      p_session_id: sessionId,
-      p_token: token,
-    });
-
-    if (!hardDelete.error) {
-      removeSeatCheckinSessionToken(sessionId);
-      return;
-    }
-  }
-
-  // Compatibility fallback for older DB: mark session as deleted using update RPC
-  // so it disappears from UI and no longer accepts sign-ins.
-  const softDeleteWithToken = token
-    ? await supabase.rpc('update_seat_checkin_session', {
-        p_session_id: sessionId,
-        p_token: token,
-        p_status: 'deleted',
-      } as any)
-    : { error: new Error('no-token') };
-
-  if (!softDeleteWithToken.error) {
+  const hardDelete = await (supabase.rpc as any)('delete_seat_checkin_session', {
+    p_session_id: sessionId,
+    p_token: token,
+  });
+  if (!hardDelete.error) {
     removeSeatCheckinSessionToken(sessionId);
     return;
   }
 
-  const softDeleteLegacy = await supabase.rpc('update_seat_checkin_session', {
+  // Fallback: soft delete via token-guarded update RPC.
+  const softDelete = await supabase.rpc('update_seat_checkin_session', {
     p_session_id: sessionId,
+    p_token: token,
     p_status: 'deleted',
   } as any);
-
-  if (softDeleteLegacy.error) throw softDeleteLegacy.error;
+  if (softDelete.error) throw softDelete.error;
   removeSeatCheckinSessionToken(sessionId);
 }
