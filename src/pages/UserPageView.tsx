@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 export default function UserPageView() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
   const [html, setHtml] = useState<string | null>(null);
+  const [src, setSrc] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [notFound, setNotFound] = useState(false);
 
@@ -19,15 +20,18 @@ export default function UserPageView() {
         setNotFound(true);
         return;
       }
-      const row = Array.isArray(data) ? data[0] : data;
-      setHtml(row.html_content || '');
+      const row: any = Array.isArray(data) ? data[0] : data;
       setTitle(row.title || `${username}/${slug}`);
+      if (row.storage_path) {
+        const { data: pub } = supabase.storage.from('user-pages').getPublicUrl(row.storage_path);
+        setSrc(pub.publicUrl);
+      } else {
+        setHtml(row.html_content || '');
+      }
     })();
   }, [username, slug]);
 
-  useEffect(() => {
-    if (title) document.title = title;
-  }, [title]);
+  useEffect(() => { if (title) document.title = title; }, [title]);
 
   if (notFound) {
     return (
@@ -38,16 +42,13 @@ export default function UserPageView() {
     );
   }
 
-  if (html === null) {
+  if (html === null && src === null) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   }
 
-  return (
-    <iframe
-      title={title}
-      srcDoc={html}
-      sandbox="allow-scripts allow-forms allow-popups allow-same-origin allow-modals allow-downloads"
-      style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', border: 'none' }}
-    />
-  );
+  const sandbox = 'allow-scripts allow-forms allow-popups allow-same-origin allow-modals allow-downloads';
+  const style = { position: 'fixed' as const, inset: 0, width: '100vw', height: '100vh', border: 'none' };
+  return src
+    ? <iframe title={title} src={src} sandbox={sandbox} style={style} />
+    : <iframe title={title} srcDoc={html!} sandbox={sandbox} style={style} />;
 }
