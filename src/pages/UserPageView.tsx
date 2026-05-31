@@ -8,13 +8,12 @@ export default function UserPageView() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
   const decodedUsername = username ? decodePageRouteParam(username) : '';
   const decodedSlug = slug ? decodePageRouteParam(slug) : '';
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [html, setHtml] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!decodedUsername || !decodedSlug) return;
-    let revoke: string | null = null;
     (async () => {
       const { data, error } = await supabase.rpc('get_public_page', {
         p_username: decodedUsername,
@@ -29,8 +28,7 @@ export default function UserPageView() {
 
       let htmlText = '';
       if (row.storage_path) {
-        // Supabase Storage 对 HTML 返回 text/plain + CSP sandbox，浏览器会拒绝渲染。
-        // 通过 SDK 下载内容后，自己构造 text/html 的 Blob URL，绕开 Storage 的响应头限制。
+        // 通过 SDK 下载，避免 Storage 直链返回 text/plain + CSP sandbox。
         const { data: file, error: dlErr } = await supabase.storage
           .from('user-pages')
           .download(row.storage_path);
@@ -40,13 +38,12 @@ export default function UserPageView() {
         htmlText = row.html_content || '';
       }
 
-      const blob = new Blob([htmlText], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      revoke = url;
-      setBlobUrl(url);
+      // 移动端浏览器（特别是 iOS Safari / 微信内置）对 blob: URL 在 iframe 中渲染支持不稳定，
+      // 经常只解析 <title> 而不渲染 body。改用 srcDoc 在所有平台上都能稳定渲染独立 HTML。
+      setHtml(htmlText);
     })();
-    return () => { if (revoke) URL.revokeObjectURL(revoke); };
   }, [decodedUsername, decodedSlug]);
+
 
   useEffect(() => { if (title) document.title = title; }, [title]);
 
@@ -80,10 +77,18 @@ export default function UserPageView() {
     );
   }
 
-  if (!blobUrl) {
+  if (html === null) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   }
 
   const style = { position: 'fixed' as const, inset: 0, width: '100vw', height: '100vh', border: 'none' };
-  return <iframe title={title} src={blobUrl} style={style} />;
+  return (
+    <iframe
+      title={title}
+      srcDoc={html}
+      style={style}
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+      referrerPolicy="no-referrer"
+    />
+  );
 }
