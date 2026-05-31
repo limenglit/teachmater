@@ -1293,6 +1293,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_page_limits: {
+        Row: {
+          id: string
+          page_limit: number
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          page_limit?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          page_limit?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_pages: {
         Row: {
           created_at: string
@@ -1504,6 +1528,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_get_users_with_page_limits: {
+        Args: never
+        Returns: {
+          email: string
+          nickname: string
+          page_limit: number
+          pages_used: number
+          status: string
+          user_id: string
+        }[]
+      }
       admin_list_pending_vocab_sets: {
         Args: never
         Returns: {
@@ -1519,6 +1554,10 @@ export type Database = {
       }
       admin_set_ai_limits: {
         Args: { p_daily_limit: number; p_user_ids: string[] }
+        Returns: undefined
+      }
+      admin_set_page_limits: {
+        Args: { p_page_limit: number; p_user_ids: string[] }
         Returns: undefined
       }
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
@@ -1625,6 +1664,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_effective_page_limit: { Args: { p_user_id: string }; Returns: number }
       get_my_status: { Args: never; Returns: string }
       get_my_username: { Args: never; Returns: string }
       get_pending_users: {
