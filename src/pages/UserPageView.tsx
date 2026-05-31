@@ -77,10 +77,18 @@ export default function UserPageView() {
     );
   }
 
-  if (!blobUrl) {
+  if (html === null) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
   }
 
   const style = { position: 'fixed' as const, inset: 0, width: '100vw', height: '100vh', border: 'none' };
-  return <iframe title={title} src={blobUrl} style={style} />;
+  return (
+    <iframe
+      title={title}
+      srcDoc={html}
+      style={style}
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+      referrerPolicy="no-referrer"
+    />
+  );
 }
