@@ -3,11 +3,13 @@ import { createSeatCheckinSession } from './seat-checkin-session';
 
 type SupabaseModule = typeof import('@/integrations/supabase/client');
 
-const rpcMock = vi.fn();
-const singleMock = vi.fn();
-const selectMock = vi.fn(() => ({ single: singleMock }));
-const insertMock = vi.fn(() => ({ select: selectMock }));
-const fromMock = vi.fn(() => ({ insert: insertMock }));
+const { rpcMock, singleMock, selectMock, insertMock, fromMock } = vi.hoisted(() => {
+  const singleMock = vi.fn();
+  const selectMock = vi.fn(() => ({ single: singleMock }));
+  const insertMock = vi.fn(() => ({ select: selectMock }));
+  const fromMock = vi.fn(() => ({ insert: insertMock }));
+  return { rpcMock: vi.fn(), singleMock, selectMock, insertMock, fromMock };
+});
 
 vi.mock('@/integrations/supabase/client', () => {
   const supabase = {
