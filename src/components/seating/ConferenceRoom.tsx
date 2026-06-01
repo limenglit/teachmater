@@ -612,20 +612,21 @@ export default function ConferenceRoom({ students }: Props) {
     return (
       <g
         key={slot}
-        style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
-        onMouseDown={
+        style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
+        onPointerDown={
           name && !isClosed
             ? e => {
                 e.stopPropagation();
+                try { (e.currentTarget as Element).releasePointerCapture(e.pointerId); } catch {}
                 setDragFrom(slot);
                 setDropTarget(slot);
               }
             : undefined
         }
-        onMouseEnter={() => {
+        onPointerEnter={() => {
           if (dragFrom && !isClosed) setDropTarget(slot);
         }}
-        onMouseUp={() => {
+        onPointerUp={() => {
           if (!dragFrom || !dropTarget) return;
           const from = dragFrom;
           const to = dropTarget;
@@ -708,7 +709,11 @@ export default function ConferenceRoom({ students }: Props) {
 
   return (
     <div
-      onMouseUp={() => {
+      onPointerUp={() => {
+        setDragFrom(null);
+        setDropTarget(null);
+      }}
+      onPointerCancel={() => {
         setDragFrom(null);
         setDropTarget(null);
       }}

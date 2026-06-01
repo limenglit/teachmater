@@ -570,7 +570,7 @@ export default function ConcertHall({ students }: Props) {
   const totalCapacity = rowCount * (seatsPerRow + rowCount - 1);
 
   return (
-    <div onMouseUp={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
+    <div onPointerUp={() => { setDragFrom(null); setDropTarget(null); }} onPointerCancel={() => { setDragFrom(null); setDropTarget(null); }} onMouseLeave={() => { setDragFrom(null); setDropTarget(null); }}>
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:gap-3 mb-5 rounded-lg border border-border/60 bg-muted/20 p-3">
         <label className="flex w-full sm:w-auto items-center gap-2 text-sm text-muted-foreground">
           {t('seat.editor.common.name')}
@@ -846,10 +846,15 @@ export default function ConcertHall({ students }: Props) {
                     return (
                       <g
                         key={`${ri}-${ci}`}
-                        style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
-                        onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); setDragFrom(slot); setDropTarget(slot); } : undefined}
-                        onMouseEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
-                        onMouseUp={() => {
+                        style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
+                        onPointerDown={name && !isClosed ? (e) => {
+                          e.stopPropagation();
+                          try { (e.currentTarget as Element).releasePointerCapture(e.pointerId); } catch {}
+                          setDragFrom(slot);
+                          setDropTarget(slot);
+                        } : undefined}
+                        onPointerEnter={() => { if (dragFrom && !isClosed) setDropTarget(slot); }}
+                        onPointerUp={() => {
                           if (!dragFrom || !dropTarget) return;
                           const from = dragFrom;
                           const to = dropTarget;
