@@ -34,8 +34,11 @@ interface StudentResult {
 
 const NAME_KEY = 'quiz-student-name';
 const RECENT_KEY = 'quiz-recent-names';
+const DRAFT_KEY_PREFIX = 'quiz-draft';
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+const draftKey = (sessionId: string, studentName: string) =>
+  `${DRAFT_KEY_PREFIX}::${sessionId}::${studentName}`;
 
 export default function QuizSubmitPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
