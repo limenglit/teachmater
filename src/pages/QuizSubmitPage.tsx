@@ -151,6 +151,20 @@ export default function QuizSubmitPage() {
     return nameSuggestions.filter(n => normalizeStudentName(n).toLowerCase().includes(normalized)).slice(0, 8);
   }, [name, nameSuggestions]);
 
+  // Persist current question index to draft so refresh resumes at same question
+  useEffect(() => {
+    if (!entered || !sessionId || submitted) return;
+    const normalizedName = normalizeStudentName(name);
+    if (!normalizedName) return;
+    try {
+      const key = draftKey(sessionId, normalizedName);
+      const raw = localStorage.getItem(key);
+      const prev = raw ? JSON.parse(raw) : {};
+      localStorage.setItem(key, JSON.stringify({ ...prev, answers, currentQ, savedAt: Date.now() }));
+    } catch { /* ignore */ }
+  }, [currentQ, entered, sessionId, name, submitted, answers]);
+
+
   const enterQuiz = () => {
     const normalizedName = normalizeStudentName(name);
     if (!normalizedName) return;
