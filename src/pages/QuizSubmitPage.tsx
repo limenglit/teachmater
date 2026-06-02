@@ -161,11 +161,41 @@ export default function QuizSubmitPage() {
       localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 20)));
     }
     setName(normalizedName);
+    // Restore draft answers (auto-recover from refresh / accidental close)
+    if (sessionId) {
+      try {
+        const raw = localStorage.getItem(draftKey(sessionId, normalizedName));
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && parsed.answers) {
+            setAnswers(parsed.answers);
+            if (typeof parsed.currentQ === 'number') setCurrentQ(parsed.currentQ);
+            toast({ title: '已恢复上次未提交的答题进度' });
+          }
+        }
+      } catch { /* ignore corrupted draft */ }
+    }
     setEntered(true);
   };
 
   const setAnswer = (qi: number, value: any) => {
-    setAnswers(prev => ({ ...prev, [qi]: value }));
+    setAnswers(prev => {
+      const next = { ...prev, [qi]: value };
+      // Persist draft on every change so refresh / tab-close does not lose work
+      if (sessionId && entered) {
+        const normalizedName = normalizeStudentName(name);
+        if (normalizedName) {
+          try {
+            localStorage.setItem(draftKey(sessionId, normalizedName), JSON.stringify({
+              answers: next,
+              currentQ,
+              savedAt: Date.now(),
+            }));
+          } catch { /* quota or unavailable - ignore */ }
+        }
+      }
+      return next;
+    });
   };
 
   const toggleMultiAnswer = (qi: number, letter: string) => {
@@ -191,8 +221,13 @@ export default function QuizSubmitPage() {
     } as any);
     if (error) {
       setSubmitting(false);
+      // Keep the draft on failure so user can retry without re-entering everything
       toast({ title: tr('quiz.submitFailed', '提交失败，请重试'), description: error.message, variant: 'destructive' });
       return;
+    }
+    // Clear draft only on successful submit
+    if (sessionId && normalizedName) {
+      try { localStorage.removeItem(draftKey(sessionId, normalizedName)); } catch { /* ignore */ }
     }
     setSubmitted(true);
     setSubmitting(false);
