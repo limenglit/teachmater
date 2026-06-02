@@ -139,6 +139,20 @@ export default function QuizPanel() {
   const publishQuizSession = async (selectedQuestions: QuizQuestion[], titleSeed?: string) => {
     if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
     if (selectedQuestions.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
+    // Validate question content & options - reject empty / malformed before publishing
+    const invalidIdx = selectedQuestions.findIndex(q => !q || typeof q.content !== 'string' || q.content.trim() === '');
+    if (invalidIdx !== -1) {
+      toast({ title: `第 ${invalidIdx + 1} 题内容为空，请补全后再发布`, variant: 'destructive' });
+      return;
+    }
+    const optionMissingIdx = selectedQuestions.findIndex(q =>
+      (q.type === 'single' || q.type === 'multi') &&
+      (!Array.isArray(q.options) || q.options.filter(o => String(o ?? '').trim() !== '').length < 2)
+    );
+    if (optionMissingIdx !== -1) {
+      toast({ title: `第 ${optionMissingIdx + 1} 题选项不足 2 个，请补全`, variant: 'destructive' });
+      return;
+    }
     const names = sessionStudentNames.length > 0 ? sessionStudentNames : sidebarStudents.map(s => s.name);
     const title = (titleSeed || sessionTitle).trim() || t('quiz.defaultTitle');
     const payload: any = {
@@ -255,18 +269,31 @@ export default function QuizPanel() {
     const { data } = await supabase.from('quiz_answers').select('*').eq('session_id', activeSession.id).order('student_name').order('question_index') as any;
     if (!data || data.length === 0) { toast({ title: t('quiz.noData') }); return; }
     const qs = activeSession.questions;
+    // RFC 4180 CSV-safe cell escaping: wrap in quotes if contains comma/quote/newline; double internal quotes
+    const escapeCell = (v: unknown): string => {
+      const s = v === null || v === undefined ? '' : String(v);
+      if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
     const headers = ['学生', ...qs.map((_: any, i: number) => `Q${i + 1}`), '正确数', '总题数'];
     const students = [...new Set(data.map((a: any) => a.student_name))];
     const rows = students.map(name => {
       const answers = data.filter((a: any) => a.student_name === name);
       let correct = 0;
-      const cells = qs.map((_: any, i: number) => { const a = answers.find((x: any) => x.question_index === i); if (!a) return ''; if (a.is_correct) correct++; return typeof a.answer === 'string' ? a.answer : JSON.stringify(a.answer); });
+      const cells = qs.map((_: any, i: number) => {
+        const a = answers.find((x: any) => x.question_index === i);
+        if (!a) return '';
+        if (a.is_correct) correct++;
+        return typeof a.answer === 'string' ? a.answer : JSON.stringify(a.answer);
+      });
       return [name, ...cells, correct, qs.length];
     });
-    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const csv = [headers, ...rows].map(r => r.map(escapeCell).join(',')).join('\r\n');
+    // Sanitize title for filename (avoid path traversal / illegal chars)
+    const safeTitle = (activeSession.title || 'session').replace(/[\\/:*?"<>|\r\n]+/g, '_').slice(0, 80);
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `quiz-${activeSession.title}.csv`; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = `quiz-${safeTitle}.csv`; a.click(); URL.revokeObjectURL(url);
   };
 
   // Active session view
