@@ -34,8 +34,11 @@ interface StudentResult {
 
 const NAME_KEY = 'quiz-student-name';
 const RECENT_KEY = 'quiz-recent-names';
+const DRAFT_KEY_PREFIX = 'quiz-draft';
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+const draftKey = (sessionId: string, studentName: string) =>
+  `${DRAFT_KEY_PREFIX}::${sessionId}::${studentName}`;
 
 export default function QuizSubmitPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -148,6 +151,20 @@ export default function QuizSubmitPage() {
     return nameSuggestions.filter(n => normalizeStudentName(n).toLowerCase().includes(normalized)).slice(0, 8);
   }, [name, nameSuggestions]);
 
+  // Persist current question index to draft so refresh resumes at same question
+  useEffect(() => {
+    if (!entered || !sessionId || submitted) return;
+    const normalizedName = normalizeStudentName(name);
+    if (!normalizedName) return;
+    try {
+      const key = draftKey(sessionId, normalizedName);
+      const raw = localStorage.getItem(key);
+      const prev = raw ? JSON.parse(raw) : {};
+      localStorage.setItem(key, JSON.stringify({ ...prev, answers, currentQ, savedAt: Date.now() }));
+    } catch { /* ignore */ }
+  }, [currentQ, entered, sessionId, name, submitted, answers]);
+
+
   const enterQuiz = () => {
     const normalizedName = normalizeStudentName(name);
     if (!normalizedName) return;
@@ -158,11 +175,41 @@ export default function QuizSubmitPage() {
       localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, 20)));
     }
     setName(normalizedName);
+    // Restore draft answers (auto-recover from refresh / accidental close)
+    if (sessionId) {
+      try {
+        const raw = localStorage.getItem(draftKey(sessionId, normalizedName));
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object' && parsed.answers) {
+            setAnswers(parsed.answers);
+            if (typeof parsed.currentQ === 'number') setCurrentQ(parsed.currentQ);
+            toast({ title: '已恢复上次未提交的答题进度' });
+          }
+        }
+      } catch { /* ignore corrupted draft */ }
+    }
     setEntered(true);
   };
 
   const setAnswer = (qi: number, value: any) => {
-    setAnswers(prev => ({ ...prev, [qi]: value }));
+    setAnswers(prev => {
+      const next = { ...prev, [qi]: value };
+      // Persist draft on every change so refresh / tab-close does not lose work
+      if (sessionId && entered) {
+        const normalizedName = normalizeStudentName(name);
+        if (normalizedName) {
+          try {
+            localStorage.setItem(draftKey(sessionId, normalizedName), JSON.stringify({
+              answers: next,
+              currentQ,
+              savedAt: Date.now(),
+            }));
+          } catch { /* quota or unavailable - ignore */ }
+        }
+      }
+      return next;
+    });
   };
 
   const toggleMultiAnswer = (qi: number, letter: string) => {
@@ -188,8 +235,13 @@ export default function QuizSubmitPage() {
     } as any);
     if (error) {
       setSubmitting(false);
+      // Keep the draft on failure so user can retry without re-entering everything
       toast({ title: tr('quiz.submitFailed', '提交失败，请重试'), description: error.message, variant: 'destructive' });
       return;
+    }
+    // Clear draft only on successful submit
+    if (sessionId && normalizedName) {
+      try { localStorage.removeItem(draftKey(sessionId, normalizedName)); } catch { /* ignore */ }
     }
     setSubmitted(true);
     setSubmitting(false);
