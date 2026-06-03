@@ -133,6 +133,18 @@ export default function QuizQuestionBank({
   }, [questions, filterType, filterCategoryId, filterStarred, searchText,
       advTypes, advCategoryIds, advKnowledge, advKnowledgeMatch]);
 
+  // Pagination: keep the DOM lightweight for large question banks (hundreds+).
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [
+    filterType, filterCategoryId, filterStarred, searchText,
+    advTypes, advCategoryIds, advKnowledge, advKnowledgeMatch,
+  ]);
+  const visibleQuestions = useMemo(
+    () => filteredQuestions.slice(0, visibleCount),
+    [filteredQuestions, visibleCount],
+  );
+
   const resetForm = () => {
     setQType('single'); setQContent(''); setQOptions(['', '', '', '']);
     setQCorrect('A'); setQTags(''); setQCategoryId('');
