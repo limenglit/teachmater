@@ -1818,6 +1818,7 @@ export type Database = {
         Args: { p_session_id: string; p_student_name: string }
         Returns: boolean
       }
+      is_approved_user: { Args: { _user_id: string }; Returns: boolean }
       manage_board_card: {
         Args: {
           p_action: string
