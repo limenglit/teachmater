@@ -87,7 +87,11 @@ export default function UserPageView() {
       title={title}
       srcDoc={html}
       style={style}
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+      // SECURITY: do NOT include `allow-same-origin`. Together with `allow-scripts`,
+      // that combination would give the embedded user-uploaded HTML access to the
+      // parent origin's localStorage / cookies / Supabase auth tokens. Keeping the
+      // iframe in an opaque origin lets uploaded pages still run scripts safely.
+      sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads"
       referrerPolicy="no-referrer"
     />
   );

@@ -63,6 +63,13 @@ export default function PagesManager() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user || !username) return;
+    // Server enforces approval too (DB trigger + storage policy), but bail out
+    // early in the UI so unapproved users get a clear message instead of an opaque error.
+    if (approvalStatus !== 'approved') {
+      toast({ title: '账号未审核通过，暂不能发布页面', variant: 'destructive' });
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (ext !== 'html' && ext !== 'htm') {
       toast({ title: '只支持 .html / .htm 文件', variant: 'destructive' });
