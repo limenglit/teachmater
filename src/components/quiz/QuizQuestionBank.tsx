@@ -133,6 +133,18 @@ export default function QuizQuestionBank({
   }, [questions, filterType, filterCategoryId, filterStarred, searchText,
       advTypes, advCategoryIds, advKnowledge, advKnowledgeMatch]);
 
+  // Pagination: keep the DOM lightweight for large question banks (hundreds+).
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [
+    filterType, filterCategoryId, filterStarred, searchText,
+    advTypes, advCategoryIds, advKnowledge, advKnowledgeMatch,
+  ]);
+  const visibleQuestions = useMemo(
+    () => filteredQuestions.slice(0, visibleCount),
+    [filteredQuestions, visibleCount],
+  );
+
   const resetForm = () => {
     setQType('single'); setQContent(''); setQOptions(['', '', '', '']);
     setQCorrect('A'); setQTags(''); setQCategoryId('');
@@ -748,7 +760,7 @@ export default function QuizQuestionBank({
         </div>
       ) : (
         <div className="space-y-1.5">
-          {filteredQuestions.map(q => (
+          {visibleQuestions.map(q => (
             <div key={q.id}
               className={`flex items-start gap-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer group ${selectedIds.has(q.id) ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}`}
               onClick={() => toggleSelect(q.id)}
@@ -785,6 +797,19 @@ export default function QuizQuestionBank({
               </div>
             </div>
           ))}
+          {visibleCount < filteredQuestions.length && (
+            <div className="flex items-center justify-center gap-3 py-3 text-xs text-muted-foreground">
+              <span>已显示 {visibleCount} / {filteredQuestions.length} 道题</span>
+              <Button variant="outline" size="sm" className="h-7 text-xs"
+                onClick={() => setVisibleCount(c => Math.min(c + PAGE_SIZE, filteredQuestions.length))}>
+                加载更多
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs"
+                onClick={() => setVisibleCount(filteredQuestions.length)}>
+                显示全部
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
