@@ -213,9 +213,29 @@ export default function QuizSubmitPage() {
   };
 
   const toggleMultiAnswer = (qi: number, letter: string) => {
-    const current = Array.isArray(answers[qi]) ? [...answers[qi]] : [];
-    if (current.includes(letter)) setAnswer(qi, current.filter((x: string) => x !== letter));
-    else setAnswer(qi, [...current, letter].sort());
+    // Functional update to avoid stale-closure race when user taps options
+    // rapidly: reading `answers[qi]` from closure can drop the previous click
+    // because React batches state updates within the same render.
+    setAnswers(prev => {
+      const current = Array.isArray(prev[qi]) ? [...prev[qi]] : [];
+      const nextValue = current.includes(letter)
+        ? current.filter((x: string) => x !== letter)
+        : [...current, letter].sort();
+      const next = { ...prev, [qi]: nextValue };
+      if (sessionId && entered) {
+        const normalizedName = normalizeStudentName(name);
+        if (normalizedName) {
+          try {
+            localStorage.setItem(draftKey(sessionId, normalizedName), JSON.stringify({
+              answers: next,
+              currentQ,
+              savedAt: Date.now(),
+            }));
+          } catch { /* ignore */ }
+        }
+      }
+      return next;
+    });
   };
 
   const submitAll = async () => {
