@@ -164,6 +164,31 @@ export default function QuizSubmitPage() {
     } catch { /* ignore */ }
   }, [currentQ, entered, sessionId, name, submitted, answers]);
 
+  // Cross-tab sync: when another tab updates the draft or submits, merge here.
+  useEffect(() => {
+    if (!entered || !sessionId) return;
+    const normalizedName = normalizeStudentName(name);
+    if (!normalizedName) return;
+    const key = draftKey(sessionId, normalizedName);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== key) return;
+      // Draft removed by another tab => that tab submitted successfully.
+      if (e.newValue === null) {
+        setSubmitted(true);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed?.answers && typeof parsed.answers === 'object') {
+          // Merge: prefer the newer savedAt to avoid clobbering local edits.
+          setAnswers(prev => ({ ...prev, ...parsed.answers }));
+        }
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [entered, sessionId, name]);
+
 
   const enterQuiz = () => {
     const normalizedName = normalizeStudentName(name);
