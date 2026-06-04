@@ -61,7 +61,6 @@ export function lazyRetry<T extends { default: ComponentType<any> }>(
           }
           throw new Error('Dynamically imported module is missing a default export');
         }
-        sessionStorage.removeItem(CHUNK_RELOAD_KEY);
         return module;
       })
       .catch((error) => {
