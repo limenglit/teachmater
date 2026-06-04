@@ -29,7 +29,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const seats = seatData as (string | null)[][];
   const config = sceneConfig as {
     rows: number; cols: number; windowOnLeft: boolean;
-    colAisles?: number[]; rowAisles?: number[];
+    colAisles?: number[]; rowAisles?: number[]; aisleGap?: number;
     entryDoorMode?: 'front' | 'back' | 'both';
     frontDoorPosition?: DoorSide;
     backDoorPosition?: DoorSide;
@@ -102,17 +102,24 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const gapY = 8;
   const padX = 40; // room interior horizontal padding
   const padY = 36; // room interior vertical padding
+  const aisleGap = Math.max(4, Math.min(48, Number(config.aisleGap) || 14)); // configurable spacing for row/col aisles
 
   if (!myPosition) return <p className="text-center text-muted-foreground">{t('seat.nav.notFound')}</p>;
 
+  // Aisle indices (after column / after row N). Clamp to valid range.
+  const colAisleSet = Array.from(new Set((config.colAisles || []).filter((n) => Number.isInteger(n) && n >= 0 && n < cols - 1))).sort((a, b) => a - b);
+  const rowAisleSet = Array.from(new Set((config.rowAisles || []).filter((n) => Number.isInteger(n) && n >= 0 && n < rows - 1))).sort((a, b) => a - b);
+  const colShift = (c: number) => colAisleSet.filter((a) => a < c).length * aisleGap;
+  const rowShift = (r: number) => rowAisleSet.filter((a) => a < r).length * aisleGap;
+
   // ---- Derived layout (depends on cols/rows known after guard) ----
-  const innerW = cols * seatW + (cols - 1) * gapX;
-  const innerH = rows * seatH + (rows - 1) * gapY;
+  const innerW = cols * seatW + (cols - 1) * gapX + colAisleSet.length * aisleGap;
+  const innerH = rows * seatH + (rows - 1) * gapY + rowAisleSet.length * aisleGap;
   const roomW = innerW + padX * 2;
   const roomH = innerH + padY * 2;
 
-  const seatX = (c: number) => padX + c * (seatW + gapX);
-  const seatY = (r: number) => padY + r * (seatH + gapY);
+  const seatX = (c: number) => padX + c * (seatW + gapX) + colShift(c);
+  const seatY = (r: number) => padY + r * (seatH + gapY) + rowShift(r);
   const seatCx = (c: number) => seatX(c) + seatW / 2;
   const seatCy = (r: number) => seatY(r) + seatH / 2;
 
@@ -223,6 +230,32 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
               <text x={podiumX} y={podiumY + podiumH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                 className="fill-primary text-[10px] font-medium">{t('seat.nav.podium')}</text>
             </g>
+
+            {/* Aisle guides (vertical) */}
+            {colAisleSet.map((a) => {
+              const x = roomOx + seatX(a) + seatW + gapX / 2 + aisleGap / 2;
+              return (
+                <g key={`va-${a}`}>
+                  <line x1={x} y1={roomOy + padY / 2} x2={x} y2={roomOy + roomH - padY / 2}
+                    className="stroke-muted-foreground/30" strokeWidth={1} strokeDasharray="3 3" />
+                  <text x={x} y={roomOy + padY / 2 - 2} textAnchor="middle"
+                    className="fill-muted-foreground/70 text-[7px]">{t('seat.custom.aisle') || t('seat.nav.entry')}</text>
+                </g>
+              );
+            })}
+            {/* Aisle guides (horizontal) */}
+            {rowAisleSet.map((a) => {
+              const y = roomOy + seatY(a) + seatH + gapY / 2 + aisleGap / 2;
+              return (
+                <g key={`ha-${a}`}>
+                  <line x1={roomOx + padX / 2} y1={y} x2={roomOx + roomW - padX / 2} y2={y}
+                    className="stroke-muted-foreground/30" strokeWidth={1} strokeDasharray="3 3" />
+                  <text x={roomOx + padX / 2 - 2} y={y} textAnchor="end" dominantBaseline="middle"
+                    className="fill-muted-foreground/70 text-[7px]">{t('seat.custom.aisle') || t('seat.nav.entry')}</text>
+                </g>
+              );
+            })}
+
 
             {/* Window indicator on the side opposite to the side door (or per config) */}
             <text x={windowOnLeft ? roomOx + 6 : roomOx + roomW - 6}

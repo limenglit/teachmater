@@ -5,7 +5,7 @@ export interface ParsedTitleRankRule {
 
 const TITLE_RANK_RULE_KEY = 'teachmate_title_rank_rules_v1';
 
-export type TitleRankSceneKey = 'conference' | 'smartClassroom' | 'banquet';
+export type TitleRankSceneKey = 'conference' | 'smartClassroom' | 'banquet' | 'customLayout';
 
 export const TITLE_RANK_PRESETS: Array<{ id: string; label: string; content: string }> = [
   {

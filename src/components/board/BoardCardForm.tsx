@@ -3,7 +3,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { ImagePlus, Paperclip, X } from 'lucide-react';
+import { ImagePlus, Paperclip, X, Globe } from 'lucide-react';
 import type { BoardCard } from '@/components/BoardPanel';
 import { getFileCategory, getCardType, getCodeIcon, getCodeLanguage, ACCEPT_ALL_MEDIA } from '@/lib/board-file-utils';
 import { compressImage, validateFile } from '@/lib/upload-queue';
@@ -34,6 +34,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
+  const [isHtml, setIsHtml] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
 
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const html = ext === 'html' || ext === 'htm';
     const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
 
     const { promise } = uploadProgress.addUpload(file, { boardId });
@@ -64,6 +66,10 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
         setMediaUrl(result.publicUrl);
         setFileName(file.name);
         setFileCategory(category);
+        setIsHtml(html);
+        if (html) {
+          toast({ title: t('board.htmlUploaded'), description: t('board.htmlUploadedHint') });
+        }
       }
     } finally {
       setUploading(false);
@@ -74,6 +80,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
   const clearMedia = () => {
     setMediaUrl('');
     setFileName('');
+    setIsHtml(false);
   };
 
   const handleSubmit = () => {
@@ -83,7 +90,7 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
       url: url.trim(),
       color,
       author_nickname: nickname.trim() || t('board.anonymous'),
-      card_type: mediaUrl ? getCardType(fileCategory) : url.trim() ? 'url' : 'text',
+      card_type: mediaUrl ? (isHtml ? 'html' : getCardType(fileCategory)) : url.trim() ? 'url' : 'text',
       column_id: columnId,
       media_url: mediaUrl,
     });
@@ -121,11 +128,20 @@ export default function BoardCardForm({ onSubmit, columns, viewMode, defaultNick
                 <span className="truncate max-w-[120px]">{fileName}</span>
               </div>
             )}
-            {fileCategory === 'code' && (
+            {fileCategory === 'code' && !isHtml && (
               <div className="h-16 px-3 rounded-lg bg-muted flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="text-base">{getCodeIcon(fileName.split('.').pop() || '')}</span>
                 <span className="truncate max-w-[100px]">{fileName}</span>
                 <span className="text-[10px] px-1 py-0.5 rounded bg-primary/10 text-primary font-mono">{getCodeLanguage(fileName.split('.').pop() || '')}</span>
+              </div>
+            )}
+            {isHtml && (
+              <div className="h-16 px-3 rounded-lg bg-primary/5 border border-primary/30 flex items-center gap-2 text-xs text-foreground">
+                <Globe className="w-4 h-4 text-primary" />
+                <div className="flex flex-col leading-tight">
+                  <span className="truncate max-w-[140px] font-medium">{fileName}</span>
+                  <span className="text-[10px] text-muted-foreground">{t('board.htmlPage')}</span>
+                </div>
               </div>
             )}
             <button onClick={clearMedia} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">

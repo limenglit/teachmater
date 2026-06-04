@@ -707,6 +707,7 @@ export type Database = {
           nickname: string | null
           status: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -715,6 +716,7 @@ export type Database = {
           nickname?: string | null
           status?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -723,6 +725,7 @@ export type Database = {
           nickname?: string | null
           status?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -1290,6 +1293,69 @@ export type Database = {
         }
         Relationships: []
       }
+      user_page_limits: {
+        Row: {
+          id: string
+          page_limit: number
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          page_limit?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          page_limit?: number
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_pages: {
+        Row: {
+          created_at: string
+          html_content: string | null
+          id: string
+          is_public: boolean
+          slug: string
+          storage_path: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          is_public?: boolean
+          slug: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          html_content?: string | null
+          id?: string
+          is_public?: boolean
+          slug?: string
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1462,6 +1528,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_get_users_with_page_limits: {
+        Args: never
+        Returns: {
+          email: string
+          nickname: string
+          page_limit: number
+          pages_used: number
+          status: string
+          user_id: string
+        }[]
+      }
       admin_list_pending_vocab_sets: {
         Args: never
         Returns: {
@@ -1477,6 +1554,10 @@ export type Database = {
       }
       admin_set_ai_limits: {
         Args: { p_daily_limit: number; p_user_ids: string[] }
+        Returns: undefined
+      }
+      admin_set_page_limits: {
+        Args: { p_page_limit: number; p_user_ids: string[] }
         Returns: undefined
       }
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
@@ -1583,7 +1664,9 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_effective_page_limit: { Args: { p_user_id: string }; Returns: number }
       get_my_status: { Args: never; Returns: string }
+      get_my_username: { Args: never; Returns: string }
       get_pending_users: {
         Args: never
         Returns: {
@@ -1610,6 +1693,15 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      get_public_page: {
+        Args: { p_slug: string; p_username: string }
+        Returns: {
+          html_content: string
+          storage_path: string
+          title: string
+          updated_at: string
+        }[]
       }
       get_quiz_session_for_student: {
         Args: { p_session_id: string }
@@ -1726,6 +1818,7 @@ export type Database = {
         Args: { p_session_id: string; p_student_name: string }
         Returns: boolean
       }
+      is_approved_user: { Args: { _user_id: string }; Returns: boolean }
       manage_board_card: {
         Args: {
           p_action: string
@@ -1736,7 +1829,12 @@ export type Database = {
         Returns: undefined
       }
       merge_seat_checkin_guests: {
-        Args: { p_seat_data: Json; p_session_id: string; p_student_names: Json }
+        Args: {
+          p_seat_data: Json
+          p_session_id: string
+          p_student_names: Json
+          p_token: string
+        }
         Returns: undefined
       }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
@@ -1744,6 +1842,7 @@ export type Database = {
         Args: { p_reason: string; p_set_id: string }
         Returns: undefined
       }
+      set_my_username: { Args: { p_username: string }; Returns: undefined }
       submit_quiz_answers: {
         Args: { p_answers: Json; p_session_id: string; p_student_name: string }
         Returns: undefined
@@ -1814,15 +1913,10 @@ export type Database = {
             }
             Returns: undefined
           }
-      update_seat_checkin_session:
-        | {
-            Args: { p_session_id: string; p_status?: string }
-            Returns: undefined
-          }
-        | {
-            Args: { p_session_id: string; p_status: string; p_token: string }
-            Returns: undefined
-          }
+      update_seat_checkin_session: {
+        Args: { p_session_id: string; p_status: string; p_token: string }
+        Returns: undefined
+      }
       update_task_session: {
         Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined

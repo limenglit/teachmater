@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminConfigPanel from '@/components/AdminConfigPanel';
 import AdminAIQuotaPanel from '@/components/AdminAIQuotaPanel';
+import AdminPagesQuotaPanel from '@/components/AdminPagesQuotaPanel';
 import AdminVocabReview from '@/components/AdminVocabReview';
+import { useDocumentHead } from '@/hooks/useDocumentHead';
 
 interface PendingUser {
   user_id: string;
@@ -21,6 +23,10 @@ interface PendingUser {
 }
 
 export default function AdminPage() {
+  useDocumentHead({
+    title: '管理后台 — 教创搭子 TeacherMate',
+    description: '教师审核、AI 配额、功能开关与系统配置的内部管理后台。仅限管理员访问。',
+  });
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -31,7 +37,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchActing, setBatchActing] = useState(false);
-  const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai' | 'vocab'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai' | 'pages' | 'vocab'>('users');
 
   useEffect(() => {
     if (!user) {
@@ -266,6 +272,14 @@ export default function AdminPage() {
           </Button>
           <Button
             size="sm"
+            variant={adminTab === 'pages' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('pages')}
+          >
+            <FileText className="w-3.5 h-3.5" /> Page 配额
+          </Button>
+          <Button
+            size="sm"
             variant={adminTab === 'vocab' ? 'default' : 'ghost'}
             className="gap-1 text-xs"
             onClick={() => setAdminTab('vocab')}
@@ -278,6 +292,8 @@ export default function AdminPage() {
           <AdminConfigPanel />
         ) : adminTab === 'ai' ? (
           <AdminAIQuotaPanel />
+        ) : adminTab === 'pages' ? (
+          <AdminPagesQuotaPanel />
         ) : adminTab === 'vocab' ? (
           <AdminVocabReview />
         ) : (

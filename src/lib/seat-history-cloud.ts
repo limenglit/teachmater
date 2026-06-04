@@ -22,7 +22,8 @@ export type SeatSceneType =
   | 'banquet'
   | 'conference'
   | 'computer_lab'
-  | 'concert';
+  | 'concert'
+  | 'custom_layout';
 
 export interface CloudSeatHistoryRow<S = unknown> {
   id: string;

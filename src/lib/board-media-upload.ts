@@ -28,6 +28,8 @@ const BOARD_MEDIA_CONTENT_TYPES: Record<string, string> = {
   webp: 'image/webp',
   bmp: 'image/bmp',
   svg: 'image/svg+xml',
+  html: 'text/html',
+  htm: 'text/html',
 };
 
 const MIME_PRIMARY_EXTENSIONS: Record<string, string> = {
@@ -99,16 +101,84 @@ export interface UploadBoardMediaResult {
   publicUrl: string;
 }
 
+function detectHtmlCharset(bytes: Uint8Array): string | null {
+  // Sniff first 1KB for <meta charset> or http-equiv content-type
+  const head = new TextDecoder('ascii', { fatal: false }).decode(bytes.slice(0, 2048)).toLowerCase();
+  const m1 = head.match(/<meta[^>]+charset\s*=\s*["']?\s*([a-z0-9_\-]+)/);
+  if (m1) return m1[1];
+  const m2 = head.match(/<meta[^>]+content\s*=\s*["'][^"']*charset=\s*([a-z0-9_\-]+)/);
+  if (m2) return m2[1];
+  return null;
+}
+
+function isValidUtf8(bytes: Uint8Array): boolean {
+  try {
+    new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function normalizeHtmlToUtf8(file: Blob): Promise<Blob> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const declared = detectHtmlCharset(buf);
+  const looksLikeUtf8 = isValidUtf8(buf);
+  let text: string;
+
+  if (declared && !/^utf-?8$/i.test(declared)) {
+    // Honor declared non-UTF8 charset (gbk, gb2312, big5, shift_jis, etc.)
+    try {
+      text = new TextDecoder(declared.toLowerCase(), { fatal: false }).decode(buf);
+    } catch {
+      text = new TextDecoder('gbk', { fatal: false }).decode(buf);
+    }
+  } else if (!looksLikeUtf8) {
+    // No/utf-8 declaration but bytes aren't valid UTF-8 → likely GBK (common for Chinese HTML saved on Windows)
+    try {
+      text = new TextDecoder('gbk', { fatal: false }).decode(buf);
+    } catch {
+      text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+    }
+  } else {
+    text = new TextDecoder('utf-8', { fatal: false }).decode(buf);
+  }
+
+  // Ensure a UTF-8 meta charset tag is present / replace any existing charset declaration
+  const utf8Meta = '<meta charset="utf-8">';
+  const hasCharset = /<meta[^>]+charset\s*=/i.test(text);
+  if (hasCharset) {
+    text = text.replace(/<meta[^>]+charset\s*=\s*["']?[a-z0-9_\-]+["']?[^>]*>/gi, utf8Meta);
+  } else if (/<head[^>]*>/i.test(text)) {
+    text = text.replace(/<head[^>]*>/i, (m) => `${m}\n  ${utf8Meta}`);
+  } else if (/<html[^>]*>/i.test(text)) {
+    text = text.replace(/<html[^>]*>/i, (m) => `${m}\n<head>${utf8Meta}</head>`);
+  } else {
+    text = `${utf8Meta}\n${text}`;
+  }
+
+  return new Blob([new TextEncoder().encode(text)], { type: 'text/html; charset=utf-8' });
+}
+
 export async function uploadBoardMediaFile(
   file: Blob | File,
   { boardId, fileName, scope = 'boards' }: UploadBoardMediaOptions,
 ): Promise<UploadBoardMediaResult> {
-  const contentType = getContentType(file, fileName);
+  let contentType = getContentType(file, fileName);
   const ext = getUploadExtension(file, fileName);
-  const path = `${scope}/${boardId}/${crypto.randomUUID()}.${ext}`;
-  const buffer = await file.arrayBuffer();
-  const body = new Blob([buffer], { type: contentType });
+  const isHtml = ext === 'html' || ext === 'htm' || contentType.startsWith('text/html');
 
+  let body: Blob;
+  if (isHtml) {
+    // Re-encode to UTF-8 and inject a proper charset meta so browsers render Chinese correctly
+    body = await normalizeHtmlToUtf8(file);
+    contentType = 'text/html; charset=utf-8';
+  } else {
+    const buffer = await file.arrayBuffer();
+    body = new Blob([buffer], { type: contentType });
+  }
+
+  const path = `${scope}/${boardId}/${crypto.randomUUID()}.${ext}`;
   const { data, error } = await supabase.storage
     .from('board-media')
     .upload(path, body, {
