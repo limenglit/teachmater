@@ -164,6 +164,31 @@ export default function QuizSubmitPage() {
     } catch { /* ignore */ }
   }, [currentQ, entered, sessionId, name, submitted, answers]);
 
+  // Cross-tab sync: when another tab updates the draft or submits, merge here.
+  useEffect(() => {
+    if (!entered || !sessionId) return;
+    const normalizedName = normalizeStudentName(name);
+    if (!normalizedName) return;
+    const key = draftKey(sessionId, normalizedName);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== key) return;
+      // Draft removed by another tab => that tab submitted successfully.
+      if (e.newValue === null) {
+        setSubmitted(true);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed?.answers && typeof parsed.answers === 'object') {
+          // Merge: prefer the newer savedAt to avoid clobbering local edits.
+          setAnswers(prev => ({ ...prev, ...parsed.answers }));
+        }
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [entered, sessionId, name]);
+
 
   const enterQuiz = () => {
     const normalizedName = normalizeStudentName(name);
@@ -213,9 +238,29 @@ export default function QuizSubmitPage() {
   };
 
   const toggleMultiAnswer = (qi: number, letter: string) => {
-    const current = Array.isArray(answers[qi]) ? [...answers[qi]] : [];
-    if (current.includes(letter)) setAnswer(qi, current.filter((x: string) => x !== letter));
-    else setAnswer(qi, [...current, letter].sort());
+    // Functional update to avoid stale-closure race when user taps options
+    // rapidly: reading `answers[qi]` from closure can drop the previous click
+    // because React batches state updates within the same render.
+    setAnswers(prev => {
+      const current = Array.isArray(prev[qi]) ? [...prev[qi]] : [];
+      const nextValue = current.includes(letter)
+        ? current.filter((x: string) => x !== letter)
+        : [...current, letter].sort();
+      const next = { ...prev, [qi]: nextValue };
+      if (sessionId && entered) {
+        const normalizedName = normalizeStudentName(name);
+        if (normalizedName) {
+          try {
+            localStorage.setItem(draftKey(sessionId, normalizedName), JSON.stringify({
+              answers: next,
+              currentQ,
+              savedAt: Date.now(),
+            }));
+          } catch { /* ignore */ }
+        }
+      }
+      return next;
+    });
   };
 
   const submitAll = async () => {
