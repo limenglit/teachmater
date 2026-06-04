@@ -1,6 +1,7 @@
 import { lazy, type ComponentType } from 'react';
 
-const CHUNK_RELOAD_KEY = 'chunk_reload';
+const CHUNK_RELOAD_KEY = 'chunk_reload_ts';
+const RELOAD_COOLDOWN_MS = 10_000;
 const MODULE_LOAD_ERROR_MESSAGES = [
   'Importing a module script failed',
   'Failed to fetch dynamically imported module',
@@ -20,13 +21,13 @@ export function isModuleLoadError(error: unknown) {
 function tryReloadForChunkError() {
   if (typeof window === 'undefined') return false;
 
-  if (!sessionStorage.getItem(CHUNK_RELOAD_KEY)) {
-    sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+  const last = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || '0');
+  const now = Date.now();
+  if (now - last > RELOAD_COOLDOWN_MS) {
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, String(now));
     window.location.reload();
     return true;
   }
-
-  sessionStorage.removeItem(CHUNK_RELOAD_KEY);
   return false;
 }
 
