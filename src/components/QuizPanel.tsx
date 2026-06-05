@@ -23,8 +23,9 @@ import { tFormat } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import QuizStatsView from '@/components/quiz/QuizStatsView';
 import QuizQuestionBank from '@/components/quiz/QuizQuestionBank';
-import QuizPaperBank from '@/components/quiz/QuizPaperBank';
-import QuizAIGenerator from '@/components/quiz/QuizAIGenerator';
+// Heavy tabs lazy-loaded — only fetched when user opens them.
+const QuizPaperBank = lazy(() => import('@/components/quiz/QuizPaperBank'));
+const QuizAIGenerator = lazy(() => import('@/components/quiz/QuizAIGenerator'));
 import type { QuizQuestion, QuizSession, QuizCategory, QuizPaper } from '@/components/quiz/quizTypes';
 import {
   getSessionTokens, saveSessionToken, getSessionToken,
