@@ -146,13 +146,17 @@ export default function QuizSubmitPage() {
 
   // Poll session status so students can see when teacher ends the quiz.
   // Stop polling once ended + revealed (nothing more to learn).
+  // Transient network failures are swallowed silently so the next tick can retry.
   useEffect(() => {
     if (!sessionId) return;
     if (session?.status === 'ended' && session?.reveal_answers) return;
 
     const timer = window.setInterval(async () => {
-      const { data } = await supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId });
-      if (data) {
+      const { data, error } = await runQuizCall(
+        () => supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId }),
+        { timeoutMs: 6000, retries: 0 },
+      );
+      if (!error && data) {
         setSession(data as any);
       }
     }, 5000);
