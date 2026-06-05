@@ -84,7 +84,9 @@ export default function QuizPanel() {
 
   useEffect(() => {
     if (user) {
-      loadQuestions(); loadSessions(); loadCategories(); loadPapers();
+      // Parallel fetch — these are independent queries; running them sequentially
+      // wastes ~3 round-trips of latency on tab open.
+      Promise.all([loadQuestions(), loadSessions(), loadCategories(), loadPapers()]);
     } else {
       setQuestions(getLocalQuestions());
       setCategories(getLocalCategories());
