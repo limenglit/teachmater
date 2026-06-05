@@ -171,12 +171,11 @@ export default function QuizStatsView({ session }: Props) {
           <h4 className="text-sm font-medium text-foreground mb-3">{t('quiz.studentList')}</h4>
           <div className="flex flex-wrap gap-1.5">
             {studentNames.map(name => {
-              const studentAnswers = answers.filter(a => a.student_name === name);
-              const correctCount = studentAnswers.filter(a => a.is_correct === true).length;
+              const s = stats.byStudent.get(name) || { total: 0, correct: 0 };
               const totalQ = questions.length;
               return (
                 <span key={name} className="text-xs bg-muted px-2 py-1 rounded-md">
-                  {name} <span className="text-muted-foreground">({correctCount}/{totalQ})</span>
+                  {name} <span className="text-muted-foreground">({s.correct}/{totalQ})</span>
                 </span>
               );
             })}
