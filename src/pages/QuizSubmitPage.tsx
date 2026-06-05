@@ -123,8 +123,10 @@ export default function QuizSubmitPage() {
   }, [studentResult]);
 
   // Poll session status so students can see when teacher ends the quiz.
+  // Stop polling once ended + revealed (nothing more to learn).
   useEffect(() => {
     if (!sessionId) return;
+    if (session?.status === 'ended' && session?.reveal_answers) return;
 
     const timer = window.setInterval(async () => {
       const { data } = await supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId });
@@ -134,7 +136,7 @@ export default function QuizSubmitPage() {
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, [sessionId]);
+  }, [sessionId, session?.status, session?.reveal_answers]);
 
   // Build name suggestions from student_names + recent names
   useEffect(() => {
@@ -151,17 +153,21 @@ export default function QuizSubmitPage() {
     return nameSuggestions.filter(n => normalizeStudentName(n).toLowerCase().includes(normalized)).slice(0, 8);
   }, [name, nameSuggestions]);
 
-  // Persist current question index to draft so refresh resumes at same question
+  // Persist current question index to draft. Debounced 400ms to avoid hammering
+  // localStorage on every keystroke in short-answer questions.
   useEffect(() => {
     if (!entered || !sessionId || submitted) return;
     const normalizedName = normalizeStudentName(name);
     if (!normalizedName) return;
-    try {
-      const key = draftKey(sessionId, normalizedName);
-      const raw = localStorage.getItem(key);
-      const prev = raw ? JSON.parse(raw) : {};
-      localStorage.setItem(key, JSON.stringify({ ...prev, answers, currentQ, savedAt: Date.now() }));
-    } catch { /* ignore */ }
+    const handle = window.setTimeout(() => {
+      try {
+        const key = draftKey(sessionId, normalizedName);
+        const raw = localStorage.getItem(key);
+        const prev = raw ? JSON.parse(raw) : {};
+        localStorage.setItem(key, JSON.stringify({ ...prev, answers, currentQ, savedAt: Date.now() }));
+      } catch { /* ignore */ }
+    }, 400);
+    return () => window.clearTimeout(handle);
   }, [currentQ, entered, sessionId, name, submitted, answers]);
 
   // Cross-tab sync: when another tab updates the draft or submits, merge here.
