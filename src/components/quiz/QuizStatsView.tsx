@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { runQuizCall } from '@/lib/quiz-error';
+import { toast } from '@/hooks/use-toast';
 import type { QuizSession } from '@/components/QuizPanel';
 
 interface Answer {
