@@ -34,6 +34,7 @@ import {
 } from '@/components/quiz/quizTypes';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import { runQuizCall } from '@/lib/quiz-error';
 
 // Re-export for backward compat
 export type { QuizQuestion, QuizSession };
