@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { QuizSession } from '@/components/QuizPanel';
@@ -49,7 +49,25 @@ export default function QuizStatsView({ session }: Props) {
   };
 
   // Stats
-  const studentNames = [...new Set(answers.map(a => a.student_name))];
+  // Bucket all answers in one O(N) pass so per-question/per-student/per-option
+  // counters don't run repeated O(N) filters on every realtime insert.
+  const stats = useMemo(() => {
+    const byQuestion = new Map<number, Answer[]>();
+    const byStudent = new Map<string, { total: number; correct: number }>();
+    let totalCorrect = 0;
+    for (const a of answers) {
+      let bucket = byQuestion.get(a.question_index);
+      if (!bucket) { bucket = []; byQuestion.set(a.question_index, bucket); }
+      bucket.push(a);
+      const s = byStudent.get(a.student_name) || { total: 0, correct: 0 };
+      s.total += 1;
+      if (a.is_correct === true) { s.correct += 1; totalCorrect += 1; }
+      byStudent.set(a.student_name, s);
+    }
+    return { byQuestion, byStudent, totalCorrect };
+  }, [answers]);
+
+  const studentNames = useMemo(() => Array.from(stats.byStudent.keys()), [stats]);
   const submittedCount = studentNames.length;
 
   return (
@@ -67,7 +85,7 @@ export default function QuizStatsView({ session }: Props) {
         <div className="bg-card border border-border rounded-xl p-4 text-center">
           <div className="text-2xl font-bold text-green-600">
             {answers.length > 0
-              ? `${Math.round((answers.filter(a => a.is_correct === true).length / answers.length) * 100)}%`
+              ? `${Math.round((stats.totalCorrect / answers.length) * 100)}%`
               : '—'}
           </div>
           <div className="text-xs text-muted-foreground">{t('quiz.accuracy')}</div>
@@ -81,9 +99,9 @@ export default function QuizStatsView({ session }: Props) {
       {/* Per-question stats */}
       <div className="space-y-4">
         {questions.map((q: any, qi: number) => {
-          const qAnswers = answers.filter(a => a.question_index === qi);
+          const qAnswers = stats.byQuestion.get(qi) || [];
           const total = qAnswers.length;
-          const correct = qAnswers.filter(a => a.is_correct === true).length;
+          const correct = qAnswers.reduce((n, a) => n + (a.is_correct === true ? 1 : 0), 0);
 
           return (
             <div key={qi} className="bg-card border border-border rounded-xl p-4">
@@ -153,12 +171,11 @@ export default function QuizStatsView({ session }: Props) {
           <h4 className="text-sm font-medium text-foreground mb-3">{t('quiz.studentList')}</h4>
           <div className="flex flex-wrap gap-1.5">
             {studentNames.map(name => {
-              const studentAnswers = answers.filter(a => a.student_name === name);
-              const correctCount = studentAnswers.filter(a => a.is_correct === true).length;
+              const s = stats.byStudent.get(name) || { total: 0, correct: 0 };
               const totalQ = questions.length;
               return (
                 <span key={name} className="text-xs bg-muted px-2 py-1 rounded-md">
-                  {name} <span className="text-muted-foreground">({correctCount}/{totalQ})</span>
+                  {name} <span className="text-muted-foreground">({s.correct}/{totalQ})</span>
                 </span>
               );
             })}

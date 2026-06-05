@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,8 +23,9 @@ import { tFormat } from '@/contexts/LanguageContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import QuizStatsView from '@/components/quiz/QuizStatsView';
 import QuizQuestionBank from '@/components/quiz/QuizQuestionBank';
-import QuizPaperBank from '@/components/quiz/QuizPaperBank';
-import QuizAIGenerator from '@/components/quiz/QuizAIGenerator';
+// Heavy tabs lazy-loaded — only fetched when user opens them.
+const QuizPaperBank = lazy(() => import('@/components/quiz/QuizPaperBank'));
+const QuizAIGenerator = lazy(() => import('@/components/quiz/QuizAIGenerator'));
 import type { QuizQuestion, QuizSession, QuizCategory, QuizPaper } from '@/components/quiz/quizTypes';
 import {
   getSessionTokens, saveSessionToken, getSessionToken,
@@ -83,7 +84,9 @@ export default function QuizPanel() {
 
   useEffect(() => {
     if (user) {
-      loadQuestions(); loadSessions(); loadCategories(); loadPapers();
+      // Parallel fetch — these are independent queries; running them sequentially
+      // wastes ~3 round-trips of latency on tab open.
+      Promise.all([loadQuestions(), loadSessions(), loadCategories(), loadPapers()]);
     } else {
       setQuestions(getLocalQuestions());
       setCategories(getLocalCategories());
@@ -519,40 +522,44 @@ export default function QuizPanel() {
         )}
 
         {tab === 'ai' && (
-          <QuizAIGenerator
-            isGuest={isGuest}
-            userId={user?.id ?? null}
-            questions={questions}
-            setQuestions={setQuestions}
-            selectedIds={selectedIds}
-            setSelectedIds={setSelectedIds}
-            onSwitchToBank={() => setTab('bank')}
-          />
+          <Suspense fallback={<div className="text-center py-10 text-xs text-muted-foreground">{t('common.loading') || 'Loading…'}</div>}>
+            <QuizAIGenerator
+              isGuest={isGuest}
+              userId={user?.id ?? null}
+              questions={questions}
+              setQuestions={setQuestions}
+              selectedIds={selectedIds}
+              setSelectedIds={setSelectedIds}
+              onSwitchToBank={() => setTab('bank')}
+            />
+          </Suspense>
         )}
 
         {tab === 'papers' && (
-          <QuizPaperBank
-            papers={papers} setPapers={setPapers}
-            questions={questions} isGuest={isGuest}
-            seedQuestions={paperSeed?.questions}
-            seedTitle={paperSeed?.title}
-            onSeedConsumed={() => setPaperSeed(null)}
-            onPublishPaper={async (paper) => {
-              await publishQuizSession(paper.questions.map((item) => item.question), paper.title);
-            }}
-            rosterButton={
-              <Button
-                variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
-                size="sm" className="h-8 text-xs gap-1 shrink-0"
-                onClick={() => setShowRoster(true)}
-              >
-                <Users className="w-3 h-3" />
-                {sessionStudentNames.length > 0
-                  ? tFormat(t('board.studentCount'), sessionStudentNames.length)
-                  : t('board.selectClass')}
-              </Button>
-            }
-          />
+          <Suspense fallback={<div className="text-center py-10 text-xs text-muted-foreground">{t('common.loading') || 'Loading…'}</div>}>
+            <QuizPaperBank
+              papers={papers} setPapers={setPapers}
+              questions={questions} isGuest={isGuest}
+              seedQuestions={paperSeed?.questions}
+              seedTitle={paperSeed?.title}
+              onSeedConsumed={() => setPaperSeed(null)}
+              onPublishPaper={async (paper) => {
+                await publishQuizSession(paper.questions.map((item) => item.question), paper.title);
+              }}
+              rosterButton={
+                <Button
+                  variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
+                  size="sm" className="h-8 text-xs gap-1 shrink-0"
+                  onClick={() => setShowRoster(true)}
+                >
+                  <Users className="w-3 h-3" />
+                  {sessionStudentNames.length > 0
+                    ? tFormat(t('board.studentCount'), sessionStudentNames.length)
+                    : t('board.selectClass')}
+                </Button>
+              }
+            />
+          </Suspense>
         )}
 
         {tab === 'sessions' && (
