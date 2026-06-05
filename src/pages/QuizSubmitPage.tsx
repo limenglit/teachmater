@@ -305,17 +305,34 @@ export default function QuizSubmitPage() {
     const questions = session.questions;
     const answersArray = questions.map((_q: any, i: number) => answers[i] ?? '');
     const normalizedName = normalizeStudentName(name);
-    const { error } = await supabase.rpc('submit_quiz_answers', {
-      p_session_id: session.id,
-      p_student_name: normalizedName,
-      p_answers: answersArray,
-    } as any);
+
+    // Submission is wrapped with: 15s timeout, 1 retry on network/timeout/5xx.
+    // RPC raises (conflict / roster mismatch / auth) are not retried.
+    const { error } = await runQuizCall(
+      () => supabase.rpc('submit_quiz_answers', {
+        p_session_id: session.id,
+        p_student_name: normalizedName,
+        p_answers: answersArray,
+      } as any),
+      { timeoutMs: 15_000, retries: 1 },
+    );
+
     if (error) {
       setSubmitting(false);
-      // Keep the draft on failure so user can retry without re-entering everything
+      // Special-case conflicts: treat as already-submitted success path.
+      if (error.kind === 'conflict') {
+        if (sessionId && normalizedName) {
+          try { localStorage.removeItem(draftKey(sessionId, normalizedName)); } catch { /* ignore */ }
+        }
+        setSubmitted(true);
+        toast({ title: '你已提交过本次测验' });
+        return;
+      }
+      // Keep draft on failure so the user can retry without losing input.
       toast({ title: tr('quiz.submitFailed', '提交失败，请重试'), description: error.message, variant: 'destructive' });
       return;
     }
+
     // Clear draft only on successful submit
     if (sessionId && normalizedName) {
       try { localStorage.removeItem(draftKey(sessionId, normalizedName)); } catch { /* ignore */ }
