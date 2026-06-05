@@ -520,40 +520,44 @@ export default function QuizPanel() {
         )}
 
         {tab === 'ai' && (
-          <QuizAIGenerator
-            isGuest={isGuest}
-            userId={user?.id ?? null}
-            questions={questions}
-            setQuestions={setQuestions}
-            selectedIds={selectedIds}
-            setSelectedIds={setSelectedIds}
-            onSwitchToBank={() => setTab('bank')}
-          />
+          <Suspense fallback={<div className="text-center py-10 text-xs text-muted-foreground">{t('common.loading') || 'Loading…'}</div>}>
+            <QuizAIGenerator
+              isGuest={isGuest}
+              userId={user?.id ?? null}
+              questions={questions}
+              setQuestions={setQuestions}
+              selectedIds={selectedIds}
+              setSelectedIds={setSelectedIds}
+              onSwitchToBank={() => setTab('bank')}
+            />
+          </Suspense>
         )}
 
         {tab === 'papers' && (
-          <QuizPaperBank
-            papers={papers} setPapers={setPapers}
-            questions={questions} isGuest={isGuest}
-            seedQuestions={paperSeed?.questions}
-            seedTitle={paperSeed?.title}
-            onSeedConsumed={() => setPaperSeed(null)}
-            onPublishPaper={async (paper) => {
-              await publishQuizSession(paper.questions.map((item) => item.question), paper.title);
-            }}
-            rosterButton={
-              <Button
-                variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
-                size="sm" className="h-8 text-xs gap-1 shrink-0"
-                onClick={() => setShowRoster(true)}
-              >
-                <Users className="w-3 h-3" />
-                {sessionStudentNames.length > 0
-                  ? tFormat(t('board.studentCount'), sessionStudentNames.length)
-                  : t('board.selectClass')}
-              </Button>
-            }
-          />
+          <Suspense fallback={<div className="text-center py-10 text-xs text-muted-foreground">{t('common.loading') || 'Loading…'}</div>}>
+            <QuizPaperBank
+              papers={papers} setPapers={setPapers}
+              questions={questions} isGuest={isGuest}
+              seedQuestions={paperSeed?.questions}
+              seedTitle={paperSeed?.title}
+              onSeedConsumed={() => setPaperSeed(null)}
+              onPublishPaper={async (paper) => {
+                await publishQuizSession(paper.questions.map((item) => item.question), paper.title);
+              }}
+              rosterButton={
+                <Button
+                  variant={sessionStudentNames.length > 0 ? 'default' : 'outline'}
+                  size="sm" className="h-8 text-xs gap-1 shrink-0"
+                  onClick={() => setShowRoster(true)}
+                >
+                  <Users className="w-3 h-3" />
+                  {sessionStudentNames.length > 0
+                    ? tFormat(t('board.studentCount'), sessionStudentNames.length)
+                    : t('board.selectClass')}
+                </Button>
+              }
+            />
+          </Suspense>
         )}
 
         {tab === 'sessions' && (
