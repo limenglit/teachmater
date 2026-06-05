@@ -85,7 +85,7 @@ export default function QuizStatsView({ session }: Props) {
         <div className="bg-card border border-border rounded-xl p-4 text-center">
           <div className="text-2xl font-bold text-green-600">
             {answers.length > 0
-              ? `${Math.round((answers.filter(a => a.is_correct === true).length / answers.length) * 100)}%`
+              ? `${Math.round((stats.totalCorrect / answers.length) * 100)}%`
               : '—'}
           </div>
           <div className="text-xs text-muted-foreground">{t('quiz.accuracy')}</div>
