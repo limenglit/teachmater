@@ -49,7 +49,25 @@ export default function QuizStatsView({ session }: Props) {
   };
 
   // Stats
-  const studentNames = [...new Set(answers.map(a => a.student_name))];
+  // Bucket all answers in one O(N) pass so per-question/per-student/per-option
+  // counters don't run repeated O(N) filters on every realtime insert.
+  const stats = useMemo(() => {
+    const byQuestion = new Map<number, Answer[]>();
+    const byStudent = new Map<string, { total: number; correct: number }>();
+    let totalCorrect = 0;
+    for (const a of answers) {
+      let bucket = byQuestion.get(a.question_index);
+      if (!bucket) { bucket = []; byQuestion.set(a.question_index, bucket); }
+      bucket.push(a);
+      const s = byStudent.get(a.student_name) || { total: 0, correct: 0 };
+      s.total += 1;
+      if (a.is_correct === true) { s.correct += 1; totalCorrect += 1; }
+      byStudent.set(a.student_name, s);
+    }
+    return { byQuestion, byStudent, totalCorrect };
+  }, [answers]);
+
+  const studentNames = useMemo(() => Array.from(stats.byStudent.keys()), [stats]);
   const submittedCount = studentNames.length;
 
   return (
