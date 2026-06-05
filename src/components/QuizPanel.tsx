@@ -34,6 +34,7 @@ import {
 } from '@/components/quiz/quizTypes';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import { runQuizCall } from '@/lib/quiz-error';
 
 // Re-export for backward compat
 export type { QuizQuestion, QuizSession };
@@ -95,33 +96,65 @@ export default function QuizPanel() {
     }
   }, [user]);
 
+  // All loaders wrap their call in runQuizCall so network/timeout/5xx errors
+  // become a visible toast instead of a silent empty list. RLS / auth errors
+  // (e.g. session expired) also surface so the user knows to re-login.
+  const reportLoadError = (label: string, err: { message: string; kind: string } | null) => {
+    if (!err) return;
+    toast({ title: `加载${label}失败`, description: err.message, variant: 'destructive' });
+  };
+
   const loadQuestions = async () => {
     if (!user) return;
-    const { data } = await supabase.from('quiz_questions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as any;
-    if (data) setQuestions(data);
+    const { data, error } = await runQuizCall<any[]>(
+      () => supabase.from('quiz_questions').select('*').eq('user_id', user.id).order('created_at', { ascending: false }) as any,
+      { timeoutMs: 10_000, retries: 1 },
+    );
+    if (error) return reportLoadError('题库', error);
+    if (data) setQuestions(data as any);
   };
 
   const loadCategories = async () => {
     if (!user) return;
-    const { data } = await supabase.from('quiz_categories').select('*').eq('user_id', user.id).order('sort_order') as any;
-    if (data) setCategories(data);
+    const { data, error } = await runQuizCall<any[]>(
+      () => supabase.from('quiz_categories').select('*').eq('user_id', user.id).order('sort_order') as any,
+      { timeoutMs: 10_000, retries: 1 },
+    );
+    if (error) return reportLoadError('分类', error);
+    if (data) setCategories(data as any);
   };
 
   const loadPapers = async () => {
     if (!user) return;
-    const { data } = await supabase.from('quiz_papers').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }) as any;
-    if (data) setPapers(data);
+    const { data, error } = await runQuizCall<any[]>(
+      () => supabase.from('quiz_papers').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }) as any,
+      { timeoutMs: 10_000, retries: 1 },
+    );
+    if (error) return reportLoadError('试卷', error);
+    if (data) setPapers(data as any);
   };
 
   const loadSessions = async () => {
     if (!user) return;
     const tokens = Object.values(getSessionTokens());
-    let all: QuizSession[] = [];
-    const { data } = await (supabase.from('quiz_sessions').select('*') as any).eq('user_id', user.id).order('created_at', { ascending: false });
-    if (data) all = data;
-    if (tokens.length > 0) {
-      const { data: d2 } = await supabase.from('quiz_sessions').select('*').in('creator_token', tokens).order('created_at', { ascending: false }) as any;
-      if (d2) { for (const s of d2) { if (!all.find((a: any) => a.id === s.id)) all.push(s); } }
+    const [mine, byToken] = await Promise.all([
+      runQuizCall<any[]>(
+        () => (supabase.from('quiz_sessions').select('*') as any).eq('user_id', user.id).order('created_at', { ascending: false }),
+        { timeoutMs: 10_000, retries: 1 },
+      ),
+      tokens.length > 0
+        ? runQuizCall<any[]>(
+            () => supabase.from('quiz_sessions').select('*').in('creator_token', tokens).order('created_at', { ascending: false }) as any,
+            { timeoutMs: 10_000, retries: 1 },
+          )
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+    if (mine.error) return reportLoadError('测验列表', mine.error);
+    const all: QuizSession[] = mine.data ? [...mine.data] : [];
+    if (byToken.data) {
+      for (const s of byToken.data) {
+        if (!all.find((a: any) => a.id === s.id)) all.push(s);
+      }
     }
     setSessions(all);
   };

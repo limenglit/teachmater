@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { runQuizCall } from '@/lib/quiz-error';
+import { toast } from '@/hooks/use-toast';
 import type { QuizSession } from '@/components/QuizPanel';
 
 interface Answer {
@@ -44,8 +46,15 @@ export default function QuizStatsView({ session }: Props) {
   }, [session.id]);
 
   const loadAnswers = async () => {
-    const { data } = await supabase.from('quiz_answers').select('*').eq('session_id', session.id) as any;
-    if (data) setAnswers(data);
+    const { data, error } = await runQuizCall<any[]>(
+      () => supabase.from('quiz_answers').select('*').eq('session_id', session.id) as any,
+      { timeoutMs: 10_000, retries: 1 },
+    );
+    if (error) {
+      toast({ title: '加载答题数据失败', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if (data) setAnswers(data as any);
   };
 
   // Stats

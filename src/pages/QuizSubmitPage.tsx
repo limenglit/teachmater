@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { normalizeQuizOptionText } from '@/lib/quiz-utils';
+import { runQuizCall } from '@/lib/quiz-error';
 
 interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
@@ -94,11 +95,21 @@ export default function QuizSubmitPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId })
-      .then(({ data }) => {
-        if (data) setSession(data as any);
-        setLoading(false);
-      });
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await runQuizCall(
+        () => supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId }),
+        { timeoutMs: 8000, retries: 2 },
+      );
+      if (cancelled) return;
+      if (error) {
+        toast({ title: '加载测验失败', description: error.message, variant: 'destructive' });
+      } else if (data) {
+        setSession(data as any);
+      }
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, [sessionId]);
 
   useEffect(() => {
@@ -106,12 +117,23 @@ export default function QuizSubmitPage() {
     const studentName = normalizeStudentName(name) || normalizeStudentName(localStorage.getItem(NAME_KEY) || '');
     if (!studentName) return;
 
-    (supabase.rpc as any)('get_quiz_student_result', {
-      p_session_id: sessionId,
-      p_student_name: studentName,
-    }).then(({ data }: any) => {
-      if (data) setStudentResult(data as StudentResult);
-    });
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await runQuizCall<StudentResult>(
+        () => (supabase.rpc as any)('get_quiz_student_result', {
+          p_session_id: sessionId,
+          p_student_name: studentName,
+        }),
+        { timeoutMs: 8000, retries: 2 },
+      );
+      if (cancelled) return;
+      if (error && error.kind !== 'notfound') {
+        toast({ title: '加载成绩失败', description: error.message, variant: 'destructive' });
+      } else if (data) {
+        setStudentResult(data);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [sessionId, session, name]);
 
   const serverAnswerMap = useMemo(() => {
@@ -124,13 +146,17 @@ export default function QuizSubmitPage() {
 
   // Poll session status so students can see when teacher ends the quiz.
   // Stop polling once ended + revealed (nothing more to learn).
+  // Transient network failures are swallowed silently so the next tick can retry.
   useEffect(() => {
     if (!sessionId) return;
     if (session?.status === 'ended' && session?.reveal_answers) return;
 
     const timer = window.setInterval(async () => {
-      const { data } = await supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId });
-      if (data) {
+      const { data, error } = await runQuizCall(
+        () => supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId }),
+        { timeoutMs: 6000, retries: 0 },
+      );
+      if (!error && data) {
         setSession(data as any);
       }
     }, 5000);
@@ -279,17 +305,34 @@ export default function QuizSubmitPage() {
     const questions = session.questions;
     const answersArray = questions.map((_q: any, i: number) => answers[i] ?? '');
     const normalizedName = normalizeStudentName(name);
-    const { error } = await supabase.rpc('submit_quiz_answers', {
-      p_session_id: session.id,
-      p_student_name: normalizedName,
-      p_answers: answersArray,
-    } as any);
+
+    // Submission is wrapped with: 15s timeout, 1 retry on network/timeout/5xx.
+    // RPC raises (conflict / roster mismatch / auth) are not retried.
+    const { error } = await runQuizCall(
+      () => supabase.rpc('submit_quiz_answers', {
+        p_session_id: session.id,
+        p_student_name: normalizedName,
+        p_answers: answersArray,
+      } as any),
+      { timeoutMs: 15_000, retries: 1 },
+    );
+
     if (error) {
       setSubmitting(false);
-      // Keep the draft on failure so user can retry without re-entering everything
+      // Special-case conflicts: treat as already-submitted success path.
+      if (error.kind === 'conflict') {
+        if (sessionId && normalizedName) {
+          try { localStorage.removeItem(draftKey(sessionId, normalizedName)); } catch { /* ignore */ }
+        }
+        setSubmitted(true);
+        toast({ title: '你已提交过本次测验' });
+        return;
+      }
+      // Keep draft on failure so the user can retry without losing input.
       toast({ title: tr('quiz.submitFailed', '提交失败，请重试'), description: error.message, variant: 'destructive' });
       return;
     }
+
     // Clear draft only on successful submit
     if (sessionId && normalizedName) {
       try { localStorage.removeItem(draftKey(sessionId, normalizedName)); } catch { /* ignore */ }
