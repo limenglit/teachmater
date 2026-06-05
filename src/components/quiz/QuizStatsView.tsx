@@ -99,9 +99,9 @@ export default function QuizStatsView({ session }: Props) {
       {/* Per-question stats */}
       <div className="space-y-4">
         {questions.map((q: any, qi: number) => {
-          const qAnswers = answers.filter(a => a.question_index === qi);
+          const qAnswers = stats.byQuestion.get(qi) || [];
           const total = qAnswers.length;
-          const correct = qAnswers.filter(a => a.is_correct === true).length;
+          const correct = qAnswers.reduce((n, a) => n + (a.is_correct === true ? 1 : 0), 0);
 
           return (
             <div key={qi} className="bg-card border border-border rounded-xl p-4">
