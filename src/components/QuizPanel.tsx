@@ -178,6 +178,7 @@ export default function QuizPanel() {
   };
 
   const publishQuizSession = async (selectedQuestions: QuizQuestion[], titleSeed?: string) => {
+    if (publishing) return;
     if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
     if (selectedQuestions.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
     // Validate question content & options - reject empty / malformed before publishing
@@ -209,6 +210,7 @@ export default function QuizPanel() {
       return m.includes('reveal_answers') && (m.includes('schema cache') || m.includes('column') || m.includes('could not find'));
     };
 
+    setPublishing(true);
     let { data, error } = await supabase.from('quiz_sessions').insert(payload).select().single() as any;
 
     if (error && isRevealSchemaError(error.message)) {
@@ -222,12 +224,14 @@ export default function QuizPanel() {
       }
     }
 
+    setPublishing(false);
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     saveSessionToken(data.id, data.creator_token);
     setActiveSession(data); setShowSession(true);
     setSelectedIds(new Set()); setSessionTitle(''); setSessionStudentNames([]);
     loadSessions();
   };
+
 
   const startSession = async () => {
     const selected = questions.filter(q => selectedIds.has(q.id));
