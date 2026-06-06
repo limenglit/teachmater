@@ -519,8 +519,9 @@ export default function QuizSubmitPage() {
       <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 max-w-2xl mx-auto w-full pb-6">
         <div className="mb-6">
           <span className="text-xs font-medium text-primary">Q{currentQ + 1}/{questions.length}</span>
-          <p className="text-base sm:text-lg font-medium text-foreground mt-1">{q.content}</p>
+          <p className="text-base sm:text-lg font-medium text-foreground mt-1 break-words" dir="auto">{q.content}</p>
         </div>
+
 
         {/* Single choice */}
         {q.type === 'single' && (
