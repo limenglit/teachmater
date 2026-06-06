@@ -855,7 +855,8 @@ export default function QuizQuestionBank({
           <div className="space-y-3">
             <div className="flex gap-2">
               <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
-                placeholder={t('quiz.newCategoryName')} className="h-8 flex-1 text-sm"
+                placeholder={t('quiz.newCategoryName')} className="h-8 flex-1 text-sm" maxLength={60}
+
                 onKeyDown={e => e.key === 'Enter' && addCategory()} />
               <Button size="sm" className="h-8" onClick={addCategory} disabled={!newCategoryName.trim()}>
                 <FolderPlus className="w-3.5 h-3.5" />
