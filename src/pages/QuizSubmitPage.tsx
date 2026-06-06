@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { normalizeQuizOptionText } from '@/lib/quiz-utils';
-import { runQuizCall } from '@/lib/quiz-error';
+import { runQuizCall, sanitizeQuizQuestions } from '@/lib/quiz-error';
 
 interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
