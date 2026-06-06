@@ -789,7 +789,7 @@ export default function QuizQuestionBank({
                   {q.tags && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{q.tags}</span>}
                   {q.category_id && <span className="text-[10px] bg-accent px-1.5 py-0.5 rounded flex items-center gap-0.5"><Folder className="w-2.5 h-2.5" />{getCategoryName(q.category_id)}</span>}
                 </div>
-                <p className="text-sm text-foreground line-clamp-2">{q.content}</p>
+                <p className="text-sm text-foreground line-clamp-2 break-words" dir="auto">{q.content}</p>
                 {q.options.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {q.options.map((o: string, i: number) => {
