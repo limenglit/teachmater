@@ -440,7 +440,7 @@ export default function QuizQuestionBank({
 
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">{t('quiz.questionContent')}</label>
-            <Textarea value={qContent} onChange={e => setQContent(e.target.value)} placeholder={t('quiz.questionPlaceholder')} rows={3} />
+            <Textarea value={qContent} onChange={e => setQContent(e.target.value)} placeholder={t('quiz.questionPlaceholder')} rows={3} maxLength={2000} dir="auto" />
           </div>
 
           {(qType === 'single' || qType === 'multi') && (
