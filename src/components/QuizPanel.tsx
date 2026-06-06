@@ -492,8 +492,11 @@ export default function QuizPanel() {
             <AlertDialogHeader>
               <AlertDialogTitle>{t('common.delete')}</AlertDialogTitle>
               <AlertDialogDescription>
-                确定要删除这场已结束测验吗？删除后学生作答记录也将不可恢复。
+                {sessionToDelete && sessionSubmissionCount && sessionSubmissionCount > 0
+                  ? `⚠️ 本场测验包含 ${sessionSubmissionCount} 位学生的作答记录，删除后将一并永久清除，且不可恢复。`
+                  : '确定要删除这场已结束测验吗？删除后学生作答记录也将不可恢复。'}
               </AlertDialogDescription>
+
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
