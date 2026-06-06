@@ -105,12 +105,20 @@ export default function QuizSubmitPage() {
       if (error) {
         toast({ title: '加载测验失败', description: error.message, variant: 'destructive' });
       } else if (data) {
-        setSession(data as any);
+        // Defensive: backend rows may contain malformed questions (missing
+        // type, null options). Sanitize so the page renders gracefully.
+        const raw = data as any;
+        const { questions, dropped } = sanitizeQuizQuestions(raw?.questions);
+        if (dropped > 0) {
+          toast({ title: `已跳过 ${dropped} 道格式异常的题目` });
+        }
+        setSession({ ...raw, questions });
       }
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [sessionId]);
+
 
   useEffect(() => {
     if (!sessionId || !session || session.status !== 'ended' || !session.reveal_answers) return;
