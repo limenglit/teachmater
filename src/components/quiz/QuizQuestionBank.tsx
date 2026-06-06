@@ -451,7 +451,8 @@ export default function QuizQuestionBank({
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-xs font-mono text-muted-foreground w-4">{String.fromCharCode(65 + i)}</span>
                     <Input value={opt} onChange={e => { const n = [...qOptions]; n[i] = e.target.value; setQOptions(n); }}
-                      placeholder={`${t('quiz.option')} ${String.fromCharCode(65 + i)}`} className="flex-1 h-8 text-sm" />
+                      placeholder={`${t('quiz.option')} ${String.fromCharCode(65 + i)}`} className="flex-1 h-8 text-sm" maxLength={500} dir="auto" />
+
                     {i >= 2 && <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setQOptions(qOptions.filter((_, j) => j !== i))}>
                       <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
                     </Button>}
