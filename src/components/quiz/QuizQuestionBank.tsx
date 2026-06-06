@@ -171,49 +171,56 @@ export default function QuizQuestionBank({
   };
 
   const saveQuestion = async () => {
+    if (saving) return;
     if (!qContent.trim()) return;
     const opts = qType === 'tf' ? ['正确', '错误'] : qType === 'short' ? [] : normalizeQuizOptions(qOptions.filter(o => o.trim()));
     if ((qType === 'single' || qType === 'multi') && opts.length < 2) {
       toast({ title: t('quiz.needOptions'), variant: 'destructive' }); return;
     }
 
-    if (isGuest) {
-      const qData = {
-        type: qType, content: qContent.trim(), options: opts,
-          correct_answer: qCorrect, tags: qTags.trim(),
-        category_id: qCategoryId || null, is_starred: editQ?.is_starred || false,
-      };
-      let updated: QuizQuestion[];
-      if (view === 'edit' && editQ) {
-        updated = updateLocalQuestion(questions, editQ.id, qData);
-      } else {
-        updated = addLocalQuestion(questions, qData as any);
-      }
-      setQuestions(updated);
-      saveLocalQuestions(updated);
-      toast({ title: t('quiz.saved') });
-    } else {
-      if (view === 'edit' && editQ) {
-        const { error } = await supabase.from('quiz_questions').update({
+    setSaving(true);
+    try {
+      if (isGuest) {
+        const qData = {
           type: qType, content: qContent.trim(), options: opts,
-          correct_answer: qCorrect, tags: qTags.trim(),
-          category_id: qCategoryId || null,
-        } as any).eq('id', editQ.id);
-        if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+            correct_answer: qCorrect, tags: qTags.trim(),
+          category_id: qCategoryId || null, is_starred: editQ?.is_starred || false,
+        };
+        let updated: QuizQuestion[];
+        if (view === 'edit' && editQ) {
+          updated = updateLocalQuestion(questions, editQ.id, qData);
+        } else {
+          updated = addLocalQuestion(questions, qData as any);
+        }
+        setQuestions(updated);
+        saveLocalQuestions(updated);
+        toast({ title: t('quiz.saved') });
       } else {
-        const { error } = await supabase.from('quiz_questions').insert({
-          user_id: user!.id, type: qType, content: qContent.trim(), options: opts,
-          correct_answer: qCorrect, tags: qTags.trim(), category_id: qCategoryId || null,
-        } as any);
-        if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+        if (view === 'edit' && editQ) {
+          const { error } = await supabase.from('quiz_questions').update({
+            type: qType, content: qContent.trim(), options: opts,
+            correct_answer: qCorrect, tags: qTags.trim(),
+            category_id: qCategoryId || null,
+          } as any).eq('id', editQ.id);
+          if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+        } else {
+          const { error } = await supabase.from('quiz_questions').insert({
+            user_id: user!.id, type: qType, content: qContent.trim(), options: opts,
+            correct_answer: qCorrect, tags: qTags.trim(), category_id: qCategoryId || null,
+          } as any);
+          if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+        }
+        toast({ title: t('quiz.saved') });
+        // Reload
+        const { data } = await supabase.from('quiz_questions').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }) as any;
+        if (data) setQuestions(data);
       }
-      toast({ title: t('quiz.saved') });
-      // Reload
-      const { data } = await supabase.from('quiz_questions').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }) as any;
-      if (data) setQuestions(data);
+      resetForm(); setEditQ(null); setView('list');
+    } finally {
+      setSaving(false);
     }
-    resetForm(); setEditQ(null); setView('list');
   };
+
 
   const deleteQuestion = async (id: string) => {
     if (isGuest) {
