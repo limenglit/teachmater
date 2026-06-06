@@ -565,6 +565,8 @@ export default function QuizPanel() {
             categories={categories} setCategories={setCategories}
             selectedIds={selectedIds} setSelectedIds={setSelectedIds}
             onStartSession={startSession}
+            publishing={publishing}
+
             sessionTitle={sessionTitle} setSessionTitle={setSessionTitle}
             revealAfterEnd={revealAfterEnd}
             onRevealAfterEndChange={setRevealAfterEnd}
