@@ -452,8 +452,11 @@ export default function QuizPanel() {
             <AlertDialogHeader>
               <AlertDialogTitle>{t('quiz.endSession')}</AlertDialogTitle>
               <AlertDialogDescription>
-                结束后学生将无法继续提交答案。请确认是否立即结束本场测验。
+                {sessionSubmissionCount && sessionSubmissionCount > 0
+                  ? `本场测验已有 ${sessionSubmissionCount} 位学生提交答案。结束后学生将无法继续提交，且本场不可重新开放。请确认操作。`
+                  : '结束后学生将无法继续提交答案。请确认是否立即结束本场测验。'}
               </AlertDialogDescription>
+
             </AlertDialogHeader>
 
             <div className="flex items-center justify-between rounded-md border border-border p-3">
