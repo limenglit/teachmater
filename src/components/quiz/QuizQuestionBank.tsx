@@ -498,11 +498,12 @@ export default function QuizQuestionBank({
 
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">{t('quiz.tags')}</label>
-            <Input value={qTags} onChange={e => setQTags(e.target.value)} placeholder={t('quiz.tagsPlaceholder')} className="h-8" />
+            <Input value={qTags} onChange={e => setQTags(e.target.value)} placeholder={t('quiz.tagsPlaceholder')} className="h-8" maxLength={200} />
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Button size="sm" onClick={saveQuestion} className="gap-1"><Plus className="w-3.5 h-3.5" /> {t('quiz.save')}</Button>
+            <Button size="sm" onClick={saveQuestion} disabled={saving} className="gap-1"><Plus className="w-3.5 h-3.5" /> {saving ? t('common.loading') : t('quiz.save')}</Button>
+
             <Button variant="outline" size="sm" onClick={() => { setView('list'); resetForm(); setEditQ(null); }}>{t('quiz.cancel')}</Button>
           </div>
         </div>
