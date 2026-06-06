@@ -88,6 +88,25 @@ export default function QuizPanel() {
     localStorage.setItem(REVEAL_AFTER_END_KEY, revealAfterEnd ? '1' : '0');
   }, [revealAfterEnd]);
 
+  // Fetch distinct submitter count whenever a session detail opens, so the
+  // confirm dialogs (end / delete) can warn teachers that real student
+  // submissions will be impacted.
+  useEffect(() => {
+    if (!showSession || !activeSession) { setSessionSubmissionCount(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('quiz_answers')
+        .select('student_name')
+        .eq('session_id', activeSession.id) as any;
+      if (cancelled) return;
+      const unique = new Set<string>((data || []).map((r: any) => r.student_name));
+      setSessionSubmissionCount(unique.size);
+    })();
+    return () => { cancelled = true; };
+  }, [showSession, activeSession?.id]);
+
+
   useEffect(() => {
     if (user) {
       // Parallel fetch — these are independent queries; running them sequentially
