@@ -69,8 +69,9 @@ export default function QuizQuestionBank({
   questions, setQuestions, categories, setCategories,
   selectedIds, setSelectedIds, onStartSession,
   sessionTitle, setSessionTitle, revealAfterEnd, onRevealAfterEndChange, isGuest, rosterButton,
-  onBuildPaperFromSelection,
+  onBuildPaperFromSelection, publishing,
 }: Props) {
+
   const { t } = useLanguage();
   const { user } = useAuth();
 
