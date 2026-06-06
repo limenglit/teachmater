@@ -66,10 +66,15 @@ export default function QuizPanel() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<QuizSession | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [revealAfterEnd, setRevealAfterEnd] = useState(true);
   const [revealFeatureUnsupported, setRevealFeatureUnsupported] = useState(false);
   const [paperSeed, setPaperSeed] = useState<{ questions: QuizQuestion[]; title: string } | null>(null);
+  // Submission counts per session — used to warn before destructive operations
+  // (delete / end). Populated lazily when the teacher opens a session detail.
+  const [sessionSubmissionCount, setSessionSubmissionCount] = useState<number | null>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
+
 
   const REVEAL_AFTER_END_KEY = 'quiz-reveal-after-end';
 
