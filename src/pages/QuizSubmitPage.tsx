@@ -597,8 +597,11 @@ export default function QuizSubmitPage() {
             placeholder={t('quiz.shortPlaceholder')}
             rows={4}
             className="text-base"
+            maxLength={2000}
+            dir="auto"
           />
         )}
+
       </div>
 
       {/* Navigation */}
