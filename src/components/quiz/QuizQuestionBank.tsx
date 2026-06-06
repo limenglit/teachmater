@@ -52,6 +52,9 @@ interface Props {
   selectedIds: Set<string>;
   setSelectedIds: (s: Set<string>) => void;
   onStartSession: () => void;
+  /** True while a publish/start request is in-flight — disables the button. */
+  publishing?: boolean;
+
   sessionTitle: string;
   setSessionTitle: (s: string) => void;
   revealAfterEnd: boolean;
