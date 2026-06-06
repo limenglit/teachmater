@@ -77,6 +77,9 @@ export default function QuizQuestionBank({
 
   const [view, setView] = useState<'list' | 'add' | 'edit'>('list');
   const [editQ, setEditQ] = useState<QuizQuestion | null>(null);
+  // Disable Save button while the request is in-flight to prevent double-insert
+  const [saving, setSaving] = useState(false);
+
 
   // Form state
   const [qType, setQType] = useState<QuestionType>('single');
