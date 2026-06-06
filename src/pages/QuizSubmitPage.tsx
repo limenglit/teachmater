@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CheckCircle2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { normalizeQuizOptionText } from '@/lib/quiz-utils';
-import { runQuizCall } from '@/lib/quiz-error';
+import { runQuizCall, sanitizeQuizQuestions } from '@/lib/quiz-error';
 
 interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
@@ -105,12 +105,20 @@ export default function QuizSubmitPage() {
       if (error) {
         toast({ title: '加载测验失败', description: error.message, variant: 'destructive' });
       } else if (data) {
-        setSession(data as any);
+        // Defensive: backend rows may contain malformed questions (missing
+        // type, null options). Sanitize so the page renders gracefully.
+        const raw = data as any;
+        const { questions, dropped } = sanitizeQuizQuestions(raw?.questions);
+        if (dropped > 0) {
+          toast({ title: `已跳过 ${dropped} 道格式异常的题目` });
+        }
+        setSession({ ...raw, questions });
       }
       setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [sessionId]);
+
 
   useEffect(() => {
     if (!sessionId || !session || session.status !== 'ended' || !session.reveal_answers) return;
@@ -157,12 +165,30 @@ export default function QuizSubmitPage() {
         { timeoutMs: 6000, retries: 0 },
       );
       if (!error && data) {
-        setSession(data as any);
+        const raw = data as any;
+        const { questions } = sanitizeQuizQuestions(raw?.questions);
+        const nextSession = { ...raw, questions };
+        // Detect transition active -> ended while student is mid-answer.
+        // Best-effort: try to submit whatever they've entered so the work
+        // isn't lost. Failures fall through to the read-only ended view.
+        if (
+          session?.status === 'active' &&
+          nextSession.status !== 'active' &&
+          entered && !submitted && !submitting &&
+          Object.keys(answers).length > 0
+        ) {
+          toast({ title: '教师已结束本场测验，正在为你提交已作答内容…' });
+          // Fire and forget; submitAll handles its own errors / state.
+          void submitAll();
+        }
+        setSession(nextSession);
       }
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, [sessionId, session?.status, session?.reveal_answers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, session?.status, session?.reveal_answers, entered, submitted, submitting, answers]);
+
 
   // Build name suggestions from student_names + recent names
   useEffect(() => {
@@ -441,7 +467,10 @@ export default function QuizSubmitPage() {
             placeholder={t('quiz.enterName')}
             className="h-12 text-base"
             onKeyDown={e => e.key === 'Enter' && enterQuiz()}
+            maxLength={60}
+            dir="auto"
           />
+
           {showSuggestions && filteredSuggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-56 overflow-auto">
               {filteredSuggestions.map(s => (
@@ -490,8 +519,9 @@ export default function QuizSubmitPage() {
       <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 max-w-2xl mx-auto w-full pb-6">
         <div className="mb-6">
           <span className="text-xs font-medium text-primary">Q{currentQ + 1}/{questions.length}</span>
-          <p className="text-base sm:text-lg font-medium text-foreground mt-1">{q.content}</p>
+          <p className="text-base sm:text-lg font-medium text-foreground mt-1 break-words" dir="auto">{q.content}</p>
         </div>
+
 
         {/* Single choice */}
         {q.type === 'single' && (
@@ -506,7 +536,7 @@ export default function QuizSubmitPage() {
                   onClick={() => setAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
-                  <span className="text-sm text-foreground">{normalizeQuizOptionText(opt, i)}</span>
+                  <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
             })}
@@ -527,7 +557,7 @@ export default function QuizSubmitPage() {
                   onClick={() => toggleMultiAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
-                  <span className="text-sm text-foreground">{normalizeQuizOptionText(opt, i)}</span>
+                  <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
             })}
@@ -567,8 +597,11 @@ export default function QuizSubmitPage() {
             placeholder={t('quiz.shortPlaceholder')}
             rows={4}
             className="text-base"
+            maxLength={2000}
+            dir="auto"
           />
         )}
+
       </div>
 
       {/* Navigation */}
@@ -582,8 +615,9 @@ export default function QuizSubmitPage() {
           </Button>
         ) : (
           <Button size="sm" onClick={submitAll} disabled={!allAnswered || submitting} className="gap-1">
-            <Send className="w-4 h-4" /> {t('quiz.submit')}
+            <Send className="w-4 h-4" /> {submitting ? '提交中...' : t('quiz.submit')}
           </Button>
+
         )}
       </div>
     </div>

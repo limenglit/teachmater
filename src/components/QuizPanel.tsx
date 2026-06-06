@@ -66,10 +66,15 @@ export default function QuizPanel() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<QuizSession | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [revealAfterEnd, setRevealAfterEnd] = useState(true);
   const [revealFeatureUnsupported, setRevealFeatureUnsupported] = useState(false);
   const [paperSeed, setPaperSeed] = useState<{ questions: QuizQuestion[]; title: string } | null>(null);
+  // Submission counts per session — used to warn before destructive operations
+  // (delete / end). Populated lazily when the teacher opens a session detail.
+  const [sessionSubmissionCount, setSessionSubmissionCount] = useState<number | null>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
+
 
   const REVEAL_AFTER_END_KEY = 'quiz-reveal-after-end';
 
@@ -82,6 +87,25 @@ export default function QuizPanel() {
   useEffect(() => {
     localStorage.setItem(REVEAL_AFTER_END_KEY, revealAfterEnd ? '1' : '0');
   }, [revealAfterEnd]);
+
+  // Fetch distinct submitter count whenever a session detail opens, so the
+  // confirm dialogs (end / delete) can warn teachers that real student
+  // submissions will be impacted.
+  useEffect(() => {
+    if (!showSession || !activeSession) { setSessionSubmissionCount(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('quiz_answers')
+        .select('student_name')
+        .eq('session_id', activeSession.id) as any;
+      if (cancelled) return;
+      const unique = new Set<string>((data || []).map((r: any) => r.student_name));
+      setSessionSubmissionCount(unique.size);
+    })();
+    return () => { cancelled = true; };
+  }, [showSession, activeSession?.id]);
+
 
   useEffect(() => {
     if (user) {
@@ -173,6 +197,7 @@ export default function QuizPanel() {
   };
 
   const publishQuizSession = async (selectedQuestions: QuizQuestion[], titleSeed?: string) => {
+    if (publishing) return;
     if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
     if (selectedQuestions.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
     // Validate question content & options - reject empty / malformed before publishing
@@ -204,6 +229,7 @@ export default function QuizPanel() {
       return m.includes('reveal_answers') && (m.includes('schema cache') || m.includes('column') || m.includes('could not find'));
     };
 
+    setPublishing(true);
     let { data, error } = await supabase.from('quiz_sessions').insert(payload).select().single() as any;
 
     if (error && isRevealSchemaError(error.message)) {
@@ -217,12 +243,14 @@ export default function QuizPanel() {
       }
     }
 
+    setPublishing(false);
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     saveSessionToken(data.id, data.creator_token);
     setActiveSession(data); setShowSession(true);
     setSelectedIds(new Set()); setSessionTitle(''); setSessionStudentNames([]);
     loadSessions();
   };
+
 
   const startSession = async () => {
     const selected = questions.filter(q => selectedIds.has(q.id));
@@ -424,8 +452,11 @@ export default function QuizPanel() {
             <AlertDialogHeader>
               <AlertDialogTitle>{t('quiz.endSession')}</AlertDialogTitle>
               <AlertDialogDescription>
-                结束后学生将无法继续提交答案。请确认是否立即结束本场测验。
+                {sessionSubmissionCount && sessionSubmissionCount > 0
+                  ? `本场测验已有 ${sessionSubmissionCount} 位学生提交答案。结束后学生将无法继续提交，且本场不可重新开放。请确认操作。`
+                  : '结束后学生将无法继续提交答案。请确认是否立即结束本场测验。'}
               </AlertDialogDescription>
+
             </AlertDialogHeader>
 
             <div className="flex items-center justify-between rounded-md border border-border p-3">
@@ -461,8 +492,11 @@ export default function QuizPanel() {
             <AlertDialogHeader>
               <AlertDialogTitle>{t('common.delete')}</AlertDialogTitle>
               <AlertDialogDescription>
-                确定要删除这场已结束测验吗？删除后学生作答记录也将不可恢复。
+                {sessionToDelete && sessionSubmissionCount && sessionSubmissionCount > 0
+                  ? `⚠️ 本场测验包含 ${sessionSubmissionCount} 位学生的作答记录，删除后将一并永久清除，且不可恢复。`
+                  : '确定要删除这场已结束测验吗？删除后学生作答记录也将不可恢复。'}
               </AlertDialogDescription>
+
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
@@ -531,6 +565,8 @@ export default function QuizPanel() {
             categories={categories} setCategories={setCategories}
             selectedIds={selectedIds} setSelectedIds={setSelectedIds}
             onStartSession={startSession}
+            publishing={publishing}
+
             sessionTitle={sessionTitle} setSessionTitle={setSessionTitle}
             revealAfterEnd={revealAfterEnd}
             onRevealAfterEndChange={setRevealAfterEnd}

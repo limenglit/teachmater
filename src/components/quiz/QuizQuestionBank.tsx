@@ -52,6 +52,9 @@ interface Props {
   selectedIds: Set<string>;
   setSelectedIds: (s: Set<string>) => void;
   onStartSession: () => void;
+  /** True while a publish/start request is in-flight — disables the button. */
+  publishing?: boolean;
+
   sessionTitle: string;
   setSessionTitle: (s: string) => void;
   revealAfterEnd: boolean;
@@ -66,13 +69,17 @@ export default function QuizQuestionBank({
   questions, setQuestions, categories, setCategories,
   selectedIds, setSelectedIds, onStartSession,
   sessionTitle, setSessionTitle, revealAfterEnd, onRevealAfterEndChange, isGuest, rosterButton,
-  onBuildPaperFromSelection,
+  onBuildPaperFromSelection, publishing,
 }: Props) {
+
   const { t } = useLanguage();
   const { user } = useAuth();
 
   const [view, setView] = useState<'list' | 'add' | 'edit'>('list');
   const [editQ, setEditQ] = useState<QuizQuestion | null>(null);
+  // Disable Save button while the request is in-flight to prevent double-insert
+  const [saving, setSaving] = useState(false);
+
 
   // Form state
   const [qType, setQType] = useState<QuestionType>('single');
@@ -164,49 +171,56 @@ export default function QuizQuestionBank({
   };
 
   const saveQuestion = async () => {
+    if (saving) return;
     if (!qContent.trim()) return;
     const opts = qType === 'tf' ? ['正确', '错误'] : qType === 'short' ? [] : normalizeQuizOptions(qOptions.filter(o => o.trim()));
     if ((qType === 'single' || qType === 'multi') && opts.length < 2) {
       toast({ title: t('quiz.needOptions'), variant: 'destructive' }); return;
     }
 
-    if (isGuest) {
-      const qData = {
-        type: qType, content: qContent.trim(), options: opts,
-          correct_answer: qCorrect, tags: qTags.trim(),
-        category_id: qCategoryId || null, is_starred: editQ?.is_starred || false,
-      };
-      let updated: QuizQuestion[];
-      if (view === 'edit' && editQ) {
-        updated = updateLocalQuestion(questions, editQ.id, qData);
-      } else {
-        updated = addLocalQuestion(questions, qData as any);
-      }
-      setQuestions(updated);
-      saveLocalQuestions(updated);
-      toast({ title: t('quiz.saved') });
-    } else {
-      if (view === 'edit' && editQ) {
-        const { error } = await supabase.from('quiz_questions').update({
+    setSaving(true);
+    try {
+      if (isGuest) {
+        const qData = {
           type: qType, content: qContent.trim(), options: opts,
-          correct_answer: qCorrect, tags: qTags.trim(),
-          category_id: qCategoryId || null,
-        } as any).eq('id', editQ.id);
-        if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+            correct_answer: qCorrect, tags: qTags.trim(),
+          category_id: qCategoryId || null, is_starred: editQ?.is_starred || false,
+        };
+        let updated: QuizQuestion[];
+        if (view === 'edit' && editQ) {
+          updated = updateLocalQuestion(questions, editQ.id, qData);
+        } else {
+          updated = addLocalQuestion(questions, qData as any);
+        }
+        setQuestions(updated);
+        saveLocalQuestions(updated);
+        toast({ title: t('quiz.saved') });
       } else {
-        const { error } = await supabase.from('quiz_questions').insert({
-          user_id: user!.id, type: qType, content: qContent.trim(), options: opts,
-          correct_answer: qCorrect, tags: qTags.trim(), category_id: qCategoryId || null,
-        } as any);
-        if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+        if (view === 'edit' && editQ) {
+          const { error } = await supabase.from('quiz_questions').update({
+            type: qType, content: qContent.trim(), options: opts,
+            correct_answer: qCorrect, tags: qTags.trim(),
+            category_id: qCategoryId || null,
+          } as any).eq('id', editQ.id);
+          if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+        } else {
+          const { error } = await supabase.from('quiz_questions').insert({
+            user_id: user!.id, type: qType, content: qContent.trim(), options: opts,
+            correct_answer: qCorrect, tags: qTags.trim(), category_id: qCategoryId || null,
+          } as any);
+          if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+        }
+        toast({ title: t('quiz.saved') });
+        // Reload
+        const { data } = await supabase.from('quiz_questions').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }) as any;
+        if (data) setQuestions(data);
       }
-      toast({ title: t('quiz.saved') });
-      // Reload
-      const { data } = await supabase.from('quiz_questions').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }) as any;
-      if (data) setQuestions(data);
+      resetForm(); setEditQ(null); setView('list');
+    } finally {
+      setSaving(false);
     }
-    resetForm(); setEditQ(null); setView('list');
   };
+
 
   const deleteQuestion = async (id: string) => {
     if (isGuest) {
@@ -426,7 +440,7 @@ export default function QuizQuestionBank({
 
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">{t('quiz.questionContent')}</label>
-            <Textarea value={qContent} onChange={e => setQContent(e.target.value)} placeholder={t('quiz.questionPlaceholder')} rows={3} />
+            <Textarea value={qContent} onChange={e => setQContent(e.target.value)} placeholder={t('quiz.questionPlaceholder')} rows={3} maxLength={2000} dir="auto" />
           </div>
 
           {(qType === 'single' || qType === 'multi') && (
@@ -437,7 +451,8 @@ export default function QuizQuestionBank({
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-xs font-mono text-muted-foreground w-4">{String.fromCharCode(65 + i)}</span>
                     <Input value={opt} onChange={e => { const n = [...qOptions]; n[i] = e.target.value; setQOptions(n); }}
-                      placeholder={`${t('quiz.option')} ${String.fromCharCode(65 + i)}`} className="flex-1 h-8 text-sm" />
+                      placeholder={`${t('quiz.option')} ${String.fromCharCode(65 + i)}`} className="flex-1 h-8 text-sm" maxLength={500} dir="auto" />
+
                     {i >= 2 && <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setQOptions(qOptions.filter((_, j) => j !== i))}>
                       <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
                     </Button>}
@@ -483,11 +498,12 @@ export default function QuizQuestionBank({
 
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">{t('quiz.tags')}</label>
-            <Input value={qTags} onChange={e => setQTags(e.target.value)} placeholder={t('quiz.tagsPlaceholder')} className="h-8" />
+            <Input value={qTags} onChange={e => setQTags(e.target.value)} placeholder={t('quiz.tagsPlaceholder')} className="h-8" maxLength={200} />
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Button size="sm" onClick={saveQuestion} className="gap-1"><Plus className="w-3.5 h-3.5" /> {t('quiz.save')}</Button>
+            <Button size="sm" onClick={saveQuestion} disabled={saving} className="gap-1"><Plus className="w-3.5 h-3.5" /> {saving ? t('common.loading') : t('quiz.save')}</Button>
+
             <Button variant="outline" size="sm" onClick={() => { setView('list'); resetForm(); setEditQ(null); }}>{t('quiz.cancel')}</Button>
           </div>
         </div>
@@ -773,7 +789,7 @@ export default function QuizQuestionBank({
                   {q.tags && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{q.tags}</span>}
                   {q.category_id && <span className="text-[10px] bg-accent px-1.5 py-0.5 rounded flex items-center gap-0.5"><Folder className="w-2.5 h-2.5" />{getCategoryName(q.category_id)}</span>}
                 </div>
-                <p className="text-sm text-foreground line-clamp-2">{q.content}</p>
+                <p className="text-sm text-foreground line-clamp-2 break-words" dir="auto">{q.content}</p>
                 {q.options.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {q.options.map((o: string, i: number) => {
@@ -818,16 +834,17 @@ export default function QuizQuestionBank({
         <div className="sticky bottom-0 bg-card border border-border rounded-xl p-3 shadow-lg flex items-center gap-3 flex-wrap">
           <span className="text-sm text-foreground font-medium">{t('quiz.selected')}: {selectedIds.size}</span>
           <Input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)}
-            placeholder={t('quiz.sessionTitle')} className="flex-1 h-8 text-sm min-w-[120px]" />
+            placeholder={t('quiz.sessionTitle')} className="flex-1 h-8 text-sm min-w-[120px]" maxLength={120} />
           <label className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
             <span>结束后公开参考答案</span>
             <Switch checked={revealAfterEnd} onCheckedChange={onRevealAfterEndChange} />
           </label>
           {rosterButton}
-          <Button size="sm" onClick={onStartSession} disabled={isGuest} className="gap-1 shrink-0"
+          <Button size="sm" onClick={onStartSession} disabled={isGuest || !!publishing} className="gap-1 shrink-0"
             title={isGuest ? t('quiz.loginToPublish') : ''}>
-            {t('quiz.startSession')}
+            {publishing ? '发布中...' : t('quiz.startSession')}
           </Button>
+
         </div>
       )}
 
@@ -838,7 +855,8 @@ export default function QuizQuestionBank({
           <div className="space-y-3">
             <div className="flex gap-2">
               <Input value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)}
-                placeholder={t('quiz.newCategoryName')} className="h-8 flex-1 text-sm"
+                placeholder={t('quiz.newCategoryName')} className="h-8 flex-1 text-sm" maxLength={60}
+
                 onKeyDown={e => e.key === 'Enter' && addCategory()} />
               <Button size="sm" className="h-8" onClick={addCategory} disabled={!newCategoryName.trim()}>
                 <FolderPlus className="w-3.5 h-3.5" />
