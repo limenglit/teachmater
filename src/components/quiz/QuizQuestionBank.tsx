@@ -834,16 +834,17 @@ export default function QuizQuestionBank({
         <div className="sticky bottom-0 bg-card border border-border rounded-xl p-3 shadow-lg flex items-center gap-3 flex-wrap">
           <span className="text-sm text-foreground font-medium">{t('quiz.selected')}: {selectedIds.size}</span>
           <Input value={sessionTitle} onChange={e => setSessionTitle(e.target.value)}
-            placeholder={t('quiz.sessionTitle')} className="flex-1 h-8 text-sm min-w-[120px]" />
+            placeholder={t('quiz.sessionTitle')} className="flex-1 h-8 text-sm min-w-[120px]" maxLength={120} />
           <label className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
             <span>结束后公开参考答案</span>
             <Switch checked={revealAfterEnd} onCheckedChange={onRevealAfterEndChange} />
           </label>
           {rosterButton}
-          <Button size="sm" onClick={onStartSession} disabled={isGuest} className="gap-1 shrink-0"
+          <Button size="sm" onClick={onStartSession} disabled={isGuest || !!publishing} className="gap-1 shrink-0"
             title={isGuest ? t('quiz.loginToPublish') : ''}>
-            {t('quiz.startSession')}
+            {publishing ? '发布中...' : t('quiz.startSession')}
           </Button>
+
         </div>
       )}
 
