@@ -157,3 +157,49 @@ export async function runQuizCall<T>(
 
   return { data: null, error: lastClassified ?? classifyQuizError(new Error('Unknown error')) };
 }
+
+/**
+ * Defensive sanitizer for quiz session payloads coming from the server.
+ * Backend rows can be malformed (missing `type`, null options, non-array
+ * correct_answer, etc.) when imported, migrated, or hand-edited. Rather than
+ * crashing the student page, drop invalid questions and coerce fields to safe
+ * defaults so the rest of the quiz renders.
+ *
+ * Returns `{ questions, dropped }` so the UI can warn when items were skipped.
+ */
+const VALID_TYPES = new Set(['single', 'multi', 'tf', 'short']);
+export function sanitizeQuizQuestions(raw: unknown): {
+  questions: Array<{
+    type: 'single' | 'multi' | 'tf' | 'short';
+    content: string;
+    options: string[];
+    correct_answer?: string | string[];
+  }>;
+  dropped: number;
+} {
+  if (!Array.isArray(raw)) return { questions: [], dropped: 0 };
+  const out: any[] = [];
+  let dropped = 0;
+  for (const q of raw) {
+    if (!q || typeof q !== 'object') { dropped++; continue; }
+    const type = VALID_TYPES.has((q as any).type) ? (q as any).type : 'single';
+    const content = typeof (q as any).content === 'string' ? (q as any).content : '';
+    if (!content.trim()) { dropped++; continue; }
+    let options: string[] = Array.isArray((q as any).options)
+      ? (q as any).options.map((o: unknown) => (o == null ? '' : String(o)))
+      : [];
+    if (type === 'tf' && options.length < 2) options = ['正确', '错误'];
+    if ((type === 'single' || type === 'multi') && options.filter(o => o.trim()).length < 2) {
+      // not enough options to render — skip
+      dropped++; continue;
+    }
+    const correct_answer = (q as any).correct_answer;
+    out.push({
+      type, content, options,
+      correct_answer: Array.isArray(correct_answer) || typeof correct_answer === 'string'
+        ? correct_answer : '',
+    });
+  }
+  return { questions: out, dropped };
+}
+
