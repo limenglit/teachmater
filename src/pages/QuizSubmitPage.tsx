@@ -467,7 +467,10 @@ export default function QuizSubmitPage() {
             placeholder={t('quiz.enterName')}
             className="h-12 text-base"
             onKeyDown={e => e.key === 'Enter' && enterQuiz()}
+            maxLength={60}
+            dir="auto"
           />
+
           {showSuggestions && filteredSuggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-56 overflow-auto">
               {filteredSuggestions.map(s => (
