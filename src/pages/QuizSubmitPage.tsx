@@ -615,8 +615,9 @@ export default function QuizSubmitPage() {
           </Button>
         ) : (
           <Button size="sm" onClick={submitAll} disabled={!allAnswered || submitting} className="gap-1">
-            <Send className="w-4 h-4" /> {t('quiz.submit')}
+            <Send className="w-4 h-4" /> {submitting ? '提交中...' : t('quiz.submit')}
           </Button>
+
         )}
       </div>
     </div>
