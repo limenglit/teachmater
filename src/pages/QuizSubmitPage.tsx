@@ -165,12 +165,30 @@ export default function QuizSubmitPage() {
         { timeoutMs: 6000, retries: 0 },
       );
       if (!error && data) {
-        setSession(data as any);
+        const raw = data as any;
+        const { questions } = sanitizeQuizQuestions(raw?.questions);
+        const nextSession = { ...raw, questions };
+        // Detect transition active -> ended while student is mid-answer.
+        // Best-effort: try to submit whatever they've entered so the work
+        // isn't lost. Failures fall through to the read-only ended view.
+        if (
+          session?.status === 'active' &&
+          nextSession.status !== 'active' &&
+          entered && !submitted && !submitting &&
+          Object.keys(answers).length > 0
+        ) {
+          toast({ title: '教师已结束本场测验，正在为你提交已作答内容…' });
+          // Fire and forget; submitAll handles its own errors / state.
+          void submitAll();
+        }
+        setSession(nextSession);
       }
     }, 5000);
 
     return () => window.clearInterval(timer);
-  }, [sessionId, session?.status, session?.reveal_answers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, session?.status, session?.reveal_answers, entered, submitted, submitting, answers]);
+
 
   // Build name suggestions from student_names + recent names
   useEffect(() => {
