@@ -536,7 +536,7 @@ export default function QuizSubmitPage() {
                   onClick={() => setAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
-                  <span className="text-sm text-foreground">{normalizeQuizOptionText(opt, i)}</span>
+                  <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
             })}
@@ -557,7 +557,7 @@ export default function QuizSubmitPage() {
                   onClick={() => toggleMultiAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
-                  <span className="text-sm text-foreground">{normalizeQuizOptionText(opt, i)}</span>
+                  <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
             })}
