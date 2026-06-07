@@ -495,23 +495,46 @@ export default function QuizSubmitPage() {
   const answer = answers[currentQ];
   const allAnswered = questions.every((_, i) => answers[i] !== undefined && answers[i] !== '');
 
+  const answeredCount = questions.filter((_, i) => answers[i] !== undefined && answers[i] !== '').length;
+
   return (
     <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
       {/* Progress */}
       <div className="bg-card border-b border-border px-4 py-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-foreground">{session.title}</span>
-          <span className="text-xs text-muted-foreground">{name}</span>
+          <span className="text-sm font-medium text-foreground truncate">{session.title}</span>
+          <span className="text-xs text-muted-foreground truncate ml-2">{name}</span>
         </div>
-        <div className="flex gap-1">
-          {questions.map((_, i) => (
-            <div key={i}
-              className={`h-1.5 flex-1 rounded-full transition-colors cursor-pointer ${
-                i === currentQ ? 'bg-primary' : answers[i] !== undefined ? 'bg-green-400' : 'bg-muted'
-              }`}
-              onClick={() => setCurrentQ(i)}
-            />
-          ))}
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-medium text-primary" aria-live="polite">
+            {tr('quiz.progressLabel', '第')} {currentQ + 1} / {questions.length}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {tr('quiz.answeredCount', '已作答')} {answeredCount}/{questions.length}
+          </span>
+        </div>
+        <div
+          className="flex gap-1"
+          role="tablist"
+          aria-label={tr('quiz.questionNavLabel', '题目导航')}
+        >
+          {questions.map((_, i) => {
+            const isCurrent = i === currentQ;
+            const isAnswered = answers[i] !== undefined && answers[i] !== '';
+            return (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={isCurrent}
+                aria-label={`${tr('quiz.jumpToQuestion', '跳转到第')} ${i + 1} ${tr('quiz.questionUnit', '题')}${isAnswered ? `（${tr('quiz.answered', '已作答')}）` : ''}`}
+                onClick={() => setCurrentQ(i)}
+                className={`h-2 flex-1 min-w-[8px] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                  isCurrent ? 'bg-primary' : isAnswered ? 'bg-green-500' : 'bg-muted hover:bg-muted-foreground/30'
+                }`}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -519,23 +542,27 @@ export default function QuizSubmitPage() {
       <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 max-w-2xl mx-auto w-full pb-6">
         <div className="mb-6">
           <span className="text-xs font-medium text-primary">Q{currentQ + 1}/{questions.length}</span>
-          <p className="text-base sm:text-lg font-medium text-foreground mt-1 break-words" dir="auto">{q.content}</p>
+          <h2 className="text-base sm:text-lg font-medium text-foreground mt-1 break-words" dir="auto">{q.content}</h2>
         </div>
 
 
         {/* Single choice */}
         {q.type === 'single' && (
-          <div className="space-y-2">
+          <div className="space-y-2" role="radiogroup" aria-label={tr('quiz.singleChoiceLabel', '单选题选项')}>
             {q.options.map((opt, i) => {
               const letter = String.fromCharCode(65 + i);
+              const selected = answer === letter;
               return (
                 <button key={i}
-                  className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                    answer === letter ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  className={`w-full text-left p-3 sm:p-4 min-h-[44px] rounded-xl border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                    selected ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'
                   }`}
                   onClick={() => setAnswer(currentQ, letter)}
                 >
-                  <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
+                  <span className="font-mono text-sm mr-2 text-muted-foreground" aria-hidden="true">{letter}.</span>
                   <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
@@ -545,18 +572,21 @@ export default function QuizSubmitPage() {
 
         {/* Multiple choice */}
         {q.type === 'multi' && (
-          <div className="space-y-2">
+          <div className="space-y-2" role="group" aria-label={tr('quiz.multiChoiceLabel', '多选题选项')}>
             {q.options.map((opt, i) => {
               const letter = String.fromCharCode(65 + i);
               const selected = Array.isArray(answer) && answer.includes(letter);
               return (
                 <button key={i}
-                  className={`w-full text-left p-3 sm:p-4 rounded-xl border-2 transition-all ${
+                  type="button"
+                  role="checkbox"
+                  aria-checked={selected}
+                  className={`w-full text-left p-3 sm:p-4 min-h-[44px] rounded-xl border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                     selected ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'
                   }`}
                   onClick={() => toggleMultiAnswer(currentQ, letter)}
                 >
-                  <span className="font-mono text-sm mr-2 text-muted-foreground">{letter}.</span>
+                  <span className="font-mono text-sm mr-2 text-muted-foreground" aria-hidden="true">{letter}.</span>
                   <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
                 </button>
               );
@@ -567,23 +597,31 @@ export default function QuizSubmitPage() {
 
         {/* True/False */}
         {q.type === 'tf' && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label={tr('quiz.tfLabel', '判断题')}>
             <button
-              className={`p-6 rounded-xl border-2 text-center transition-all ${
-                answer === 'A' ? 'border-green-500 bg-green-50' : 'border-border hover:border-muted-foreground/30'
+              type="button"
+              role="radio"
+              aria-checked={answer === 'A'}
+              aria-label={t('quiz.true')}
+              className={`p-6 min-h-[88px] rounded-xl border-2 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                answer === 'A' ? 'border-green-600 bg-green-50' : 'border-border hover:border-muted-foreground/30'
               }`}
               onClick={() => setAnswer(currentQ, 'A')}
             >
-              <span className="text-2xl">✅</span>
+              <span className="text-2xl" aria-hidden="true">✅</span>
               <p className="text-sm mt-1 text-foreground">{t('quiz.true')}</p>
             </button>
             <button
-              className={`p-6 rounded-xl border-2 text-center transition-all ${
-                answer === 'B' ? 'border-red-500 bg-red-50' : 'border-border hover:border-muted-foreground/30'
+              type="button"
+              role="radio"
+              aria-checked={answer === 'B'}
+              aria-label={t('quiz.false')}
+              className={`p-6 min-h-[88px] rounded-xl border-2 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                answer === 'B' ? 'border-red-600 bg-red-50' : 'border-border hover:border-muted-foreground/30'
               }`}
               onClick={() => setAnswer(currentQ, 'B')}
             >
-              <span className="text-2xl">❌</span>
+              <span className="text-2xl" aria-hidden="true">❌</span>
               <p className="text-sm mt-1 text-foreground">{t('quiz.false')}</p>
             </button>
           </div>
@@ -599,6 +637,7 @@ export default function QuizSubmitPage() {
             className="text-base"
             maxLength={2000}
             dir="auto"
+            aria-label={tr('quiz.shortAnswerLabel', '简答题作答')}
           />
         )}
 
@@ -606,15 +645,30 @@ export default function QuizSubmitPage() {
 
       {/* Navigation */}
       <div className="bg-card border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-3 sticky bottom-0">
-        <Button variant="outline" size="sm" onClick={() => setCurrentQ(Math.max(0, currentQ - 1))} disabled={currentQ === 0}>
+        <Button
+          variant="outline"
+          onClick={() => setCurrentQ(Math.max(0, currentQ - 1))}
+          disabled={currentQ === 0}
+          className="min-h-11"
+          aria-label={t('quiz.prev')}
+        >
           <ChevronLeft className="w-4 h-4 mr-1" /> {t('quiz.prev')}
         </Button>
         {currentQ < questions.length - 1 ? (
-          <Button size="sm" onClick={() => setCurrentQ(currentQ + 1)}>
+          <Button
+            onClick={() => setCurrentQ(currentQ + 1)}
+            className="min-h-11"
+            aria-label={t('quiz.next')}
+          >
             {t('quiz.next')} <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         ) : (
-          <Button size="sm" onClick={submitAll} disabled={!allAnswered || submitting} className="gap-1">
+          <Button
+            onClick={submitAll}
+            disabled={!allAnswered || submitting}
+            className="gap-1 min-h-11"
+            aria-label={t('quiz.submit')}
+          >
             <Send className="w-4 h-4" /> {submitting ? '提交中...' : t('quiz.submit')}
           </Button>
 
