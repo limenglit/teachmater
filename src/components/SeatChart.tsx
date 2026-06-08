@@ -3,7 +3,8 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil } from 'lucide-react';
+import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
+import { snapSeatState, pushSeatUndo, popSeatUndo, popSeatRedo, type SeatSnap } from '@/lib/seat-undo';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SmartClassroom from '@/components/seating/SmartClassroom';
@@ -93,6 +94,12 @@ export default function SeatChart() {
   const [groupSource, setGroupSource] = useState<SeatGroupSource>('auto');
   const [smartClusterStrategy, setSmartClusterStrategy] = useState<SmartClusterStrategy>('orgFrontWeighted');
   const [disabledSeats, setDisabledSeats] = useState<Set<string>>(new Set());
+  const [lockedSeats, setLockedSeats] = useState<Set<string>>(new Set());
+  const [undoStack, setUndoStack] = useState<SeatSnap[]>([]);
+  const [redoStack, setRedoStack] = useState<SeatSnap[]>([]);
+  const seatsRef = useRef<(string | null)[][]>([]);
+  const disabledRef = useRef<Set<string>>(new Set());
+  const lockedRef = useRef<Set<string>>(new Set());
   const [examSkipRow, setExamSkipRow] = useState(true);
   const [examSkipCol, setExamSkipCol] = useState(false);
   const [dragFrom, setDragFrom] = useState<{ r: number; c: number } | null>(null);
@@ -118,8 +125,47 @@ export default function SeatChart() {
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
+  // ----- Multi-step undo/redo for seat grid -----
+  // Keep refs in sync so pushHistory/restore always read the latest values
+  // even when called from inside functional-state updaters.
+  useEffect(() => { seatsRef.current = seats; }, [seats]);
+  useEffect(() => { disabledRef.current = disabledSeats; }, [disabledSeats]);
+  useEffect(() => { lockedRef.current = lockedSeats; }, [lockedSeats]);
+
+  const pushHistory = useCallback(() => {
+    const snap = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
+    setUndoStack(s => pushSeatUndo(s, snap));
+    setRedoStack([]);
+  }, []);
+
+  const applySnap = useCallback((snap: SeatSnap) => {
+    setSeats(snap.seats.map(row => [...row]));
+    setDisabledSeats(new Set(snap.disabled));
+    setLockedSeats(new Set(snap.locked));
+  }, []);
+
+  const undo = useCallback(() => {
+    const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
+    const res = popSeatUndo(undoStack, redoStack, current);
+    if (!res) { toast.info('没有可撤销的操作'); return; }
+    setUndoStack(res.undoStack);
+    setRedoStack(res.redoStack);
+    applySnap(res.restored);
+  }, [undoStack, redoStack, applySnap]);
+
+  const redo = useCallback(() => {
+    const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
+    const res = popSeatRedo(undoStack, redoStack, current);
+    if (!res) { toast.info('没有可重做的操作'); return; }
+    setUndoStack(res.undoStack);
+    setRedoStack(res.redoStack);
+    applySnap(res.restored);
+  }, [undoStack, redoStack, applySnap]);
+
   const toggleDisabled = (r: number, c: number) => {
     const key = seatKey(r, c);
+    if (lockedRef.current.has(key)) { toast.info('该座位已锁定，请先解锁'); return; }
+    pushHistory();
     setDisabledSeats(prev => {
       const next = new Set(prev);
       if (next.has(key)) { next.delete(key); }
@@ -127,6 +173,22 @@ export default function SeatChart() {
       return next;
     });
   };
+
+  /** Shift+click on a seated student toggles a lock — locked students stay put on auto-seat. */
+  const toggleLocked = useCallback((r: number, c: number) => {
+    const key = seatKey(r, c);
+    const hasName = !!seatsRef.current[r]?.[c];
+    if (!hasName && !lockedRef.current.has(key)) {
+      toast.info('只能锁定已有学生的座位');
+      return;
+    }
+    pushHistory();
+    setLockedSeats(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, [pushHistory]);
 
   const isRowFullyDisabled = useCallback((row: number) => {
     for (let c = 0; c < cols; c++) { if (!disabledSeats.has(seatKey(row, c))) return false; }
@@ -140,23 +202,36 @@ export default function SeatChart() {
 
   const toggleRowDisabled = useCallback((row: number) => {
     const closeAll = !isRowFullyDisabled(row);
+    // Don't blow away locked seats in the row.
+    for (let c = 0; c < cols; c++) {
+      if (closeAll && lockedRef.current.has(seatKey(row, c))) {
+        toast.info('该行包含已锁定座位，请先解锁后再禁用'); return;
+      }
+    }
+    pushHistory();
     setDisabledSeats(prev => {
       const next = new Set(prev);
       for (let c = 0; c < cols; c++) { const key = seatKey(row, c); if (closeAll) next.add(key); else next.delete(key); }
       return next;
     });
     if (closeAll) { setSeats(prev => { const next = prev.map(r => [...r]); if (next[row]) { for (let c = 0; c < cols; c++) { next[row][c] = null; } } return next; }); }
-  }, [cols, isRowFullyDisabled]);
+  }, [cols, isRowFullyDisabled, pushHistory]);
 
   const toggleColDisabled = useCallback((col: number) => {
     const closeAll = !isColFullyDisabled(col);
+    for (let r = 0; r < rows; r++) {
+      if (closeAll && lockedRef.current.has(seatKey(r, col))) {
+        toast.info('该列包含已锁定座位，请先解锁后再禁用'); return;
+      }
+    }
+    pushHistory();
     setDisabledSeats(prev => {
       const next = new Set(prev);
       for (let r = 0; r < rows; r++) { const key = seatKey(r, col); if (closeAll) next.add(key); else next.delete(key); }
       return next;
     });
     if (closeAll) { setSeats(prev => { const next = prev.map(r => [...r]); for (let r = 0; r < rows; r++) { if (next[r]) next[r][col] = null; } return next; }); }
-  }, [isColFullyDisabled, rows]);
+  }, [isColFullyDisabled, rows, pushHistory]);
 
   const makeGrid = (): (string | null)[][] => Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
 
@@ -299,9 +374,24 @@ export default function SeatChart() {
   }, [genderFirst, genderSeatPolicy, students]);
 
   const autoSeat = useCallback(() => {
+    // Snapshot pre-mutation state so the user can undo the entire auto-seat.
+    pushHistory();
     const grid = makeGrid();
-    const isAvailable = (r: number, c: number) => !disabledSeats.has(seatKey(r, c));
-    const names = getGenderOrderedNames();
+    // Locked seats keep their student AND block placement for everyone else.
+    const currentSeats = seatsRef.current;
+    const lockedNamesSet = new Set<string>();
+    for (const key of lockedSeats) {
+      const [rs, cs] = key.split('-');
+      const lr = Number(rs); const lc = Number(cs);
+      if (Number.isFinite(lr) && Number.isFinite(lc) && currentSeats[lr]?.[lc]) {
+        const name = currentSeats[lr][lc] as string;
+        lockedNamesSet.add(name);
+        if (lr < rows && lc < cols) grid[lr][lc] = name;
+      }
+    }
+    const isAvailable = (r: number, c: number) =>
+      !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c));
+    const names = getGenderOrderedNames().filter(n => !lockedNamesSet.has(n));
     const colOrder = getColOrder();
 
     const normalizeBuckets = (buckets: string[][]) => {
@@ -527,12 +617,18 @@ export default function SeatChart() {
       case 'random': { const shuffled = [...names].sort(() => Math.random() - 0.5); let idx = 0; for (let r = 0; r < rows && idx < shuffled.length; r++) { for (let c = 0; c < cols && idx < shuffled.length; c++) { if (isAvailable(r, c)) grid[r][c] = shuffled[idx++]; } } break; }
     }
     setSeats(grid);
-  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender]);
+  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, lockedSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender, pushHistory]);
 
-  const handleDragStart = (r: number, c: number) => { if (!seats[r][c]) return; setDragFrom({ r, c }); };
+  const handleDragStart = (r: number, c: number) => {
+    if (!seats[r][c]) return;
+    if (lockedRef.current.has(seatKey(r, c))) { toast.info('已锁定座位不可拖动，请先解锁'); return; }
+    setDragFrom({ r, c });
+  };
   const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
   const handleDrop = (e: React.DragEvent, r: number, c: number) => {
     e.preventDefault(); if (!dragFrom) return;
+    if (lockedRef.current.has(seatKey(r, c))) { toast.info('目标座位已锁定，无法放置'); setDragFrom(null); setDropTarget(null); return; }
+    pushHistory();
     setSeats(prev => { const next = prev.map(row => [...row]); const temp = next[r][c]; next[r][c] = next[dragFrom.r][dragFrom.c]; next[dragFrom.r][dragFrom.c] = temp; return next; });
     setDragFrom(null); setDropTarget(null);
   };
@@ -650,6 +746,7 @@ export default function SeatChart() {
     groupSource,
     smartClusterStrategy,
     disabledSeats: Array.from(disabledSeats),
+    lockedSeats: Array.from(lockedSeats),
     examSkipRow,
     examSkipCol,
     startFrom,
@@ -705,7 +802,12 @@ export default function SeatChart() {
       const [r, c] = key.split('-').map(Number);
       return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
     })));
+    setLockedSeats(new Set(((snapshot as any).lockedSeats || []).filter((key: string) => {
+      const [r, c] = key.split('-').map(Number);
+      return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
+    })));
     setSeats(nextSeats);
+    setUndoStack([]); setRedoStack([]);
     setRecordName(item.name);
 
     saveClassroomSnapshot({
@@ -756,6 +858,10 @@ export default function SeatChart() {
       const [r, c] = key.split('-').map(Number);
       return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
     })));
+    setLockedSeats(new Set(((snapshot as any).lockedSeats || []).filter((key: string) => {
+      const [r, c] = key.split('-').map(Number);
+      return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
+    })));
     setSeats(nextSeats);
     restoredClassroomRef.current = true;
   }, [students]);
@@ -763,7 +869,23 @@ export default function SeatChart() {
   useEffect(() => {
     if (!restoredClassroomRef.current) return;
     saveClassroomSnapshot(buildClassroomSnapshot());
-  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
+  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, lockedSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl+Y = redo.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
 
   const buildVisualGrid = () => {
     if (seats.length === 0) return null;
@@ -800,21 +922,32 @@ export default function SeatChart() {
         const isDragging = dragFrom?.r === ri && dragFrom?.c === ci;
         const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
         const isDisabled = disabledSeats.has(seatKey(ri, ci));
+        const isLocked = lockedSeats.has(seatKey(ri, ci));
 
         elements.push(
-          <div key={`seat-${ri}-${ci}`} draggable={!!name && !isDisabled}
+          <div key={`seat-${ri}-${ci}`} draggable={!!name && !isDisabled && !isLocked}
             onDragStart={() => handleDragStart(ri, ci)}
             onDragOver={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const isAisleDrag = !!draggingAisle || !!draggingAisleRef.current || raw.startsWith('col:') || raw.startsWith('row:'); if (isAisleDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return; } handleDragOver(e, ri, ci); }}
             onDrop={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const [dragType, dragIndex] = raw.split(':'); const parsedIndex = Number(dragIndex); const currentAisle = draggingAisle ?? draggingAisleRef.current; const isColAisleDrag = currentAisle?.type === 'col' || (dragType === 'col' && Number.isFinite(parsedIndex)); const isAnyAisleDrag = !!currentAisle || dragType === 'col' || dragType === 'row'; if (isColAisleDrag) { const targetIndex = Math.min(ci, cols - 2); handleAisleDropOnGap(e, 'col', targetIndex); return; } if (isAnyAisleDrag) { e.preventDefault(); return; } handleDrop(e, ri, ci); }}
             onDragEnd={handleDragEnd}
-            onClick={() => !name && toggleDisabled(ri, ci)}
+            onClick={e => {
+              // Shift+click on a seated student toggles a lock; plain click on an empty seat disables it.
+              if (e.shiftKey && name) { toggleLocked(ri, ci); return; }
+              if (e.shiftKey && isLocked) { toggleLocked(ri, ci); return; }
+              if (!name) toggleDisabled(ri, ci);
+            }}
+            title={isLocked ? '已锁定（Shift+点击解锁，自动排座时保持不动）' : name ? 'Shift+点击锁定该学生位置' : undefined}
             style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: toGridCol(visualCol) }}
-            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
+            className={`relative w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
               ${isDisabled ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
+                : isLocked ? `bg-amber-50 dark:bg-amber-950/40 border-amber-400/70 text-foreground shadow-card cursor-not-allowed ring-1 ring-amber-300/60`
                 : name ? `bg-card border-border text-foreground shadow-card cursor-grab active:cursor-grabbing hover:border-primary/40 ${isDragging ? 'opacity-30 scale-90' : ''} ${isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-105' : ''}`
                 : `bg-muted/50 border-dashed border-border text-muted-foreground cursor-pointer hover:border-destructive/40 ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`}`}
           >
             {isDisabled ? <X className="w-4 h-4" /> : formatSeatLabel(name)}
+            {isLocked && !isDisabled && (
+              <Lock className="absolute top-0.5 right-0.5 w-3 h-3 text-amber-600 dark:text-amber-400" aria-label="locked" />
+            )}
           </div>
         );
       }
@@ -1158,11 +1291,33 @@ export default function SeatChart() {
               <Button
                 variant="outline"
                 className="gap-2"
+                onClick={undo}
+                disabled={undoStack.length === 0}
+                title="撤销上一步（Ctrl/⌘+Z）"
+              >
+                <Undo2 className="w-4 h-4" /> 撤销{undoStack.length > 0 ? `（${undoStack.length}）` : ''}
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={redo}
+                disabled={redoStack.length === 0}
+                title="重做（Ctrl/⌘+Shift+Z）"
+              >
+                <Redo2 className="w-4 h-4" /> 重做{redoStack.length > 0 ? `（${redoStack.length}）` : ''}
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
                 onClick={() => {
-                  if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+                  if (lockedRef.current.size > 0) {
+                    if (!window.confirm('当前有锁定座位，将一并清空。是否继续？（可撤销）')) return;
+                  }
+                  pushHistory();
                   setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
+                  setLockedSeats(new Set());
                 }}
-                title="清空所有座位"
+                title="清空所有座位（可撤销）"
               >
                 <X className="w-4 h-4" /> 清空座位
               </Button>
@@ -1302,7 +1457,10 @@ export default function SeatChart() {
               )}
             </div>
             {seats.length > 0 && (
-              <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
+              <p className="text-center text-xs text-muted-foreground mt-4">
+                {t('seat.legend')}
+                <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。</span>
+              </p>
             )}
             <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
               sceneConfig={exportSceneConfig} className={recordName.trim() || exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
