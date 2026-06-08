@@ -392,6 +392,7 @@ export default function SeatChart() {
     const isAvailable = (r: number, c: number) =>
       !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c));
     const names = getGenderOrderedNames().filter(n => !lockedNamesSet.has(n));
+    const colOrder = getColOrder();
 
     const normalizeBuckets = (buckets: string[][]) => {
       const validStudentNames = new Set(students.map(s => s.name));
