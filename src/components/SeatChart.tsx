@@ -922,21 +922,32 @@ export default function SeatChart() {
         const isDragging = dragFrom?.r === ri && dragFrom?.c === ci;
         const isOver = dropTarget?.r === ri && dropTarget?.c === ci;
         const isDisabled = disabledSeats.has(seatKey(ri, ci));
+        const isLocked = lockedSeats.has(seatKey(ri, ci));
 
         elements.push(
-          <div key={`seat-${ri}-${ci}`} draggable={!!name && !isDisabled}
+          <div key={`seat-${ri}-${ci}`} draggable={!!name && !isDisabled && !isLocked}
             onDragStart={() => handleDragStart(ri, ci)}
             onDragOver={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const isAisleDrag = !!draggingAisle || !!draggingAisleRef.current || raw.startsWith('col:') || raw.startsWith('row:'); if (isAisleDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return; } handleDragOver(e, ri, ci); }}
             onDrop={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const [dragType, dragIndex] = raw.split(':'); const parsedIndex = Number(dragIndex); const currentAisle = draggingAisle ?? draggingAisleRef.current; const isColAisleDrag = currentAisle?.type === 'col' || (dragType === 'col' && Number.isFinite(parsedIndex)); const isAnyAisleDrag = !!currentAisle || dragType === 'col' || dragType === 'row'; if (isColAisleDrag) { const targetIndex = Math.min(ci, cols - 2); handleAisleDropOnGap(e, 'col', targetIndex); return; } if (isAnyAisleDrag) { e.preventDefault(); return; } handleDrop(e, ri, ci); }}
             onDragEnd={handleDragEnd}
-            onClick={() => !name && toggleDisabled(ri, ci)}
+            onClick={e => {
+              // Shift+click on a seated student toggles a lock; plain click on an empty seat disables it.
+              if (e.shiftKey && name) { toggleLocked(ri, ci); return; }
+              if (e.shiftKey && isLocked) { toggleLocked(ri, ci); return; }
+              if (!name) toggleDisabled(ri, ci);
+            }}
+            title={isLocked ? '已锁定（Shift+点击解锁，自动排座时保持不动）' : name ? 'Shift+点击锁定该学生位置' : undefined}
             style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: toGridCol(visualCol) }}
-            className={`w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
+            className={`relative w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
               ${isDisabled ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
+                : isLocked ? `bg-amber-50 dark:bg-amber-950/40 border-amber-400/70 text-foreground shadow-card cursor-not-allowed ring-1 ring-amber-300/60`
                 : name ? `bg-card border-border text-foreground shadow-card cursor-grab active:cursor-grabbing hover:border-primary/40 ${isDragging ? 'opacity-30 scale-90' : ''} ${isOver ? 'ring-2 ring-primary/40 border-primary/40 scale-105' : ''}`
                 : `bg-muted/50 border-dashed border-border text-muted-foreground cursor-pointer hover:border-destructive/40 ${isOver && dragFrom ? 'ring-2 ring-primary/30 border-primary/30' : ''}`}`}
           >
             {isDisabled ? <X className="w-4 h-4" /> : formatSeatLabel(name)}
+            {isLocked && !isDisabled && (
+              <Lock className="absolute top-0.5 right-0.5 w-3 h-3 text-amber-600 dark:text-amber-400" aria-label="locked" />
+            )}
           </div>
         );
       }
