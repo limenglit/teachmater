@@ -802,7 +802,12 @@ export default function SeatChart() {
       const [r, c] = key.split('-').map(Number);
       return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
     })));
+    setLockedSeats(new Set(((snapshot as any).lockedSeats || []).filter((key: string) => {
+      const [r, c] = key.split('-').map(Number);
+      return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
+    })));
     setSeats(nextSeats);
+    setUndoStack([]); setRedoStack([]);
     setRecordName(item.name);
 
     saveClassroomSnapshot({
