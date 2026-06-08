@@ -1291,11 +1291,33 @@ export default function SeatChart() {
               <Button
                 variant="outline"
                 className="gap-2"
+                onClick={undo}
+                disabled={undoStack.length === 0}
+                title="撤销上一步（Ctrl/⌘+Z）"
+              >
+                <Undo2 className="w-4 h-4" /> 撤销{undoStack.length > 0 ? `（${undoStack.length}）` : ''}
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={redo}
+                disabled={redoStack.length === 0}
+                title="重做（Ctrl/⌘+Shift+Z）"
+              >
+                <Redo2 className="w-4 h-4" /> 重做{redoStack.length > 0 ? `（${redoStack.length}）` : ''}
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
                 onClick={() => {
-                  if (!window.confirm('确定要清空当前所有座位安排吗？此操作不可撤销。')) return;
+                  if (lockedRef.current.size > 0) {
+                    if (!window.confirm('当前有锁定座位，将一并清空。是否继续？（可撤销）')) return;
+                  }
+                  pushHistory();
                   setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
+                  setLockedSeats(new Set());
                 }}
-                title="清空所有座位"
+                title="清空所有座位（可撤销）"
               >
                 <X className="w-4 h-4" /> 清空座位
               </Button>
