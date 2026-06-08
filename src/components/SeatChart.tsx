@@ -94,6 +94,12 @@ export default function SeatChart() {
   const [groupSource, setGroupSource] = useState<SeatGroupSource>('auto');
   const [smartClusterStrategy, setSmartClusterStrategy] = useState<SmartClusterStrategy>('orgFrontWeighted');
   const [disabledSeats, setDisabledSeats] = useState<Set<string>>(new Set());
+  const [lockedSeats, setLockedSeats] = useState<Set<string>>(new Set());
+  const [undoStack, setUndoStack] = useState<SeatSnap[]>([]);
+  const [redoStack, setRedoStack] = useState<SeatSnap[]>([]);
+  const seatsRef = useRef<(string | null)[][]>([]);
+  const disabledRef = useRef<Set<string>>(new Set());
+  const lockedRef = useRef<Set<string>>(new Set());
   const [examSkipRow, setExamSkipRow] = useState(true);
   const [examSkipCol, setExamSkipCol] = useState(false);
   const [dragFrom, setDragFrom] = useState<{ r: number; c: number } | null>(null);
