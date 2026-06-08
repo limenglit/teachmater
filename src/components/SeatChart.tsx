@@ -374,10 +374,24 @@ export default function SeatChart() {
   }, [genderFirst, genderSeatPolicy, students]);
 
   const autoSeat = useCallback(() => {
+    // Snapshot pre-mutation state so the user can undo the entire auto-seat.
+    pushHistory();
     const grid = makeGrid();
-    const isAvailable = (r: number, c: number) => !disabledSeats.has(seatKey(r, c));
-    const names = getGenderOrderedNames();
-    const colOrder = getColOrder();
+    // Locked seats keep their student AND block placement for everyone else.
+    const currentSeats = seatsRef.current;
+    const lockedNamesSet = new Set<string>();
+    for (const key of lockedSeats) {
+      const [rs, cs] = key.split('-');
+      const lr = Number(rs); const lc = Number(cs);
+      if (Number.isFinite(lr) && Number.isFinite(lc) && currentSeats[lr]?.[lc]) {
+        const name = currentSeats[lr][lc] as string;
+        lockedNamesSet.add(name);
+        if (lr < rows && lc < cols) grid[lr][lc] = name;
+      }
+    }
+    const isAvailable = (r: number, c: number) =>
+      !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c));
+    const names = getGenderOrderedNames().filter(n => !lockedNamesSet.has(n));
 
     const normalizeBuckets = (buckets: string[][]) => {
       const validStudentNames = new Set(students.map(s => s.name));
