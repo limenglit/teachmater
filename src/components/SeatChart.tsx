@@ -858,6 +858,10 @@ export default function SeatChart() {
       const [r, c] = key.split('-').map(Number);
       return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
     })));
+    setLockedSeats(new Set(((snapshot as any).lockedSeats || []).filter((key: string) => {
+      const [r, c] = key.split('-').map(Number);
+      return Number.isFinite(r) && Number.isFinite(c) && r >= 0 && r < nextRows && c >= 0 && c < nextCols;
+    })));
     setSeats(nextSeats);
     restoredClassroomRef.current = true;
   }, [students]);
@@ -865,7 +869,23 @@ export default function SeatChart() {
   useEffect(() => {
     if (!restoredClassroomRef.current) return;
     saveClassroomSnapshot(buildClassroomSnapshot());
-  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
+  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, lockedSeats, examSkipRow, examSkipCol, startFrom, windowOnLeft, colAisles, rowAisles, seats]);
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl+Y = redo.
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+      else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [undo, redo]);
 
   const buildVisualGrid = () => {
     if (seats.length === 0) return null;
