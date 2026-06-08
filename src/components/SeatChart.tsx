@@ -617,12 +617,18 @@ export default function SeatChart() {
       case 'random': { const shuffled = [...names].sort(() => Math.random() - 0.5); let idx = 0; for (let r = 0; r < rows && idx < shuffled.length; r++) { for (let c = 0; c < cols && idx < shuffled.length; c++) { if (isAvailable(r, c)) grid[r][c] = shuffled[idx++]; } } break; }
     }
     setSeats(grid);
-  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender]);
+  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, lockedSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender, pushHistory]);
 
-  const handleDragStart = (r: number, c: number) => { if (!seats[r][c]) return; setDragFrom({ r, c }); };
+  const handleDragStart = (r: number, c: number) => {
+    if (!seats[r][c]) return;
+    if (lockedRef.current.has(seatKey(r, c))) { toast.info('已锁定座位不可拖动，请先解锁'); return; }
+    setDragFrom({ r, c });
+  };
   const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
   const handleDrop = (e: React.DragEvent, r: number, c: number) => {
     e.preventDefault(); if (!dragFrom) return;
+    if (lockedRef.current.has(seatKey(r, c))) { toast.info('目标座位已锁定，无法放置'); setDragFrom(null); setDropTarget(null); return; }
+    pushHistory();
     setSeats(prev => { const next = prev.map(row => [...row]); const temp = next[r][c]; next[r][c] = next[dragFrom.r][dragFrom.c]; next[dragFrom.r][dragFrom.c] = temp; return next; });
     setDragFrom(null); setDropTarget(null);
   };
