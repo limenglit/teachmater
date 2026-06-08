@@ -125,8 +125,47 @@ export default function SeatChart() {
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
+  // ----- Multi-step undo/redo for seat grid -----
+  // Keep refs in sync so pushHistory/restore always read the latest values
+  // even when called from inside functional-state updaters.
+  useEffect(() => { seatsRef.current = seats; }, [seats]);
+  useEffect(() => { disabledRef.current = disabledSeats; }, [disabledSeats]);
+  useEffect(() => { lockedRef.current = lockedSeats; }, [lockedSeats]);
+
+  const pushHistory = useCallback(() => {
+    const snap = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
+    setUndoStack(s => pushSeatUndo(s, snap));
+    setRedoStack([]);
+  }, []);
+
+  const applySnap = useCallback((snap: SeatSnap) => {
+    setSeats(snap.seats.map(row => [...row]));
+    setDisabledSeats(new Set(snap.disabled));
+    setLockedSeats(new Set(snap.locked));
+  }, []);
+
+  const undo = useCallback(() => {
+    const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
+    const res = popSeatUndo(undoStack, redoStack, current);
+    if (!res) { toast.info('没有可撤销的操作'); return; }
+    setUndoStack(res.undoStack);
+    setRedoStack(res.redoStack);
+    applySnap(res.restored);
+  }, [undoStack, redoStack, applySnap]);
+
+  const redo = useCallback(() => {
+    const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
+    const res = popSeatRedo(undoStack, redoStack, current);
+    if (!res) { toast.info('没有可重做的操作'); return; }
+    setUndoStack(res.undoStack);
+    setRedoStack(res.redoStack);
+    applySnap(res.restored);
+  }, [undoStack, redoStack, applySnap]);
+
   const toggleDisabled = (r: number, c: number) => {
     const key = seatKey(r, c);
+    if (lockedRef.current.has(key)) { toast.info('该座位已锁定，请先解锁'); return; }
+    pushHistory();
     setDisabledSeats(prev => {
       const next = new Set(prev);
       if (next.has(key)) { next.delete(key); }
@@ -134,6 +173,22 @@ export default function SeatChart() {
       return next;
     });
   };
+
+  /** Shift+click on a seated student toggles a lock — locked students stay put on auto-seat. */
+  const toggleLocked = useCallback((r: number, c: number) => {
+    const key = seatKey(r, c);
+    const hasName = !!seatsRef.current[r]?.[c];
+    if (!hasName && !lockedRef.current.has(key)) {
+      toast.info('只能锁定已有学生的座位');
+      return;
+    }
+    pushHistory();
+    setLockedSeats(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, [pushHistory]);
 
   const isRowFullyDisabled = useCallback((row: number) => {
     for (let c = 0; c < cols; c++) { if (!disabledSeats.has(seatKey(row, c))) return false; }
@@ -147,23 +202,36 @@ export default function SeatChart() {
 
   const toggleRowDisabled = useCallback((row: number) => {
     const closeAll = !isRowFullyDisabled(row);
+    // Don't blow away locked seats in the row.
+    for (let c = 0; c < cols; c++) {
+      if (closeAll && lockedRef.current.has(seatKey(row, c))) {
+        toast.info('该行包含已锁定座位，请先解锁后再禁用'); return;
+      }
+    }
+    pushHistory();
     setDisabledSeats(prev => {
       const next = new Set(prev);
       for (let c = 0; c < cols; c++) { const key = seatKey(row, c); if (closeAll) next.add(key); else next.delete(key); }
       return next;
     });
     if (closeAll) { setSeats(prev => { const next = prev.map(r => [...r]); if (next[row]) { for (let c = 0; c < cols; c++) { next[row][c] = null; } } return next; }); }
-  }, [cols, isRowFullyDisabled]);
+  }, [cols, isRowFullyDisabled, pushHistory]);
 
   const toggleColDisabled = useCallback((col: number) => {
     const closeAll = !isColFullyDisabled(col);
+    for (let r = 0; r < rows; r++) {
+      if (closeAll && lockedRef.current.has(seatKey(r, col))) {
+        toast.info('该列包含已锁定座位，请先解锁后再禁用'); return;
+      }
+    }
+    pushHistory();
     setDisabledSeats(prev => {
       const next = new Set(prev);
       for (let r = 0; r < rows; r++) { const key = seatKey(r, col); if (closeAll) next.add(key); else next.delete(key); }
       return next;
     });
     if (closeAll) { setSeats(prev => { const next = prev.map(r => [...r]); for (let r = 0; r < rows; r++) { if (next[r]) next[r][col] = null; } return next; }); }
-  }, [isColFullyDisabled, rows]);
+  }, [isColFullyDisabled, rows, pushHistory]);
 
   const makeGrid = (): (string | null)[][] => Array.from({ length: rows }, () => Array.from({ length: cols }, () => null));
 
