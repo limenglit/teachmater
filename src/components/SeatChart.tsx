@@ -746,6 +746,7 @@ export default function SeatChart() {
     groupSource,
     smartClusterStrategy,
     disabledSeats: Array.from(disabledSeats),
+    lockedSeats: Array.from(lockedSeats),
     examSkipRow,
     examSkipCol,
     startFrom,
