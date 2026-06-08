@@ -1457,7 +1457,10 @@ export default function SeatChart() {
               )}
             </div>
             {seats.length > 0 && (
-              <p className="text-center text-xs text-muted-foreground mt-4">{t('seat.legend')}</p>
+              <p className="text-center text-xs text-muted-foreground mt-4">
+                {t('seat.legend')}
+                <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。</span>
+              </p>
             )}
             <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
               sceneConfig={exportSceneConfig} className={recordName.trim() || exportClassName} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
