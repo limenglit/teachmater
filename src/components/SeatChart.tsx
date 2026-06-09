@@ -14,6 +14,7 @@ import BanquetHall from '@/components/seating/BanquetHall';
 import ComputerLab from '@/components/seating/ComputerLab';
 import ArtStudio from '@/components/seating/ArtStudio';
 import CustomLayout from '@/components/seating/CustomLayout';
+import SeatRuleComposer from '@/components/seating/SeatRuleComposer';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
