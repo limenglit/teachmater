@@ -331,8 +331,26 @@ export default function SeatCheckinDialog({
       })
       .subscribe();
 
-    return () => { void supabase.removeChannel(channel); };
-  }, [currentSession?.id]);
+    // 轮询兜底：访客教师（未登录）受 RLS 限制无法通过 Realtime 收到行变更，
+    // 且偶发的 WebSocket 抖动也会丢消息。每 3 秒拉一次作为兜底。
+    const pollId = window.setInterval(() => {
+      if (currentSession.status !== 'active') return;
+      void loadSeatCheckinRecords(currentSession.id).then(next => {
+        if (!Array.isArray(next)) return;
+        setRecords(prev => {
+          if (prev.length === next.length && prev.every((p, i) => p.id === next[i]?.id)) {
+            return prev;
+          }
+          return next;
+        });
+      }).catch(() => {});
+    }, 3000);
+
+    return () => {
+      void supabase.removeChannel(channel);
+      window.clearInterval(pollId);
+    };
+  }, [currentSession?.id, currentSession?.status]);
 
   useEffect(() => {
     if (!currentSession) return;
