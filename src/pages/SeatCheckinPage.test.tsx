@@ -94,6 +94,14 @@ const setupSeatCheckinRpc = ({
       return Promise.resolve({ data: [], error: null });
     }
 
+    if (fn === 'submit_seat_checkin_record') {
+      const studentName = typeof args?.p_student_name === 'string' ? args.p_student_name.trim() : '';
+      return Promise.resolve({
+        data: [{ id: 'record-1', session_id: args?.p_session_id, student_name: studentName, checked_in_at: '2026-06-10T00:00:00.000Z' }],
+        error: null,
+      });
+    }
+
     throw new Error(`Unexpected rpc: ${fn}`);
   });
 };
@@ -194,6 +202,10 @@ describe('SeatCheckinPage', () => {
 
     expect(toastMock).not.toHaveBeenCalledWith(expect.objectContaining({
       title: '您没提前注册，已为您分配临时座位',
+    }));
+    expect(rpcMock).toHaveBeenCalledWith('submit_seat_checkin_record', expect.objectContaining({
+      p_session_id: 'session-1',
+      p_student_name: '张三',
     }));
   });
 });
