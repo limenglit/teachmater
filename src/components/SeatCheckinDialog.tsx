@@ -332,19 +332,26 @@ export default function SeatCheckinDialog({
       .subscribe();
 
     // 轮询兜底：访客教师（未登录）受 RLS 限制无法通过 Realtime 收到行变更，
-    // 且偶发的 WebSocket 抖动也会丢消息。每 3 秒拉一次作为兜底。
+    // 且偶发的 WebSocket 抖动也会丢消息。每 2 秒拉一次作为兜底。
     const pollId = window.setInterval(() => {
       if (currentSession.status !== 'active') return;
       void loadSeatCheckinRecords(currentSession.id).then(next => {
         if (!Array.isArray(next)) return;
         setRecords(prev => {
-          if (prev.length === next.length && prev.every((p, i) => p.id === next[i]?.id)) {
-            return prev;
+          // Compare by id set (order-independent) — Realtime appends to end
+          // while the RPC may return rows in DB order, so positional compare
+          // can falsely skip updates.
+          if (prev.length === next.length) {
+            const prevIds = new Set(prev.map(r => r.id));
+            let same = true;
+            for (const r of next) { if (!prevIds.has(r.id)) { same = false; break; } }
+            if (same) return prev;
           }
           return next;
         });
       }).catch(() => {});
-    }, 3000);
+    }, 2000);
+
 
     return () => {
       void supabase.removeChannel(channel);
