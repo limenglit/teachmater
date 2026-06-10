@@ -265,7 +265,9 @@ export default function SeatCheckinDialog({
   onMergeGuests,
 }: Props) {
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
-  const resolvedThemeTitle = (currentSession?.class_name || className || '座位签到').trim();
+  const resolvedThemeTitle = ((currentSession?.class_name || className || '').trim()) || '座位签到';
+  const hasCustomTitle = !!(currentSession?.class_name?.trim() || className?.trim());
+
   const [loading, setLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -332,25 +334,45 @@ export default function SeatCheckinDialog({
       .subscribe();
 
     // 轮询兜底：访客教师（未登录）受 RLS 限制无法通过 Realtime 收到行变更，
-    // 且偶发的 WebSocket 抖动也会丢消息。每 3 秒拉一次作为兜底。
+    // 且偶发的 WebSocket 抖动也会丢消息。每 2 秒拉一次作为兜底。
     const pollId = window.setInterval(() => {
       if (currentSession.status !== 'active') return;
       void loadSeatCheckinRecords(currentSession.id).then(next => {
         if (!Array.isArray(next)) return;
         setRecords(prev => {
-          if (prev.length === next.length && prev.every((p, i) => p.id === next[i]?.id)) {
-            return prev;
+          // Compare by id set (order-independent) — Realtime appends to end
+          // while the RPC may return rows in DB order, so positional compare
+          // can falsely skip updates.
+          if (prev.length === next.length) {
+            const prevIds = new Set(prev.map(r => r.id));
+            let same = true;
+            for (const r of next) { if (!prevIds.has(r.id)) { same = false; break; } }
+            if (same) return prev;
           }
           return next;
         });
       }).catch(() => {});
-    }, 3000);
+    }, 2000);
+
+
+    const refetchNow = () => {
+      if (currentSession.status !== 'active') return;
+      void loadSeatCheckinRecords(currentSession.id).then(next => {
+        if (Array.isArray(next)) setRecords(next);
+      }).catch(() => {});
+    };
+    const onVisibility = () => { if (document.visibilityState === 'visible') refetchNow(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', refetchNow);
 
     return () => {
       void supabase.removeChannel(channel);
       window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', refetchNow);
     };
   }, [currentSession?.id, currentSession?.status]);
+
 
   useEffect(() => {
     if (!currentSession) return;
@@ -643,8 +665,9 @@ export default function SeatCheckinDialog({
       <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader className="px-4 sm:px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <DialogTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" /> {resolvedThemeTitle} · 座位签到
+            <QrCode className="w-5 h-5" /> {hasCustomTitle ? `${resolvedThemeTitle} · 座位签到` : '座位签到'}
           </DialogTitle>
+
         </DialogHeader>
 
         <div className="overflow-y-auto px-4 sm:px-6 pb-5 max-h-[calc(90vh-74px)]">
