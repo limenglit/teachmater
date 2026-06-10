@@ -353,11 +353,24 @@ export default function SeatCheckinDialog({
     }, 2000);
 
 
+    const refetchNow = () => {
+      if (currentSession.status !== 'active') return;
+      void loadSeatCheckinRecords(currentSession.id).then(next => {
+        if (Array.isArray(next)) setRecords(next);
+      }).catch(() => {});
+    };
+    const onVisibility = () => { if (document.visibilityState === 'visible') refetchNow(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', refetchNow);
+
     return () => {
       void supabase.removeChannel(channel);
       window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', refetchNow);
     };
   }, [currentSession?.id, currentSession?.status]);
+
 
   useEffect(() => {
     if (!currentSession) return;
