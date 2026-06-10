@@ -1847,6 +1847,15 @@ export type Database = {
         Args: { p_answers: Json; p_session_id: string; p_student_name: string }
         Returns: undefined
       }
+      submit_seat_checkin_record: {
+        Args: { p_session_id: string; p_student_name: string }
+        Returns: {
+          checked_in_at: string
+          id: string
+          session_id: string
+          student_name: string
+        }[]
+      }
       submit_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
       update_board:
         | {
