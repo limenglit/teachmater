@@ -48,7 +48,7 @@ const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: stri
 };
 
 const submitSeatCheckinRecord = async (sessionId: string, studentName: string) => {
-  const { data, error } = await supabase.rpc('submit_seat_checkin_record', {
+  const { data, error } = await (supabase.rpc as any)('submit_seat_checkin_record', {
     p_session_id: sessionId,
     p_student_name: studentName,
   } as any);
