@@ -1183,7 +1183,7 @@ export default function BanquetHall({ students }: Props) {
         studentNames={students.map(s => s.name)}
         sceneType="banquet"
         sceneConfig={exportSceneConfig}
-        className={recordName.trim() || exportClassName}
+        className={recordName.trim()}
         pngFileName={recordName.trim() || t('seat.editor.scene.banquetFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

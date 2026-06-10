@@ -951,7 +951,7 @@ export default function ConcertHall({ students }: Props) {
         seatAssignmentReady={seatAssignmentReady}
         sceneType="concertHall"
         sceneConfig={exportSceneConfig}
-        className={recordName.trim() || exportClassName}
+        className={recordName.trim()}
         pngFileName={recordName.trim() || t('seat.editor.scene.concertFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

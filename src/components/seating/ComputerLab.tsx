@@ -926,7 +926,7 @@ export default function ComputerLab({ students }: Props) {
         seatAssignmentReady={seated}
         sceneType="computerLab"
         sceneConfig={exportSceneConfig}
-        className={recordName.trim() || exportClassName}
+        className={recordName.trim()}
         pngFileName={recordName.trim() || t('seat.editor.scene.labFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

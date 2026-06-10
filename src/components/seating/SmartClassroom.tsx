@@ -1250,7 +1250,7 @@ export default function SmartClassroom({
         studentNames={students.map(s => s.name)}
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}
-        className={recordName.trim() || exportClassName}
+        className={recordName.trim()}
         pngFileName={recordName.trim() || t('seat.editor.scene.classroomFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />

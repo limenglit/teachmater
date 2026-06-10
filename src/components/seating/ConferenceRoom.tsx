@@ -1075,7 +1075,7 @@ export default function ConferenceRoom({ students }: Props) {
         seatAssignmentReady={seated}
         sceneType="conference"
         sceneConfig={exportSceneConfig}
-        className={recordName.trim() || exportClassName}
+        className={recordName.trim()}
         pngFileName={recordName.trim() || t('seat.editor.scene.conferenceFile')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
