@@ -665,8 +665,9 @@ export default function SeatCheckinDialog({
       <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader className="px-4 sm:px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <DialogTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" /> {resolvedThemeTitle} · 座位签到
+            <QrCode className="w-5 h-5" /> {hasCustomTitle ? `${resolvedThemeTitle} · 座位签到` : '座位签到'}
           </DialogTitle>
+
         </DialogHeader>
 
         <div className="overflow-y-auto px-4 sm:px-6 pb-5 max-h-[calc(90vh-74px)]">
