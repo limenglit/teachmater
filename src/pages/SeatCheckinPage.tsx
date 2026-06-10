@@ -47,6 +47,18 @@ const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: stri
   return data === true;
 };
 
+const submitSeatCheckinRecord = async (sessionId: string, studentName: string) => {
+  const { data, error } = await supabase.rpc('submit_seat_checkin_record', {
+    p_session_id: sessionId,
+    p_student_name: studentName,
+  } as any);
+  if (error) throw error;
+  if (!data || (Array.isArray(data) && data.length === 0)) {
+    throw new Error('NO_RECORD_CREATED');
+  }
+  return Array.isArray(data) ? data[0] : data;
+};
+
 const isSeatEmptyValue = (value: unknown) => value === null || value === '';
 
 const countEmptySeatSlots = (node: unknown): number => {
@@ -374,10 +386,7 @@ export default function SeatCheckinPage() {
         return;
       }
 
-      await supabase.from('seat_checkin_records').insert({
-        session_id: sessionId,
-        student_name: trimmedName,
-      });
+      await submitSeatCheckinRecord(sessionId, trimmedName);
 
       const resolved = await resolveSeatDataForName(session, trimmedName, !isRegistered);
       setDisplaySeatData(resolved.seatData);
