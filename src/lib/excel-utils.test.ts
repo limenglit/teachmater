@@ -111,7 +111,7 @@ describe('parseCsv after encoding detection', () => {
 describe('readSpreadsheetFile - csv branch with encoding detection', () => {
   it('reads a GB18030 .csv File and returns trimmed 2D rows', async () => {
     const encoded = iconv.encode(SAMPLE, 'gb18030');
-    const file = new File([toAB(encoded)], 'roster.csv', { type: 'text/csv' });
+    const file = makeFile(new Uint8Array(encoded), 'roster.csv');
     const rows = await readSpreadsheetFile(file);
     expect(rows).toEqual([
       ['姓名', '班级'],
@@ -128,7 +128,7 @@ describe('readSpreadsheetFile - csv branch with encoding detection', () => {
     const merged = new Uint8Array(bom.length + body.length);
     merged.set(bom, 0);
     merged.set(body, bom.length);
-    const file = new File([toAB(merged)], 'names.csv', { type: 'text/csv' });
+    const file = makeFile(merged, 'names.csv');
     const rows = await readSpreadsheetFile(file);
     expect(rows).toEqual([['姓名'], ['张三'], ['John'], ['李小明']]);
   });
