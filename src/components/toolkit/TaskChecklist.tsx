@@ -262,11 +262,10 @@ export default function TaskChecklist() {
   const openSession = async (session: TaskSessionRecord) => {
     setActiveSession(session);
     try {
-      const { data, error } = await supabase
-        .from('task_completions')
-        .select('*')
-        .eq('session_id', session.id)
-        .order('completed_at', { ascending: true });
+      const { data, error } = await supabase.rpc('get_task_completions_for_owner' as any, {
+        p_session_id: session.id,
+        p_token: getCreatorTokens()[session.id] || session.creator_token || null,
+      } as any);
       if (error) throw error;
       setCompletions((data || []) as TaskCompletionRecord[]);
     } catch (error: any) {
