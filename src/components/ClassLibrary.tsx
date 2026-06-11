@@ -13,7 +13,7 @@ import {
   Building2, GraduationCap, Plus, Trash2, Edit2, Upload, Download, Check, X,
   ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen, ArrowUpToLine, GripVertical
 } from 'lucide-react';
-import { readExcelFile, writeExcelFile } from '@/lib/excel-utils';
+import { readSpreadsheetFile, writeExcelFile, writeCsvFile } from '@/lib/excel-utils';
 import { setActiveClassName } from '@/lib/class-context';
 
 interface College { id: string; name: string; user_id: string; sort_order?: number; }
@@ -221,69 +221,83 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     toast({ title: t('library.loadedToList'), description: `${classStudents.length} ${t('library.students')}` });
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      try {
-        const data = ev.target?.result as ArrayBuffer;
-        const rows: any[][] = await readExcelFile(data);
-        
-        if (rows.length < 2) {
-          toast({ title: t('library.fileEmpty'), variant: 'destructive' });
-          return;
-        }
+    try {
+      const rows: any[][] = await readSpreadsheetFile(file);
 
-        const warnings: string[] = [];
-        let skippedRows = 0;
-        const preview: PreviewRow[] = [];
-        for (let i = 1; i < rows.length; i++) {
-          const row = rows[i];
-          if (!row || row.every((c: any) => !c || String(c).trim() === '')) { skippedRows++; continue; }
-          if (row.length < 3) { skippedRows++; continue; }
-          if (row.length >= 4) {
-            preview.push({ college: String(row[0] || '').trim(), className: String(row[1] || '').trim(), studentNumber: String(row[2] || '').trim(), name: String(row[3] || '').trim() });
-          } else {
-            preview.push({ college: String(row[0] || '').trim(), className: String(row[1] || '').trim(), studentNumber: '', name: String(row[2] || '').trim() });
-          }
-        }
-
-        // Check for garbled encoding (common sign: high ratio of replacement chars)
-        const allText = preview.map(r => r.name + r.college + r.className).join('');
-        const garbledChars = (allText.match(/[�\ufffd]/g) || []).length;
-        if (garbledChars > 0 && garbledChars / allText.length > 0.1) {
-          warnings.push('检测到疑似编码问题（乱码），请确认文件编码为 UTF-8');
-        }
-
-        const validPreview = preview.filter(r => r.name && r.college && r.className);
-        const invalidCount = preview.length - validPreview.length;
-        if (skippedRows > 0) warnings.push(`已跳过 ${skippedRows} 个空行/不完整行`);
-        if (invalidCount > 0) warnings.push(`${invalidCount} 行缺少必填字段已忽略`);
-
-        // Deduplicate within file
-        const seen = new Set<string>();
-        const duplicates: string[] = [];
-        const deduped: PreviewRow[] = [];
-        for (const row of validPreview) {
-          const key = `${row.college}|${row.className}|${row.name}`;
-          if (seen.has(key)) { duplicates.push(row.name); } else { seen.add(key); deduped.push(row); }
-        }
-        if (duplicates.length > 0) {
-          warnings.push(`文件内重复已去重: ${[...new Set(duplicates)].slice(0, 5).join('、')}${duplicates.length > 5 ? '等' : ''}`);
-        }
-
-        if (warnings.length > 0) {
-          toast({ title: '导入预览提示', description: warnings.join('；') });
-        }
-
-        setPreviewData(deduped);
-        setImportOpen(true);
-      } catch {
-        toast({ title: t('library.parseFailed'), description: '文件解析失败，请检查文件格式或编码（建议使用 UTF-8 编码的 .xlsx 文件）', variant: 'destructive' });
+      if (rows.length < 2) {
+        toast({ title: t('library.fileEmpty'), variant: 'destructive' });
+        return;
       }
-    };
-    reader.readAsArrayBuffer(file);
+
+      const warnings: string[] = [];
+      let skippedRows = 0;
+
+      // Header detection: identify which column is which by header text.
+      const header = (rows[0] || []).map((c: any) => String(c || '').trim());
+      const findCol = (...keys: string[]) => header.findIndex(h => keys.some(k => h.includes(k)));
+      let nameCol = findCol('姓名', 'name', '名字');
+      let collegeCol = findCol('院系', '学院', 'college', 'department');
+      let classCol = findCol('班级', '行政班', 'class');
+      let numberCol = findCol('学号', 'number', 'id');
+      // Fallback to legacy positional layout: [college, class, number, name]
+      if (nameCol < 0) nameCol = header.length >= 4 ? 3 : 2;
+      if (collegeCol < 0) collegeCol = 0;
+      if (classCol < 0) classCol = 1;
+      if (numberCol < 0) numberCol = header.length >= 4 ? 2 : -1;
+
+      const fallbackClass = selectedClass ? classes.find(c => c.id === selectedClass) : null;
+      const fallbackCollege = fallbackClass ? colleges.find(c => c.id === fallbackClass.college_id) : null;
+      const defaultCollegeName = fallbackCollege?.name || '未分类院系';
+      const defaultClassName = fallbackClass?.name || '未分类班级';
+
+      const preview: PreviewRow[] = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.every((c: any) => !c || String(c).trim() === '')) { skippedRows++; continue; }
+        const name = String(row[nameCol] ?? '').trim();
+        if (!name) { skippedRows++; continue; }
+        const college = String(row[collegeCol] ?? '').trim() || defaultCollegeName;
+        const className = String(row[classCol] ?? '').trim() || defaultClassName;
+        const studentNumber = numberCol >= 0 ? String(row[numberCol] ?? '').trim() : '';
+        preview.push({ college, className, studentNumber, name });
+      }
+
+      // Check for garbled encoding (common sign: replacement chars survived decoding)
+      const allText = preview.map(r => r.name + r.college + r.className).join('');
+      const garbledChars = (allText.match(/[\ufffd]/g) || []).length;
+      if (allText.length > 0 && garbledChars > 0 && garbledChars / allText.length > 0.05) {
+        warnings.push('检测到疑似编码问题（乱码），请将 CSV 文件另存为 UTF-8 编码后重试');
+      }
+
+      if (skippedRows > 0) warnings.push(`已跳过 ${skippedRows} 个空行或缺少姓名的行`);
+      if (!selectedClass && preview.some(r => r.college === defaultCollegeName || r.className === defaultClassName)) {
+        warnings.push('部分行未填写院系/班级，已使用「未分类」占位，可在选中目标班级后重新导入');
+      }
+
+      // Deduplicate within file
+      const seen = new Set<string>();
+      const duplicates: string[] = [];
+      const deduped: PreviewRow[] = [];
+      for (const row of preview) {
+        const key = `${row.college}|${row.className}|${row.name}`;
+        if (seen.has(key)) { duplicates.push(row.name); } else { seen.add(key); deduped.push(row); }
+      }
+      if (duplicates.length > 0) {
+        warnings.push(`文件内重复已去重: ${[...new Set(duplicates)].slice(0, 5).join('、')}${duplicates.length > 5 ? '等' : ''}`);
+      }
+
+      if (warnings.length > 0) {
+        toast({ title: '导入预览提示', description: warnings.join('；') });
+      }
+
+      setPreviewData(deduped);
+      setImportOpen(true);
+    } catch {
+      toast({ title: t('library.parseFailed'), description: '文件解析失败，请检查文件格式或编码（建议使用 UTF-8 编码的 .xlsx 或 .csv 文件）', variant: 'destructive' });
+    }
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -475,8 +489,11 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       ['学生院系', '行政班', '学号', '姓名'],
       ['计算机学院', '计科2201', '220101001', '张三'],
       ['计算机学院', '计科2201', '220101002', '李四'],
+      ['', '', '', '王五'],
     ];
     writeExcelFile(data, '学生信息', '学生信息导入模板.xlsx');
+    // Also offer a UTF-8 BOM CSV so Excel on zh-CN opens it without garbling characters
+    writeCsvFile(data, '学生信息导入模板.csv');
   };
 
   const exportAllToExcel = () => {
@@ -557,7 +574,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
               <Building2 className="w-4 h-4" /> {t('library.title')}
             </h3>
             <div className="flex flex-wrap justify-end gap-1 shrink-0">
-              <input ref={fileRef} type="file" accept=".xls,.xlsx" onChange={handleFileSelect} className="hidden" />
+              <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleFileSelect} className="hidden" />
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={downloadTemplate} title={t('library.downloadTemplate')}>
                 <Download className="w-3 h-3 mr-0 sm:mr-1" />
                 <span className="hidden sm:inline">{t('library.downloadTemplate')}</span>
