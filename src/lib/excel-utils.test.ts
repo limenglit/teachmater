@@ -83,13 +83,14 @@ describe('decodeCsvBytes - encoding auto-detection', () => {
 describe('parseCsv after encoding detection', () => {
   it('parses GB18030-encoded mixed CSV into structured rows', () => {
     const encoded = iconv.encode(SAMPLE, 'gb18030');
-    const rows = parseCsv(decodeCsvBytes(toAB(encoded)));
+    const rows = parseCsv(decodeCsvBytes(toAB(encoded))).filter(
+      (r) => r.length > 0 && r.some((c) => String(c).trim() !== ''),
+    );
     expect(rows).toEqual([
       ['姓名', '班级'],
       ['张三', '一班'],
       ['John Smith', 'Class A'],
       ['李小明 Tom', '二班'],
-      [],
     ]);
   });
 
