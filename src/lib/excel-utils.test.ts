@@ -11,6 +11,16 @@ function toAB(buf: Uint8Array | Buffer): ArrayBuffer {
   return ab;
 }
 
+function makeFile(bytes: Uint8Array, name: string, type = 'text/csv'): File {
+  const ab = toAB(bytes);
+  const f = new File([ab], name, { type });
+  // jsdom's File lacks arrayBuffer(); polyfill for tests
+  if (typeof (f as any).arrayBuffer !== 'function') {
+    (f as any).arrayBuffer = async () => ab;
+  }
+  return f;
+}
+
 describe('decodeCsvBytes - encoding auto-detection', () => {
   it('decodes plain UTF-8 (no BOM) with Chinese + English', () => {
     const bytes = new TextEncoder().encode(SAMPLE);
