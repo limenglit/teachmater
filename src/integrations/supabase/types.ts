@@ -1772,6 +1772,35 @@ export type Database = {
           student_name: string
         }[]
       }
+      get_task_completion_counts_for_owner: {
+        Args: { p_from: string; p_student_names: string[]; p_to: string }
+        Returns: {
+          c: number
+          student_name: string
+        }[]
+      }
+      get_task_completion_indexes_for_student: {
+        Args: { p_session_id: string; p_student_name: string }
+        Returns: {
+          task_index: number
+        }[]
+      }
+      get_task_completions_for_owner: {
+        Args: { p_session_id: string; p_token?: string }
+        Returns: {
+          completed_at: string
+          id: string
+          session_id: string
+          student_name: string
+          task_index: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "task_completions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_task_session_for_student: {
         Args: { p_session_id: string }
         Returns: Json

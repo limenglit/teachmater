@@ -56,11 +56,10 @@ export default function TaskSubmitPage() {
     localStorage.setItem(NAME_KEY, name);
 
     // Load existing completions for this student
-    const { data } = await supabase
-      .from('task_completions')
-      .select('task_index')
-      .eq('session_id', session.id)
-      .eq('student_name', name);
+    const { data } = await supabase.rpc('get_task_completion_indexes_for_student' as any, {
+      p_session_id: session.id,
+      p_student_name: name,
+    } as any);
     if (data) {
       setCompletedTasks(new Set(data.map(d => d.task_index)));
     }

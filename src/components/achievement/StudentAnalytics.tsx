@@ -70,7 +70,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
       const [boardRes, boardCommentRes, taskRes, barrageRes, quizRes, checkinAggRes] = await Promise.all([
         supabase.from('board_cards').select('author_nickname, likes_count').gte('created_at', fromISO).lte('created_at', toISO).in('author_nickname', studentNames),
         supabase.from('board_comments').select('author_nickname, created_at').gte('created_at', fromISO).lte('created_at', toISO).in('author_nickname', studentNames),
-        supabase.from('task_completions').select('student_name').gte('completed_at', fromISO).lte('completed_at', toISO).in('student_name', studentNames),
+        supabase.rpc('get_task_completion_counts_for_owner' as any, { p_student_names: studentNames, p_from: fromISO, p_to: toISO } as any),
         supabase.from('barrage_messages').select('nickname').gte('created_at', fromISO).lte('created_at', toISO).in('nickname', studentNames),
         supabase.from('quiz_answers').select('student_name, session_id').gte('created_at', fromISO).lte('created_at', toISO).in('student_name', studentNames),
         supabase.rpc('get_student_checkin_counts_for_owner', { p_student_names: studentNames, p_from: fromISO, p_to: toISO } as any),
@@ -84,6 +84,10 @@ export default function StudentAnalytics({ studentNames }: Props) {
       });
 
       // Aggregate board participation & likes
+      const expandedTaskRows: Array<{ student_name: string }> = [];
+      ((taskRes as any).data || []).forEach((row: any) => {
+        for (let i = 0; i < Number(row.c || 0); i++) expandedTaskRows.push({ student_name: row.student_name });
+      });
       const bc: Record<string, number> = {};
       const bl: Record<string, number> = {};
       (boardRes.data || []).forEach((row: any) => {
@@ -102,7 +106,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
 
       // Task completions
       const tc: Record<string, number> = {};
-      (taskRes.data || []).forEach((row: any) => {
+      expandedTaskRows.forEach((row: any) => {
         tc[row.student_name] = (tc[row.student_name] || 0) + 1;
       });
       setTaskCounts(tc);
