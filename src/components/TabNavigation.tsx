@@ -36,7 +36,7 @@ const tabs: TabItem[] = [
 
 const externalLinks: ExternalLink[] = [
   { labelKey: 'ext.ai', emoji: '🤖', icon: <BotMessageSquare className="w-4 h-4" />, url: 'https://mcuai.lovable.app/' },
-  { labelKey: 'ext.interactiveClass', emoji: '🧑‍🏫', icon: <MonitorPlay className="w-4 h-4" />, url: 'https://studentcenter.lovable.app/' },
+  { labelKey: 'ext.interactiveClass', emoji: '🧑‍🏫', icon: <MonitorPlay className="w-4 h-4" />, url: 'https://sck12.lovable.app/' },
 ];
 
 interface Props {
