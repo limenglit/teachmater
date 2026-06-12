@@ -34,9 +34,11 @@ const tabs: TabItem[] = [
   { id: 'toolkit', labelKey: 'tab.toolkit', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
 ];
 
+const INTERACTIVE_CLASS_URL = import.meta.env.VITE_INTERACTIVE_CLASS_URL || 'https://sck12.lovable.app/';
+
 const externalLinks: ExternalLink[] = [
   { labelKey: 'ext.ai', emoji: '🤖', icon: <BotMessageSquare className="w-4 h-4" />, url: 'https://mcuai.lovable.app/' },
-  { labelKey: 'ext.interactiveClass', emoji: '🧑‍🏫', icon: <MonitorPlay className="w-4 h-4" />, url: 'https://sck12.lovable.app/' },
+  { labelKey: 'ext.interactiveClass', emoji: '🧑‍🏫', icon: <MonitorPlay className="w-4 h-4" />, url: INTERACTIVE_CLASS_URL },
 ];
 
 interface Props {
