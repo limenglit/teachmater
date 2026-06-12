@@ -237,23 +237,8 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       let skippedRows = 0;
 
       // Header detection: identify which column is which by header text.
-      // Normalize headers: lowercase + strip whitespace/punctuation so aliases like
-      // "Student Name", "学生姓名", "full_name", "学号/工号" all match.
-      const rawHeader = (rows[0] || []).map((c: any) => String(c ?? '').trim());
-      const normalize = (s: string) => s.toLowerCase().replace(/[\s_\-\/\\()（）【】\[\]·.、,，:：;；*#"']/g, '');
-      const header = rawHeader.map(normalize);
-      const findCol = (keys: string[], exclude: string[] = []) =>
-        header.findIndex(h => h && !exclude.some(x => h.includes(x)) && keys.some(k => h.includes(k)));
-      // Order matters: detect 姓名 first, then exclude it when searching others to avoid "学生姓名" matching "学生".
-      let nameCol = findCol(['姓名', '名字', 'name', 'fullname', 'student', '学生'], ['班', '学号', '工号', 'id', 'no']);
-      let collegeCol = findCol(['院系', '学院', '系别', '部门', '单位', 'college', 'department', 'school', 'faculty', 'org', 'unit']);
-      let classCol = findCol(['班级', '行政班', '教学班', '班次', 'class', 'grade', 'section'], ['学号', '工号']);
-      let numberCol = findCol(['学号', '工号', '编号', 'number', 'studentid', 'sid', 'no']);
-      // Fallback to legacy positional layout: [college, class, number, name]
-      if (nameCol < 0) nameCol = header.length >= 4 ? 3 : 2;
-      if (collegeCol < 0) collegeCol = 0;
-      if (classCol < 0) classCol = 1;
-      if (numberCol < 0) numberCol = header.length >= 4 ? 2 : -1;
+      // Tolerant of aliases (姓名/Name/学生姓名, 院系/学院/单位, 学号/工号 …).
+      const { nameCol, collegeCol, classCol, numberCol } = resolveRosterColumns(rows[0] || []);
 
       const fallbackClass = selectedClass ? classes.find(c => c.id === selectedClass) : null;
       const fallbackCollege = fallbackClass ? colleges.find(c => c.id === fallbackClass.college_id) : null;
