@@ -14,6 +14,7 @@ import {
   ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen, ArrowUpToLine, GripVertical
 } from 'lucide-react';
 import { readSpreadsheetFile, writeExcelFile, writeCsvFile } from '@/lib/excel-utils';
+import { resolveRosterColumns } from '@/lib/roster-import';
 import { setActiveClassName } from '@/lib/class-context';
 
 interface College { id: string; name: string; user_id: string; sort_order?: number; }
