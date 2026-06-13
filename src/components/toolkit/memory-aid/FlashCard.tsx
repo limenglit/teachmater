@@ -123,7 +123,12 @@ function loadPresets(): FlashPreset[] {
   }
 }
 
-export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
+interface FlashCardProps {
+  cards: CardItem[];
+  onError?: (cardId: string, word: string, definition: string) => void;
+}
+
+export default function FlashCard({ cards: rawCards, onError }: FlashCardProps) {
   const { t } = useLanguage();
   const [cards, setCards] = useState<CardItem[]>([...rawCards]);
   const [idx, setIdx] = useState(0);
@@ -280,7 +285,10 @@ export default function FlashCard({ cards: rawCards }: { cards: CardItem[] }) {
   };
 
   const markCorrect = () => { setCorrect(c => c + 1); go(1); };
-  const markWrong = () => { setWrong(w => w + 1); };
+  const markWrong = () => {
+    setWrong(w => w + 1);
+    if (card && onError) onError(card.id, card.word, card.definition);
+  };
   const resetCount = () => { setCorrect(0); setWrong(0); };
 
   useEffect(() => {
