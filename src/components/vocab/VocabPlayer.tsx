@@ -36,7 +36,6 @@ export default function VocabPlayer({
   const [cards, setCards] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [recoOpen, setRecoOpen] = useState(false);
-  const [errorTick, setErrorTick] = useState(0);
 
   useEffect(() => {
     setMode(defaultMode);
@@ -80,7 +79,6 @@ export default function VocabPlayer({
   const handleError = useCallback(
     (cardId: string, word: string, definition: string) => {
       void recordVocabError(set.id, { cardId, word, definition, mode });
-      setErrorTick(n => n + 1);
     },
     [set.id, mode],
   );
