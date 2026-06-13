@@ -1418,6 +1418,47 @@ export type Database = {
           },
         ]
       }
+      vocab_practice_errors: {
+        Row: {
+          card_id: string | null
+          created_at: string
+          definition: string
+          id: string
+          mode: string
+          user_id: string
+          vocab_set_id: string | null
+          word: string
+        }
+        Insert: {
+          card_id?: string | null
+          created_at?: string
+          definition?: string
+          id?: string
+          mode?: string
+          user_id: string
+          vocab_set_id?: string | null
+          word: string
+        }
+        Update: {
+          card_id?: string | null
+          created_at?: string
+          definition?: string
+          id?: string
+          mode?: string
+          user_id?: string
+          vocab_set_id?: string | null
+          word?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vocab_practice_errors_vocab_set_id_fkey"
+            columns: ["vocab_set_id"]
+            isOneToOne: false
+            referencedRelation: "vocab_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vocab_sessions: {
         Row: {
           class_name: string

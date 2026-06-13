@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Brain, Puzzle, Layers, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Brain, Puzzle, Layers, X, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import MatchGame from '@/components/toolkit/memory-aid/MatchGame';
 import FlashCard from '@/components/toolkit/memory-aid/FlashCard';
@@ -7,8 +7,10 @@ import { loadCards, toCardItems, type VocabSet } from '@/lib/vocab-cloud';
 import type { CardItem } from '@/components/toolkit/memory-aid/types';
 import { toast } from 'sonner';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
+import { recordVocabError } from '@/lib/vocab-errors';
+import VocabRecommendations from './VocabRecommendations';
 
-type PlayerSet = Pick<VocabSet, 'id' | 'title'>;
+type PlayerSet = Pick<VocabSet, 'id' | 'title'> & { audience?: string };
 
 interface Props {
   set: PlayerSet;
@@ -33,6 +35,7 @@ export default function VocabPlayer({
   const [mode, setMode] = useState<'match' | 'flash'>(defaultMode);
   const [cards, setCards] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recoOpen, setRecoOpen] = useState(false);
 
   useEffect(() => {
     setMode(defaultMode);
@@ -73,6 +76,13 @@ export default function VocabPlayer({
     return () => { cancelled = true; };
   }, [cardsOverride, set.id, onClose, t]);
 
+  const handleError = useCallback(
+    (cardId: string, word: string, definition: string) => {
+      void recordVocabError(set.id, { cardId, word, definition, mode });
+    },
+    [set.id, mode],
+  );
+
   const containerClassName = fullScreen
     ? 'fixed inset-0 z-[100] bg-background flex flex-col'
     : 'min-h-[100dvh] bg-background flex flex-col';
@@ -106,6 +116,15 @@ export default function VocabPlayer({
               </Button>
             </>
           )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setRecoOpen(true)}
+            className="h-7 text-xs gap-1"
+            title="基于错题获取个性化学习推荐"
+          >
+            <Sparkles className="w-3 h-3 text-primary" /> 获取推荐
+          </Button>
           {showCloseButton && onClose && (
             <Button size="sm" variant="ghost" onClick={onClose} className="h-7 text-xs gap-1">
               <X className="w-3.5 h-3.5" /> {t('vp.close')}
@@ -121,12 +140,22 @@ export default function VocabPlayer({
           ) : cards.length === 0 ? (
             <div className="text-center text-muted-foreground py-12 text-sm">{t('vp.empty')}</div>
           ) : mode === 'match' ? (
-            <MatchGame cards={cards} />
+            <MatchGame cards={cards} onError={handleError} />
           ) : (
-            <FlashCard cards={cards} />
+            <FlashCard cards={cards} onError={handleError} />
           )}
         </div>
       </div>
+
+      {recoOpen && (
+        <VocabRecommendations
+          open={recoOpen}
+          onOpenChange={setRecoOpen}
+          setId={set.id}
+          setTitle={set.title}
+          audience={set.audience}
+        />
+      )}
     </div>
   );
 }

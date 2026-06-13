@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.analyze-barrage]
 verify_jwt = false
+
+[functions.recommend-learning]
+verify_jwt = false

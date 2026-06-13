@@ -61,7 +61,12 @@ function loadSettings(): Settings {
   }
 }
 
-export default function MatchGame({ cards }: { cards: CardItem[] }) {
+interface MatchGameProps {
+  cards: CardItem[];
+  onError?: (cardId: string, word: string, definition: string) => void;
+}
+
+export default function MatchGame({ cards, onError }: MatchGameProps) {
   const { t } = useLanguage();
   const [pairCount, setPairCount] = useState<number>(Math.min(6, cards.length));
   const [tiles, setTiles] = useState<Tile[]>([]);
@@ -258,6 +263,15 @@ export default function MatchGame({ cards }: { cards: CardItem[] }) {
           }
         }, 400);
       } else {
+        // Report errors for both involved cards (so frequency reflects repeated mistakes)
+        if (onError) {
+          const reportCard = (cardId: string) => {
+            const c = cards.find(cc => cc.id === cardId);
+            if (c) onError(cardId, c.word, c.definition);
+          };
+          reportCard(t1.cardId);
+          if (t2.cardId !== t1.cardId) reportCard(t2.cardId);
+        }
         setTimeout(() => {
           setFlipped(prev => {
             const n = new Set(prev);
