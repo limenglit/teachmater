@@ -34,7 +34,7 @@ const PanelFallback = () => (
 );
 
 const Index = () => {
-  const { user, approvalStatus, isAdmin } = useAuth();
+  const { user, approvalStatus, isAdmin, nickname } = useAuth();
   const { t } = useLanguage();
   const isApproved = user && approvalStatus === 'approved';
   const navigate = useNavigate();
