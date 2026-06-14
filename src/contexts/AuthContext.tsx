@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   approvalStatus: string | null; // 'pending' | 'approved' | 'rejected' | null
   isAdmin: boolean;
+  nickname: string | null;
   signOut: () => Promise<void>;
   refreshStatus: () => Promise<void>;
 }
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   approvalStatus: null,
   isAdmin: false,
+  nickname: null,
   signOut: async () => {},
   refreshStatus: async () => {},
 });
