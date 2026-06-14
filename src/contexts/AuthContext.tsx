@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setApprovalStatus(null);
     setIsAdmin(false);
+    setNickname(null);
   };
 
   const refreshStatus = async () => {
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, approvalStatus, isAdmin, signOut, refreshStatus }}>
+    <AuthContext.Provider value={{ user, session, loading, approvalStatus, isAdmin, nickname, signOut, refreshStatus }}>
       {children}
     </AuthContext.Provider>
   );
