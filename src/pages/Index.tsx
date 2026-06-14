@@ -125,7 +125,9 @@ const Index = () => {
                 <source srcSet="/logo.webp" type="image/webp" />
                 <img src="/logo.png" alt="教创搭子 TeacherMate 平台 Logo" width="160" height="56" decoding="async" fetchPriority="high" className="h-14 w-auto transition-[filter] duration-300" style={{ filter: 'hue-rotate(var(--logo-hue-rotate, 0deg))' }} />
               </picture>
-              <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">{t('app.subtitle')}</span>
+              <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">
+                {isApproved && nickname ? `--${nickname}| 的课堂创新平台` : t('app.subtitle')}
+              </span>
             </div>
             <div className="flex items-center gap-1">
               {/* Mobile sidebar toggle */}
