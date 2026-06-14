@@ -30,11 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(null);
 
   const fetchStatus = async (currentUser: User | null) => {
     if (!currentUser) {
       setApprovalStatus(null);
       setIsAdmin(false);
+      setNickname(null);
       return;
     }
     const { data: status } = await supabase.rpc('get_my_status');
@@ -45,6 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       _role: 'admin',
     });
     setIsAdmin(!!adminCheck);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('nickname')
+      .eq('user_id', currentUser.id)
+      .single();
+    setNickname((profile as { nickname?: string | null } | null)?.nickname?.trim() || null);
   };
 
   useEffect(() => {
