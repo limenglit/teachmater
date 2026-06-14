@@ -8,6 +8,7 @@ interface AuthContextType {
   loading: boolean;
   approvalStatus: string | null; // 'pending' | 'approved' | 'rejected' | null
   isAdmin: boolean;
+  nickname: string | null;
   signOut: () => Promise<void>;
   refreshStatus: () => Promise<void>;
 }
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   approvalStatus: null,
   isAdmin: false,
+  nickname: null,
   signOut: async () => {},
   refreshStatus: async () => {},
 });
@@ -28,11 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [approvalStatus, setApprovalStatus] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [nickname, setNickname] = useState<string | null>(null);
 
   const fetchStatus = async (currentUser: User | null) => {
     if (!currentUser) {
       setApprovalStatus(null);
       setIsAdmin(false);
+      setNickname(null);
       return;
     }
     const { data: status } = await supabase.rpc('get_my_status');
@@ -43,6 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       _role: 'admin',
     });
     setIsAdmin(!!adminCheck);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('nickname')
+      .eq('user_id', currentUser.id)
+      .single();
+    setNickname((profile as { nickname?: string | null } | null)?.nickname?.trim() || null);
   };
 
   useEffect(() => {
@@ -68,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setApprovalStatus(null);
     setIsAdmin(false);
+    setNickname(null);
   };
 
   const refreshStatus = async () => {
@@ -75,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, approvalStatus, isAdmin, signOut, refreshStatus }}>
+    <AuthContext.Provider value={{ user, session, loading, approvalStatus, isAdmin, nickname, signOut, refreshStatus }}>
       {children}
     </AuthContext.Provider>
   );
