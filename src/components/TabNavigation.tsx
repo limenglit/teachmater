@@ -54,7 +54,7 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
   const visibleTabs = tabs.filter(tab => (!tab.requiresAuth || isLoggedIn) && isFeatureVisible(tab.id));
 
   return (
-    <nav className="flex items-center gap-0.5 px-2 sm:px-4 py-2 border-b border-border bg-card overflow-x-auto scrollbar-hide">
+    <nav className="flex flex-wrap items-center gap-0.5 gap-y-1 px-2 sm:px-4 py-2 border-b border-border bg-card">
       {visibleTabs.map(tab => (
         <button
           key={tab.id}

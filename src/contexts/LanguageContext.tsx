@@ -5932,63 +5932,63 @@ const translations: Record<LangCode, Record<string, string>> = {
   
     // === Auto-added i18n batch (Gemini) ===
     "tab.vocab": "Словарь",
-    "visual.subtitle": "Введите текст, ИИ извлечет суть и автоматически сгенерирует инфографику и диаграммы",
-    "visual.inputTitle": "Введите контент",
-    "visual.inputPlaceholder": "Вставьте текстовый контент, ИИ автоматически проанализирует и сгенерирует визуальные диаграммы...",
-    "visual.analyze": "Анализ ИИ",
-    "visual.analyzing": "Анализируется...",
-    "visual.analyzeSuccess": "Анализ завершен",
-    "visual.analyzeError": "Ошибка анализа, пожалуйста, повторите попытку",
-    "visual.rateLimited": "Слишком частые запросы, пожалуйста, повторите попытку позже",
-    "visual.uploadFile": "Загрузить файл",
-    "visual.fileLoaded": "Файл загружен",
-    "visual.fileUnsupported": "Формат не поддерживается",
-    "visual.fileTooLarge": "Файл слишком большой",
-    "visual.chars": "символов",
-    "visual.preview": "Предварительный просмотр",
-    "visual.history": "История",
-    "visual.noHistory": "Нет записей",
-    "visual.colorScheme": "Цветовая схема",
-    "visual.template": "Шаблон стиля",
-    "visual.structureType": "Тип диаграммы",
-    "visual.chartType": "Тип графика",
-    "visual.tpl.modern": "Современный",
-    "visual.tpl.classic": "Классический",
-    "visual.tpl.playful": "Игривый",
-    "visual.tpl.dark": "Темный",
-    "visual.struct.flow": "Схема",
-    "visual.struct.comparison": "Сравнение",
-    "visual.struct.pyramid": "Пирамида",
-    "visual.struct.funnel": "Воронка",
-    "visual.struct.timeline": "Хронология",
-    "visual.struct.cycle": "Цикл",
-    "visual.struct.list": "Список",
-    "visual.struct.hierarchy": "Иерархия",
-    "visual.chart.bar": "Гистограмма",
-    "visual.chart.line": "Линейный график",
-    "visual.chart.pie": "Круговая диаграмма",
-    "visual.chart.radar": "Радарная диаграмма",
-    "visual.chart.scatter": "Точечная диаграмма",
-    "visual.chart.area": "Диаграмма с областями",
-    "visual.chart.donut": "Кольцевая диаграмма",
-    "visual.chart.treemap": "Древовидная карта",
-    "visual.struct.mindmap": "Ментальная карта",
-    "visual.struct.matrix": "Матрица",
-    "visual.struct.radial": "Радиальная",
-    "visual.struct.swot": "SWOT",
-    "visual.tpl.magazine": "Журнал",
-    "visual.tpl.tech": "Технологии",
-    "visual.tpl.elegant": "Элегантный",
-    "visual.tpl.bold": "Смелый",
-    "visual.font": "Шрифт",
-    "visual.fontSize": "Размер шрифта",
-    "visual.layout": "Макет",
-    "visual.density.compact": "Компактный",
-    "visual.density.normal": "Обычный",
-    "visual.density.spacious": "Просторный",
-    "visual.fileReading": "Чтение...",
-    "visual.fileReadError": "Ошибка чтения файла",
-    "visual.uploadHint": "Поддерживаются форматы .txt, .md, .docx, максимальный размер 10 МБ",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "storyboard.title": "Генератор раскадровок",
     "storyboard.theme": "Тема",
     "storyboard.themePlaceholder": "Введите тему раскадровки, например: Правильный способ обучения с помощью ИИ",
@@ -6422,20 +6422,20 @@ const translations: Record<LangCode, Record<string, string>> = {
     "admin.adminOnly": "Только для администраторов",
     "admin.sessionExpired": "Сессия истекла",
     "admin.pleaseRelogin": "Пожалуйста, войдите снова",
-    "sysconfig.desc": "Контролировать видимость функций платформы и ограничения использования ИИ по типам пользователей",
-    "sysconfig.guest": "Гость (незарегистрированный пользователь)",
-    "sysconfig.registered": "Зарегистрированный пользователь (одобрен)",
-    "sysconfig.featureAccess": "Доступ к функциям",
-    "sysconfig.aiLimit": "Лимит ИИ в день",
-    "sysconfig.unlimited": "Без ограничений (-1)",
-    "sysconfig.perDay": "раз/день",
-    "sysconfig.save": "Сохранить конфигурацию",
-    "sysconfig.saved": "Конфигурация сохранена",
-    "sysconfig.saveFailed": "Ошибка сохранения",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "sysconfig.toolkitTools": "Инструменты набора инструментов",
     "sysconfig.toolkitDesc": "Контролировать видимость каждого инструмента в наборе инструментов для разных пользователей",
-    "admin.tabUsers": "Управление пользователями",
-    "admin.tabConfig": "Конфигурация функций",
+    
+    
     "admin.tabAIQuota": "Конфигурация квот ИИ",
     "admin.aiQuota.title": "Конфигурация квот ИИ для пользователей",
     "admin.aiQuota.desc": "Настроить индивидуальные ежедневные лимиты вызовов ИИ для одобренных пользователей",
@@ -6524,132 +6524,132 @@ const translations: Record<LangCode, Record<string, string>> = {
     "task.actionDenied": "Только создатель может выполнить эту операцию",
     "task.moreHistoryHint": "Есть еще {0} исторических задач. Нажмите «Посмотреть всю историю», чтобы увидеть больше",
     "task.uncategorized": "Неклассифицированные классы",
-    "quiz.questionBank": "Банк вопросов",
-    "quiz.addQuestion": "Добавить вопрос",
-    "quiz.single": "Один выбор",
-    "quiz.multi": "Несколько выборов",
-    "quiz.tf": "Верно/неверно",
-    "quiz.short": "Краткий ответ",
-    "quiz.questionPlaceholder": "Введите содержание вопроса...",
-    "quiz.options": "Варианты",
-    "quiz.option": "Вариант",
-    "quiz.correctAnswer": "Правильный ответ",
-    "quiz.referenceAnswer": "Эталонный ответ (необязательно)",
-    "quiz.tagsPlaceholder": "Например: Глава 1, середина семестра",
-    "quiz.save": "Сохранить",
-    "quiz.cancel": "Отмена",
-    "quiz.needOptions": "Требуется не менее 2 вариантов",
-    "quiz.selectQuestions": "Пожалуйста, выберите вопросы",
-    "quiz.startSession": "Начать тест",
-    "quiz.endSession": "Завершить тест",
-    "quiz.sessionTitle": "Название теста",
-    "quiz.active": "Активно",
-    "quiz.ended": "Завершено",
-    "quiz.noSessions": "Нет записей тестов",
-    "quiz.noQuestions": "Банк вопросов пуст",
-    "quiz.selectAll": "Выбрать все",
-    "quiz.deselectAll": "Отменить выбор всех",
-    "quiz.questionsCount": "вопр.",
-    "quiz.scanToAnswer": "Сканируйте, чтобы ответить",
-    "quiz.totalQuestions": "Всего вопросов",
-    "quiz.accuracy": "Точность",
-    "quiz.answers": "ответов",
-    "quiz.studentList": "Ответившие студенты",
-    "quiz.noData": "Нет данных",
-    "quiz.false": "Неверно",
-    "quiz.enterName": "Пожалуйста, введите ваше имя",
-    "quiz.startAnswer": "Начать отвечать",
-    "quiz.next": "Следующий вопрос",
-    "quiz.submit": "Отправить ответы",
-    "quiz.multiHint": "Можно выбрать несколько вариантов",
-    "quiz.submitSuccess": "Успешно отправлено!",
-    "quiz.waitForResult": "Пожалуйста, дождитесь объявления результатов преподавателем",
-    "quiz.sessionEnded": "Тест завершен",
-    "quiz.loginRequired": "Пожалуйста, войдите в систему, чтобы использовать функцию тестирования",
-    "quiz.cloudMode": "Облачная синхронизация",
-    "quiz.loginToPublish": "Войдите в систему, чтобы начать тест",
-    "quiz.loginForSessions": "Войдите в систему, чтобы проводить онлайн-тесты",
-    "quiz.localModeHint": "Вопросы сохранены локально, войдите в систему, чтобы синхронизировать их с облаком",
-    "quiz.imp.title": "Импорт вопросов из Excel/CSV",
-    "quiz.imp.desc": "Скачайте шаблон, заполните вопросы в соответствии с форматом, затем загрузите для импорта",
-    "quiz.imp.step1": "Скачать шаблон",
-    "quiz.imp.step1Hint": "Заполните информацию о вопросах в соответствии с форматом шаблона",
-    "quiz.imp.step2": "Загрузить файл",
-    "quiz.imp.step2Hint": "Поддерживаются форматы .xlsx, .xls, .csv",
-    "quiz.imp.downloadTemplate": "Скачать шаблон",
-    "quiz.imp.selectFile": "Выбрать файл",
-    "quiz.imp.preview": "Предварительный просмотр",
-    "quiz.imp.questionsUnit": "вопросов",
-    "quiz.imp.confirmImport": "Подтвердить импорт",
-    "quiz.imp.reselect": "Выбрать заново",
-    "quiz.imp.imported": "Успешно импортировано",
-    "quiz.imp.templateDownloaded": "Шаблон скачан",
-    "quiz.imp.errors": "Ошибка парсинга",
-    "quiz.imp.emptyFile": "Файл пуст или имеет неверный формат",
-    "quiz.imp.row": "Строка",
-    "quiz.imp.unknownType": "Неизвестный тип вопроса",
-    "quiz.imp.emptyContent": "Содержимое вопроса пусто",
-    "quiz.imp.fewOptions": "Менее 2 вариантов",
-    "quiz.imp.noAnswer": "Правильный ответ не указан",
-    "quiz.imp.parseError": "Ошибка анализа файла",
-    "quiz.imp.unsupportedFormat": "Неподдерживаемый формат файла",
-    "quiz.imp.colType": "Тип вопроса",
-    "quiz.imp.colContent": "Содержание вопроса",
-    "quiz.imp.colA": "Вариант А",
-    "quiz.imp.colB": "Вариант Б",
-    "quiz.imp.colC": "Вариант В",
-    "quiz.imp.colD": "Вариант Г",
-    "quiz.imp.colAnswer": "Правильный ответ",
-    "quiz.imp.colTags": "Теги",
-    "quiz.imp.sheetName": "Шаблон банка вопросов",
-    "quiz.category": "Категория",
-    "quiz.noCategory": "Без категории",
-    "quiz.manageCategories": "Управление категориями",
-    "quiz.newCategoryName": "Имя новой категории",
-    "quiz.noCategories": "Пока нет категорий",
-    "quiz.searchPlaceholder": "Поиск вопросов...",
-    "quiz.allTypes": "Все типы",
-    "quiz.allCategories": "Все категории",
-    "quiz.uncategorized": "Без категории",
-    "quiz.starredOnly": "Только избранное",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.preview": "Предпросмотр теста",
     "quiz.paper.answerExplanation": "Ответы и пояснения",
     "quiz.paper.teacherOnly": "Только для учителей",
     "quiz.ai.coverageWarning": "Следующие темы не были охвачены:",
-    "quiz.paper.createPaper": "Создать тест вручную",
-    "quiz.paper.editPaper": "Редактировать тест",
-    "quiz.paper.autoGenerate": "Автоматическая генерация теста",
-    "quiz.paper.paperTitle": "Название теста",
-    "quiz.paper.description": "Описание теста (необязательно)",
-    "quiz.paper.paperQuestions": "Вопросы теста",
-    "quiz.paper.addFromBank": "Добавить из банка",
-    "quiz.paper.emptyHint": "Нажмите «Добавить из банка», чтобы выбрать вопросы",
-    "quiz.paper.pickQuestions": "Выбрать вопросы",
-    "quiz.paper.noAvailable": "Нет доступных вопросов",
-    "quiz.paper.needTitle": "Пожалуйста, введите название теста",
-    "quiz.paper.needQuestions": "Пожалуйста, добавьте хотя бы один вопрос",
-    "quiz.paper.saveAsTemplate": "Сохранить как шаблон",
-    "quiz.paper.template": "Шаблон",
-    "quiz.paper.duplicate": "Дублировать",
-    "quiz.paper.duplicated": "Скопировано",
-    "quiz.paper.papersCount": "тестов",
-    "quiz.paper.noPapers": "Пока нет тестов",
-    "quiz.paper.noPapersHint": "Создайте тест вручную или автоматически",
-    "quiz.paper.totalScore": "Общий балл",
-    "quiz.paper.points": "баллы",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.export": "Экспорт теста",
     "quiz.paper.exportFormat": "Формат экспорта",
     "quiz.paper.exportWithAnswers": "Экспортировать с ответами и пояснениями",
     "quiz.paper.expandAllAnswers": "Раскрыть все ответы и пояснения",
     "quiz.paper.collapseAllAnswers": "Свернуть все",
-    "quiz.paper.rules": "Правила составления теста",
-    "quiz.paper.available": "доступных вопросов",
-    "quiz.paper.generate": "Сгенерировать тест",
-    "quiz.paper.generated": "Сгенерировано",
-    "quiz.paper.autoTitle": "Случайный тест",
-    "quiz.paper.filterByTags": "Фильтровать по тегам (необязательно, через запятую)",
-    "quiz.paper.insufficientQuestions": "Недостаточно вопросов",
-    "quiz.paper.noMatchingQuestions": "Нет подходящих вопросов",
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.cleanup.button": "Очистить префиксы вариантов",
     "quiz.cleanup.title": "Очистка префиксов вариантов исторической базы вопросов",
     "quiz.cleanup.desc": "Будет выполнена проверка текущей базы вопросов, и префиксы A./B./C./D. из {0} исторических тестовых вопросов будут преобразованы в чистый текст. Эта операция будет выполнена только один раз и обновит только те вопросы, которые действительно нуждаются в исправлении.",
@@ -8095,63 +8095,63 @@ const translations: Record<LangCode, Record<string, string>> = {
   
     // === Auto-added i18n batch (Gemini) ===
     "tab.vocab": "語彙",
-    "visual.subtitle": "テキストを入力すると、AIが要点を抽出し、インフォグラフィックとデータグラフィックを自動生成します",
-    "visual.inputTitle": "内容を入力",
-    "visual.inputPlaceholder": "テキストコンテンツを貼り付けると、AIが自動的に分析し、視覚化されたグラフを生成します...",
-    "visual.analyze": "AI分析",
-    "visual.analyzing": "分析中...",
-    "visual.analyzeSuccess": "分析完了",
-    "visual.analyzeError": "分析に失敗しました。もう一度お試しください",
-    "visual.rateLimited": "リクエストが多すぎます。しばらくしてからもう一度お試しください",
-    "visual.uploadFile": "ファイルをアップロード",
-    "visual.fileLoaded": "ファイルが読み込まれました",
-    "visual.fileUnsupported": "この形式はサポートされていません",
-    "visual.fileTooLarge": "ファイルが大きすぎます",
-    "visual.chars": "文字",
-    "visual.preview": "プレビュー",
-    "visual.history": "履歴",
-    "visual.noHistory": "履歴がありません",
-    "visual.colorScheme": "配色",
-    "visual.template": "スタイルテンプレート",
-    "visual.structureType": "グラフィックタイプ",
-    "visual.chartType": "チャートタイプ",
-    "visual.tpl.modern": "モダン",
-    "visual.tpl.classic": "クラシック",
-    "visual.tpl.playful": "活発",
-    "visual.tpl.dark": "ダーク",
-    "visual.struct.flow": "フロー",
-    "visual.struct.comparison": "比較",
-    "visual.struct.pyramid": "ピラミッド",
-    "visual.struct.funnel": "ファネル",
-    "visual.struct.timeline": "タイムライン",
-    "visual.struct.cycle": "サイクル",
-    "visual.struct.list": "リスト",
-    "visual.struct.hierarchy": "階層",
-    "visual.chart.bar": "棒グラフ",
-    "visual.chart.line": "折れ線グラフ",
-    "visual.chart.pie": "円グラフ",
-    "visual.chart.radar": "レーダーチャート",
-    "visual.chart.scatter": "散布図",
-    "visual.chart.area": "面積図",
-    "visual.chart.donut": "ドーナツグラフ",
-    "visual.chart.treemap": "ツリーマップ",
-    "visual.struct.mindmap": "マインドマップ",
-    "visual.struct.matrix": "マトリックス",
-    "visual.struct.radial": "放射状",
-    "visual.struct.swot": "SWOT",
-    "visual.tpl.magazine": "マガジン",
-    "visual.tpl.tech": "テクノロジー",
-    "visual.tpl.elegant": "エレガント",
-    "visual.tpl.bold": "大胆",
-    "visual.font": "フォント",
-    "visual.fontSize": "フォントサイズ",
-    "visual.layout": "レイアウト",
-    "visual.density.compact": "コンパクト",
-    "visual.density.normal": "標準",
-    "visual.density.spacious": "ゆったり",
-    "visual.fileReading": "読み込み中...",
-    "visual.fileReadError": "ファイルの読み込みに失敗しました",
-    "visual.uploadHint": ".txt、.md、.docx 形式をサポート、最大10MB",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "storyboard.title": "手描き絵コンテジェネレーター",
     "storyboard.theme": "テーマ",
     "storyboard.themePlaceholder": "ストーリーボードのテーマを入力してください。例：AIを活用した学習の正しい方法",
@@ -8612,20 +8612,20 @@ const translations: Record<LangCode, Record<string, string>> = {
     "admin.adminOnly": "管理者のみ閲覧可能",
     "admin.sessionExpired": "ログイン状態が無効です",
     "admin.pleaseRelogin": "再ログインしてからお試しください",
-    "sysconfig.desc": "ユーザータイプごとのプラットフォーム機能の表示とAI利用制限を制御します",
-    "sysconfig.guest": "ゲスト（未登録ユーザー）",
-    "sysconfig.registered": "登録ユーザー（承認済み）",
-    "sysconfig.featureAccess": "機能モジュール",
-    "sysconfig.aiLimit": "AI一日あたりの制限",
-    "sysconfig.unlimited": "無制限（-1）",
-    "sysconfig.perDay": "回/日",
-    "sysconfig.save": "設定を保存",
-    "sysconfig.saved": "設定を保存しました",
-    "sysconfig.saveFailed": "保存失敗",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "sysconfig.toolkitTools": "ツールボックスサブツール",
     "sysconfig.toolkitDesc": "ツールボックス内の各ツールの、異なるユーザーに対する表示設定を制御します",
-    "admin.tabUsers": "ユーザー管理",
-    "admin.tabConfig": "機能設定",
+    
+    
     "admin.tabAIQuota": "AIクォータ設定",
     "admin.aiQuota.title": "ユーザーAIクォータ設定",
     "admin.aiQuota.desc": "承認済みユーザー向けに、AIの一日あたりの呼び出し制限を個別に設定します",
@@ -8714,132 +8714,132 @@ const translations: Record<LangCode, Record<string, string>> = {
     "task.actionDenied": "この操作を実行できるのは作成者のみです",
     "task.moreHistoryHint": "その他 {0} 件の履歴タスクがあります。「すべての履歴を表示」をクリックして詳細を確認してください。",
     "task.uncategorized": "未分類クラス",
-    "quiz.questionBank": "問題バンク",
-    "quiz.addQuestion": "問題を追加",
-    "quiz.single": "単一選択",
-    "quiz.multi": "複数選択",
-    "quiz.tf": "正誤判断",
-    "quiz.short": "記述式",
-    "quiz.questionPlaceholder": "問題の内容を入力してください...",
-    "quiz.options": "選択肢",
-    "quiz.option": "選択肢",
-    "quiz.correctAnswer": "正解",
-    "quiz.referenceAnswer": "参考解答（オプション）",
-    "quiz.tagsPlaceholder": "例：第1章、中間など",
-    "quiz.save": "保存",
-    "quiz.cancel": "キャンセル",
-    "quiz.needOptions": "少なくとも2つの選択肢が必要です",
-    "quiz.selectQuestions": "問題を選択してください",
-    "quiz.startSession": "試験を開始",
-    "quiz.endSession": "試験を終了",
-    "quiz.sessionTitle": "試験タイトル",
-    "quiz.active": "進行中",
-    "quiz.ended": "終了済み",
-    "quiz.noSessions": "試験記録はありません",
-    "quiz.noQuestions": "問題バンクは空です",
-    "quiz.selectAll": "すべて選択",
-    "quiz.deselectAll": "すべて選択解除",
-    "quiz.questionsCount": "問",
-    "quiz.scanToAnswer": "QRコードで解答",
-    "quiz.totalQuestions": "総問題数",
-    "quiz.accuracy": "正答率",
-    "quiz.answers": "人が回答",
-    "quiz.studentList": "回答済み学生",
-    "quiz.noData": "データがありません",
-    "quiz.false": "誤り",
-    "quiz.enterName": "お名前を入力してください",
-    "quiz.startAnswer": "解答を開始",
-    "quiz.next": "次へ",
-    "quiz.submit": "解答を提出",
-    "quiz.multiHint": "複数の選択肢を選択できます",
-    "quiz.submitSuccess": "提出しました！",
-    "quiz.waitForResult": "先生が結果を発表するまでお待ちください",
-    "quiz.sessionEnded": "クイズは終了しました",
-    "quiz.loginRequired": "クイズ機能を利用するにはログインしてください",
-    "quiz.cloudMode": "クラウド同期",
-    "quiz.loginToPublish": "ログイン後にクイズを開始できます",
-    "quiz.loginForSessions": "ログイン後にオンラインクイズを開始できます",
-    "quiz.localModeHint": "問題はローカルに保存されています。ログイン後にクラウドに同期できます。",
-    "quiz.imp.title": "Excel/CSVから問題をインポート",
-    "quiz.imp.desc": "テンプレートをダウンロードし、フォーマットに従って問題を記入した後アップロードしてください",
-    "quiz.imp.step1": "テンプレートをダウンロード",
-    "quiz.imp.step1Hint": "テンプレートの形式に従って問題情報を記入してください",
-    "quiz.imp.step2": "ファイルをアップロード",
-    "quiz.imp.step2Hint": ".xlsx、.xls、.csv形式に対応しています",
-    "quiz.imp.downloadTemplate": "テンプレートをダウンロード",
-    "quiz.imp.selectFile": "ファイルを選択",
-    "quiz.imp.preview": "プレビュー",
-    "quiz.imp.questionsUnit": "問",
-    "quiz.imp.confirmImport": "インポートを確認",
-    "quiz.imp.reselect": "再選択",
-    "quiz.imp.imported": "正常にインポートされました",
-    "quiz.imp.templateDownloaded": "テンプレートをダウンロードしました",
-    "quiz.imp.errors": "解析エラー",
-    "quiz.imp.emptyFile": "ファイルが空か、または形式が正しくありません",
-    "quiz.imp.row": "行目",
-    "quiz.imp.unknownType": "不明な問題タイプ",
-    "quiz.imp.emptyContent": "問題内容が空です",
-    "quiz.imp.fewOptions": "選択肢が2つ未満です",
-    "quiz.imp.noAnswer": "正解が入力されていません",
-    "quiz.imp.parseError": "ファイル解析に失敗しました",
-    "quiz.imp.unsupportedFormat": "サポートされていないファイル形式です",
-    "quiz.imp.colType": "問題タイプ",
-    "quiz.imp.colContent": "問題内容",
-    "quiz.imp.colA": "選択肢A",
-    "quiz.imp.colB": "選択肢B",
-    "quiz.imp.colC": "選択肢C",
-    "quiz.imp.colD": "選択肢D",
-    "quiz.imp.colAnswer": "正解",
-    "quiz.imp.colTags": "タグ",
-    "quiz.imp.sheetName": "問題集テンプレート",
-    "quiz.category": "カテゴリ",
-    "quiz.noCategory": "未分類",
-    "quiz.manageCategories": "カテゴリを管理",
-    "quiz.newCategoryName": "新しいカテゴリ名",
-    "quiz.noCategories": "カテゴリはまだありません",
-    "quiz.searchPlaceholder": "問題を検索...",
-    "quiz.allTypes": "すべての問題タイプ",
-    "quiz.allCategories": "すべてのカテゴリ",
-    "quiz.uncategorized": "未分類",
-    "quiz.starredOnly": "お気に入りのみ",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.preview": "試験プレビュー",
     "quiz.paper.answerExplanation": "解答と解説",
     "quiz.paper.teacherOnly": "教師のみ表示可能",
     "quiz.ai.coverageWarning": "以下の知識ポイントはカバーされていません：",
-    "quiz.paper.createPaper": "手動で試験を作成",
-    "quiz.paper.editPaper": "試験を編集",
-    "quiz.paper.autoGenerate": "自動で試験を作成",
-    "quiz.paper.paperTitle": "試験タイトル",
-    "quiz.paper.description": "試験説明（任意）",
-    "quiz.paper.paperQuestions": "試験問題",
-    "quiz.paper.addFromBank": "問題バンクから追加",
-    "quiz.paper.emptyHint": "「問題バンクから追加」をクリックして問題を選択してください",
-    "quiz.paper.pickQuestions": "問題を選択",
-    "quiz.paper.noAvailable": "追加可能な問題はありません",
-    "quiz.paper.needTitle": "テストのタイトルを入力してください",
-    "quiz.paper.needQuestions": "少なくとも1つの問題を追加してください",
-    "quiz.paper.saveAsTemplate": "テンプレートとして保存",
-    "quiz.paper.template": "テンプレート",
-    "quiz.paper.duplicate": "複製",
-    "quiz.paper.duplicated": "複製済み",
-    "quiz.paper.papersCount": "件のテスト",
-    "quiz.paper.noPapers": "現在、テストはありません",
-    "quiz.paper.noPapersHint": "手動でテストを組み立てるか、自動生成してください",
-    "quiz.paper.totalScore": "合計点",
-    "quiz.paper.points": "点",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.export": "テストをエクスポート",
     "quiz.paper.exportFormat": "エクスポート形式",
     "quiz.paper.exportWithAnswers": "解答と解説もエクスポート",
     "quiz.paper.expandAllAnswers": "すべての解答と解説を展開",
     "quiz.paper.collapseAllAnswers": "すべて折りたたむ",
-    "quiz.paper.rules": "テスト作成ルール",
-    "quiz.paper.available": "問利用可能",
-    "quiz.paper.generate": "テストを生成",
-    "quiz.paper.generated": "生成済み",
-    "quiz.paper.autoTitle": "ランダムテスト",
-    "quiz.paper.filterByTags": "タグで絞り込む（任意、カンマ区切り）",
-    "quiz.paper.insufficientQuestions": "問題不足",
-    "quiz.paper.noMatchingQuestions": "一致する問題はありません",
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.cleanup.button": "過去の選択肢プレフィックスをクリーンアップ",
     "quiz.cleanup.title": "過去の問題バンク選択肢プレフィックスをクリーンアップ",
     "quiz.cleanup.desc": "現在の問題バンクをチェックし、{0}個の過去の選択問題オプションにあるA./B./C./D.プレフィックスをクリーンなテキストに戻します。この操作は一度だけ実行され、修正が必要な問題のみが更新されます。",
@@ -10285,63 +10285,63 @@ const translations: Record<LangCode, Record<string, string>> = {
     // === Auto-added i18n batch (Gemini) ===
     "tab.community": "커뮤니티",
     "tab.vocab": "어휘",
-    "visual.subtitle": "텍스트를 입력하면 AI가 핵심을 추출하여 인포그래픽과 데이터 차트 자동 생성",
-    "visual.inputTitle": "내용 입력",
-    "visual.inputPlaceholder": "텍스트 내용을 붙여넣으세요. AI가 자동으로 분석하여 시각화된 차트를 생성합니다...",
-    "visual.analyze": "AI 분석",
-    "visual.analyzing": "분석 중...",
-    "visual.analyzeSuccess": "분석 완료",
-    "visual.analyzeError": "분석 실패, 다시 시도해주세요",
-    "visual.rateLimited": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요",
-    "visual.uploadFile": "파일 업로드",
-    "visual.fileLoaded": "파일이 로드되었습니다",
-    "visual.fileUnsupported": "지원되지 않는 형식입니다",
-    "visual.fileTooLarge": "파일이 너무 큽니다",
-    "visual.chars": "글자",
-    "visual.preview": "미리보기",
-    "visual.history": "기록",
-    "visual.noHistory": "기록 없음",
-    "visual.colorScheme": "색상 구성표",
-    "visual.template": "스타일 템플릿",
-    "visual.structureType": "그래픽 유형",
-    "visual.chartType": "차트 유형",
-    "visual.tpl.modern": "모던",
-    "visual.tpl.classic": "클래식",
-    "visual.tpl.playful": "장난스러운",
-    "visual.tpl.dark": "다크",
-    "visual.struct.flow": "흐름",
-    "visual.struct.comparison": "비교",
-    "visual.struct.pyramid": "피라미드",
-    "visual.struct.funnel": "깔때기",
-    "visual.struct.timeline": "타임라인",
-    "visual.struct.cycle": "순환",
-    "visual.struct.list": "목록",
-    "visual.struct.hierarchy": "계층",
-    "visual.chart.bar": "막대 차트",
-    "visual.chart.line": "선 차트",
-    "visual.chart.pie": "원형 차트",
-    "visual.chart.radar": "레이더 차트",
-    "visual.chart.scatter": "산점도 차트",
-    "visual.chart.area": "영역 차트",
-    "visual.chart.donut": "도넛형 차트",
-    "visual.chart.treemap": "트리맵",
-    "visual.struct.mindmap": "마인드맵",
-    "visual.struct.matrix": "행렬",
-    "visual.struct.radial": "방사",
-    "visual.struct.swot": "SWOT",
-    "visual.tpl.magazine": "매거진",
-    "visual.tpl.tech": "기술",
-    "visual.tpl.elegant": "우아한",
-    "visual.tpl.bold": "굵은",
-    "visual.font": "글꼴",
-    "visual.fontSize": "글꼴 크기",
-    "visual.layout": "레이아웃",
-    "visual.density.compact": "콤팩트",
-    "visual.density.normal": "기본",
-    "visual.density.spacious": "넉넉함",
-    "visual.fileReading": "읽는 중...",
-    "visual.fileReadError": "파일 읽기 실패",
-    "visual.uploadHint": ".txt, .md, .docx 형식 지원, 최대 10MB",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "storyboard.title": "스토리보드 생성기",
     "storyboard.theme": "테마",
     "storyboard.themePlaceholder": "AI 보조 학습의 올바른 방법 등 스토리보드 테마를 입력하세요",
@@ -10802,20 +10802,20 @@ const translations: Record<LangCode, Record<string, string>> = {
     "admin.adminOnly": "관리자만 볼 수 있음",
     "admin.sessionExpired": "로그인 상태가 만료되었습니다",
     "admin.pleaseRelogin": "다시 로그인한 후 다시 시도해주세요",
-    "sysconfig.desc": "사용자 유형에 따라 플랫폼 기능의 가시성과 AI 사용 제한을 제어합니다",
-    "sysconfig.guest": "방문자 (미등록 사용자)",
-    "sysconfig.registered": "등록 사용자 (승인됨)",
-    "sysconfig.featureAccess": "기능 모듈",
-    "sysconfig.aiLimit": "AI 일일 할당량",
-    "sysconfig.unlimited": "무제한 (-1)",
-    "sysconfig.perDay": "회/일",
-    "sysconfig.save": "구성 저장",
-    "sysconfig.saved": "구성이 저장되었습니다",
-    "sysconfig.saveFailed": "저장 실패",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "sysconfig.toolkitTools": "도구 상자 하위 도구",
     "sysconfig.toolkitDesc": "사용자별 도구 상자의 각 도구 가시성을 제어합니다",
-    "admin.tabUsers": "사용자 관리",
-    "admin.tabConfig": "기능 구성",
+    
+    
     "admin.tabAIQuota": "AI 컴퓨팅 파워 구성",
     "admin.aiQuota.title": "사용자 AI 컴퓨팅 파워 구성",
     "admin.aiQuota.desc": "승인된 사용자를 위한 개별 AI 일일 호출 할당량 구성",
@@ -10904,131 +10904,131 @@ const translations: Record<LangCode, Record<string, string>> = {
     "task.actionDenied": "생성자만 이 작업을 수행할 수 있습니다.",
     "task.moreHistoryHint": "기록 외에 {0}개의 과제가 있습니다. 더 보려면 '모든 기록 보기'를 클릭하세요.",
     "task.uncategorized": "분류되지 않은 수업",
-    "quiz.questionBank": "문제 은행",
-    "quiz.addQuestion": "문제 추가",
-    "quiz.single": "단일 선택",
-    "quiz.multi": "다중 선택",
-    "quiz.tf": "참/거짓",
-    "quiz.short": "주관식",
-    "quiz.questionPlaceholder": "문제 내용을 입력하세요...",
-    "quiz.options": "옵션",
-    "quiz.option": "옵션",
-    "quiz.correctAnswer": "정답",
-    "quiz.referenceAnswer": "참고 답안 (선택 사항)",
-    "quiz.tagsPlaceholder": "예: 챕터 1, 중간고사 등",
-    "quiz.save": "저장",
-    "quiz.cancel": "취소",
-    "quiz.needOptions": "최소 2개의 옵션이 필요합니다.",
-    "quiz.selectQuestions": "문제를 선택하세요.",
-    "quiz.startSession": "퀴즈 시작",
-    "quiz.endSession": "퀴즈 종료",
-    "quiz.sessionTitle": "퀴즈 제목",
-    "quiz.active": "진행 중",
-    "quiz.ended": "종료됨",
-    "quiz.noSessions": "퀴즈 기록이 없습니다.",
-    "quiz.noQuestions": "문제 은행이 비어 있습니다.",
-    "quiz.selectAll": "모두 선택",
-    "quiz.deselectAll": "모두 선택 해제",
-    "quiz.questionsCount": "문제",
-    "quiz.scanToAnswer": "스캔하여 답변",
-    "quiz.totalQuestions": "총 문제 수",
-    "quiz.accuracy": "정답률",
-    "quiz.answers": "명 응답",
-    "quiz.studentList": "답변한 학생",
-    "quiz.noData": "데이터 없음",
-    "quiz.false": "오류",
-    "quiz.enterName": "이름을 입력하세요.",
-    "quiz.startAnswer": "답변 시작",
-    "quiz.next": "다음 문제",
-    "quiz.submit": "답변 제출",
-    "quiz.multiHint": "여러 옵션을 선택할 수 있습니다.",
-    "quiz.submitSuccess": "제출 성공!",
-    "quiz.waitForResult": "교사의 결과 발표를 기다리는 중",
-    "quiz.sessionEnded": "퀴즈가 종료되었습니다.",
-    "quiz.loginRequired": "사용하려면 로그인하십시오.",
-    "quiz.cloudMode": "클라우드 동기화",
-    "quiz.loginToPublish": "로그인 후 퀴즈 발행 가능",
-    "quiz.loginForSessions": "로그인 후 온라인 퀴즈 시작 가능",
-    "quiz.localModeHint": "문제가 로컬에 저장되었습니다. 로그인 후 클라우드에 동기화할 수 있습니다.",
-    "quiz.imp.title": "Excel/CSV에서 문제 가져오기",
-    "quiz.imp.desc": "템플릿을 다운로드하고 형식에 따라 질문을 작성한 다음 업로드하여 가져옵니다.",
-    "quiz.imp.step1": "템플릿 다운로드",
-    "quiz.imp.step1Hint": "템플릿 형식에 따라 질문 정보를 작성합니다.",
-    "quiz.imp.step2": "파일 업로드",
-    "quiz.imp.step2Hint": ".xlsx, .xls, .csv 형식 지원",
-    "quiz.imp.downloadTemplate": "템플릿 다운로드",
-    "quiz.imp.selectFile": "파일 선택",
-    "quiz.imp.preview": "미리보기",
-    "quiz.imp.questionsUnit": "문제",
-    "quiz.imp.confirmImport": "가져오기 확인",
-    "quiz.imp.reselect": "다시 선택",
-    "quiz.imp.imported": "성공적으로 가져옴",
-    "quiz.imp.errors": "파싱 예외",
-    "quiz.imp.emptyFile": "파일이 비어 있거나 형식이 잘못되었습니다.",
-    "quiz.imp.row": "행",
-    "quiz.imp.unknownType": "알 수 없는 문제 유형",
-    "quiz.imp.emptyContent": "문제 내용이 비어 있습니다.",
-    "quiz.imp.fewOptions": "옵션이 2개 미만입니다.",
-    "quiz.imp.noAnswer": "정답이 작성되지 않았습니다.",
-    "quiz.imp.parseError": "파일 파싱 실패",
-    "quiz.imp.unsupportedFormat": "지원되지 않는 파일 형식",
-    "quiz.imp.colType": "문제 유형",
-    "quiz.imp.colContent": "문제 내용",
-    "quiz.imp.colA": "옵션 A",
-    "quiz.imp.colB": "옵션 B",
-    "quiz.imp.colC": "옵션 C",
-    "quiz.imp.colD": "옵션 D",
-    "quiz.imp.colAnswer": "정답",
-    "quiz.imp.colTags": "태그",
-    "quiz.imp.sheetName": "질문 뱅크 템플릿",
-    "quiz.category": "카테고리",
-    "quiz.noCategory": "분류되지 않음",
-    "quiz.manageCategories": "카테고리 관리",
-    "quiz.newCategoryName": "새 카테고리 이름",
-    "quiz.noCategories": "카테고리 없음",
-    "quiz.searchPlaceholder": "문제 검색...",
-    "quiz.allTypes": "모든 유형",
-    "quiz.allCategories": "모든 카테고리",
-    "quiz.uncategorized": "카테고리 없음",
-    "quiz.starredOnly": "즐겨찾기만",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.preview": "시험지 미리보기",
     "quiz.paper.answerExplanation": "정답 및 해설",
     "quiz.paper.teacherOnly": "교사만 보기",
     "quiz.ai.coverageWarning": "다음 지식 포인트는 다루지 않았습니다:",
-    "quiz.paper.createPaper": "수동 시험지 작성",
-    "quiz.paper.editPaper": "시험지 편집",
-    "quiz.paper.autoGenerate": "자동 시험지 생성",
-    "quiz.paper.paperTitle": "시험지 제목",
-    "quiz.paper.description": "시험지 설명 (선택 사항)",
-    "quiz.paper.paperQuestions": "시험 문제",
-    "quiz.paper.addFromBank": "문제 은행에서 추가",
-    "quiz.paper.emptyHint": "\"문제 은행에서 추가\"를 클릭하여 문제를 선택하세요",
-    "quiz.paper.pickQuestions": "문제 선택",
-    "quiz.paper.noAvailable": "추가할 수 있는 문제가 없습니다",
-    "quiz.paper.needTitle": "시험지 제목을 입력해주세요",
-    "quiz.paper.needQuestions": "최소한 한 문제 이상 추가해주세요",
-    "quiz.paper.saveAsTemplate": "템플릿으로 저장",
-    "quiz.paper.template": "템플릿",
-    "quiz.paper.duplicate": "복제",
-    "quiz.paper.duplicated": "복제됨",
-    "quiz.paper.papersCount": "시험지",
-    "quiz.paper.noPapers": "시험지가 없습니다",
-    "quiz.paper.noPapersHint": "수동으로 시험지 작성 또는 자동 생성",
-    "quiz.paper.totalScore": "총점",
-    "quiz.paper.points": "점",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.export": "시험지 내보내기",
     "quiz.paper.exportFormat": "내보내기 형식",
     "quiz.paper.exportWithAnswers": "정답 및 해설 함께 내보내기",
     "quiz.paper.expandAllAnswers": "모든 정답 및 해설 펼치기",
     "quiz.paper.collapseAllAnswers": "모두 접기",
-    "quiz.paper.rules": "문제 생성 규칙",
-    "quiz.paper.available": "문항 사용 가능",
-    "quiz.paper.generate": "시험지 생성",
-    "quiz.paper.generated": "생성됨",
-    "quiz.paper.autoTitle": "무작위 시험지",
-    "quiz.paper.filterByTags": "태그로 필터링 (선택 사항, 쉼표로 구분)",
-    "quiz.paper.insufficientQuestions": "문항 부족",
-    "quiz.paper.noMatchingQuestions": "일치하는 문항이 없습니다",
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.cleanup.button": "이전 옵션 접두사 정리",
     "quiz.cleanup.title": "이전 문제 은행 옵션 접두사 정리",
     "quiz.cleanup.desc": "현재 문제 은행을 검사하고 {0}개의 이전 객관식 문항 옵션에서 A./B./C./D. 접두사를 원본 텍스트로 되돌립니다. 이 작업은 한 번만 실행되며, 수정이 필요한 문항만 업데이트됩니다.",
@@ -12699,63 +12699,63 @@ const translations: Record<LangCode, Record<string, string>> = {
     // === Auto-added i18n batch (Gemini) ===
     "tab.community": "Comunidad",
     "tab.vocab": "Vocabulario",
-    "visual.subtitle": "Introduce texto, la IA extraerá lo esencial y generará infografías y gráficos automáticamente",
-    "visual.inputTitle": "Contenido de entrada",
-    "visual.inputPlaceholder": "Pega el contenido del texto, la IA lo analizará automáticamente y generará gráficos visuales...",
-    "visual.analyze": "Análisis de IA",
-    "visual.analyzing": "Analizando...",
-    "visual.analyzeSuccess": "Análisis completado",
-    "visual.analyzeError": "Análisis fallido, inténtalo de nuevo",
-    "visual.rateLimited": "Demasiadas solicitudes, inténtalo de nuevo más tarde",
-    "visual.uploadFile": "Subir archivo",
-    "visual.fileLoaded": "Archivo cargado",
-    "visual.fileUnsupported": "Formato no compatible",
-    "visual.fileTooLarge": "Archivo demasiado grande",
-    "visual.chars": "caracteres",
-    "visual.preview": "Vista previa",
-    "visual.history": "Historial",
-    "visual.noHistory": "Sin registros",
-    "visual.colorScheme": "Esquema de color",
-    "visual.template": "Plantilla de estilo",
-    "visual.structureType": "Tipo de gráfico",
-    "visual.chartType": "Tipo de diagrama",
-    "visual.tpl.modern": "Moderno",
-    "visual.tpl.classic": "Clásico",
-    "visual.tpl.playful": "Juguetón",
-    "visual.tpl.dark": "Oscuro",
-    "visual.struct.flow": "Flujo",
-    "visual.struct.comparison": "Comparación",
-    "visual.struct.pyramid": "Pirámide",
-    "visual.struct.funnel": "Embudo",
-    "visual.struct.timeline": "Línea de tiempo",
-    "visual.struct.cycle": "Ciclo",
-    "visual.struct.list": "Lista",
-    "visual.struct.hierarchy": "Jerarquía",
-    "visual.chart.bar": "Gráfico de barras",
-    "visual.chart.line": "Gráfico de líneas",
-    "visual.chart.pie": "Gráfico circular",
-    "visual.chart.radar": "Gráfico de radar",
-    "visual.chart.scatter": "Gráfico de dispersión",
-    "visual.chart.area": "Gráfico de área",
-    "visual.chart.donut": "Gráfico de anillos",
-    "visual.chart.treemap": "Gráfico de mapa de árbol",
-    "visual.struct.mindmap": "Mapa mental",
-    "visual.struct.matrix": "Matriz",
-    "visual.struct.radial": "Radial",
-    "visual.struct.swot": "SWOT",
-    "visual.tpl.magazine": "Revista",
-    "visual.tpl.tech": "Tecnología",
-    "visual.tpl.elegant": "Elegante",
-    "visual.tpl.bold": "Audaz",
-    "visual.font": "Fuente",
-    "visual.fontSize": "Tamaño de fuente",
-    "visual.layout": "Diseño",
-    "visual.density.compact": "Compacto",
-    "visual.density.normal": "Normal",
-    "visual.density.spacious": "Espacioso",
-    "visual.fileReading": "Leyendo...",
-    "visual.fileReadError": "Error al leer el archivo",
-    "visual.uploadHint": "Admite formatos .txt, .md, .docx, max 10MB",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "toolkit.barrage": "Discusión en ráfaga",
     "toolkit.countdown": "Cuenta atrás",
     "toolkit.noise": "Detector de ruido",
@@ -13002,20 +13002,20 @@ const translations: Record<LangCode, Record<string, string>> = {
     "capture.cropped": "Recorte aplicado",
     "scene.artStudio": "🎨 Estudio de Arte",
     "scene.artStudioDesc": "Diseño radial/concéntrico centrado en el área de esbozo",
-    "sysconfig.desc": "Controla la visibilidad de las funciones de la plataforma y los límites de uso de la IA por tipo de usuario",
-    "sysconfig.guest": "Visitante (usuario no registrado)",
-    "sysconfig.registered": "Usuario registrado (aprobado)",
-    "sysconfig.featureAccess": "Módulos de funciones",
-    "sysconfig.aiLimit": "Límite diario de IA",
-    "sysconfig.unlimited": "Ilimitado (-1)",
-    "sysconfig.perDay": "veces/día",
-    "sysconfig.save": "Guardar configuración",
-    "sysconfig.saved": "Configuración guardada",
-    "sysconfig.saveFailed": "Error al guardar",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "sysconfig.toolkitTools": "Subherramientas del kit de herramientas",
     "sysconfig.toolkitDesc": "Controla la visibilidad de cada herramienta del kit de herramientas para diferentes usuarios",
-    "admin.tabUsers": "Gestión de usuarios",
-    "admin.tabConfig": "Configuración de funciones",
+    
+    
     "admin.tabAIQuota": "Configuración de cuota de IA",
     "admin.aiQuota.title": "Configuración de cuota de IA de usuario",
     "admin.aiQuota.desc": "Configura límites de llamadas diarias de IA personalizados para usuarios aprobados",
@@ -13095,132 +13095,132 @@ const translations: Record<LangCode, Record<string, string>> = {
     "task.actionDenied": "Solo el creador puede realizar esta operación",
     "task.moreHistoryHint": "Hay {0} tareas históricas más. Haga clic en \"Ver todo el historial\" para ver más",
     "task.uncategorized": "Clase sin categorizar",
-    "quiz.questionBank": "Banco de preguntas",
-    "quiz.addQuestion": "Añadir pregunta",
-    "quiz.single": "Opción única",
-    "quiz.multi": "Opción múltiple",
-    "quiz.tf": "Verdadero/Falso",
-    "quiz.short": "Respuesta corta",
-    "quiz.questionPlaceholder": "Introduzca el contenido de la pregunta...",
-    "quiz.options": "Opciones",
-    "quiz.option": "Opción",
-    "quiz.correctAnswer": "Respuesta correcta",
-    "quiz.referenceAnswer": "Respuesta de referencia (opcional)",
-    "quiz.tagsPlaceholder": "Por ejemplo: Capítulo 1, Media, etc.",
-    "quiz.save": "Guardar",
-    "quiz.cancel": "Cancelar",
-    "quiz.needOptions": "Se necesitan al menos 2 opciones",
-    "quiz.selectQuestions": "Por favor, seleccione las preguntas",
-    "quiz.startSession": "Iniciar prueba",
-    "quiz.endSession": "Finalizar prueba",
-    "quiz.sessionTitle": "Título de la prueba",
-    "quiz.active": "En curso",
-    "quiz.ended": "Finalizado",
-    "quiz.noSessions": "No hay registros de pruebas por ahora",
-    "quiz.noQuestions": "Cuestionario vacío",
-    "quiz.selectAll": "Seleccionar todo",
-    "quiz.deselectAll": "Anular selección",
-    "quiz.questionsCount": "Preguntas",
-    "quiz.scanToAnswer": "Escanee para responder",
-    "quiz.totalQuestions": "Total de preguntas",
-    "quiz.accuracy": "Precisión",
-    "quiz.answers": "Personas han respondido",
-    "quiz.studentList": "Estudiantes que han respondido",
-    "quiz.noData": "No hay datos disponibles",
-    "quiz.false": "Falso",
-    "quiz.enterName": "Introduce tu nombre",
-    "quiz.startAnswer": "Empezar a responder",
-    "quiz.next": "Siguiente pregunta",
-    "quiz.submit": "Enviar respuestas",
-    "quiz.multiHint": "Puede seleccionar varias opciones",
-    "quiz.submitSuccess": "¡Enviado con éxito!",
-    "quiz.waitForResult": "Por favor, espere a que el profesor publique los resultados",
-    "quiz.sessionEnded": "El cuestionario ha terminado",
-    "quiz.loginRequired": "Inicie sesión para usar la función de cuestionario",
-    "quiz.cloudMode": "Sincronización en la nube",
-    "quiz.loginToPublish": "Inicie sesión para iniciar un cuestionario",
-    "quiz.loginForSessions": "Inicie sesión para iniciar cuestionarios en línea",
-    "quiz.localModeHint": "Las preguntas se han guardado localmente, inicie sesión para sincronizar con la nube",
-    "quiz.imp.title": "Importar preguntas de Excel/CSV",
-    "quiz.imp.desc": "Descargue la plantilla, complete las preguntas según el formato y súbalas para importar",
-    "quiz.imp.step1": "Descargar plantilla",
-    "quiz.imp.step1Hint": "Rellene la información de la pregunta según el formato de la plantilla",
-    "quiz.imp.step2": "Subir archivo",
-    "quiz.imp.step2Hint": "Soporta formatos .xlsx, .xls, .csv",
-    "quiz.imp.downloadTemplate": "Descargar plantilla",
-    "quiz.imp.selectFile": "Seleccionar archivo",
-    "quiz.imp.preview": "Vista previa",
-    "quiz.imp.questionsUnit": "preguntas",
-    "quiz.imp.confirmImport": "Confirmar importación",
-    "quiz.imp.reselect": "Volver a seleccionar",
-    "quiz.imp.imported": "Importado con éxito",
-    "quiz.imp.templateDownloaded": "Plantilla descargada",
-    "quiz.imp.errors": "Error de análisis",
-    "quiz.imp.emptyFile": "Archivo vacío o formato incorrecto",
-    "quiz.imp.row": "Fila",
-    "quiz.imp.unknownType": "Tipo de pregunta desconocido",
-    "quiz.imp.emptyContent": "El contenido de la pregunta está vacío",
-    "quiz.imp.fewOptions": "Menos de 2 opciones",
-    "quiz.imp.noAnswer": "No se ha introducido la respuesta correcta",
-    "quiz.imp.parseError": "Error al analizar el archivo",
-    "quiz.imp.unsupportedFormat": "Formato de archivo no compatible",
-    "quiz.imp.colType": "Tipo de pregunta",
-    "quiz.imp.colContent": "Contenido de la pregunta",
-    "quiz.imp.colA": "Opción A",
-    "quiz.imp.colB": "Opción B",
-    "quiz.imp.colC": "Opción C",
-    "quiz.imp.colD": "Opción D",
-    "quiz.imp.colAnswer": "Respuesta correcta",
-    "quiz.imp.colTags": "Etiquetas",
-    "quiz.imp.sheetName": "Plantilla de banco de preguntas",
-    "quiz.category": "Categoría",
-    "quiz.noCategory": "Sin categoría",
-    "quiz.manageCategories": "Gestionar categorías",
-    "quiz.newCategoryName": "Nueva categoría",
-    "quiz.noCategories": "Sin categorías",
-    "quiz.searchPlaceholder": "Buscar preguntas...",
-    "quiz.allTypes": "Todos los tipos",
-    "quiz.allCategories": "Todas las categorías",
-    "quiz.uncategorized": "Sin categorizar",
-    "quiz.starredOnly": "Solo favoritos",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.preview": "Vista previa del examen",
     "quiz.paper.answerExplanation": "Respuestas y explicaciones",
     "quiz.paper.teacherOnly": "Solo visible para profesores",
     "quiz.ai.coverageWarning": "Los siguientes puntos de conocimiento no están cubiertos:",
-    "quiz.paper.createPaper": "Crear examen manualmente",
-    "quiz.paper.editPaper": "Editar examen",
-    "quiz.paper.autoGenerate": "Generar examen automáticamente",
-    "quiz.paper.paperTitle": "Título del examen",
-    "quiz.paper.description": "Descripción del examen (opcional)",
-    "quiz.paper.paperQuestions": "Preguntas del examen",
-    "quiz.paper.addFromBank": "Añadir del banco de preguntas",
-    "quiz.paper.emptyHint": "Haz clic en \"Añadir del banco de preguntas\" para seleccionar preguntas",
-    "quiz.paper.pickQuestions": "Seleccionar preguntas",
-    "quiz.paper.noAvailable": "No hay preguntas disponibles para añadir",
-    "quiz.paper.needTitle": "Por favor, introduce el título del examen",
-    "quiz.paper.needQuestions": "Por favor, añade al menos una pregunta",
-    "quiz.paper.saveAsTemplate": "Guardar como plantilla",
-    "quiz.paper.template": "Plantilla",
-    "quiz.paper.duplicate": "Duplicar",
-    "quiz.paper.duplicated": "Duplicado",
-    "quiz.paper.papersCount": "exámenes",
-    "quiz.paper.noPapers": "No hay exámenes",
-    "quiz.paper.noPapersHint": "Crea un examen manualmente o genéralo automáticamente",
-    "quiz.paper.totalScore": "Puntuación total",
-    "quiz.paper.points": "Puntos",
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.paper.export": "Exportar examen",
     "quiz.paper.exportFormat": "Formato de exportación",
     "quiz.paper.exportWithAnswers": "También exportar respuestas y explicaciones",
     "quiz.paper.expandAllAnswers": "Expandir todas las respuestas y explicaciones",
     "quiz.paper.collapseAllAnswers": "Contraer todo",
-    "quiz.paper.rules": "Reglas de creación de examen",
-    "quiz.paper.available": "preguntas disponibles",
-    "quiz.paper.generate": "Generar examen",
-    "quiz.paper.generated": "Generado",
-    "quiz.paper.autoTitle": "Examen aleatorio",
-    "quiz.paper.filterByTags": "Filtrar por etiquetas (opcional, separadas por comas)",
-    "quiz.paper.insufficientQuestions": "Preguntas insuficientes",
-    "quiz.paper.noMatchingQuestions": "No hay preguntas que coincidan",
+    
+    
+    
+    
+    
+    
+    
+    
     "quiz.cleanup.button": "Limpiar prefijos de opciones antiguas",
     "quiz.cleanup.title": "Limpiar prefijos de opciones de banco de preguntas antiguas",
     "quiz.cleanup.desc": "Se escaneará el banco de preguntas actual y se volverán a escribir los prefijos A./B./C./D. en {0} opciones de preguntas de opción múltiple antiguas como texto limpio. Esta operación se realizará solo una vez y actualizará solo las preguntas que realmente necesitan corrección.",
