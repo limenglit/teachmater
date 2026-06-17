@@ -374,15 +374,15 @@ export default function SeatCheckinPage() {
         setAlreadyCheckedIn(true);
         if (resolved.guestAssigned) {
           toast({
-            title: '您没提前注册，已为您分配临时座位',
-            description: resolved.hint ? `分配座位在${resolved.hint}，请按下方引导入座。` : '请按下方引导入座。',
+            title: t('seatCheckin.guestToastTitle'),
+            description: resolved.hint ? `${t('seatCheckin.guestSeatAtPrefix')}${resolved.hint}。${t('seatCheckin.followGuide')}` : t('seatCheckin.followGuide'),
           });
         }
         return;
       }
 
       if (session.status !== 'active') {
-        toast({ title: '签到已结束，无法新增签到', variant: 'destructive' });
+        toast({ title: t('seatCheckin.endedCannotAdd'), variant: 'destructive' });
         return;
       }
 
@@ -398,14 +398,14 @@ export default function SeatCheckinPage() {
       setAlreadyCheckedIn(false);
       if (resolved.guestAssigned) {
         toast({
-          title: '您没提前注册，已为您分配临时座位',
-          description: resolved.hint ? `分配座位在${resolved.hint}，请按下方引导入座。` : '请按下方引导入座。',
+          title: t('seatCheckin.guestToastTitle'),
+          description: resolved.hint ? `${t('seatCheckin.guestSeatAtPrefix')}${resolved.hint}。${t('seatCheckin.followGuide')}` : t('seatCheckin.followGuide'),
         });
       }
     } catch (err) {
       const code = err instanceof Error ? err.message : '';
       if (code === 'NO_SEAT_FOR_GUEST') {
-        toast({ title: '当前可分配座位已满，请联系老师现场安排。', variant: 'destructive' });
+        toast({ title: t('seatCheckin.allSeatsFull'), variant: 'destructive' });
       } else {
         toast({ title: t('seatCheckin.failed'), variant: 'destructive' });
       }
@@ -437,11 +437,11 @@ export default function SeatCheckinPage() {
             </div>
             <div className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground/80 bg-muted/40 px-3 py-1 rounded-full">
               <ScanLine className="w-3 h-3" />
-              已通过扫码进入签到页
+              {t('seatCheckin.scanned')}
             </div>
             {session.status !== 'active' && (
               <div className="mt-2 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
-                ⚠️ 签到已结束，仅已签到同学可查看座位
+                ⚠️ {t('seatCheckin.endedNotice')}
               </div>
             )}
           </div>
@@ -450,7 +450,7 @@ export default function SeatCheckinPage() {
           <div className="bg-card border border-border rounded-2xl shadow-sm p-5 space-y-4">
             <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
               <User2 className="w-3.5 h-3.5" />
-              你的姓名
+              {t('seatCheckin.yourName')}
             </label>
             <div className="relative">
               <Input
@@ -481,7 +481,7 @@ export default function SeatCheckinPage() {
               {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
             </Button>
             <p className="text-[11px] text-center text-muted-foreground/70 leading-relaxed">
-              💡 输入姓名时会自动匹配名单，未在名单中的同学将获得临时座位
+              💡 {t('seatCheckin.autoMatchHint')}
             </p>
           </div>
         </div>
@@ -495,7 +495,7 @@ export default function SeatCheckinPage() {
   // Resolve a clean seat-position label even if the assignedSeatHint is missing
   const seatLabel = assignedSeatHint
     || buildSeatHint(sceneType, effectiveSeatData, studentName)
-    || '请在地图上查看你的位置';
+    || t('seatCheckin.viewOnMap');
 
   return (
     <div className="min-h-[100dvh] bg-background overflow-auto pb-[max(5rem,env(safe-area-inset-bottom))]">
@@ -512,7 +512,7 @@ export default function SeatCheckinPage() {
                   <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary/80 uppercase tracking-wide">
                     <span>{t('seatCheckin.success')}</span>
                     {alreadyCheckedIn && (
-                      <span className="text-[10px] bg-primary/15 text-primary/90 px-1.5 py-0.5 rounded normal-case">已签到</span>
+                      <span className="text-[10px] bg-primary/15 text-primary/90 px-1.5 py-0.5 rounded normal-case">{t('seatCheckin.checkInBadge')}</span>
                     )}
                   </div>
                   <div className="text-base font-bold text-foreground truncate">
@@ -523,16 +523,16 @@ export default function SeatCheckinPage() {
               <button
                 onClick={handleRecenter}
                 className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 active:bg-primary/20 px-3 py-2 rounded-lg border border-primary/20 transition-colors"
-                aria-label="回到我的座位"
+                aria-label={t('seatCheckin.backToMySeat')}
               >
                 <Crosshair className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">回到我的座位</span>
-                <span className="inline sm:hidden">居中</span>
+                <span className="hidden sm:inline">{t('seatCheckin.backToMySeat')}</span>
+                <span className="inline sm:hidden">{t('seatCheckin.center')}</span>
               </button>
             </div>
             {isGuestAssigned && (
               <div className="mt-2 text-xs text-foreground/80 bg-card/60 rounded-lg px-2.5 py-1.5 border border-primary/15">
-                💡 你不在预设名单中，已自动为你分配临时座位，请按下方引导入座
+                💡 {t('seatCheckin.guestAssignedHint')}
               </div>
             )}
           </div>
