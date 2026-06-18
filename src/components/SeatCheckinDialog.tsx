@@ -492,7 +492,7 @@ export default function SeatCheckinDialog({
   const checkinUrl = currentSession
     ? `${window.location.origin}/seat-checkin/${currentSession.id}`
     : '';
-  const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || '座位签到二维码')}.png`;
+  const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || t('seatCheckinDialog.qrFallbackName'))}.png`;
 
   const checkedInNames = useMemo(() => Array.from(new Set(records.map(record => record.student_name.trim()))), [records]);
   const currentStudentNames = currentSession?.student_names ?? studentNames;
