@@ -585,7 +585,7 @@ export default function SeatCheckinDialog({
   const handleMergeGuests = async () => {
     if (!currentSession || guestSeatAssignments.length === 0) return;
     if (!onMergeGuests) {
-      toast({ title: '当前场景暂不支持一键合并', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.mergeUnsupported'), variant: 'destructive' });
       return;
     }
     setMerging(true);
