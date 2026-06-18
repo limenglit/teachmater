@@ -727,8 +727,8 @@ export default function SeatCheckinDialog({
             </Button>
             {createError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                <p className="text-destructive font-medium mb-2">创建签到失败</p>
-                <p className="text-muted-foreground text-xs mb-3">{createError}</p>
+                <p className="text-destructive font-medium mb-2">{t('seatCheckinDialog.createFailedToast')}</p>
+                <p className="text-muted-foreground text-xs mb-3 break-words">{createError}</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -737,7 +737,7 @@ export default function SeatCheckinDialog({
                   disabled={loading}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  {loading ? '正在重试...' : '重新生成签到码'}
+                  {loading ? t('seatCheckinDialog.retrying') : t('seatCheckinDialog.regenerate')}
                 </Button>
               </div>
             )}
