@@ -21,6 +21,7 @@ import {
   getRequireSeatAssignmentBeforeCheckin,
   isSeatAssignmentComplete,
 } from '@/lib/seat-checkin-policy';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MergeGuestEntry {
   name: string;
@@ -264,8 +265,9 @@ export default function SeatCheckinDialog({
   onSessionCreated,
   onMergeGuests,
 }: Props) {
+  const { t } = useLanguage();
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
-  const resolvedThemeTitle = ((currentSession?.class_name || className || '').trim()) || '座位签到';
+  const resolvedThemeTitle = ((currentSession?.class_name || className || '').trim()) || t('seatCheckinDialog.title');
   const hasCustomTitle = !!(currentSession?.class_name?.trim() || className?.trim());
 
   const [loading, setLoading] = useState(false);
@@ -408,7 +410,7 @@ export default function SeatCheckinDialog({
 
   const createSession = async () => {
     if (requireSeatAssignment && !seatAssignmentComplete) {
-      toast({ title: '请先完成排座后再发起签到', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
       return;
     }
 
@@ -445,8 +447,8 @@ export default function SeatCheckinDialog({
       await refreshHistory();
     } catch (err) {
       const description = err instanceof Error ? err.message : undefined;
-      setCreateError(description || '创建签到失败');
-      toast({ title: '创建签到失败', description, variant: 'destructive' });
+      setCreateError(description || t('seatCheckinDialog.createFailedToast'));
+      toast({ title: t('seatCheckinDialog.createFailedToast'), description, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -461,9 +463,9 @@ export default function SeatCheckinDialog({
       setCurrentSession(prev => prev ? { ...prev, status: 'ended', ended_at: endedAt } : null);
       setTimeLeft(null);
       await refreshHistory();
-      toast({ title: '签到已结束' });
+      toast({ title: t('seatCheckinDialog.endedSession') });
     } catch {
-      toast({ title: '结束签到失败', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.endFailed'), variant: 'destructive' });
     } finally {
       setEnding(false);
     }
@@ -479,9 +481,9 @@ export default function SeatCheckinDialog({
         setTimeLeft(null);
       }
       await refreshHistory();
-      toast({ title: '签到记录已删除' });
+      toast({ title: t('seatCheckinDialog.deletedRecord') });
     } catch {
-      toast({ title: '删除签到记录失败', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.deleteFailed'), variant: 'destructive' });
     } finally {
       setDeletingSessionId(null);
     }
@@ -490,7 +492,7 @@ export default function SeatCheckinDialog({
   const checkinUrl = currentSession
     ? `${window.location.origin}/seat-checkin/${currentSession.id}`
     : '';
-  const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || '座位签到二维码')}.png`;
+  const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || t('seatCheckinDialog.qrFallbackName'))}.png`;
 
   const checkedInNames = useMemo(() => Array.from(new Set(records.map(record => record.student_name.trim()))), [records]);
   const currentStudentNames = currentSession?.student_names ?? studentNames;
@@ -559,7 +561,7 @@ export default function SeatCheckinDialog({
       assignedKey: entry.assignedKey,
       confirmed: true,
     });
-    toast({ title: `已确认 ${entry.name} 的座位`, description: entry.seatHint });
+    toast({ title: `${t('seatCheckinDialog.guestConfirmed')} · ${entry.name}`, description: entry.seatHint });
   };
 
   const handleReassignGuest = (entry: GuestAssignmentEntry) => {
@@ -576,14 +578,14 @@ export default function SeatCheckinDialog({
         writeGuestOverrides(all);
       }
     }
-    toast({ title: `已为 ${entry.name} 重新指派座位` });
+    toast({ title: `${t('seatCheckinDialog.guestReassigned')} · ${entry.name}` });
   };
 
   const [merging, setMerging] = useState(false);
   const handleMergeGuests = async () => {
     if (!currentSession || guestSeatAssignments.length === 0) return;
     if (!onMergeGuests) {
-      toast({ title: '当前场景暂不支持一键合并', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.mergeUnsupported'), variant: 'destructive' });
       return;
     }
     setMerging(true);
@@ -632,17 +634,17 @@ export default function SeatCheckinDialog({
       setGuestConfirmed({});
       setGuestRotateOffsets({});
 
-      toast({ title: '已合并', description: `已将 ${entries.length} 位临时学生写入名单与座位表` });
+      toast({ title: t('seatCheckinDialog.mergeSuccess'), description: t('seatCheckinDialog.mergeSuccessDesc') });
     } catch (err) {
       const description = err instanceof Error ? err.message : undefined;
-      toast({ title: '合并失败', description, variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.mergeFailed'), description, variant: 'destructive' });
     } finally {
       setMerging(false);
     }
   };
 
   const formatTimeLeft = (seconds: number) => {
-    if (seconds === -1) return '不限时长';
+    if (seconds === -1) return t('seatCheckinDialog.unlimitedLabel');
     const minutes = Math.floor(seconds / 60);
     const remainder = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
@@ -664,8 +666,8 @@ export default function SeatCheckinDialog({
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setCurrentSession(null); setRecords([]); setTimeLeft(null); } }}>
       <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader className="px-4 sm:px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" /> {hasCustomTitle ? `${resolvedThemeTitle} · 座位签到` : '座位签到'}
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+            <QrCode className="w-5 h-5 shrink-0" /> <span className="min-w-0 break-words">{hasCustomTitle ? `${resolvedThemeTitle} · ${t('seatCheckinDialog.title')}` : t('seatCheckinDialog.title')}</span>
           </DialogTitle>
 
         </DialogHeader>
@@ -675,13 +677,13 @@ export default function SeatCheckinDialog({
         {!currentSession ? (
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              生成签到二维码后，学生扫码输入姓名即可查看自己的座位位置，并获得导航指引。
+              {t('seatCheckinDialog.desc')}
             </p>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">签到时长</span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="text-sm text-muted-foreground">{t('seatCheckinDialog.duration')}</span>
               <label className="flex items-center gap-1 text-xs">
                 <input type="checkbox" checked={unlimited} onChange={e => setUnlimited(e.target.checked)} className="accent-primary" />
-                不限制时长
+                {t('seatCheckinDialog.unlimited')}
               </label>
               {!unlimited && (
                 <>
@@ -698,35 +700,35 @@ export default function SeatCheckinDialog({
                     }}
                     className="h-9 w-20 text-center"
                   />
-                  <span className="text-sm text-muted-foreground">分钟</span>
+                  <span className="text-sm text-muted-foreground">{t('seatCheckinDialog.minutes')}</span>
                 </>
               )}
-              {unlimited && <span className="text-sm text-muted-foreground">不限/需手动结束</span>}
+              {unlimited && <span className="text-sm text-muted-foreground">{t('seatCheckinDialog.unlimitedManualEnd')}</span>}
             </div>
             {/* 已移除-1说明文案 */}
 
             <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">签到前需完成排座</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full border ${requireSeatAssignment ? 'text-primary border-primary/40 bg-primary/10' : 'text-muted-foreground border-border bg-muted'}`}>
-                  {requireSeatAssignment ? '已开启' : '已关闭'}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-medium text-foreground break-words min-w-0">{t('seatCheckinDialog.requireSeating')}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${requireSeatAssignment ? 'text-primary border-primary/40 bg-primary/10' : 'text-muted-foreground border-border bg-muted'}`}>
+                  {requireSeatAssignment ? t('seatCheckinDialog.enabled') : t('seatCheckinDialog.disabled')}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                该策略由系统配置统一管理。关闭后可无需排座直接发起签到。
+                {t('seatCheckinDialog.requireDesc')}
               </p>
               {requireSeatAssignment && !seatAssignmentComplete && (
-                <p className="text-xs text-destructive">当前尚未完成排座，暂不可发起签到。</p>
+                <p className="text-xs text-destructive">{t('seatCheckinDialog.seatNotReady')}</p>
               )}
             </div>
 
             <Button onClick={createSession} disabled={loading || (requireSeatAssignment && !seatAssignmentComplete)} className="w-full">
-              {loading ? '生成中...' : createError ? '重试生成签到码' : '生成签到码'}
+              {loading ? t('seatCheckinDialog.generating') : createError ? t('seatCheckinDialog.retry') : t('seatCheckinDialog.generate')}
             </Button>
             {createError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                <p className="text-destructive font-medium mb-2">创建签到失败</p>
-                <p className="text-muted-foreground text-xs mb-3">{createError}</p>
+                <p className="text-destructive font-medium mb-2">{t('seatCheckinDialog.createFailedToast')}</p>
+                <p className="text-muted-foreground text-xs mb-3 break-words">{createError}</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -735,20 +737,20 @@ export default function SeatCheckinDialog({
                   disabled={loading}
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                  {loading ? '正在重试...' : '重新生成签到码'}
+                  {loading ? t('seatCheckinDialog.retrying') : t('seatCheckinDialog.regenerate')}
                 </Button>
               </div>
             )}
 
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">签到记录</p>
+                <p className="text-sm font-medium text-foreground">{t('seatCheckinDialog.records')}</p>
                 <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => void refreshHistory()}>
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> 刷新
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> {t('seatCheckinDialog.refresh')}
                 </Button>
               </div>
               {historySessions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">暂无签到记录</p>
+                <p className="text-sm text-muted-foreground">{t('seatCheckinDialog.empty')}</p>
               ) : (
                 <div className="max-h-56 space-y-2 overflow-auto pr-1">
                   {historySessions.map(session => {
@@ -756,13 +758,13 @@ export default function SeatCheckinDialog({
                     return (
                       <div key={session.id} className="rounded-lg border border-border bg-card p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <button className="flex-1 text-left" onClick={() => void openHistorySession(session)}>
-                            <p className="text-sm font-medium text-foreground truncate">{session.class_name || className || '座位签到'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(session.created_at).toLocaleString()} · {session.duration_minutes} 分钟 · {session.status === 'active' ? '进行中' : '已结束'}
+                          <button className="flex-1 text-left min-w-0" onClick={() => void openHistorySession(session)}>
+                            <p className="text-sm font-medium text-foreground truncate">{session.class_name || className || t('seatCheckinDialog.title')}</p>
+                            <p className="text-xs text-muted-foreground break-words">
+                              {new Date(session.created_at).toLocaleString()} · {session.duration_minutes} {t('seatCheckinDialog.minutes')} · {session.status === 'active' ? t('seatCheckinDialog.inProgress') : t('seatCheckinDialog.ended')}
                             </p>
                           </button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive" onClick={() => void handleDeleteSession(session)} disabled={isDeleting}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => void handleDeleteSession(session)} disabled={isDeleting}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -781,10 +783,10 @@ export default function SeatCheckinDialog({
             <div className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
               <div className="flex items-center gap-2 text-foreground">
                 <Clock className="w-4 h-4" />
-                <span>{currentSession.status === 'active' && timeLeft !== null ? formatTimeLeft(timeLeft) : '已结束'}</span>
+                <span>{currentSession.status === 'active' && timeLeft !== null ? formatTimeLeft(timeLeft) : t('seatCheckinDialog.ended')}</span>
               </div>
-              <div className="text-muted-foreground">
-                已签 {checkedInNames.length} / {currentStudentNames.length}
+              <div className="text-muted-foreground whitespace-nowrap">
+                {t('seatCheckinDialog.checkedShort')} {checkedInNames.length} / {currentStudentNames.length}
               </div>
             </div>
 
