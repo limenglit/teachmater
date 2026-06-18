@@ -644,7 +644,7 @@ export default function SeatCheckinDialog({
   };
 
   const formatTimeLeft = (seconds: number) => {
-    if (seconds === -1) return '不限时长';
+    if (seconds === -1) return t('seatCheckinDialog.unlimitedLabel');
     const minutes = Math.floor(seconds / 60);
     const remainder = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
