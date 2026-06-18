@@ -561,7 +561,7 @@ export default function SeatCheckinDialog({
       assignedKey: entry.assignedKey,
       confirmed: true,
     });
-    toast({ title: `已确认 ${entry.name} 的座位`, description: entry.seatHint });
+    toast({ title: `${t('seatCheckinDialog.guestConfirmed')} · ${entry.name}`, description: entry.seatHint });
   };
 
   const handleReassignGuest = (entry: GuestAssignmentEntry) => {
