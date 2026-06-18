@@ -481,9 +481,9 @@ export default function SeatCheckinDialog({
         setTimeLeft(null);
       }
       await refreshHistory();
-      toast({ title: '签到记录已删除' });
+      toast({ title: t('seatCheckinDialog.deletedRecord') });
     } catch {
-      toast({ title: '删除签到记录失败', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.deleteFailed'), variant: 'destructive' });
     } finally {
       setDeletingSessionId(null);
     }
