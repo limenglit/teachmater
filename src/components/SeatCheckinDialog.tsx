@@ -634,10 +634,10 @@ export default function SeatCheckinDialog({
       setGuestConfirmed({});
       setGuestRotateOffsets({});
 
-      toast({ title: '已合并', description: `已将 ${entries.length} 位临时学生写入名单与座位表` });
+      toast({ title: t('seatCheckinDialog.mergeSuccess'), description: t('seatCheckinDialog.mergeSuccessDesc') });
     } catch (err) {
       const description = err instanceof Error ? err.message : undefined;
-      toast({ title: '合并失败', description, variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.mergeFailed'), description, variant: 'destructive' });
     } finally {
       setMerging(false);
     }
