@@ -708,17 +708,17 @@ export default function SeatCheckinDialog({
             {/* 已移除-1说明文案 */}
 
             <div className="rounded-lg border border-border bg-card p-3 space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-sm font-medium text-foreground">签到前需完成排座</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full border ${requireSeatAssignment ? 'text-primary border-primary/40 bg-primary/10' : 'text-muted-foreground border-border bg-muted'}`}>
-                  {requireSeatAssignment ? '已开启' : '已关闭'}
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-medium text-foreground break-words min-w-0">{t('seatCheckinDialog.requireSeating')}</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full border whitespace-nowrap ${requireSeatAssignment ? 'text-primary border-primary/40 bg-primary/10' : 'text-muted-foreground border-border bg-muted'}`}>
+                  {requireSeatAssignment ? t('seatCheckinDialog.enabled') : t('seatCheckinDialog.disabled')}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                该策略由系统配置统一管理。关闭后可无需排座直接发起签到。
+                {t('seatCheckinDialog.requireDesc')}
               </p>
               {requireSeatAssignment && !seatAssignmentComplete && (
-                <p className="text-xs text-destructive">当前尚未完成排座，暂不可发起签到。</p>
+                <p className="text-xs text-destructive">{t('seatCheckinDialog.seatNotReady')}</p>
               )}
             </div>
 
