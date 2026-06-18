@@ -666,8 +666,8 @@ export default function SeatCheckinDialog({
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setCurrentSession(null); setRecords([]); setTimeLeft(null); } }}>
       <DialogContent className="w-[96vw] max-w-4xl max-h-[90vh] p-0 overflow-hidden">
         <DialogHeader className="px-4 sm:px-6 py-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-          <DialogTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5" /> {hasCustomTitle ? `${resolvedThemeTitle} · 座位签到` : '座位签到'}
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg break-words">
+            <QrCode className="w-5 h-5 shrink-0" /> <span className="min-w-0 break-words">{hasCustomTitle ? `${resolvedThemeTitle} · ${t('seatCheckinDialog.title')}` : t('seatCheckinDialog.title')}</span>
           </DialogTitle>
 
         </DialogHeader>
