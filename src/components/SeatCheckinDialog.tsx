@@ -783,10 +783,10 @@ export default function SeatCheckinDialog({
             <div className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm">
               <div className="flex items-center gap-2 text-foreground">
                 <Clock className="w-4 h-4" />
-                <span>{currentSession.status === 'active' && timeLeft !== null ? formatTimeLeft(timeLeft) : '已结束'}</span>
+                <span>{currentSession.status === 'active' && timeLeft !== null ? formatTimeLeft(timeLeft) : t('seatCheckinDialog.ended')}</span>
               </div>
-              <div className="text-muted-foreground">
-                已签 {checkedInNames.length} / {currentStudentNames.length}
+              <div className="text-muted-foreground whitespace-nowrap">
+                {t('seatCheckinDialog.checkedShort')} {checkedInNames.length} / {currentStudentNames.length}
               </div>
             </div>
 
