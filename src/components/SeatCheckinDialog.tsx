@@ -21,6 +21,7 @@ import {
   getRequireSeatAssignmentBeforeCheckin,
   isSeatAssignmentComplete,
 } from '@/lib/seat-checkin-policy';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MergeGuestEntry {
   name: string;
