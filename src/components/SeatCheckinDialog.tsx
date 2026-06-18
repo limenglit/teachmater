@@ -677,13 +677,13 @@ export default function SeatCheckinDialog({
         {!currentSession ? (
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground">
-              生成签到二维码后，学生扫码输入姓名即可查看自己的座位位置，并获得导航指引。
+              {t('seatCheckinDialog.desc')}
             </p>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">签到时长</span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="text-sm text-muted-foreground">{t('seatCheckinDialog.duration')}</span>
               <label className="flex items-center gap-1 text-xs">
                 <input type="checkbox" checked={unlimited} onChange={e => setUnlimited(e.target.checked)} className="accent-primary" />
-                不限制时长
+                {t('seatCheckinDialog.unlimited')}
               </label>
               {!unlimited && (
                 <>
@@ -700,10 +700,10 @@ export default function SeatCheckinDialog({
                     }}
                     className="h-9 w-20 text-center"
                   />
-                  <span className="text-sm text-muted-foreground">分钟</span>
+                  <span className="text-sm text-muted-foreground">{t('seatCheckinDialog.minutes')}</span>
                 </>
               )}
-              {unlimited && <span className="text-sm text-muted-foreground">不限/需手动结束</span>}
+              {unlimited && <span className="text-sm text-muted-foreground">{t('seatCheckinDialog.unlimitedManualEnd')}</span>}
             </div>
             {/* 已移除-1说明文案 */}
 
