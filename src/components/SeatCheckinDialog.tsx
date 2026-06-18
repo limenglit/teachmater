@@ -723,7 +723,7 @@ export default function SeatCheckinDialog({
             </div>
 
             <Button onClick={createSession} disabled={loading || (requireSeatAssignment && !seatAssignmentComplete)} className="w-full">
-              {loading ? '生成中...' : createError ? '重试生成签到码' : '生成签到码'}
+              {loading ? t('seatCheckinDialog.generating') : createError ? t('seatCheckinDialog.retry') : t('seatCheckinDialog.generate')}
             </Button>
             {createError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
