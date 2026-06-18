@@ -410,7 +410,7 @@ export default function SeatCheckinDialog({
 
   const createSession = async () => {
     if (requireSeatAssignment && !seatAssignmentComplete) {
-      toast({ title: '请先完成排座后再发起签到', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
       return;
     }
 
