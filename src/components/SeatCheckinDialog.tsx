@@ -265,8 +265,9 @@ export default function SeatCheckinDialog({
   onSessionCreated,
   onMergeGuests,
 }: Props) {
+  const { t } = useLanguage();
   const [currentSession, setCurrentSession] = useState<SeatCheckinSessionSummary | null>(null);
-  const resolvedThemeTitle = ((currentSession?.class_name || className || '').trim()) || '座位签到';
+  const resolvedThemeTitle = ((currentSession?.class_name || className || '').trim()) || t('seatCheckinDialog.title');
   const hasCustomTitle = !!(currentSession?.class_name?.trim() || className?.trim());
 
   const [loading, setLoading] = useState(false);
