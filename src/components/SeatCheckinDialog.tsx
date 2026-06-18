@@ -578,7 +578,7 @@ export default function SeatCheckinDialog({
         writeGuestOverrides(all);
       }
     }
-    toast({ title: `已为 ${entry.name} 重新指派座位` });
+    toast({ title: `${t('seatCheckinDialog.guestReassigned')} · ${entry.name}` });
   };
 
   const [merging, setMerging] = useState(false);
