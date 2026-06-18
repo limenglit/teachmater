@@ -463,9 +463,9 @@ export default function SeatCheckinDialog({
       setCurrentSession(prev => prev ? { ...prev, status: 'ended', ended_at: endedAt } : null);
       setTimeLeft(null);
       await refreshHistory();
-      toast({ title: '签到已结束' });
+      toast({ title: t('seatCheckinDialog.endedSession') });
     } catch {
-      toast({ title: '结束签到失败', variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.endFailed'), variant: 'destructive' });
     } finally {
       setEnding(false);
     }
