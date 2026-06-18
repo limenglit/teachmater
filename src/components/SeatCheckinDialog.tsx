@@ -744,13 +744,13 @@ export default function SeatCheckinDialog({
 
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">签到记录</p>
+                <p className="text-sm font-medium text-foreground">{t('seatCheckinDialog.records')}</p>
                 <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => void refreshHistory()}>
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> 刷新
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" /> {t('seatCheckinDialog.refresh')}
                 </Button>
               </div>
               {historySessions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">暂无签到记录</p>
+                <p className="text-sm text-muted-foreground">{t('seatCheckinDialog.empty')}</p>
               ) : (
                 <div className="max-h-56 space-y-2 overflow-auto pr-1">
                   {historySessions.map(session => {
@@ -758,13 +758,13 @@ export default function SeatCheckinDialog({
                     return (
                       <div key={session.id} className="rounded-lg border border-border bg-card p-3">
                         <div className="flex items-center justify-between gap-2">
-                          <button className="flex-1 text-left" onClick={() => void openHistorySession(session)}>
-                            <p className="text-sm font-medium text-foreground truncate">{session.class_name || className || '座位签到'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(session.created_at).toLocaleString()} · {session.duration_minutes} 分钟 · {session.status === 'active' ? '进行中' : '已结束'}
+                          <button className="flex-1 text-left min-w-0" onClick={() => void openHistorySession(session)}>
+                            <p className="text-sm font-medium text-foreground truncate">{session.class_name || className || t('seatCheckinDialog.title')}</p>
+                            <p className="text-xs text-muted-foreground break-words">
+                              {new Date(session.created_at).toLocaleString()} · {session.duration_minutes} {t('seatCheckinDialog.minutes')} · {session.status === 'active' ? t('seatCheckinDialog.inProgress') : t('seatCheckinDialog.ended')}
                             </p>
                           </button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive" onClick={() => void handleDeleteSession(session)} disabled={isDeleting}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => void handleDeleteSession(session)} disabled={isDeleting}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
