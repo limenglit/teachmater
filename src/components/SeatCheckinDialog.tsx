@@ -447,8 +447,8 @@ export default function SeatCheckinDialog({
       await refreshHistory();
     } catch (err) {
       const description = err instanceof Error ? err.message : undefined;
-      setCreateError(description || '创建签到失败');
-      toast({ title: '创建签到失败', description, variant: 'destructive' });
+      setCreateError(description || t('seatCheckinDialog.createFailedToast'));
+      toast({ title: t('seatCheckinDialog.createFailedToast'), description, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
