@@ -822,19 +822,19 @@ export default function SeatCheckinDialog({
             />
 
             <div className="w-full border-t border-border pt-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium">
-                  当前已签到 <span className="text-primary">{checkedInNames.length + guestSeatAssignments.length}</span> 人
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-y-1">
+                <p className="text-sm font-medium min-w-0 break-words">
+                  {t('seatCheckinDialog.currentCheckedIn')} <span className="text-primary">{checkedInNames.length + guestSeatAssignments.length}</span> {t('seatCheckinDialog.people')}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  名单内 {checkedInNames.filter(n => currentStudentNames.includes(n)).length} · 名单外 {guestSeatAssignments.length}
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  {t('seatCheckinDialog.inListLabel')} {checkedInNames.filter(n => currentStudentNames.includes(n)).length} · {t('seatCheckinDialog.outListLabel')} {guestSeatAssignments.length}
                 </p>
               </div>
 
               {/* 名单内 */}
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                  <UserCheck className="w-3 h-3" /> 名单内（{currentStudentNames.length} 人，已签 {checkedInNames.filter(n => currentStudentNames.includes(n)).length}）
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 flex-wrap min-w-0 break-words">
+                  <UserCheck className="w-3 h-3 shrink-0" /> {t('seatCheckinDialog.inListSection')}（{currentStudentNames.length} {t('seatCheckinDialog.people')}，{t('seatCheckinDialog.checkedShort')} {checkedInNames.filter(n => currentStudentNames.includes(n)).length}）
                 </p>
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto">
                   {currentStudentNames.map(name => (
