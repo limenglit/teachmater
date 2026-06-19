@@ -855,12 +855,12 @@ export default function SeatCheckinDialog({
 
             {/* 名单外（临时分配） */}
             <div className="w-full rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5">
-                <span className="inline-flex w-2 h-2 rounded-full bg-amber-500" />
-                名单外（临时分配座位） · {guestSeatAssignments.length} 人
+              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5 flex-wrap min-w-0 break-words">
+                <span className="inline-flex w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                {t('seatCheckinDialog.outListSection')} · {guestSeatAssignments.length} {t('seatCheckinDialog.people')}
               </p>
               {guestSeatAssignments.length === 0 ? (
-                <p className="text-xs text-muted-foreground">暂无未注册签到人员</p>
+                <p className="text-xs text-muted-foreground">{t('seatCheckinDialog.noGuest')}</p>
               ) : (
                 <div className="max-h-44 overflow-auto space-y-1.5 pr-1">
                   {guestSeatAssignments.map(item => (
@@ -883,7 +883,7 @@ export default function SeatCheckinDialog({
                             className="h-6 px-2 text-xs gap-1"
                             onClick={() => handleConfirmGuest(item)}
                           >
-                            <Check className="w-3 h-3" /> 确认
+                            <Check className="w-3 h-3" /> {t('seatCheckinDialog.confirm')}
                           </Button>
                         )}
                         <Button
@@ -892,28 +892,28 @@ export default function SeatCheckinDialog({
                           className="h-6 px-2 text-xs gap-1"
                           onClick={() => handleReassignGuest(item)}
                           disabled={item.assignedKey === undefined && currentSession.scene_type === 'classroom'}
-                          title="重新指派至下一个可用座位"
+                          title={t('seatCheckinDialog.reassignTitle')}
                         >
-                          <Shuffle className="w-3 h-3" /> 重派
+                          <Shuffle className="w-3 h-3" /> {t('seatCheckinDialog.reassign')}
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              <p className="text-[11px] text-muted-foreground mt-2">
-                临时座位优先安排在前排居中，自动跳过关闭座位与已占用座位。点击"重派"可循环切换至下一个可用座位。
+              <p className="text-[11px] text-muted-foreground mt-2 break-words">
+                {t('seatCheckinDialog.guestNote')}
               </p>
               {guestSeatAssignments.length > 0 && onMergeGuests && (
                 <Button
                   variant="default"
                   size="sm"
-                  className="w-full mt-2 h-8 text-xs gap-1"
+                  className="w-full mt-2 h-8 text-xs gap-1 whitespace-normal h-auto py-1.5"
                   onClick={() => void handleMergeGuests()}
                   disabled={merging}
                 >
-                  <UsersRound className="w-3.5 h-3.5" />
-                  {merging ? '合并中...' : `一键合并 ${guestSeatAssignments.length} 位临时学生到名单与座位表`}
+                  <UsersRound className="w-3.5 h-3.5 shrink-0" />
+                  <span className="min-w-0 break-words">{merging ? t('seatCheckinDialog.merging') : `${t('seatCheckinDialog.mergeBtn')} (${guestSeatAssignments.length})`}</span>
                 </Button>
               )}
             </div>
