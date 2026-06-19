@@ -921,14 +921,14 @@ export default function SeatCheckinDialog({
 
             {/* 签到流水（按时间排序） */}
             <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="font-medium text-foreground flex items-center gap-1.5">
-                  <History className="w-4 h-4" /> 签到流水（按时间排序） · {records.length} 条
+              <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <p className="font-medium text-foreground flex items-center gap-1.5 min-w-0 break-words">
+                  <History className="w-4 h-4 shrink-0" /> {t('seatCheckinDialog.flowTitle')} · {records.length}
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 px-2 text-xs gap-1"
+                  className="h-7 px-2 text-xs gap-1 whitespace-nowrap"
                   disabled={records.length === 0}
                   onClick={() => {
                     const sorted = [...records].sort(
@@ -937,14 +937,14 @@ export default function SeatCheckinDialog({
                     const inListSet = new Set(currentStudentNames.map(n => n.trim()));
                     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
                     const rows = [
-                      ['序号', '姓名', '名单内/外', '签到时间'],
+                      [t('seatCheckinDialog.csvIndex'), t('seatCheckinDialog.csvName'), t('seatCheckinDialog.csvType'), t('seatCheckinDialog.csvTime')],
                       ...sorted.map((r, i) => {
                         const name = r.student_name.trim();
                         return [
                           String(i + 1),
                           name,
-                          inListSet.has(name) ? '名单内' : '名单外',
-                          new Date(r.checked_in_at).toLocaleString('zh-CN', { hour12: false }),
+                          inListSet.has(name) ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel'),
+                          new Date(r.checked_in_at).toLocaleString(undefined, { hour12: false }),
                         ];
                       }),
                     ];
@@ -954,21 +954,21 @@ export default function SeatCheckinDialog({
                     const a = document.createElement('a');
                     const today = new Date();
                     const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-                    const safeName = (resolvedThemeTitle || '座位签到').replace(/[\\/:*?"<>|]/g, '_');
+                    const safeName = (resolvedThemeTitle || t('seatCheckinDialog.title')).replace(/[\\/:*?"<>|]/g, '_');
                     a.href = url;
-                    a.download = `${safeName}_签到流水_${dateStr}.csv`;
+                    a.download = `${safeName}_${t('seatCheckinDialog.csvFlowFile')}_${dateStr}.csv`;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-                    toast({ title: '已导出签到流水 CSV' });
+                    toast({ title: t('seatCheckinDialog.exportSuccess') });
                   }}
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> 导出CSV
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> {t('seatCheckinDialog.exportCsv')}
                 </Button>
               </div>
               {records.length === 0 ? (
-                <p className="text-xs text-muted-foreground">暂无签到记录</p>
+                <p className="text-xs text-muted-foreground">{t('seatCheckinDialog.empty')}</p>
               ) : (
                 <div className="max-h-52 overflow-auto space-y-1 pr-1">
                   {[...records]
