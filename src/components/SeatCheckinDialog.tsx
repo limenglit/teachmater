@@ -798,7 +798,7 @@ export default function SeatCheckinDialog({
               actions={(
                 <>
                   <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap" onClick={copyUrl}>
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? '已复制' : '分享链接'}
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? t('seatCheckinDialog.copied') : t('seatCheckinDialog.copyLink')}
                   </Button>
                   <Button
                     variant="outline"
@@ -809,13 +809,13 @@ export default function SeatCheckinDialog({
                         const svg = qrPreviewRef.current?.querySelector('svg');
                         if (!svg) throw new Error('QR not ready');
                         await downloadSvgAsPng(svg as SVGSVGElement, resolvedPngFileName);
-                        toast({ title: '下载PNG成功' });
+                        toast({ title: t('seatCheckinDialog.pngSuccess') });
                       } catch {
-                        toast({ title: '下载PNG失败', variant: 'destructive' });
+                        toast({ title: t('seatCheckinDialog.pngFailed'), variant: 'destructive' });
                       }
                     }}
                   >
-                    <Download className="w-3.5 h-3.5" /> 下载PNG
+                    <Download className="w-3.5 h-3.5" /> {t('seatCheckinDialog.downloadPng')}
                   </Button>
                 </>
               )}
