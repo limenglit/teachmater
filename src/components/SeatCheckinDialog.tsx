@@ -977,7 +977,7 @@ export default function SeatCheckinDialog({
                       const trimmed = record.student_name.trim();
                       const isInList = currentStudentNames.map(n => n.trim()).includes(trimmed);
                       const time = new Date(record.checked_in_at);
-                      const timeLabel = time.toLocaleTimeString('zh-CN', { hour12: false });
+                      const timeLabel = time.toLocaleTimeString(undefined, { hour12: false });
                       return (
                         <div
                           key={record.id}
@@ -994,7 +994,7 @@ export default function SeatCheckinDialog({
                                 : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                             }`}
                           >
-                            {isInList ? '名单内' : '名单外'}
+                            {isInList ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel')}
                           </span>
                           <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
                             {timeLabel}
@@ -1008,24 +1008,24 @@ export default function SeatCheckinDialog({
 
             {currentSession.status === 'ended' && (
               <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
-                <p className="font-medium text-foreground">签到统计</p>
-                <p className="text-muted-foreground mt-1">已签：{checkedInNames.length} 人</p>
-                <p className="text-muted-foreground">未签：{uncheckedNames.length} 人</p>
+                <p className="font-medium text-foreground">{t('seatCheckinDialog.stats')}</p>
+                <p className="text-muted-foreground mt-1">{t('seatCheckinDialog.statsChecked')}：{checkedInNames.length} {t('seatCheckinDialog.people')}</p>
+                <p className="text-muted-foreground">{t('seatCheckinDialog.statsUnchecked')}：{uncheckedNames.length} {t('seatCheckinDialog.people')}</p>
               </div>
             )}
 
-            <div className="flex w-full gap-2">
+            <div className="flex w-full gap-2 flex-wrap">
               {currentSession.status === 'active' ? (
-                <Button variant="destructive" onClick={() => void handleEndSession()} className="flex-1" disabled={ending}>
-                  <StopCircle className="w-4 h-4 mr-2" /> {ending ? '结束中...' : '结束签到'}
+                <Button variant="destructive" onClick={() => void handleEndSession()} className="flex-1 min-w-[8rem]" disabled={ending}>
+                  <StopCircle className="w-4 h-4 mr-2 shrink-0" /> <span className="truncate">{ending ? t('seatCheckinDialog.endingBtn') : t('seatCheckinDialog.endSession')}</span>
                 </Button>
               ) : (
-                <Button variant="outline" onClick={() => setCurrentSession(null)} className="flex-1">
-                  返回记录
+                <Button variant="outline" onClick={() => setCurrentSession(null)} className="flex-1 min-w-[8rem]">
+                  {t('seatCheckinDialog.backToRecords')}
                 </Button>
               )}
               <Button variant="outline" onClick={() => void handleDeleteSession(currentSession)} disabled={deletingSessionId === currentSession.id}>
-                <Trash2 className="w-4 h-4 mr-1" /> 删除
+                <Trash2 className="w-4 h-4 mr-1" /> {t('seatCheckinDialog.delete')}
               </Button>
             </div>
           </div>
