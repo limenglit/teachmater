@@ -798,7 +798,7 @@ export default function SeatCheckinDialog({
               actions={(
                 <>
                   <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap" onClick={copyUrl}>
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? '已复制' : '分享链接'}
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied ? t('seatCheckinDialog.copied') : t('seatCheckinDialog.copyLink')}
                   </Button>
                   <Button
                     variant="outline"
@@ -809,32 +809,32 @@ export default function SeatCheckinDialog({
                         const svg = qrPreviewRef.current?.querySelector('svg');
                         if (!svg) throw new Error('QR not ready');
                         await downloadSvgAsPng(svg as SVGSVGElement, resolvedPngFileName);
-                        toast({ title: '下载PNG成功' });
+                        toast({ title: t('seatCheckinDialog.pngSuccess') });
                       } catch {
-                        toast({ title: '下载PNG失败', variant: 'destructive' });
+                        toast({ title: t('seatCheckinDialog.pngFailed'), variant: 'destructive' });
                       }
                     }}
                   >
-                    <Download className="w-3.5 h-3.5" /> 下载PNG
+                    <Download className="w-3.5 h-3.5" /> {t('seatCheckinDialog.downloadPng')}
                   </Button>
                 </>
               )}
             />
 
             <div className="w-full border-t border-border pt-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium">
-                  当前已签到 <span className="text-primary">{checkedInNames.length + guestSeatAssignments.length}</span> 人
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-y-1">
+                <p className="text-sm font-medium min-w-0 break-words">
+                  {t('seatCheckinDialog.currentCheckedIn')} <span className="text-primary">{checkedInNames.length + guestSeatAssignments.length}</span> {t('seatCheckinDialog.people')}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  名单内 {checkedInNames.filter(n => currentStudentNames.includes(n)).length} · 名单外 {guestSeatAssignments.length}
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  {t('seatCheckinDialog.inListLabel')} {checkedInNames.filter(n => currentStudentNames.includes(n)).length} · {t('seatCheckinDialog.outListLabel')} {guestSeatAssignments.length}
                 </p>
               </div>
 
               {/* 名单内 */}
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                  <UserCheck className="w-3 h-3" /> 名单内（{currentStudentNames.length} 人，已签 {checkedInNames.filter(n => currentStudentNames.includes(n)).length}）
+                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 flex-wrap min-w-0 break-words">
+                  <UserCheck className="w-3 h-3 shrink-0" /> {t('seatCheckinDialog.inListSection')}（{currentStudentNames.length} {t('seatCheckinDialog.people')}，{t('seatCheckinDialog.checkedShort')} {checkedInNames.filter(n => currentStudentNames.includes(n)).length}）
                 </p>
                 <div className="flex flex-wrap gap-1.5 max-h-32 overflow-auto">
                   {currentStudentNames.map(name => (
@@ -855,12 +855,12 @@ export default function SeatCheckinDialog({
 
             {/* 名单外（临时分配） */}
             <div className="w-full rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5">
-                <span className="inline-flex w-2 h-2 rounded-full bg-amber-500" />
-                名单外（临时分配座位） · {guestSeatAssignments.length} 人
+              <p className="font-medium text-foreground mb-2 flex items-center gap-1.5 flex-wrap min-w-0 break-words">
+                <span className="inline-flex w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                {t('seatCheckinDialog.outListSection')} · {guestSeatAssignments.length} {t('seatCheckinDialog.people')}
               </p>
               {guestSeatAssignments.length === 0 ? (
-                <p className="text-xs text-muted-foreground">暂无未注册签到人员</p>
+                <p className="text-xs text-muted-foreground">{t('seatCheckinDialog.noGuest')}</p>
               ) : (
                 <div className="max-h-44 overflow-auto space-y-1.5 pr-1">
                   {guestSeatAssignments.map(item => (
@@ -883,7 +883,7 @@ export default function SeatCheckinDialog({
                             className="h-6 px-2 text-xs gap-1"
                             onClick={() => handleConfirmGuest(item)}
                           >
-                            <Check className="w-3 h-3" /> 确认
+                            <Check className="w-3 h-3" /> {t('seatCheckinDialog.confirm')}
                           </Button>
                         )}
                         <Button
@@ -892,28 +892,28 @@ export default function SeatCheckinDialog({
                           className="h-6 px-2 text-xs gap-1"
                           onClick={() => handleReassignGuest(item)}
                           disabled={item.assignedKey === undefined && currentSession.scene_type === 'classroom'}
-                          title="重新指派至下一个可用座位"
+                          title={t('seatCheckinDialog.reassignTitle')}
                         >
-                          <Shuffle className="w-3 h-3" /> 重派
+                          <Shuffle className="w-3 h-3" /> {t('seatCheckinDialog.reassign')}
                         </Button>
                       </div>
                     </div>
                   ))}
                 </div>
               )}
-              <p className="text-[11px] text-muted-foreground mt-2">
-                临时座位优先安排在前排居中，自动跳过关闭座位与已占用座位。点击"重派"可循环切换至下一个可用座位。
+              <p className="text-[11px] text-muted-foreground mt-2 break-words">
+                {t('seatCheckinDialog.guestNote')}
               </p>
               {guestSeatAssignments.length > 0 && onMergeGuests && (
                 <Button
                   variant="default"
                   size="sm"
-                  className="w-full mt-2 h-8 text-xs gap-1"
+                  className="w-full mt-2 h-8 text-xs gap-1 whitespace-normal h-auto py-1.5"
                   onClick={() => void handleMergeGuests()}
                   disabled={merging}
                 >
-                  <UsersRound className="w-3.5 h-3.5" />
-                  {merging ? '合并中...' : `一键合并 ${guestSeatAssignments.length} 位临时学生到名单与座位表`}
+                  <UsersRound className="w-3.5 h-3.5 shrink-0" />
+                  <span className="min-w-0 break-words">{merging ? t('seatCheckinDialog.merging') : `${t('seatCheckinDialog.mergeBtn')} (${guestSeatAssignments.length})`}</span>
                 </Button>
               )}
             </div>
@@ -921,14 +921,14 @@ export default function SeatCheckinDialog({
 
             {/* 签到流水（按时间排序） */}
             <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="font-medium text-foreground flex items-center gap-1.5">
-                  <History className="w-4 h-4" /> 签到流水（按时间排序） · {records.length} 条
+              <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <p className="font-medium text-foreground flex items-center gap-1.5 min-w-0 break-words">
+                  <History className="w-4 h-4 shrink-0" /> {t('seatCheckinDialog.flowTitle')} · {records.length}
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 px-2 text-xs gap-1"
+                  className="h-7 px-2 text-xs gap-1 whitespace-nowrap"
                   disabled={records.length === 0}
                   onClick={() => {
                     const sorted = [...records].sort(
@@ -937,14 +937,14 @@ export default function SeatCheckinDialog({
                     const inListSet = new Set(currentStudentNames.map(n => n.trim()));
                     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
                     const rows = [
-                      ['序号', '姓名', '名单内/外', '签到时间'],
+                      [t('seatCheckinDialog.csvIndex'), t('seatCheckinDialog.csvName'), t('seatCheckinDialog.csvType'), t('seatCheckinDialog.csvTime')],
                       ...sorted.map((r, i) => {
                         const name = r.student_name.trim();
                         return [
                           String(i + 1),
                           name,
-                          inListSet.has(name) ? '名单内' : '名单外',
-                          new Date(r.checked_in_at).toLocaleString('zh-CN', { hour12: false }),
+                          inListSet.has(name) ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel'),
+                          new Date(r.checked_in_at).toLocaleString(undefined, { hour12: false }),
                         ];
                       }),
                     ];
@@ -954,21 +954,21 @@ export default function SeatCheckinDialog({
                     const a = document.createElement('a');
                     const today = new Date();
                     const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-                    const safeName = (resolvedThemeTitle || '座位签到').replace(/[\\/:*?"<>|]/g, '_');
+                    const safeName = (resolvedThemeTitle || t('seatCheckinDialog.title')).replace(/[\\/:*?"<>|]/g, '_');
                     a.href = url;
-                    a.download = `${safeName}_签到流水_${dateStr}.csv`;
+                    a.download = `${safeName}_${t('seatCheckinDialog.csvFlowFile')}_${dateStr}.csv`;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-                    toast({ title: '已导出签到流水 CSV' });
+                    toast({ title: t('seatCheckinDialog.exportSuccess') });
                   }}
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> 导出CSV
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> {t('seatCheckinDialog.exportCsv')}
                 </Button>
               </div>
               {records.length === 0 ? (
-                <p className="text-xs text-muted-foreground">暂无签到记录</p>
+                <p className="text-xs text-muted-foreground">{t('seatCheckinDialog.empty')}</p>
               ) : (
                 <div className="max-h-52 overflow-auto space-y-1 pr-1">
                   {[...records]
@@ -977,7 +977,7 @@ export default function SeatCheckinDialog({
                       const trimmed = record.student_name.trim();
                       const isInList = currentStudentNames.map(n => n.trim()).includes(trimmed);
                       const time = new Date(record.checked_in_at);
-                      const timeLabel = time.toLocaleTimeString('zh-CN', { hour12: false });
+                      const timeLabel = time.toLocaleTimeString(undefined, { hour12: false });
                       return (
                         <div
                           key={record.id}
@@ -994,7 +994,7 @@ export default function SeatCheckinDialog({
                                 : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                             }`}
                           >
-                            {isInList ? '名单内' : '名单外'}
+                            {isInList ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel')}
                           </span>
                           <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap shrink-0">
                             {timeLabel}
@@ -1008,24 +1008,24 @@ export default function SeatCheckinDialog({
 
             {currentSession.status === 'ended' && (
               <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
-                <p className="font-medium text-foreground">签到统计</p>
-                <p className="text-muted-foreground mt-1">已签：{checkedInNames.length} 人</p>
-                <p className="text-muted-foreground">未签：{uncheckedNames.length} 人</p>
+                <p className="font-medium text-foreground">{t('seatCheckinDialog.stats')}</p>
+                <p className="text-muted-foreground mt-1">{t('seatCheckinDialog.statsChecked')}：{checkedInNames.length} {t('seatCheckinDialog.people')}</p>
+                <p className="text-muted-foreground">{t('seatCheckinDialog.statsUnchecked')}：{uncheckedNames.length} {t('seatCheckinDialog.people')}</p>
               </div>
             )}
 
-            <div className="flex w-full gap-2">
+            <div className="flex w-full gap-2 flex-wrap">
               {currentSession.status === 'active' ? (
-                <Button variant="destructive" onClick={() => void handleEndSession()} className="flex-1" disabled={ending}>
-                  <StopCircle className="w-4 h-4 mr-2" /> {ending ? '结束中...' : '结束签到'}
+                <Button variant="destructive" onClick={() => void handleEndSession()} className="flex-1 min-w-[8rem]" disabled={ending}>
+                  <StopCircle className="w-4 h-4 mr-2 shrink-0" /> <span className="truncate">{ending ? t('seatCheckinDialog.endingBtn') : t('seatCheckinDialog.endSession')}</span>
                 </Button>
               ) : (
-                <Button variant="outline" onClick={() => setCurrentSession(null)} className="flex-1">
-                  返回记录
+                <Button variant="outline" onClick={() => setCurrentSession(null)} className="flex-1 min-w-[8rem]">
+                  {t('seatCheckinDialog.backToRecords')}
                 </Button>
               )}
               <Button variant="outline" onClick={() => void handleDeleteSession(currentSession)} disabled={deletingSessionId === currentSession.id}>
-                <Trash2 className="w-4 h-4 mr-1" /> 删除
+                <Trash2 className="w-4 h-4 mr-1" /> {t('seatCheckinDialog.delete')}
               </Button>
             </div>
           </div>
