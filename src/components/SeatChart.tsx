@@ -148,7 +148,7 @@ export default function SeatChart() {
   const undo = useCallback(() => {
     const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
     const res = popSeatUndo(undoStack, redoStack, current);
-    if (!res) { toast.info('没有可撤销的操作'); return; }
+    if (!res) { toast.info(t('seat.toolbar.noUndoOps')); return; }
     setUndoStack(res.undoStack);
     setRedoStack(res.redoStack);
     applySnap(res.restored);
@@ -157,7 +157,7 @@ export default function SeatChart() {
   const redo = useCallback(() => {
     const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
     const res = popSeatRedo(undoStack, redoStack, current);
-    if (!res) { toast.info('没有可重做的操作'); return; }
+    if (!res) { toast.info(t('seat.toolbar.noRedoOps')); return; }
     setUndoStack(res.undoStack);
     setRedoStack(res.redoStack);
     applySnap(res.restored);
@@ -760,7 +760,7 @@ export default function SeatChart() {
 
   const saveClassroomToHistory = async () => {
     if (seats.length === 0) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.toolbar.saveBeforeArrange'));
       return;
     }
     const name = recordName.trim() || `教室-${new Date().toLocaleString()}`;
@@ -773,13 +773,13 @@ export default function SeatChart() {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveClassroomSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.toolbar.savedToHistoryCloud') : t('seat.toolbar.savedToHistory'));
   };
 
   const restoreClassroomFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请选择要恢复的历史记录');
+      toast.error(t('seat.toolbar.selectToRestore'));
       return;
     }
     const snapshot = item.snapshot;
@@ -817,7 +817,7 @@ export default function SeatChart() {
       cols: nextCols,
       seats: nextSeats,
     });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.toolbar.restored'));
   };
 
   useEffect(() => {
