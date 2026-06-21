@@ -148,7 +148,7 @@ export default function SeatChart() {
   const undo = useCallback(() => {
     const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
     const res = popSeatUndo(undoStack, redoStack, current);
-    if (!res) { toast.info('没有可撤销的操作'); return; }
+    if (!res) { toast.info(t('seat.toolbar.noUndoOps')); return; }
     setUndoStack(res.undoStack);
     setRedoStack(res.redoStack);
     applySnap(res.restored);
@@ -157,7 +157,7 @@ export default function SeatChart() {
   const redo = useCallback(() => {
     const current = snapSeatState(seatsRef.current, disabledRef.current, lockedRef.current);
     const res = popSeatRedo(undoStack, redoStack, current);
-    if (!res) { toast.info('没有可重做的操作'); return; }
+    if (!res) { toast.info(t('seat.toolbar.noRedoOps')); return; }
     setUndoStack(res.undoStack);
     setRedoStack(res.redoStack);
     applySnap(res.restored);
@@ -760,7 +760,7 @@ export default function SeatChart() {
 
   const saveClassroomToHistory = async () => {
     if (seats.length === 0) {
-      toast.error('请先完成排座再保存');
+      toast.error(t('seat.toolbar.saveBeforeArrange'));
       return;
     }
     const name = recordName.trim() || `教室-${new Date().toLocaleString()}`;
@@ -773,13 +773,13 @@ export default function SeatChart() {
     setSelectedHistoryId(savedItem.id);
     setRecordName(name);
     saveClassroomSnapshot(item.snapshot);
-    toast.success(cloud ? '已保存到历史记录（云端）' : '已保存到历史记录');
+    toast.success(cloud ? t('seat.toolbar.savedToHistoryCloud') : t('seat.toolbar.savedToHistory'));
   };
 
   const restoreClassroomFromHistory = () => {
     const item = historyItems.find(history => history.id === selectedHistoryId);
     if (!item) {
-      toast.error('请选择要恢复的历史记录');
+      toast.error(t('seat.toolbar.selectToRestore'));
       return;
     }
     const snapshot = item.snapshot;
@@ -817,7 +817,7 @@ export default function SeatChart() {
       cols: nextCols,
       seats: nextSeats,
     });
-    toast.success('已从历史记录恢复，可继续调整');
+    toast.success(t('seat.toolbar.restored'));
   };
 
   useEffect(() => {
@@ -1310,43 +1310,43 @@ export default function SeatChart() {
                 className="gap-2"
                 onClick={undo}
                 disabled={undoStack.length === 0}
-                title="撤销上一步（Ctrl/⌘+Z）"
+                title={t('seat.toolbar.undoTip')}
               >
-                <Undo2 className="w-4 h-4" /> 撤销{undoStack.length > 0 ? `（${undoStack.length}）` : ''}
+                <Undo2 className="w-4 h-4" /> {t('seat.toolbar.undo')}{undoStack.length > 0 ? `（${undoStack.length}）` : ''}
               </Button>
               <Button
                 variant="outline"
                 className="gap-2"
                 onClick={redo}
                 disabled={redoStack.length === 0}
-                title="重做（Ctrl/⌘+Shift+Z）"
+                title={t('seat.toolbar.redoTip')}
               >
-                <Redo2 className="w-4 h-4" /> 重做{redoStack.length > 0 ? `（${redoStack.length}）` : ''}
+                <Redo2 className="w-4 h-4" /> {t('seat.toolbar.redo')}{redoStack.length > 0 ? `（${redoStack.length}）` : ''}
               </Button>
               <Button
                 variant="outline"
                 className="gap-2"
                 onClick={() => {
                   if (lockedRef.current.size > 0) {
-                    if (!window.confirm('当前有锁定座位，将一并清空。是否继续？（可撤销）')) return;
+                    if (!window.confirm(t('seat.toolbar.clearLockedConfirm'))) return;
                   }
                   pushHistory();
                   setSeats(Array.from({ length: rows }, () => Array.from({ length: cols }, () => null)));
                   setLockedSeats(new Set());
                 }}
-                title="清空所有座位（可撤销）"
+                title={t('seat.toolbar.clearTip')}
               >
-                <X className="w-4 h-4" /> 清空座位
+                <X className="w-4 h-4" /> {t('seat.toolbar.clear')}
               </Button>
               <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2" disabled={seats.length === 0}>
-                <Save className="w-4 h-4" /> 保存历史
+                <Save className="w-4 h-4" /> {t('seat.toolbar.saveHistory')}
               </Button>
               <select
                 value={selectedHistoryId}
                 onChange={e => setSelectedHistoryId(e.target.value)}
                 className="h-8 min-w-0 max-w-60 px-2 rounded-md border border-input bg-background text-foreground text-sm"
               >
-                <option value="">选择历史记录</option>
+                <option value="">{t('seat.toolbar.selectHistory')}</option>
                 {historyItems.map(item => (
                   <option key={item.id} value={item.id}>
                     {item.name}（{new Date(item.createdAt).toLocaleString()}）
@@ -1354,24 +1354,24 @@ export default function SeatChart() {
                 ))}
               </select>
               <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2">
-                <RotateCcw className="w-4 h-4" /> 恢复历史
+                <RotateCcw className="w-4 h-4" /> {t('seat.toolbar.restoreHistory')}
               </Button>
               <Button
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
                 disabled={!selectedHistoryId}
-                title="重命名该历史记录"
+                title={t('seat.toolbar.renameTip')}
                 onClick={async () => {
                   const id = selectedHistoryId;
                   const current = historyItems.find(h => h.id === id);
                   if (!id || !current) return;
-                  const next = window.prompt('请输入新名称', current.name)?.trim();
+                  const next = window.prompt(t('seat.toolbar.renamePrompt'), current.name)?.trim();
                   if (!next || next === current.name) return;
                   await renameCloudSeatHistory(id, next);
                   renameSeatHistoryLocal('classroom', id, next);
                   setHistoryItems(prev => prev.map(h => (h.id === id ? { ...h, name: next } : h)));
-                  toast.success('已重命名');
+                  toast.success(t('seat.toolbar.renamed'));
                 }}
               >
                 <Pencil className="w-4 h-4" />
@@ -1381,20 +1381,21 @@ export default function SeatChart() {
                 size="icon"
                 className="h-8 w-8 text-destructive hover:text-destructive"
                 disabled={!selectedHistoryId}
-                title="删除该历史记录"
+                title={t('seat.toolbar.deleteTip')}
                 onClick={async () => {
                   const id = selectedHistoryId;
                   if (!id) return;
-                  if (!window.confirm('确定要删除这条历史记录吗？该操作不可恢复。')) return;
+                  if (!window.confirm(t('seat.toolbar.deleteConfirm'))) return;
                   await deleteCloudSeatHistory(id);
                   deleteSeatHistoryLocal('classroom', id);
                   setHistoryItems(prev => prev.filter(h => h.id !== id));
                   setSelectedHistoryId('');
-                  toast.success('已删除该历史记录');
+                  toast.success(t('seat.toolbar.deleted'));
                 }}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
+
               {seats.length > 0 && (
                 <ExportButtons
                   targetRef={printRef}
