@@ -35,7 +35,7 @@ export function Step3OutlinePanel() {
           audience,
           slideCount: slideCountHint,
           style: config.style,
-          language,
+          language: langMap[lang] || 'en',
           model: config.model,
         },
       });
