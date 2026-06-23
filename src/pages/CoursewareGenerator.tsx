@@ -5,12 +5,10 @@ import { Step1TopicInput } from '@/components/courseware/Step1TopicInput';
 import { Step2DesignConfig } from '@/components/courseware/Step2DesignConfig';
 import { Step3OutlinePanel } from '@/components/courseware/Step3OutlinePanel';
 import { Sparkles } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 export default function CoursewareGenerator() {
   const { t } = useLanguage();
   const step = useCoursewareStore((s) => s.step);
-  const setStep = useCoursewareStore((s) => s.setStep);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
