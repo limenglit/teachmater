@@ -16,7 +16,8 @@ const SLIDE_TYPES: SlideType[] = [
 ];
 
 export function Step3OutlinePanel() {
-  const { t, language } = useLanguage();
+  const { t, lang } = useLanguage();
+  const langMap: Record<string, string> = { zh: 'zh-CN', en: 'en', ru: 'ru', ja: 'ja', ko: 'ko', es: 'es' };
   const {
     topic, audience, slideCountHint, config,
     outline, setOutline, loading, setLoading, setStep, error, setError,
