@@ -3,6 +3,7 @@ import { useCoursewareStore } from '@/stores/coursewareStore';
 import { Stepper } from '@/components/courseware/Stepper';
 import { Step1TopicInput } from '@/components/courseware/Step1TopicInput';
 import { Step2DesignConfig } from '@/components/courseware/Step2DesignConfig';
+import { Step3OutlinePanel } from '@/components/courseware/Step3OutlinePanel';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -27,15 +28,7 @@ export default function CoursewareGenerator() {
         <main className="mt-4">
           {step === 1 && <Step1TopicInput />}
           {step === 2 && <Step2DesignConfig />}
-          {step === 3 && (
-            <div className="mx-auto max-w-2xl rounded-2xl border bg-card/70 backdrop-blur p-8 text-center space-y-3">
-              <h2 className="text-lg font-semibold">{t('cw.s3.placeholder.title')}</h2>
-              <p className="text-sm text-muted-foreground">{t('cw.s3.placeholder.desc')}</p>
-              <Button variant="outline" onClick={() => setStep(2)}>
-                {t('cw.back')}
-              </Button>
-            </div>
-          )}
+          {step === 3 && <Step3OutlinePanel />}
         </main>
       </div>
     </div>
