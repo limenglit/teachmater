@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCoursewareStore, type Slide, type SlideType } from '@/stores/coursewareStore';
+import { generateCoursewareHtml } from '@/lib/courseware/htmlGenerator';
 
 const SLIDE_TYPES: SlideType[] = [
   'title', 'toc', 'content', 'two-column', 'image-text',
