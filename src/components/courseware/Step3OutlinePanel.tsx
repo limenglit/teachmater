@@ -339,12 +339,55 @@ export function Step3OutlinePanel() {
         <Plus className="h-4 w-4" /> {t('cw.outline.addSlide')}
       </Button>
 
-      <div className="flex items-center justify-between pt-2">
+      {/* Live preview pane */}
+      <div className="rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
+        <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 border-b bg-muted/30">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">{t('cw.preview.title')}</span>
+          <span className="text-xs text-muted-foreground">
+            {config.ratio} · {t(`cw.style.${config.style === 'hand-drawn' ? 'handDrawn' : config.style === 'dark-neon' ? 'darkNeon' : config.style}`)}
+          </span>
+          <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+            <Button size="sm" variant="ghost" className="h-8 gap-1.5"
+              onClick={() => setShowPreview((v) => !v)}>
+              {showPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {showPreview ? t('cw.preview.hide') : t('cw.preview.show')}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 gap-1.5"
+              disabled={!previewHtml} onClick={openInNewTab}>
+              <ExternalLink className="h-3.5 w-3.5" />
+              {t('cw.preview.openNewTab')}
+            </Button>
+          </div>
+        </div>
+        {showPreview && (
+          previewHtml ? (
+            <iframe
+              key={configKey /* force reload when design changes */}
+              srcDoc={previewHtml}
+              title="courseware-preview"
+              sandbox="allow-same-origin allow-scripts"
+              className="w-full bg-white"
+              style={{
+                aspectRatio: config.ratio === '16:9' ? '16 / 9' : '4 / 3',
+                border: 0,
+                display: 'block',
+              }}
+            />
+          ) : (
+            <div className="p-10 text-center text-sm text-muted-foreground">
+              {t('cw.preview.empty')}
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
         <Button variant="outline" onClick={() => setStep(2)} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> {t('cw.back')}
         </Button>
-        <Button className="gap-2" disabled>
-          <Sparkles className="h-4 w-4" /> {t('cw.outline.generateHtml')}
+        <Button className="gap-2" disabled={!previewHtml} onClick={downloadHtml}>
+          <Download className="h-4 w-4" /> {t('cw.outline.generateHtml')}
         </Button>
       </div>
     </div>
