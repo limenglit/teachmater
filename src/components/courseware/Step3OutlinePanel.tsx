@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCoursewareStore, type Slide, type SlideType } from '@/stores/coursewareStore';
+import { generateCoursewareHtml } from '@/lib/courseware/htmlGenerator';
 
 const SLIDE_TYPES: SlideType[] = [
   'title', 'toc', 'content', 'two-column', 'image-text',
@@ -21,9 +22,59 @@ export function Step3OutlinePanel() {
   const {
     topic, audience, slideCountHint, config,
     outline, setOutline, loading, setLoading, setStep, error, setError,
+    setHtml,
   } = useCoursewareStore();
 
   const [autoTried, setAutoTried] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const debounceRef = useRef<number | null>(null);
+
+  // Debounced rebuild of preview HTML whenever outline or config changes
+  const outlineKey = useMemo(() => (outline ? JSON.stringify(outline) : ''), [outline]);
+  const configKey = useMemo(() => JSON.stringify(config), [config]);
+  useEffect(() => {
+    if (!outline || outline.slides.length === 0) {
+      setPreviewHtml('');
+      setHtml('');
+      return;
+    }
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      try {
+        const html = generateCoursewareHtml(outline, config);
+        setPreviewHtml(html);
+        setHtml(html);
+      } catch (e) {
+        console.error('[courseware] preview render failed', e);
+      }
+    }, 350);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outlineKey, configKey]);
+
+  const downloadHtml = () => {
+    if (!previewHtml || !outline) return;
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${outline.title || 'courseware'}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const openInNewTab = () => {
+    if (!previewHtml) return;
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
 
   const generate = async () => {
     setError(undefined);
@@ -288,12 +339,55 @@ export function Step3OutlinePanel() {
         <Plus className="h-4 w-4" /> {t('cw.outline.addSlide')}
       </Button>
 
-      <div className="flex items-center justify-between pt-2">
+      {/* Live preview pane */}
+      <div className="rounded-2xl border bg-card/70 backdrop-blur overflow-hidden">
+        <div className="flex items-center gap-2 flex-wrap px-4 py-2.5 border-b bg-muted/30">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm font-medium">{t('cw.preview.title')}</span>
+          <span className="text-xs text-muted-foreground">
+            {config.ratio} · {t(`cw.style.${config.style === 'hand-drawn' ? 'handDrawn' : config.style === 'dark-neon' ? 'darkNeon' : config.style}`)}
+          </span>
+          <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+            <Button size="sm" variant="ghost" className="h-8 gap-1.5"
+              onClick={() => setShowPreview((v) => !v)}>
+              {showPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {showPreview ? t('cw.preview.hide') : t('cw.preview.show')}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 gap-1.5"
+              disabled={!previewHtml} onClick={openInNewTab}>
+              <ExternalLink className="h-3.5 w-3.5" />
+              {t('cw.preview.openNewTab')}
+            </Button>
+          </div>
+        </div>
+        {showPreview && (
+          previewHtml ? (
+            <iframe
+              key={configKey /* force reload when design changes */}
+              srcDoc={previewHtml}
+              title="courseware-preview"
+              sandbox="allow-same-origin allow-scripts"
+              className="w-full bg-white"
+              style={{
+                aspectRatio: config.ratio === '16:9' ? '16 / 9' : '4 / 3',
+                border: 0,
+                display: 'block',
+              }}
+            />
+          ) : (
+            <div className="p-10 text-center text-sm text-muted-foreground">
+              {t('cw.preview.empty')}
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="flex items-center justify-between pt-2 gap-2 flex-wrap">
         <Button variant="outline" onClick={() => setStep(2)} className="gap-2">
           <ArrowLeft className="h-4 w-4" /> {t('cw.back')}
         </Button>
-        <Button className="gap-2" disabled>
-          <Sparkles className="h-4 w-4" /> {t('cw.outline.generateHtml')}
+        <Button className="gap-2" disabled={!previewHtml} onClick={downloadHtml}>
+          <Download className="h-4 w-4" /> {t('cw.outline.generateHtml')}
         </Button>
       </div>
     </div>
