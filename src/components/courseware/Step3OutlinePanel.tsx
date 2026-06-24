@@ -22,9 +22,59 @@ export function Step3OutlinePanel() {
   const {
     topic, audience, slideCountHint, config,
     outline, setOutline, loading, setLoading, setStep, error, setError,
+    setHtml,
   } = useCoursewareStore();
 
   const [autoTried, setAutoTried] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
+  const [previewHtml, setPreviewHtml] = useState('');
+  const debounceRef = useRef<number | null>(null);
+
+  // Debounced rebuild of preview HTML whenever outline or config changes
+  const outlineKey = useMemo(() => (outline ? JSON.stringify(outline) : ''), [outline]);
+  const configKey = useMemo(() => JSON.stringify(config), [config]);
+  useEffect(() => {
+    if (!outline || outline.slides.length === 0) {
+      setPreviewHtml('');
+      setHtml('');
+      return;
+    }
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      try {
+        const html = generateCoursewareHtml(outline, config);
+        setPreviewHtml(html);
+        setHtml(html);
+      } catch (e) {
+        console.error('[courseware] preview render failed', e);
+      }
+    }, 350);
+    return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outlineKey, configKey]);
+
+  const downloadHtml = () => {
+    if (!previewHtml || !outline) return;
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${outline.title || 'courseware'}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const openInNewTab = () => {
+    if (!previewHtml) return;
+    const blob = new Blob([previewHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  };
 
   const generate = async () => {
     setError(undefined);
