@@ -22,10 +22,14 @@ export function Step3OutlinePanel() {
   const langMap: Record<string, string> = { zh: 'zh-CN', en: 'en', ru: 'ru', ja: 'ja', ko: 'ko', es: 'es' };
   const {
     topic, audience, slideCountHint, config,
-    outline, setOutline, loading, setLoading, setStep, error, setError,
+    outline, setOutline, commitOutline, undoOutline, redoOutline,
+    outlinePast, outlineFuture,
+    loading, setLoading, setStep, error, setError,
     setHtml, previewUI, patchPreviewUI, toggleSlideTypeHidden,
   } = useCoursewareStore();
   const { showPreview, showNotes, hiddenSlideTypes } = previewUI;
+  const canUndo = outlinePast.length > 0;
+  const canRedo = outlineFuture.length > 0;
 
   const [autoTried, setAutoTried] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
