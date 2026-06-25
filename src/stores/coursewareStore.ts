@@ -103,6 +103,8 @@ interface CoursewareState {
   slideCountHint: number;
   config: CoursewareConfig;
   outline: Outline | null;
+  outlinePast: Outline[];
+  outlineFuture: Outline[];
   html: string;
   previewUI: PreviewUI;
   loading: LoadingState;
@@ -114,7 +116,12 @@ interface CoursewareState {
   setSlideCountHint: (v: number) => void;
   patchConfig: (patch: Partial<CoursewareConfig>) => void;
   patchCustomColors: (patch: Partial<CustomColors>) => void;
+  /** Replace outline and reset undo/redo history (use for fresh generation). */
   setOutline: (o: Outline | null) => void;
+  /** Apply a user edit: pushes prior outline into the undo stack and clears redo. */
+  commitOutline: (o: Outline) => void;
+  undoOutline: () => void;
+  redoOutline: () => void;
   setHtml: (s: string) => void;
   patchPreviewUI: (patch: Partial<PreviewUI>) => void;
   toggleSlideTypeHidden: (t: SlideType) => void;
