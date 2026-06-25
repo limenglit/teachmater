@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink, StickyNote, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useCoursewareStore, type Slide, type SlideType } from '@/stores/coursewareStore';
+import { useCoursewareStore, type Slide, type SlideType, type Outline } from '@/stores/coursewareStore';
 import { generateCoursewareHtml } from '@/lib/courseware/htmlGenerator';
+import { cn } from '@/lib/utils';
 
 const SLIDE_TYPES: SlideType[] = [
   'title', 'toc', 'content', 'two-column', 'image-text',
@@ -22,11 +23,11 @@ export function Step3OutlinePanel() {
   const {
     topic, audience, slideCountHint, config,
     outline, setOutline, loading, setLoading, setStep, error, setError,
-    setHtml,
+    setHtml, previewUI, patchPreviewUI, toggleSlideTypeHidden,
   } = useCoursewareStore();
+  const { showPreview, showNotes, hiddenSlideTypes } = previewUI;
 
   const [autoTried, setAutoTried] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
   const [previewHtml, setPreviewHtml] = useState('');
   const debounceRef = useRef<number | null>(null);
 
