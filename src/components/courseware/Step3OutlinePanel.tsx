@@ -357,7 +357,12 @@ export function Step3OutlinePanel() {
           </span>
           <div className="ml-auto flex items-center gap-1.5 flex-wrap">
             <Button size="sm" variant="ghost" className="h-8 gap-1.5"
-              onClick={() => setShowPreview((v) => !v)}>
+              onClick={() => patchPreviewUI({ showNotes: !showNotes })}>
+              <StickyNote className="h-3.5 w-3.5" />
+              {showNotes ? t('cw.preview.hideNotes') : t('cw.preview.showNotes')}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 gap-1.5"
+              onClick={() => patchPreviewUI({ showPreview: !showPreview })}>
               {showPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {showPreview ? t('cw.preview.hide') : t('cw.preview.show')}
             </Button>
@@ -367,6 +372,27 @@ export function Step3OutlinePanel() {
               {t('cw.preview.openNewTab')}
             </Button>
           </div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap px-4 py-2 border-b bg-muted/10">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground mr-1">{t('cw.preview.filter')}</span>
+          {SLIDE_TYPES.map((tp) => {
+            const hidden = hiddenSlideTypes.includes(tp);
+            return (
+              <button
+                key={tp}
+                onClick={() => toggleSlideTypeHidden(tp)}
+                className={cn(
+                  'text-xs px-2 py-0.5 rounded-full border transition-colors',
+                  hidden
+                    ? 'border-dashed text-muted-foreground/60 line-through bg-transparent'
+                    : 'border-primary/40 bg-primary/10 text-primary',
+                )}
+              >
+                {t(`cw.slideType.${tp}`)}
+              </button>
+            );
+          })}
         </div>
         {showPreview && (
           previewHtml ? (
