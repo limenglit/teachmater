@@ -136,7 +136,7 @@ export function Step3OutlinePanel() {
   const updateSlide = (idx: number, patch: Partial<Slide>) => {
     if (!outline) return;
     const slides = outline.slides.map((s, i) => (i === idx ? { ...s, ...patch } : s));
-    setOutline({ ...outline, slides });
+    commitOutline({ ...outline, slides });
   };
 
   const moveSlide = (idx: number, dir: -1 | 1) => {
@@ -145,12 +145,12 @@ export function Step3OutlinePanel() {
     if (j < 0 || j >= outline.slides.length) return;
     const slides = [...outline.slides];
     [slides[idx], slides[j]] = [slides[j], slides[idx]];
-    setOutline({ ...outline, slides });
+    commitOutline({ ...outline, slides });
   };
 
   const removeSlide = (idx: number) => {
     if (!outline) return;
-    setOutline({ ...outline, slides: outline.slides.filter((_, i) => i !== idx) });
+    commitOutline({ ...outline, slides: outline.slides.filter((_, i) => i !== idx) });
   };
 
   const addSlide = () => {
@@ -161,8 +161,28 @@ export function Step3OutlinePanel() {
       title: t('cw.outline.newSlide'),
       bullets: [''],
     };
-    setOutline({ ...outline, slides: [...outline.slides, newSlide] });
+    commitOutline({ ...outline, slides: [...outline.slides, newSlide] });
   };
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl+Y = redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      // Avoid hijacking native undo inside text fields
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        if (canUndo) { e.preventDefault(); undoOutline(); }
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        if (canRedo) { e.preventDefault(); redoOutline(); }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [canUndo, canRedo, undoOutline, redoOutline]);
 
   if (loading.outline && !outline) {
     return (
