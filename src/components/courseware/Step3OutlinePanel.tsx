@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink, StickyNote, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useCoursewareStore, type Slide, type SlideType } from '@/stores/coursewareStore';
+import { useCoursewareStore, type Slide, type SlideType, type Outline } from '@/stores/coursewareStore';
 import { generateCoursewareHtml } from '@/lib/courseware/htmlGenerator';
+import { cn } from '@/lib/utils';
 
 const SLIDE_TYPES: SlideType[] = [
   'title', 'toc', 'content', 'two-column', 'image-text',
@@ -22,17 +23,18 @@ export function Step3OutlinePanel() {
   const {
     topic, audience, slideCountHint, config,
     outline, setOutline, loading, setLoading, setStep, error, setError,
-    setHtml,
+    setHtml, previewUI, patchPreviewUI, toggleSlideTypeHidden,
   } = useCoursewareStore();
+  const { showPreview, showNotes, hiddenSlideTypes } = previewUI;
 
   const [autoTried, setAutoTried] = useState(false);
-  const [showPreview, setShowPreview] = useState(true);
   const [previewHtml, setPreviewHtml] = useState('');
   const debounceRef = useRef<number | null>(null);
 
-  // Debounced rebuild of preview HTML whenever outline or config changes
+  // Debounced rebuild of preview HTML whenever outline, config, or hidden types change
   const outlineKey = useMemo(() => (outline ? JSON.stringify(outline) : ''), [outline]);
   const configKey = useMemo(() => JSON.stringify(config), [config]);
+  const hiddenKey = useMemo(() => hiddenSlideTypes.slice().sort().join(','), [hiddenSlideTypes]);
   useEffect(() => {
     if (!outline || outline.slides.length === 0) {
       setPreviewHtml('');
@@ -42,7 +44,11 @@ export function Step3OutlinePanel() {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
       try {
-        const html = generateCoursewareHtml(outline, config);
+        const filtered: Outline = {
+          ...outline,
+          slides: outline.slides.filter((s) => !hiddenSlideTypes.includes(s.type)),
+        };
+        const html = generateCoursewareHtml(filtered, config);
         setPreviewHtml(html);
         setHtml(html);
       } catch (e) {
@@ -53,7 +59,7 @@ export function Step3OutlinePanel() {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outlineKey, configKey]);
+  }, [outlineKey, configKey, hiddenKey]);
 
   const downloadHtml = () => {
     if (!previewHtml || !outline) return;
@@ -324,13 +330,15 @@ export function Step3OutlinePanel() {
               />
             )}
 
-            <Textarea
-              value={slide.speakerNotes || ''}
-              onChange={(e) => updateSlide(idx, { speakerNotes: e.target.value })}
-              placeholder={t('cw.outline.notes.ph')}
-              rows={2}
-              className="text-xs text-muted-foreground"
-            />
+            {showNotes && (
+              <Textarea
+                value={slide.speakerNotes || ''}
+                onChange={(e) => updateSlide(idx, { speakerNotes: e.target.value })}
+                placeholder={t('cw.outline.notes.ph')}
+                rows={2}
+                className="text-xs text-muted-foreground"
+              />
+            )}
           </div>
         ))}
       </div>
@@ -349,7 +357,12 @@ export function Step3OutlinePanel() {
           </span>
           <div className="ml-auto flex items-center gap-1.5 flex-wrap">
             <Button size="sm" variant="ghost" className="h-8 gap-1.5"
-              onClick={() => setShowPreview((v) => !v)}>
+              onClick={() => patchPreviewUI({ showNotes: !showNotes })}>
+              <StickyNote className="h-3.5 w-3.5" />
+              {showNotes ? t('cw.preview.hideNotes') : t('cw.preview.showNotes')}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 gap-1.5"
+              onClick={() => patchPreviewUI({ showPreview: !showPreview })}>
               {showPreview ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               {showPreview ? t('cw.preview.hide') : t('cw.preview.show')}
             </Button>
@@ -359,6 +372,27 @@ export function Step3OutlinePanel() {
               {t('cw.preview.openNewTab')}
             </Button>
           </div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap px-4 py-2 border-b bg-muted/10">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground mr-1">{t('cw.preview.filter')}</span>
+          {SLIDE_TYPES.map((tp) => {
+            const hidden = hiddenSlideTypes.includes(tp);
+            return (
+              <button
+                key={tp}
+                onClick={() => toggleSlideTypeHidden(tp)}
+                className={cn(
+                  'text-xs px-2 py-0.5 rounded-full border transition-colors',
+                  hidden
+                    ? 'border-dashed text-muted-foreground/60 line-through bg-transparent'
+                    : 'border-primary/40 bg-primary/10 text-primary',
+                )}
+              >
+                {t(`cw.slideType.${tp}`)}
+              </button>
+            );
+          })}
         </div>
         {showPreview && (
           previewHtml ? (
