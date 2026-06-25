@@ -103,6 +103,8 @@ interface CoursewareState {
   slideCountHint: number;
   config: CoursewareConfig;
   outline: Outline | null;
+  outlinePast: Outline[];
+  outlineFuture: Outline[];
   html: string;
   previewUI: PreviewUI;
   loading: LoadingState;
@@ -114,7 +116,12 @@ interface CoursewareState {
   setSlideCountHint: (v: number) => void;
   patchConfig: (patch: Partial<CoursewareConfig>) => void;
   patchCustomColors: (patch: Partial<CustomColors>) => void;
+  /** Replace outline and reset undo/redo history (use for fresh generation). */
   setOutline: (o: Outline | null) => void;
+  /** Apply a user edit: pushes prior outline into the undo stack and clears redo. */
+  commitOutline: (o: Outline) => void;
+  undoOutline: () => void;
+  redoOutline: () => void;
   setHtml: (s: string) => void;
   patchPreviewUI: (patch: Partial<PreviewUI>) => void;
   toggleSlideTypeHidden: (t: SlideType) => void;
@@ -153,6 +160,8 @@ export const useCoursewareStore = create<CoursewareState>()(
       slideCountHint: 10,
       config: defaultConfig,
       outline: null,
+      outlinePast: [],
+      outlineFuture: [],
       html: '',
       previewUI: defaultPreviewUI,
       loading: { outline: false, html: false, export: null },
@@ -165,7 +174,35 @@ export const useCoursewareStore = create<CoursewareState>()(
       patchConfig: (patch) => set((s) => ({ config: { ...s.config, ...patch } })),
       patchCustomColors: (patch) =>
         set((s) => ({ config: { ...s.config, customColors: { ...s.config.customColors, ...patch } } })),
-      setOutline: (outline) => set({ outline }),
+      setOutline: (outline) => set({ outline, outlinePast: [], outlineFuture: [] }),
+      commitOutline: (outline) =>
+        set((s) => {
+          if (!s.outline) return { outline, outlinePast: [], outlineFuture: [] };
+          const past = [...s.outlinePast, s.outline];
+          // Cap history at 50 entries to bound memory
+          if (past.length > 50) past.splice(0, past.length - 50);
+          return { outline, outlinePast: past, outlineFuture: [] };
+        }),
+      undoOutline: () =>
+        set((s) => {
+          if (s.outlinePast.length === 0 || !s.outline) return {};
+          const prev = s.outlinePast[s.outlinePast.length - 1];
+          return {
+            outline: prev,
+            outlinePast: s.outlinePast.slice(0, -1),
+            outlineFuture: [s.outline, ...s.outlineFuture],
+          };
+        }),
+      redoOutline: () =>
+        set((s) => {
+          if (s.outlineFuture.length === 0 || !s.outline) return {};
+          const next = s.outlineFuture[0];
+          return {
+            outline: next,
+            outlinePast: [...s.outlinePast, s.outline],
+            outlineFuture: s.outlineFuture.slice(1),
+          };
+        }),
       setHtml: (html) => set({ html }),
       patchPreviewUI: (patch) => set((s) => ({ previewUI: { ...s.previewUI, ...patch } })),
       toggleSlideTypeHidden: (tp) =>
@@ -190,6 +227,8 @@ export const useCoursewareStore = create<CoursewareState>()(
           slideCountHint: 10,
           config: defaultConfig,
           outline: null,
+          outlinePast: [],
+          outlineFuture: [],
           html: '',
           previewUI: defaultPreviewUI,
           loading: { outline: false, html: false, export: null },

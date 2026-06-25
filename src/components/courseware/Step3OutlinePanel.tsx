@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink, StickyNote, Filter } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, RefreshCw, Sparkles, Trash2, ChevronUp, ChevronDown, AlertCircle, Eye, EyeOff, Download, ExternalLink, StickyNote, Filter, Undo2, Redo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,10 +22,14 @@ export function Step3OutlinePanel() {
   const langMap: Record<string, string> = { zh: 'zh-CN', en: 'en', ru: 'ru', ja: 'ja', ko: 'ko', es: 'es' };
   const {
     topic, audience, slideCountHint, config,
-    outline, setOutline, loading, setLoading, setStep, error, setError,
+    outline, setOutline, commitOutline, undoOutline, redoOutline,
+    outlinePast, outlineFuture,
+    loading, setLoading, setStep, error, setError,
     setHtml, previewUI, patchPreviewUI, toggleSlideTypeHidden,
   } = useCoursewareStore();
   const { showPreview, showNotes, hiddenSlideTypes } = previewUI;
+  const canUndo = outlinePast.length > 0;
+  const canRedo = outlineFuture.length > 0;
 
   const [autoTried, setAutoTried] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
@@ -132,7 +136,7 @@ export function Step3OutlinePanel() {
   const updateSlide = (idx: number, patch: Partial<Slide>) => {
     if (!outline) return;
     const slides = outline.slides.map((s, i) => (i === idx ? { ...s, ...patch } : s));
-    setOutline({ ...outline, slides });
+    commitOutline({ ...outline, slides });
   };
 
   const moveSlide = (idx: number, dir: -1 | 1) => {
@@ -141,12 +145,12 @@ export function Step3OutlinePanel() {
     if (j < 0 || j >= outline.slides.length) return;
     const slides = [...outline.slides];
     [slides[idx], slides[j]] = [slides[j], slides[idx]];
-    setOutline({ ...outline, slides });
+    commitOutline({ ...outline, slides });
   };
 
   const removeSlide = (idx: number) => {
     if (!outline) return;
-    setOutline({ ...outline, slides: outline.slides.filter((_, i) => i !== idx) });
+    commitOutline({ ...outline, slides: outline.slides.filter((_, i) => i !== idx) });
   };
 
   const addSlide = () => {
@@ -157,8 +161,28 @@ export function Step3OutlinePanel() {
       title: t('cw.outline.newSlide'),
       bullets: [''],
     };
-    setOutline({ ...outline, slides: [...outline.slides, newSlide] });
+    commitOutline({ ...outline, slides: [...outline.slides, newSlide] });
   };
+
+  // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl+Y = redo
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      // Avoid hijacking native undo inside text fields
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || target?.isContentEditable) return;
+      const key = e.key.toLowerCase();
+      if (key === 'z' && !e.shiftKey) {
+        if (canUndo) { e.preventDefault(); undoOutline(); }
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        if (canRedo) { e.preventDefault(); redoOutline(); }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [canUndo, canRedo, undoOutline, redoOutline]);
 
   if (loading.outline && !outline) {
     return (
@@ -196,20 +220,46 @@ export function Step3OutlinePanel() {
             <Label className="text-xs text-muted-foreground">{t('cw.outline.deckTitle')}</Label>
             <Input
               value={outline.title}
-              onChange={(e) => setOutline({ ...outline, title: e.target.value })}
+              onChange={(e) => commitOutline({ ...outline, title: e.target.value })}
               className="text-lg font-semibold"
             />
             <Input
               value={outline.subtitle || ''}
               placeholder={t('cw.outline.subtitle.ph')}
-              onChange={(e) => setOutline({ ...outline, subtitle: e.target.value })}
+              onChange={(e) => commitOutline({ ...outline, subtitle: e.target.value })}
               className="text-sm"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={generate} disabled={loading.outline} className="gap-2">
-            {loading.outline ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            {t('cw.outline.regen')}
-          </Button>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={undoOutline}
+              disabled={!canUndo}
+              className="gap-1.5"
+              title={t('cw.outline.undo')}
+              aria-label={t('cw.outline.undo')}
+            >
+              <Undo2 className="h-4 w-4" />
+              {t('cw.outline.undo')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={redoOutline}
+              disabled={!canRedo}
+              className="gap-1.5"
+              title={t('cw.outline.redo')}
+              aria-label={t('cw.outline.redo')}
+            >
+              <Redo2 className="h-4 w-4" />
+              {t('cw.outline.redo')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={generate} disabled={loading.outline} className="gap-2">
+              {loading.outline ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {t('cw.outline.regen')}
+            </Button>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {t('cw.outline.count').replace('{n}', String(outline.slides.length))}
