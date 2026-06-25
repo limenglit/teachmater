@@ -330,13 +330,15 @@ export function Step3OutlinePanel() {
               />
             )}
 
-            <Textarea
-              value={slide.speakerNotes || ''}
-              onChange={(e) => updateSlide(idx, { speakerNotes: e.target.value })}
-              placeholder={t('cw.outline.notes.ph')}
-              rows={2}
-              className="text-xs text-muted-foreground"
-            />
+            {showNotes && (
+              <Textarea
+                value={slide.speakerNotes || ''}
+                onChange={(e) => updateSlide(idx, { speakerNotes: e.target.value })}
+                placeholder={t('cw.outline.notes.ph')}
+                rows={2}
+                className="text-xs text-muted-foreground"
+              />
+            )}
           </div>
         ))}
       </div>
