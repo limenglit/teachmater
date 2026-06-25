@@ -31,9 +31,10 @@ export function Step3OutlinePanel() {
   const [previewHtml, setPreviewHtml] = useState('');
   const debounceRef = useRef<number | null>(null);
 
-  // Debounced rebuild of preview HTML whenever outline or config changes
+  // Debounced rebuild of preview HTML whenever outline, config, or hidden types change
   const outlineKey = useMemo(() => (outline ? JSON.stringify(outline) : ''), [outline]);
   const configKey = useMemo(() => JSON.stringify(config), [config]);
+  const hiddenKey = useMemo(() => hiddenSlideTypes.slice().sort().join(','), [hiddenSlideTypes]);
   useEffect(() => {
     if (!outline || outline.slides.length === 0) {
       setPreviewHtml('');
@@ -43,7 +44,11 @@ export function Step3OutlinePanel() {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(() => {
       try {
-        const html = generateCoursewareHtml(outline, config);
+        const filtered: Outline = {
+          ...outline,
+          slides: outline.slides.filter((s) => !hiddenSlideTypes.includes(s.type)),
+        };
+        const html = generateCoursewareHtml(filtered, config);
         setPreviewHtml(html);
         setHtml(html);
       } catch (e) {
@@ -54,7 +59,7 @@ export function Step3OutlinePanel() {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [outlineKey, configKey]);
+  }, [outlineKey, configKey, hiddenKey]);
 
   const downloadHtml = () => {
     if (!previewHtml || !outline) return;
