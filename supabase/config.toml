@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.recommend-learning]
 verify_jwt = false
+
+[functions.parse-seat-layout-image]
+verify_jwt = false
