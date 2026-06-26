@@ -743,6 +743,25 @@ export default function CustomLayout({ students }: Props) {
           <Button size="sm" onClick={() => autoSeat(false)}>{t('seat.custom.autoSeat') || '一键排座'}</Button>
           <Button size="sm" variant="secondary" onClick={() => autoSeat(true)}><Shuffle className="w-3.5 h-3.5 mr-1" />{t('seat.custom.shuffle') || '随机'}</Button>
           <Button size="sm" variant="outline" onClick={clearSeats}><RotateCcw className="w-3.5 h-3.5 mr-1" />{t('seat.custom.clear') || '清空'}</Button>
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); }}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => imageInputRef.current?.click()}
+            disabled={imageParsing}
+            title={t('seat.custom.uploadImageHint') || '上传座位示意图，AI 自动生成布局与姓名'}
+            className="gap-1.5"
+          >
+            {imageParsing
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />{t('seat.custom.uploadImageParsing') || '识别中...'}</>
+              : <><Upload className="w-3.5 h-3.5" />{t('seat.custom.uploadImage') || '上传图片识别'}</>}
+          </Button>
           <Button
             size="sm"
             variant="outline"
