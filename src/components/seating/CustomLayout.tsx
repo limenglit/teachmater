@@ -803,7 +803,7 @@ export default function CustomLayout({ students }: Props) {
             {rowCols.map((n, r) => (
               <div key={`rc-${r}`} className="flex items-center gap-1.5">
                 <Label className="text-[11px] text-muted-foreground w-10 shrink-0">{(t('seat.custom.row') || '第')}{r + 1}{(t('seat.custom.rowSuffix') || '行')}</Label>
-                <Input type="number" min={1} max={MAX_COLS_PER_ROW} value={n} onChange={(e) => setRowColCount(r, e.target.value)} className="h-7 text-xs px-2" />
+                <Input type="number" min={1} value={n} onChange={(e) => setRowColCount(r, e.target.value)} className="h-7 text-xs px-2" />
                 <button
                   type="button"
                   onClick={() => toggleRowAisle(r)}
