@@ -167,7 +167,10 @@ export default function CustomLayout({ students }: Props) {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      applyParsedLayout(data);
+      // Open preview dialog instead of applying immediately, so the teacher can
+      // tweak rows/cols/aisles/seat names before committing.
+      setPreviewData(data as ParsedLayout);
+      setPreviewOpen(true);
     } catch (e: any) {
       console.error('parse-seat-layout-image error', e);
       toast.error((t('seat.custom.imageParseFailed') || '图片识别失败') + (e?.message ? `: ${e.message}` : ''));
