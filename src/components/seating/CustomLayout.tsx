@@ -1089,6 +1089,17 @@ export default function CustomLayout({ students }: Props) {
         pngFileName={recordName.trim() || (t('seat.editor.scene.custom') || '自定义场景')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
       />
+
+      <SeatLayoutPreviewDialog
+        open={previewOpen}
+        initial={previewData}
+        onCancel={() => { setPreviewOpen(false); setPreviewData(null); }}
+        onApply={(final) => {
+          applyParsedLayout(final);
+          setPreviewOpen(false);
+          setPreviewData(null);
+        }}
+      />
     </div>
   );
 }
