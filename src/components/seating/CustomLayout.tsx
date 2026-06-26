@@ -101,6 +101,78 @@ export default function CustomLayout({ students }: Props) {
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
   const printRef = useRef<HTMLDivElement>(null);
   const restoredOnceRef = useRef(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageParsing, setImageParsing] = useState(false);
+
+  const applyParsedLayout = (parsed: any) => {
+    if (!parsed || typeof parsed !== 'object') {
+      toast.error(t('seat.custom.imageParseFailed') || '识别结果无效');
+      return;
+    }
+    const rc: number[] = Array.isArray(parsed.rowCols) ? parsed.rowCols.map((n: any) => Math.max(1, Math.floor(Number(n) || 1))) : [];
+    if (rc.length === 0) {
+      toast.error(t('seat.custom.imageParseFailed') || '识别结果无效');
+      return;
+    }
+    const rawSeats: any[][] = Array.isArray(parsed.seats) ? parsed.seats : [];
+    const newSeats: (string | null)[][] = rc.map((cols, r) => {
+      const row = Array.isArray(rawSeats[r]) ? rawSeats[r] : [];
+      return Array.from({ length: cols }, (_, c) => {
+        const v = row[c];
+        if (v === null || v === undefined) return null;
+        const s = String(v).trim();
+        return s || null;
+      });
+    });
+    setRowCols(rc);
+    setSeats(newSeats);
+    setRowAisles(Array.isArray(parsed.rowAisles) ? parsed.rowAisles.filter((n: any) => Number.isInteger(n)) : []);
+    setColAisles(Array.isArray(parsed.colAisles) ? parsed.colAisles.filter((n: any) => Number.isInteger(n)) : []);
+    setDisabled(new Set());
+    const podium = parsed.podiumSide;
+    if (['top', 'bottom', 'left', 'right', 'none'].includes(podium)) setPodiumSide(podium);
+    const win = parsed.windowSide;
+    if (win === 'left' || win === 'right') setWindowSide(win);
+    if (typeof parsed.title === 'string' && parsed.title.trim() && !recordName.trim()) setRecordName(parsed.title.trim());
+    const filledCount = newSeats.flat().filter(v => typeof v === 'string' && v).length;
+    toast.success((t('seat.custom.imageParsedOk') || '已根据图片生成布局') + `（${rc.length} 排 / ${filledCount} 个姓名）`);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('seat.custom.imageInvalid') || '请上传图片文件');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('seat.custom.imageTooLarge') || '图片过大（最大 10MB）');
+      return;
+    }
+    setImageParsing(true);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const idx = result.indexOf(',');
+          resolve(idx >= 0 ? result.slice(idx + 1) : result);
+        };
+        reader.onerror = () => reject(new Error('read failed'));
+        reader.readAsDataURL(file);
+      });
+      const { data, error } = await supabase.functions.invoke('parse-seat-layout-image', {
+        body: { imageBase64: base64, mimeType: file.type },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      applyParsedLayout(data);
+    } catch (e: any) {
+      console.error('parse-seat-layout-image error', e);
+      toast.error((t('seat.custom.imageParseFailed') || '图片识别失败') + (e?.message ? `: ${e.message}` : ''));
+    } finally {
+      setImageParsing(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  };
 
   const totalSeats = useMemo(
     () => rowCols.reduce((s, n, r) => s + n - Array.from({ length: n }, (_, c) => disabled.has(seatKey(r, c)) ? 1 : 0).reduce((a, b) => a + b, 0), 0),
