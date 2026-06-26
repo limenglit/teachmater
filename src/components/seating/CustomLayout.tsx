@@ -104,6 +104,8 @@ export default function CustomLayout({ students }: Props) {
   const restoredOnceRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageParsing, setImageParsing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<ParsedLayout | null>(null);
 
   const applyParsedLayout = (parsed: any) => {
     if (!parsed || typeof parsed !== 'object') {
