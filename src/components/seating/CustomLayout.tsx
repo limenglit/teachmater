@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import SeatLayoutPreviewDialog, { type ParsedLayout } from './SeatLayoutPreviewDialog';
 import { useSeatExportQr } from './useSeatExportQr';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
@@ -103,6 +104,8 @@ export default function CustomLayout({ students }: Props) {
   const restoredOnceRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [imageParsing, setImageParsing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewData, setPreviewData] = useState<ParsedLayout | null>(null);
 
   const applyParsedLayout = (parsed: any) => {
     if (!parsed || typeof parsed !== 'object') {
@@ -164,7 +167,10 @@ export default function CustomLayout({ students }: Props) {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      applyParsedLayout(data);
+      // Open preview dialog instead of applying immediately, so the teacher can
+      // tweak rows/cols/aisles/seat names before committing.
+      setPreviewData(data as ParsedLayout);
+      setPreviewOpen(true);
     } catch (e: any) {
       console.error('parse-seat-layout-image error', e);
       toast.error((t('seat.custom.imageParseFailed') || '图片识别失败') + (e?.message ? `: ${e.message}` : ''));
@@ -1082,6 +1088,17 @@ export default function CustomLayout({ students }: Props) {
         className={recordName.trim() || (t('seat.editor.scene.custom') || '自定义场景')}
         pngFileName={recordName.trim() || (t('seat.editor.scene.custom') || '自定义场景')}
         onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
+      />
+
+      <SeatLayoutPreviewDialog
+        open={previewOpen}
+        initial={previewData}
+        onCancel={() => { setPreviewOpen(false); setPreviewData(null); }}
+        onApply={(final) => {
+          applyParsedLayout(final);
+          setPreviewOpen(false);
+          setPreviewData(null);
+        }}
       />
     </div>
   );
