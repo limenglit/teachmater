@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
+import SeatLayoutPreviewDialog, { type ParsedLayout } from './SeatLayoutPreviewDialog';
 import { useSeatExportQr } from './useSeatExportQr';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
