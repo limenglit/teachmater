@@ -122,7 +122,7 @@ export default function CustomLayout({ students }: Props) {
   };
 
   const setRowColCount = (r: number, raw: string) => {
-    const n = Math.max(1, Math.min(MAX_COLS_PER_ROW, Math.floor(Number(raw) || 1)));
+    const n = Math.max(1, Math.floor(Number(raw) || 1));
     setRowCols(prev => prev.map((v, i) => (i === r ? n : v)));
     setSeats(prev => {
       const next = prev.map(row => [...row]);
