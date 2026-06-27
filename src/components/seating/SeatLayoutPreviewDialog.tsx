@@ -114,6 +114,17 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
   const toggleColAisle = (afterCol: number) =>
     setColAisles(prev => (prev.includes(afterCol) ? prev.filter(a => a !== afterCol) : [...prev, afterCol].sort((a, b) => a - b)));
 
+  // Snap-to-grid: pad every row up to the widest row so columns align visually.
+  const padRowsToMax = () => {
+    const target = Math.max(1, ...rowCols);
+    setRowCols(prev => prev.map(() => target));
+    setSeats(prev => prev.map(row => {
+      const next = [...row];
+      while (next.length < target) next.push(null);
+      return next.slice(0, target);
+    }));
+  };
+
   const onDragStart = (r: number, c: number) => {
     if (seats[r]?.[c]) dragFromRef.current = { r, c };
   };
