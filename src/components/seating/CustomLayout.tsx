@@ -679,7 +679,7 @@ export default function CustomLayout({ students }: Props) {
         >
           {r + 1}
         </span>
-        <div className="flex items-center gap-1.5 flex-wrap justify-center">{cells}</div>
+        <div className="flex items-center gap-1.5 flex-nowrap justify-start">{cells}</div>
         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeRow(r)} title={t('seat.custom.removeRow') || '删除该行'}>
           <Minus className="w-3 h-3" />
         </Button>
@@ -715,7 +715,7 @@ export default function CustomLayout({ students }: Props) {
     return (
       <div className="flex items-center justify-center gap-1.5 pb-1">
         <span className="w-6 shrink-0" aria-hidden />
-        <div className="flex items-center gap-1.5 flex-wrap justify-center">{cells}</div>
+        <div className="flex items-center gap-1.5 flex-nowrap justify-start">{cells}</div>
         <span className="w-6 shrink-0" aria-hidden />
       </div>
     );
@@ -1033,7 +1033,7 @@ export default function CustomLayout({ students }: Props) {
       </div>
 
       {/* Stage (exported area) */}
-      <div ref={printRef} className="rounded-2xl border border-border bg-muted/10 p-3 overflow-x-auto">
+      <div ref={printRef} className="rounded-2xl border border-border bg-muted/10 p-3 overflow-auto max-h-[75vh]">
         {podiumBadge('top')}
         {doorBadge('top')}
 
@@ -1046,7 +1046,7 @@ export default function CustomLayout({ students }: Props) {
             {podiumSide === 'left' && <span className="text-[10px] bg-accent/30 px-2 py-0.5 rounded">{t('seat.nav.podium') || '讲台'}</span>}
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-x-auto">
             <div className="flex flex-col gap-1.5">
               {renderColHeader()}
               {rowCols.map((_, r) => (

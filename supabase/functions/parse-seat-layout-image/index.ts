@@ -68,28 +68,48 @@ serve(async (req) => {
 
     const dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:${mt};base64,${imageBase64}`;
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: [
-            { type: "text", text: "请解析这张座位图并输出严格 JSON。" },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ] },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
+    // Fallback chain: try Gemini 2.5 Pro first (best for complex seat charts),
+    // then degrade to Flash / Flash-Lite when quota/credit is exhausted on the upstream provider.
+    // Note: DeepSeek currently has no vision-capable model on the gateway, so we keep the
+    // chain inside vision-capable Gemini tiers; the user-visible behavior matches the requested
+    // "auto-degrade when Gemini compute runs out".
+    const MODEL_CHAIN = [
+      "google/gemini-2.5-pro",
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-flash-lite",
+    ];
 
-    if (!resp.ok) {
-      const t = await resp.text();
-      console.error("Gemini error:", resp.status, t);
-      if (resp.status === 429) return errorResponse("请求过于频繁，请稍后再试", 429);
-      if (resp.status === 402) return errorResponse("AI 额度不足", 402);
-      return errorResponse(`AI 解析失败: ${t.slice(0, 200)}`, 500);
+    let resp: Response | null = null;
+    let lastErrText = "";
+    let usedModel = "";
+    for (const model of MODEL_CHAIN) {
+      const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: [
+              { type: "text", text: "请解析这张座位图并输出严格 JSON。" },
+              { type: "image_url", image_url: { url: dataUrl } },
+            ] },
+          ],
+          response_format: { type: "json_object" },
+        }),
+      });
+      if (r.ok) { resp = r; usedModel = model; break; }
+      // 429 (rate limit) / 402 (credit exhausted) / 503 (upstream busy) → try next tier
+      const body = await r.text();
+      lastErrText = body;
+      console.warn(`[parse-seat-layout-image] ${model} failed ${r.status}: ${body.slice(0, 200)}`);
+      if (![429, 402, 503, 500, 502, 504].includes(r.status)) {
+        return errorResponse(`AI 解析失败 (${r.status}): ${body.slice(0, 200)}`, r.status === 401 ? 401 : 500);
+      }
+    }
+
+    if (!resp) {
+      return errorResponse(`所有模型均不可用，请稍后再试: ${lastErrText.slice(0, 200)}`, 429);
     }
 
     const data = await resp.json();
@@ -104,6 +124,7 @@ serve(async (req) => {
       parsed = JSON.parse(m[0]);
     }
 
+    if (usedModel) parsed.__model = usedModel;
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
