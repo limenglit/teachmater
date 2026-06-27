@@ -1033,7 +1033,7 @@ export default function CustomLayout({ students }: Props) {
       </div>
 
       {/* Stage (exported area) */}
-      <div ref={printRef} className="rounded-2xl border border-border bg-muted/10 p-3 overflow-x-auto">
+      <div ref={printRef} className="rounded-2xl border border-border bg-muted/10 p-3 overflow-auto max-h-[75vh]">
         {podiumBadge('top')}
         {doorBadge('top')}
 
