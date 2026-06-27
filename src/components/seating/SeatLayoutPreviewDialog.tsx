@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Minus, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Minus, Trash2, RotateCcw, AlignLeft, AlignCenter, AlignRight, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type Side = 'top' | 'bottom' | 'left' | 'right' | 'none';
@@ -40,6 +40,10 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
   const [seats, setSeats] = useState<(string | null)[][]>([]);
   const [podiumSide, setPodiumSide] = useState<Side>('top');
   const [windowSide, setWindowSide] = useState<'left' | 'right'>('left');
+
+  // View helpers: zoom level (0.5 – 1.6), row alignment (left/center/right)
+  const [zoom, setZoom] = useState(1);
+  const [rowAlign, setRowAlign] = useState<'left' | 'center' | 'right'>('center');
 
   const dragFromRef = useRef<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
@@ -109,6 +113,17 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
     setRowAisles(prev => (prev.includes(afterRow) ? prev.filter(a => a !== afterRow) : [...prev, afterRow].sort((a, b) => a - b)));
   const toggleColAisle = (afterCol: number) =>
     setColAisles(prev => (prev.includes(afterCol) ? prev.filter(a => a !== afterCol) : [...prev, afterCol].sort((a, b) => a - b)));
+
+  // Snap-to-grid: pad every row up to the widest row so columns align visually.
+  const padRowsToMax = () => {
+    const target = Math.max(1, ...rowCols);
+    setRowCols(prev => prev.map(() => target));
+    setSeats(prev => prev.map(row => {
+      const next = [...row];
+      while (next.length < target) next.push(null);
+      return next.slice(0, target);
+    }));
+  };
 
   const onDragStart = (r: number, c: number) => {
     if (seats[r]?.[c]) dragFromRef.current = { r, c };
@@ -197,16 +212,75 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
           </span>
         </div>
 
+        {/* View helpers: zoom + alignment + snap-to-grid */}
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2">
+          <span className="text-[11px] text-muted-foreground mr-1">{t('seat.preview.viewTools') || '视图辅助'}</span>
+
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.1).toFixed(2)))} title={t('seat.preview.zoomOut') || '缩小'}>
+              <ZoomOut className="w-3.5 h-3.5" />
+            </Button>
+            <input
+              type="range"
+              min={50}
+              max={160}
+              step={5}
+              value={Math.round(zoom * 100)}
+              onChange={(e) => setZoom(Number(e.target.value) / 100)}
+              className="w-28 accent-primary"
+              title={t('seat.preview.zoom') || '缩放'}
+            />
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setZoom(z => Math.min(1.6, +(z + 0.1).toFixed(2)))} title={t('seat.preview.zoomIn') || '放大'}>
+              <ZoomIn className="w-3.5 h-3.5" />
+            </Button>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              className="text-[11px] text-muted-foreground hover:text-foreground w-10 text-center tabular-nums"
+              title={t('seat.preview.zoomReset') || '重置为 100%'}
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+          </div>
+
+          <div className="h-5 w-px bg-border mx-1" />
+
+          <div className="flex items-center gap-0.5" role="group" aria-label={t('seat.preview.rowAlign') || '行对齐'}>
+            <Button size="icon" variant={rowAlign === 'left' ? 'default' : 'ghost'} className="h-7 w-7" onClick={() => setRowAlign('left')} title={t('seat.preview.alignLeft') || '左对齐'}>
+              <AlignLeft className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="icon" variant={rowAlign === 'center' ? 'default' : 'ghost'} className="h-7 w-7" onClick={() => setRowAlign('center')} title={t('seat.preview.alignCenter') || '居中对齐'}>
+              <AlignCenter className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="icon" variant={rowAlign === 'right' ? 'default' : 'ghost'} className="h-7 w-7" onClick={() => setRowAlign('right')} title={t('seat.preview.alignRight') || '右对齐'}>
+              <AlignRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          <div className="h-5 w-px bg-border mx-1" />
+
+          <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={padRowsToMax} title={t('seat.preview.padHint') || '将所有行补齐到最长行的列数，便于网格对齐'}>
+            <Maximize2 className="w-3.5 h-3.5" />
+            {t('seat.preview.padToMax') || '按最长行对齐'}
+          </Button>
+        </div>
+
         {/* Podium hint top */}
         {podiumSide === 'top' && (
           <div className="text-center text-[11px] text-muted-foreground py-1">— {t('seat.preview.podiumMark') || '讲台'} —</div>
         )}
 
         {/* Grid editor */}
-        <div className="space-y-1 overflow-x-auto">
-          {rowCols.map((cols, r) => (
+        <div className="overflow-auto max-h-[60vh] rounded-md bg-[linear-gradient(to_right,hsl(var(--border)/0.25)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.25)_1px,transparent_1px)] [background-size:24px_24px] p-2">
+          <div
+            className="space-y-1 origin-top-left transition-transform"
+            style={{ transform: `scale(${zoom})`, width: `${100 / zoom}%` }}
+          >
+          {rowCols.map((cols, r) => {
+            const justify = rowAlign === 'left' ? 'justify-start' : rowAlign === 'right' ? 'justify-end' : 'justify-center';
+            return (
             <div key={`row-${r}`}>
-              <div className="flex items-center gap-1.5 min-w-max py-0.5">
+              <div className={`flex items-center gap-1.5 min-w-max py-0.5 ${justify}`}>
                 <div className="flex items-center gap-1 w-28 shrink-0">
                   <span className="text-[11px] text-muted-foreground w-8 text-right">{r + 1}</span>
                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRowColCount(r, cols - 1)} title={t('seat.preview.minusCol') || '减少一列'}>
@@ -299,7 +373,9 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
                 />
               )}
             </div>
-          ))}
+            );
+          })}
+          </div>
         </div>
 
         {podiumSide === 'bottom' && (
