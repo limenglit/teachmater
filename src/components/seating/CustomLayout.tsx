@@ -1046,7 +1046,7 @@ export default function CustomLayout({ students }: Props) {
             {podiumSide === 'left' && <span className="text-[10px] bg-accent/30 px-2 py-0.5 rounded">{t('seat.nav.podium') || '讲台'}</span>}
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-x-auto">
             <div className="flex flex-col gap-1.5">
               {renderColHeader()}
               {rowCols.map((_, r) => (
