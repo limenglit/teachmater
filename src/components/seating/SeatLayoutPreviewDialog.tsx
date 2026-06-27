@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Minus, Trash2, RotateCcw } from 'lucide-react';
+import { Plus, Minus, Trash2, RotateCcw, AlignLeft, AlignCenter, AlignRight, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type Side = 'top' | 'bottom' | 'left' | 'right' | 'none';
