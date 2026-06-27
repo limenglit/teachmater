@@ -41,6 +41,10 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
   const [podiumSide, setPodiumSide] = useState<Side>('top');
   const [windowSide, setWindowSide] = useState<'left' | 'right'>('left');
 
+  // View helpers: zoom level (0.5 – 1.6), row alignment (left/center/right)
+  const [zoom, setZoom] = useState(1);
+  const [rowAlign, setRowAlign] = useState<'left' | 'center' | 'right'>('center');
+
   const dragFromRef = useRef<{ r: number; c: number } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ r: number; c: number } | null>(null);
 
