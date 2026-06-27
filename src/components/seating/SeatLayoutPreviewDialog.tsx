@@ -373,7 +373,9 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
                 />
               )}
             </div>
-          ))}
+            );
+          })}
+          </div>
         </div>
 
         {podiumSide === 'bottom' && (
