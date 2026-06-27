@@ -124,6 +124,7 @@ serve(async (req) => {
       parsed = JSON.parse(m[0]);
     }
 
+    if (usedModel) parsed.__model = usedModel;
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
