@@ -679,7 +679,7 @@ export default function CustomLayout({ students }: Props) {
         >
           {r + 1}
         </span>
-        <div className="flex items-center gap-1.5 flex-wrap justify-center">{cells}</div>
+        <div className="flex items-center gap-1.5 flex-nowrap justify-start">{cells}</div>
         <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeRow(r)} title={t('seat.custom.removeRow') || '删除该行'}>
           <Minus className="w-3 h-3" />
         </Button>
