@@ -212,6 +212,59 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
           </span>
         </div>
 
+        {/* View helpers: zoom + alignment + snap-to-grid */}
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2">
+          <span className="text-[11px] text-muted-foreground mr-1">{t('seat.preview.viewTools') || '视图辅助'}</span>
+
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setZoom(z => Math.max(0.5, +(z - 0.1).toFixed(2)))} title={t('seat.preview.zoomOut') || '缩小'}>
+              <ZoomOut className="w-3.5 h-3.5" />
+            </Button>
+            <input
+              type="range"
+              min={50}
+              max={160}
+              step={5}
+              value={Math.round(zoom * 100)}
+              onChange={(e) => setZoom(Number(e.target.value) / 100)}
+              className="w-28 accent-primary"
+              title={t('seat.preview.zoom') || '缩放'}
+            />
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setZoom(z => Math.min(1.6, +(z + 0.1).toFixed(2)))} title={t('seat.preview.zoomIn') || '放大'}>
+              <ZoomIn className="w-3.5 h-3.5" />
+            </Button>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              className="text-[11px] text-muted-foreground hover:text-foreground w-10 text-center tabular-nums"
+              title={t('seat.preview.zoomReset') || '重置为 100%'}
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+          </div>
+
+          <div className="h-5 w-px bg-border mx-1" />
+
+          <div className="flex items-center gap-0.5" role="group" aria-label={t('seat.preview.rowAlign') || '行对齐'}>
+            <Button size="icon" variant={rowAlign === 'left' ? 'default' : 'ghost'} className="h-7 w-7" onClick={() => setRowAlign('left')} title={t('seat.preview.alignLeft') || '左对齐'}>
+              <AlignLeft className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="icon" variant={rowAlign === 'center' ? 'default' : 'ghost'} className="h-7 w-7" onClick={() => setRowAlign('center')} title={t('seat.preview.alignCenter') || '居中对齐'}>
+              <AlignCenter className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="icon" variant={rowAlign === 'right' ? 'default' : 'ghost'} className="h-7 w-7" onClick={() => setRowAlign('right')} title={t('seat.preview.alignRight') || '右对齐'}>
+              <AlignRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          <div className="h-5 w-px bg-border mx-1" />
+
+          <Button size="sm" variant="outline" className="h-7 gap-1.5" onClick={padRowsToMax} title={t('seat.preview.padHint') || '将所有行补齐到最长行的列数，便于网格对齐'}>
+            <Maximize2 className="w-3.5 h-3.5" />
+            {t('seat.preview.padToMax') || '按最长行对齐'}
+          </Button>
+        </div>
+
         {/* Podium hint top */}
         {podiumSide === 'top' && (
           <div className="text-center text-[11px] text-muted-foreground py-1">— {t('seat.preview.podiumMark') || '讲台'} —</div>
