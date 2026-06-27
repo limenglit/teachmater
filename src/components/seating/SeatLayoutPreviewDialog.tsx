@@ -280,7 +280,7 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
             const justify = rowAlign === 'left' ? 'justify-start' : rowAlign === 'right' ? 'justify-end' : 'justify-center';
             return (
             <div key={`row-${r}`}>
-              <div className={`flex items-center gap-1.5 min-w-max py-0.5 ${justify}`}></div>
+              <div className={`flex items-center gap-1.5 min-w-max py-0.5 ${justify}`}>
                 <div className="flex items-center gap-1 w-28 shrink-0">
                   <span className="text-[11px] text-muted-foreground w-8 text-right">{r + 1}</span>
                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRowColCount(r, cols - 1)} title={t('seat.preview.minusCol') || '减少一列'}>
