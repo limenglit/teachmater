@@ -271,10 +271,16 @@ export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApp
         )}
 
         {/* Grid editor */}
-        <div className="space-y-1 overflow-x-auto">
-          {rowCols.map((cols, r) => (
+        <div className="overflow-auto max-h-[60vh] rounded-md bg-[linear-gradient(to_right,hsl(var(--border)/0.25)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.25)_1px,transparent_1px)] [background-size:24px_24px] p-2">
+          <div
+            className="space-y-1 origin-top-left transition-transform"
+            style={{ transform: `scale(${zoom})`, width: `${100 / zoom}%` }}
+          >
+          {rowCols.map((cols, r) => {
+            const justify = rowAlign === 'left' ? 'justify-start' : rowAlign === 'right' ? 'justify-end' : 'justify-center';
+            return (
             <div key={`row-${r}`}>
-              <div className="flex items-center gap-1.5 min-w-max py-0.5">
+              <div className={`flex items-center gap-1.5 min-w-max py-0.5 ${justify}`}></div>
                 <div className="flex items-center gap-1 w-28 shrink-0">
                   <span className="text-[11px] text-muted-foreground w-8 text-right">{r + 1}</span>
                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRowColCount(r, cols - 1)} title={t('seat.preview.minusCol') || '减少一列'}>
