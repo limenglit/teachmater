@@ -65,6 +65,15 @@ export default function CustomLayout({ students }: Props) {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [showOrgColorMark, setShowOrgColorMark] = useState(true);
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('customLayout'));
+  /** Performance mode: when on, disables hover highlights and per-cell
+   *  drop-target ring updates so dragging across a wide grid produces zero
+   *  re-renders of seat cells. Persisted across reloads. */
+  const [perfMode, setPerfMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('seat.custom.perfMode') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('seat.custom.perfMode', perfMode ? '1' : '0'); } catch { /* ignore */ }
+  }, [perfMode]);
 
   /** Undo/redo stack for bulk row/col disable operations. Snapshots { disabled, seats }
    *  which matches exactly the subset of `CustomLayoutSnapshot` (`disabledSeats` + `seats`)
@@ -425,6 +434,8 @@ export default function CustomLayout({ students }: Props) {
    *  do not re-render when `seats` updates during/after a drop. */
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
+  const perfModeRef = useRef(perfMode);
+  perfModeRef.current = perfMode;
 
   const handleDragStart = useCallback((r: number, c: number) => {
     if (seatsRef.current[r]?.[c]) dragFromRef.current = { r, c };
@@ -432,6 +443,10 @@ export default function CustomLayout({ students }: Props) {
   const handleDragOver = useCallback((e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    // Performance mode: don't update dropTarget at all during drag → zero
+    // seat-cell re-renders. The drop itself still works because handleDrop
+    // reads dragFromRef + the (r,c) it's called with.
+    if (perfModeRef.current) return;
     // Skip state churn when the pointer is still over the same cell.
     setDropTarget(prev => (prev?.r === r && prev?.c === c ? prev : { r, c }));
   }, []);
@@ -674,6 +689,7 @@ export default function CustomLayout({ students }: Props) {
           onDrop={handleDrop}
           onDragEnd={handleDragEnd}
           onShiftClick={toggleDisabled}
+          perfMode={perfMode}
         />
       );
       if (colAisles.includes(c) && c < cellCount - 1) {
@@ -802,6 +818,17 @@ export default function CustomLayout({ students }: Props) {
           >
             <Redo2 className="w-3.5 h-3.5 mr-1" />{t('seat.custom.redo') || '重做'}{redoStack.length > 0 ? ` (${redoStack.length})` : ''}
           </Button>
+
+          <Button
+            size="sm"
+            variant={perfMode ? 'default' : 'outline'}
+            onClick={() => setPerfMode(v => !v)}
+            title={t('seat.custom.perfModeHint') || '性能模式：拖拽时关闭悬停高亮与即时反馈，适合大场地'}
+          >
+            ⚡ {t('seat.custom.perfMode') || '性能模式'}{perfMode ? ` · ${t('seat.custom.on') || '开'}` : ''}
+          </Button>
+
+
 
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {t('seat.editor.common.mode') || '策略'}
