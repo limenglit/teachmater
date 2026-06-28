@@ -421,9 +421,21 @@ export default function CustomLayout({ students }: Props) {
 
   const clearSeats = () => setSeats(rowCols.map(n => Array.from({ length: n }, () => null)));
 
-  const handleDragStart = (r: number, c: number) => { if (seats[r]?.[c]) dragFromRef.current = { r, c }; };
-  const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
-  const handleDrop = (e: React.DragEvent, r: number, c: number) => {
+  /** Refs keep the drag handlers stable so memoized SeatCell children
+   *  do not re-render when `seats` updates during/after a drop. */
+  const seatsRef = useRef(seats);
+  seatsRef.current = seats;
+
+  const handleDragStart = useCallback((r: number, c: number) => {
+    if (seatsRef.current[r]?.[c]) dragFromRef.current = { r, c };
+  }, []);
+  const handleDragOver = useCallback((e: React.DragEvent, r: number, c: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    // Skip state churn when the pointer is still over the same cell.
+    setDropTarget(prev => (prev?.r === r && prev?.c === c ? prev : { r, c }));
+  }, []);
+  const handleDrop = useCallback((e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
     const from = dragFromRef.current;
     if (!from) return;
@@ -436,8 +448,11 @@ export default function CustomLayout({ students }: Props) {
     });
     dragFromRef.current = null;
     setDropTarget(null);
-  };
-  const handleDragEnd = () => { dragFromRef.current = null; setDropTarget(null); };
+  }, []);
+  const handleDragEnd = useCallback(() => {
+    dragFromRef.current = null;
+    setDropTarget(null);
+  }, []);
 
   const addDoor = () => {
     const idx = doors.length + 1;
