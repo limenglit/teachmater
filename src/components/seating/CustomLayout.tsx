@@ -689,6 +689,7 @@ export default function CustomLayout({ students }: Props) {
           onDrop={handleDrop}
           onDragEnd={handleDragEnd}
           onShiftClick={toggleDisabled}
+          perfMode={perfMode}
         />
       );
       if (colAisles.includes(c) && c < cellCount - 1) {
