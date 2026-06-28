@@ -195,11 +195,11 @@ export default function CustomLayout({ students }: Props) {
     return map;
   }, [students]);
   const resolveOrgColor = useMemo(() => buildOrganizationColorResolver(Array.from(orgByName.values())), [orgByName]);
-  const getNameColor = (name: string) => {
+  const getNameColor = useCallback((name: string) => {
     if (!showOrgColorMark) return undefined;
     const org = orgByName.get(name);
     return org ? resolveOrgColor(org) : undefined;
-  };
+  }, [showOrgColorMark, orgByName, resolveOrgColor]);
 
   const setRowColCount = (r: number, raw: string) => {
     const n = Math.max(1, Math.floor(Number(raw) || 1));
