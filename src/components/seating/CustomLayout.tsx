@@ -819,6 +819,17 @@ export default function CustomLayout({ students }: Props) {
             <Redo2 className="w-3.5 h-3.5 mr-1" />{t('seat.custom.redo') || '重做'}{redoStack.length > 0 ? ` (${redoStack.length})` : ''}
           </Button>
 
+          <Button
+            size="sm"
+            variant={perfMode ? 'default' : 'outline'}
+            onClick={() => setPerfMode(v => !v)}
+            title={t('seat.custom.perfModeHint') || '性能模式：拖拽时关闭悬停高亮与即时反馈，适合大场地'}
+          >
+            ⚡ {t('seat.custom.perfMode') || '性能模式'}{perfMode ? ` · ${t('seat.custom.on') || '开'}` : ''}
+          </Button>
+
+
+
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             {t('seat.editor.common.mode') || '策略'}
             <select
