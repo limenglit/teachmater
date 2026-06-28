@@ -65,6 +65,15 @@ export default function CustomLayout({ students }: Props) {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [showOrgColorMark, setShowOrgColorMark] = useState(true);
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('customLayout'));
+  /** Performance mode: when on, disables hover highlights and per-cell
+   *  drop-target ring updates so dragging across a wide grid produces zero
+   *  re-renders of seat cells. Persisted across reloads. */
+  const [perfMode, setPerfMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('seat.custom.perfMode') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('seat.custom.perfMode', perfMode ? '1' : '0'); } catch { /* ignore */ }
+  }, [perfMode]);
 
   /** Undo/redo stack for bulk row/col disable operations. Snapshots { disabled, seats }
    *  which matches exactly the subset of `CustomLayoutSnapshot` (`disabledSeats` + `seats`)
