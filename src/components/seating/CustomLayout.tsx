@@ -671,7 +671,7 @@ export default function CustomLayout({ students }: Props) {
         : 'text-primary bg-primary/15 ring-1 ring-primary/30 rounded px-0.5')
       : '';
     return (
-      <div className="flex items-center justify-center gap-1.5">
+      <div className="flex items-center justify-start gap-1.5 w-max">
         <span
           className={`text-[10px] text-muted-foreground w-6 text-right cursor-pointer hover:text-primary select-none ${rowFlashClass}`}
           onClick={(e) => { if (e.shiftKey) toggleRowDisabled(r); }}
@@ -713,7 +713,7 @@ export default function CustomLayout({ students }: Props) {
       }
     }
     return (
-      <div className="flex items-center justify-center gap-1.5 pb-1">
+      <div className="flex items-center justify-start gap-1.5 pb-1 w-max">
         <span className="w-6 shrink-0" aria-hidden />
         <div className="flex items-center gap-1.5 flex-nowrap justify-start">{cells}</div>
         <span className="w-6 shrink-0" aria-hidden />
