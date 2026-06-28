@@ -713,7 +713,7 @@ export default function CustomLayout({ students }: Props) {
       }
     }
     return (
-      <div className="flex items-center justify-center gap-1.5 pb-1">
+      <div className="flex items-center justify-start gap-1.5 pb-1 w-max">
         <span className="w-6 shrink-0" aria-hidden />
         <div className="flex items-center gap-1.5 flex-nowrap justify-start">{cells}</div>
         <span className="w-6 shrink-0" aria-hidden />
