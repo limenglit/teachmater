@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { SeatCell } from './SeatCell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -194,11 +195,11 @@ export default function CustomLayout({ students }: Props) {
     return map;
   }, [students]);
   const resolveOrgColor = useMemo(() => buildOrganizationColorResolver(Array.from(orgByName.values())), [orgByName]);
-  const getNameColor = (name: string) => {
+  const getNameColor = useCallback((name: string) => {
     if (!showOrgColorMark) return undefined;
     const org = orgByName.get(name);
     return org ? resolveOrgColor(org) : undefined;
-  };
+  }, [showOrgColorMark, orgByName, resolveOrgColor]);
 
   const setRowColCount = (r: number, raw: string) => {
     const n = Math.max(1, Math.floor(Number(raw) || 1));
@@ -236,10 +237,10 @@ export default function CustomLayout({ students }: Props) {
   const toggleColAisle = (afterCol: number) =>
     setColAisles(prev => (prev.includes(afterCol) ? prev.filter(a => a !== afterCol) : [...prev, afterCol].sort((a, b) => a - b)));
 
-  const toggleDisabled = (r: number, c: number) => {
+  const toggleDisabled = useCallback((r: number, c: number) => {
     setDisabled(prev => {
       const next = new Set(prev);
-      const k = seatKey(r, c);
+      const k = `${r}-${c}`;
       if (next.has(k)) next.delete(k);
       else {
         next.add(k);
@@ -251,7 +252,7 @@ export default function CustomLayout({ students }: Props) {
       }
       return next;
     });
-  };
+  }, []);
 
   /**
    * Refill previously-cleared seats when re-enabling a row/col.
@@ -420,9 +421,21 @@ export default function CustomLayout({ students }: Props) {
 
   const clearSeats = () => setSeats(rowCols.map(n => Array.from({ length: n }, () => null)));
 
-  const handleDragStart = (r: number, c: number) => { if (seats[r]?.[c]) dragFromRef.current = { r, c }; };
-  const handleDragOver = (e: React.DragEvent, r: number, c: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r, c }); };
-  const handleDrop = (e: React.DragEvent, r: number, c: number) => {
+  /** Refs keep the drag handlers stable so memoized SeatCell children
+   *  do not re-render when `seats` updates during/after a drop. */
+  const seatsRef = useRef(seats);
+  seatsRef.current = seats;
+
+  const handleDragStart = useCallback((r: number, c: number) => {
+    if (seatsRef.current[r]?.[c]) dragFromRef.current = { r, c };
+  }, []);
+  const handleDragOver = useCallback((e: React.DragEvent, r: number, c: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    // Skip state churn when the pointer is still over the same cell.
+    setDropTarget(prev => (prev?.r === r && prev?.c === c ? prev : { r, c }));
+  }, []);
+  const handleDrop = useCallback((e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
     const from = dragFromRef.current;
     if (!from) return;
@@ -435,8 +448,11 @@ export default function CustomLayout({ students }: Props) {
     });
     dragFromRef.current = null;
     setDropTarget(null);
-  };
-  const handleDragEnd = () => { dragFromRef.current = null; setDropTarget(null); };
+  }, []);
+  const handleDragEnd = useCallback(() => {
+    dragFromRef.current = null;
+    setDropTarget(null);
+  }, []);
 
   const addDoor = () => {
     const idx = doors.length + 1;
@@ -628,7 +644,12 @@ export default function CustomLayout({ students }: Props) {
     sceneType: 'classroom',
   });
 
-  /* -------- render seat row -------- */
+  /* -------- render seat row --------
+   * Uses memoized <SeatCell> so dragging across a wide row only re-renders
+   * the two cells whose dropTarget flag actually changed. */
+  const rowLabel = t('seat.custom.row') || '行';
+  const colLabel = t('seat.custom.col') || '列';
+  const disabledLabel = t('seat.nav.disabledSeat') || '不可用';
   const renderRow = (r: number) => {
     const cellCount = rowCols[r];
     const cells: React.ReactNode[] = [];
@@ -636,29 +657,24 @@ export default function CustomLayout({ students }: Props) {
       const name = seats[r]?.[c] ?? null;
       const isDisabled = disabled.has(seatKey(r, c));
       const isDropTarget = dropTarget?.r === r && dropTarget?.c === c;
+      const title = `${rowLabel} ${r + 1} · ${colLabel} ${c + 1}${isDisabled ? ' · ' + disabledLabel : ''}`;
       cells.push(
-        <div
+        <SeatCell
           key={`s-${r}-${c}`}
-          draggable={!!name}
-          onDragStart={() => handleDragStart(r, c)}
-          onDragOver={(e) => handleDragOver(e, r, c)}
-          onDrop={(e) => handleDrop(e, r, c)}
+          r={r}
+          c={c}
+          name={name}
+          isDisabled={isDisabled}
+          isDropTarget={isDropTarget}
+          color={name ? getNameColor(name) : undefined}
+          title={title}
+          disabledLabel={disabledLabel}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
           onDragEnd={handleDragEnd}
-          onClick={(e) => { if (e.shiftKey) toggleDisabled(r, c); }}
-          title={`${t('seat.custom.row') || '行'} ${r + 1} · ${t('seat.custom.col') || '列'} ${c + 1}${isDisabled ? ' · ' + (t('seat.nav.disabledSeat') || '不可用') : ''}`}
-          className={[
-            'select-none cursor-pointer rounded-md border text-[11px] leading-tight px-1 py-1.5 flex items-center justify-center text-center min-h-[36px] w-[60px]',
-            isDisabled
-              ? 'bg-muted/40 border-dashed border-muted-foreground/40 text-muted-foreground'
-              : name
-                ? 'bg-card border-border hover:border-primary/60'
-                : 'bg-muted/20 border-border/40 text-muted-foreground',
-            isDropTarget ? 'ring-2 ring-primary' : '',
-          ].join(' ')}
-          style={name ? { color: getNameColor(name) } : undefined}
-        >
-          {isDisabled ? '✕' : (name || `${r + 1}-${c + 1}`)}
-        </div>
+          onShiftClick={toggleDisabled}
+        />
       );
       if (colAisles.includes(c) && c < cellCount - 1) {
         cells.push(<div key={`v-${r}-${c}`} className="shrink-0" style={{ width: aisleGap }} aria-hidden />);
