@@ -434,6 +434,8 @@ export default function CustomLayout({ students }: Props) {
    *  do not re-render when `seats` updates during/after a drop. */
   const seatsRef = useRef(seats);
   seatsRef.current = seats;
+  const perfModeRef = useRef(perfMode);
+  perfModeRef.current = perfMode;
 
   const handleDragStart = useCallback((r: number, c: number) => {
     if (seatsRef.current[r]?.[c]) dragFromRef.current = { r, c };
@@ -441,6 +443,10 @@ export default function CustomLayout({ students }: Props) {
   const handleDragOver = useCallback((e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    // Performance mode: don't update dropTarget at all during drag → zero
+    // seat-cell re-renders. The drop itself still works because handleDrop
+    // reads dragFromRef + the (r,c) it's called with.
+    if (perfModeRef.current) return;
     // Skip state churn when the pointer is still over the same cell.
     setDropTarget(prev => (prev?.r === r && prev?.c === c ? prev : { r, c }));
   }, []);
