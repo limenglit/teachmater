@@ -237,10 +237,10 @@ export default function CustomLayout({ students }: Props) {
   const toggleColAisle = (afterCol: number) =>
     setColAisles(prev => (prev.includes(afterCol) ? prev.filter(a => a !== afterCol) : [...prev, afterCol].sort((a, b) => a - b)));
 
-  const toggleDisabled = (r: number, c: number) => {
+  const toggleDisabled = useCallback((r: number, c: number) => {
     setDisabled(prev => {
       const next = new Set(prev);
-      const k = seatKey(r, c);
+      const k = `${r}-${c}`;
       if (next.has(k)) next.delete(k);
       else {
         next.add(k);
@@ -252,7 +252,7 @@ export default function CustomLayout({ students }: Props) {
       }
       return next;
     });
-  };
+  }, []);
 
   /**
    * Refill previously-cleared seats when re-enabling a row/col.
