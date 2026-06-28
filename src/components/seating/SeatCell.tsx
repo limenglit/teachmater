@@ -6,6 +6,8 @@ export interface SeatCellProps {
   name: string | null;
   isDisabled: boolean;
   isDropTarget: boolean;
+  /** Performance mode: drop hover ring + hover border to avoid re-paints. */
+  perfMode?: boolean;
   color?: string;
   title: string;
   disabledLabel: string;
@@ -22,10 +24,12 @@ export interface SeatCellProps {
  * Performance: in a wide layout (e.g. 1×40 to 30×100) the previous inline
  * render re-created every seat on every drag-over because `dropTarget`
  * changed at the parent. With `React.memo` only the two cells whose
- * `isDropTarget` actually flipped re-render per pointer move.
+ * `isDropTarget` actually flipped re-render per pointer move. With
+ * `perfMode` enabled hover + ring effects are removed so even those two
+ * cells skip style recalcs.
  */
 function SeatCellInner({
-  r, c, name, isDisabled, isDropTarget, color, title, disabledLabel,
+  r, c, name, isDisabled, isDropTarget, perfMode, color, title, disabledLabel,
   onDragStart, onDragOver, onDrop, onDragEnd, onShiftClick,
 }: SeatCellProps) {
   return (
@@ -42,9 +46,11 @@ function SeatCellInner({
         isDisabled
           ? 'bg-muted/40 border-dashed border-muted-foreground/40 text-muted-foreground'
           : name
-            ? 'bg-card border-border hover:border-primary/60'
+            ? perfMode
+              ? 'bg-card border-border'
+              : 'bg-card border-border hover:border-primary/60'
             : 'bg-muted/20 border-border/40 text-muted-foreground',
-        isDropTarget ? 'ring-2 ring-primary' : '',
+        isDropTarget && !perfMode ? 'ring-2 ring-primary' : '',
       ].join(' ')}
       style={name && color ? { color } : undefined}
     >
@@ -55,3 +61,4 @@ function SeatCellInner({
 
 export const SeatCell = memo(SeatCellInner);
 SeatCell.displayName = 'SeatCell';
+
