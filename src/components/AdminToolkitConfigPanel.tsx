@@ -2,6 +2,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Switch } from '@/components/ui/switch';
 
 export type ToolkitToolId =
+  | 'coderMate'
   | 'barrage' | 'countdown' | 'noise' | 'scoreboard' | 'randomAssigner'
   | 'lottery' | 'poll' | 'stopwatch' | 'trafficLight' | 'breathing'
   | 'textMagnifier' | 'screenCapture' | 'taskChecklist' | 'codeVisualizer'

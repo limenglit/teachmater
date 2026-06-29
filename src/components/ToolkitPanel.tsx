@@ -32,6 +32,7 @@ import ScreenCaptureTool from './toolkit/ScreenCaptureTool';
 import CodeVisualizerTool from './toolkit/CodeVisualizerTool';
 import ImageEditorTool from './toolkit/ImageEditorTool';
 import MemoryAidTool from './toolkit/MemoryAidTool';
+import CoderMateTool from './toolkit/CoderMateTool';
 
 
 // Command card flash overlay
@@ -91,6 +92,7 @@ export default function ToolkitPanel() {
       <div className="max-w-5xl mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">{t('toolkit.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {isToolkitToolVisible('coderMate') && <CoderMateTool />}
           {isToolkitToolVisible('barrage') && <BarrageDiscussion />}
           {isToolkitToolVisible('countdown') && <CountdownTimer />}
           {isToolkitToolVisible('noise') && <NoiseDetector />}
