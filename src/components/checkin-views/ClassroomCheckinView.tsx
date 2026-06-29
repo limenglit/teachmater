@@ -207,9 +207,6 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
         <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-primary inline-block shrink-0" /> {t('seat.nav.mySeat')}</span>
         <span className="flex items-center gap-1.5"><span className="w-3.5 h-0.5 bg-primary/60 inline-block shrink-0" style={{ borderTop: '2px dashed' }} /> {t('seat.nav.navPath')}</span>
         <span className="flex items-center gap-1.5"><span className="text-sm leading-none shrink-0">🚪</span> {t('seat.nav.entry')}</span>
-        {disabledSeatSet.size > 0 && (
-          <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-muted/60 border border-dashed border-muted-foreground/40 inline-block shrink-0" /> {t('seat.nav.disabledSeat')}</span>
-        )}
       </div>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
@@ -294,7 +291,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
               );
             })}
 
-            {/* Seats */}
+            {/* Seats — disabled seats are hidden entirely from check-in nav */}
             {Array.from({ length: rows }).flatMap((_, r) =>
               Array.from({ length: cols }).map((_, c) => {
                 const x = roomOx + seatX(c);
@@ -302,20 +299,15 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 const name = seats[r]?.[c] ?? null;
                 const isMine = myPosition.r === r && myPosition.c === c;
                 const isDisabled = disabledSeatSet.has(`${r}-${c}`) && !isMine;
+                if (isDisabled) return null;
                 return (
                   <g key={`s-${r}-${c}`} data-my-seat={isMine ? 'true' : undefined}>
                     <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                       className={isMine ? 'fill-primary stroke-primary'
-                        : isDisabled ? 'fill-muted/60 stroke-muted-foreground/40'
                         : name ? 'fill-card stroke-border'
                         : 'fill-muted/30 stroke-border/30'}
                       strokeWidth={isMine ? 2.5 : 1}
-                      strokeDasharray={isDisabled ? '2 2' : undefined}
                     />
-                    {isDisabled && (
-                      <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-                        className="fill-muted-foreground/70 text-[9px]">✕</text>
-                    )}
                     {isMine && (
                       <circle cx={x + seatW / 2} cy={y - 6} r={4} className="fill-primary">
                         <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />

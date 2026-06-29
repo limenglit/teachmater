@@ -110,6 +110,16 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string, opti
   };
   neutralize(clone);
 
+  // Hide disabled seats in exported files: keep slot for grid alignment but
+  // remove visible border/background/text so the cell does not appear.
+  clone.querySelectorAll<HTMLElement>('[data-disabled-seat="true"]').forEach((el) => {
+    el.style.visibility = 'hidden';
+    el.style.background = 'transparent';
+    el.style.border = 'none';
+    el.style.color = 'transparent';
+    el.textContent = '';
+  });
+
   // First, measure natural content size by mounting clone off-screen at auto width
   const sizer = document.createElement('div');
   sizer.style.position = 'fixed';
