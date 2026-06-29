@@ -33,14 +33,11 @@ export default function DiscussPage() {
 
   useEffect(() => {
     if (!topicId) return;
-    supabase
-      .from('discussion_topics' as any)
-      .select('title, student_names')
-      .eq('id', topicId)
-      .single()
-      .then(({ data, error }) => {
+    (supabase as any)
+      .rpc('get_discussion_topic_for_student', { p_topic_id: topicId })
+      .then(({ data, error }: any) => {
         if (data) setTopic(data as any);
-        if (error) setError(t('discuss.topicNotFound'));
+        if (error || !data) setError(t('discuss.topicNotFound'));
       });
 
     supabase

@@ -89,7 +89,7 @@ export default function PollManager() {
       if (data) allPolls = data;
     }
     if (tokens.length > 0) {
-      const { data } = await supabase.from('polls').select('*').in('creator_token', tokens).order('created_at', { ascending: false }) as any;
+      const { data } = await (supabase as any).rpc('get_polls_by_tokens', { p_tokens: tokens });
       if (data) {
         for (const p of data) {
           if (!allPolls.find(ap => ap.id === p.id)) allPolls.push(p);
