@@ -113,7 +113,7 @@ export default function AchievementPanel() {
     setLoading(true);
     const [pRes, bRes, sbRes] = await Promise.all([
       supabase.from('student_points').select('*').eq('creator_token', token).order('created_at', { ascending: false }) as any,
-      supabase.from('badges').select('*').eq('creator_token', token).order('created_at') as any,
+      (supabase as any).rpc('get_badges_by_token', { p_token: token }),
       supabase.from('student_badges').select('*').eq('creator_token', token) as any,
     ]);
     setPoints(pRes.data || []);

@@ -154,7 +154,7 @@ export default function BoardPanel() {
     
     // Also load boards matched by creator_token (for migration)
     if (tokenValues.length > 0) {
-      const { data } = await supabase.from('boards').select('*').in('creator_token', tokenValues).order('created_at', { ascending: false });
+      const { data } = await (supabase as any).rpc('get_boards_by_tokens', { p_tokens: tokenValues });
       if (data) {
         for (const b of data as any[]) {
           if (!allBoards.find(ab => ab.id === b.id)) allBoards.push(b);

@@ -1665,7 +1665,52 @@ export type Database = {
         Args: { p_token: string; p_topic_id: string }
         Returns: undefined
       }
+      get_badges_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          condition_type: string
+          condition_value: number
+          created_at: string
+          creator_token: string
+          description: string
+          emoji: string
+          id: string
+          is_system: boolean
+          name: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "badges"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_board_for_student: { Args: { p_board_id: string }; Returns: Json }
+      get_boards_by_tokens: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          background_color: string
+          banned_words: string
+          columns: Json
+          created_at: string
+          creator_token: string
+          description: string
+          id: string
+          is_collaborative: boolean
+          is_locked: boolean
+          moderation_enabled: boolean
+          student_names: Json | null
+          title: string
+          user_id: string | null
+          view_mode: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "boards"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_checkin_records_for_owner: {
         Args: { p_session_id: string; p_token: string }
         Returns: {
@@ -1705,6 +1750,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      get_discussion_topic_for_student: {
+        Args: { p_topic_id: string }
+        Returns: Json
+      }
       get_effective_page_limit: { Args: { p_user_id: string }; Returns: number }
       get_my_status: { Args: never; Returns: string }
       get_my_username: { Args: never; Returns: string }
@@ -1718,6 +1767,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_poll_for_voter: { Args: { p_poll_id: string }; Returns: Json }
       get_poll_votes_for_owner: {
         Args: { p_poll_id: string; p_token: string }
         Returns: {
@@ -1731,6 +1781,26 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "poll_votes"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_polls_by_tokens: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          created_at: string
+          creator_token: string
+          ended_at: string | null
+          id: string
+          options: Json
+          poll_type: string
+          status: string
+          title: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "polls"
           isOneToOne: false
           isSetofReturn: true
         }
