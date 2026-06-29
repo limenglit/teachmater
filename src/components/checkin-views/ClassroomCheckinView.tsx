@@ -207,9 +207,6 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
         <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-primary inline-block shrink-0" /> {t('seat.nav.mySeat')}</span>
         <span className="flex items-center gap-1.5"><span className="w-3.5 h-0.5 bg-primary/60 inline-block shrink-0" style={{ borderTop: '2px dashed' }} /> {t('seat.nav.navPath')}</span>
         <span className="flex items-center gap-1.5"><span className="text-sm leading-none shrink-0">🚪</span> {t('seat.nav.entry')}</span>
-        {disabledSeatSet.size > 0 && (
-          <span className="flex items-center gap-1.5"><span className="w-3.5 h-2.5 rounded-sm bg-muted/60 border border-dashed border-muted-foreground/40 inline-block shrink-0" /> {t('seat.nav.disabledSeat')}</span>
-        )}
       </div>
       <ZoomIndicator scale={scale} onReset={resetZoom} />
 
