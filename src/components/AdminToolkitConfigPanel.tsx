@@ -2,12 +2,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Switch } from '@/components/ui/switch';
 
 export type ToolkitToolId =
+  | 'coderMate'
   | 'barrage' | 'countdown' | 'noise' | 'scoreboard' | 'randomAssigner'
   | 'lottery' | 'poll' | 'stopwatch' | 'trafficLight' | 'breathing'
   | 'textMagnifier' | 'screenCapture' | 'taskChecklist' | 'codeVisualizer'
   | 'imageEditor' | 'commandCards' | 'qrCode' | 'memoryAid';
 
 export interface ToolkitToolFlags {
+  coderMate: boolean;
   barrage: boolean; countdown: boolean; noise: boolean; scoreboard: boolean;
   randomAssigner: boolean; lottery: boolean; poll: boolean; stopwatch: boolean;
   trafficLight: boolean; breathing: boolean; textMagnifier: boolean;
@@ -16,6 +18,7 @@ export interface ToolkitToolFlags {
 }
 
 export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
+  coderMate: true,
   barrage: true, countdown: true, noise: true, scoreboard: true,
   randomAssigner: true, lottery: true, poll: true, stopwatch: true,
   trafficLight: true, breathing: true, textMagnifier: true,
@@ -24,6 +27,7 @@ export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
 };
 
 const TOOLKIT_TOOL_KEYS: { key: ToolkitToolId; emoji: string; labelKey: string }[] = [
+  { key: 'coderMate', emoji: '💻', labelKey: 'toolkit.coderMate' },
   { key: 'barrage', emoji: '💬', labelKey: 'toolkit.barrage' },
   { key: 'countdown', emoji: '⏱️', labelKey: 'toolkit.countdown' },
   { key: 'noise', emoji: '🔊', labelKey: 'toolkit.noise' },
