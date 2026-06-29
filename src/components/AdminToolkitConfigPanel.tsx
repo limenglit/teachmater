@@ -9,6 +9,7 @@ export type ToolkitToolId =
   | 'imageEditor' | 'commandCards' | 'qrCode' | 'memoryAid';
 
 export interface ToolkitToolFlags {
+  coderMate: boolean;
   barrage: boolean; countdown: boolean; noise: boolean; scoreboard: boolean;
   randomAssigner: boolean; lottery: boolean; poll: boolean; stopwatch: boolean;
   trafficLight: boolean; breathing: boolean; textMagnifier: boolean;
