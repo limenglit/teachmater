@@ -27,6 +27,7 @@ export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
 };
 
 const TOOLKIT_TOOL_KEYS: { key: ToolkitToolId; emoji: string; labelKey: string }[] = [
+  { key: 'coderMate', emoji: '💻', labelKey: 'toolkit.coderMate' },
   { key: 'barrage', emoji: '💬', labelKey: 'toolkit.barrage' },
   { key: 'countdown', emoji: '⏱️', labelKey: 'toolkit.countdown' },
   { key: 'noise', emoji: '🔊', labelKey: 'toolkit.noise' },
