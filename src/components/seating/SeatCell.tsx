@@ -41,6 +41,7 @@ function SeatCellInner({
       onDragEnd={onDragEnd}
       onClick={(e) => { if (e.shiftKey) onShiftClick(r, c); }}
       title={title}
+      data-disabled-seat={isDisabled ? 'true' : undefined}
       className={[
         'select-none cursor-pointer rounded-md border text-[11px] leading-tight px-1 py-1.5 flex items-center justify-center text-center min-h-[36px] w-[60px]',
         isDisabled
