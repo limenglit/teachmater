@@ -18,6 +18,7 @@ export interface ToolkitToolFlags {
 }
 
 export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
+  coderMate: true,
   barrage: true, countdown: true, noise: true, scoreboard: true,
   randomAssigner: true, lottery: true, poll: true, stopwatch: true,
   trafficLight: true, breathing: true, textMagnifier: true,
