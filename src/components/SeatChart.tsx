@@ -927,6 +927,7 @@ export default function SeatChart() {
 
         elements.push(
           <div key={`seat-${ri}-${ci}`} draggable={!!name && !isDisabled && !isLocked}
+            data-disabled-seat={isDisabled ? 'true' : undefined}
             onDragStart={() => handleDragStart(ri, ci)}
             onDragOver={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const isAisleDrag = !!draggingAisle || !!draggingAisleRef.current || raw.startsWith('col:') || raw.startsWith('row:'); if (isAisleDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return; } handleDragOver(e, ri, ci); }}
             onDrop={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const [dragType, dragIndex] = raw.split(':'); const parsedIndex = Number(dragIndex); const currentAisle = draggingAisle ?? draggingAisleRef.current; const isColAisleDrag = currentAisle?.type === 'col' || (dragType === 'col' && Number.isFinite(parsedIndex)); const isAnyAisleDrag = !!currentAisle || dragType === 'col' || dragType === 'row'; if (isColAisleDrag) { const targetIndex = Math.min(ci, cols - 2); handleAisleDropOnGap(e, 'col', targetIndex); return; } if (isAnyAisleDrag) { e.preventDefault(); return; } handleDrop(e, ri, ci); }}
