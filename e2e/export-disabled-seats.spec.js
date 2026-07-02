@@ -1,5 +1,8 @@
 import { test, expect } from '@playwright/test';
 
+// 沙盒中 Playwright 自带的 chrome-headless-shell 缺少系统库；改用 Nix 内已装的完整 chromium。
+test.use({ launchOptions: { executablePath: '/bin/chromium' } });
+
 /**
  * 像素级回归：验证 exportToPNG / exportToPDF / exportToSVG 渲染出的画布中，
  *   1. 禁用座位所在区域完全不可见（与全空白背景一致）。
