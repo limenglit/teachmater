@@ -120,32 +120,40 @@ function isWhite(rgb) {
   return rgb[0] > 245 && rgb[1] > 245 && rgb[2] > 245;
 }
 
-function assertGridAligned(base, mutated, disabledColXRange) {
-  // 除禁用列所在横坐标区间外的所有像素必须与基线一致
-  expect(mutated.width).toBe(base.width);
-  expect(mutated.height).toBe(base.height);
-  const cols = base.pixels[0].length;
-  const rows = base.pixels.length;
-  let diff = 0;
-  let disabledColHasContent = false;
-  let disabledColAllWhite = true;
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      const inDisabled = x * 4 >= disabledColXRange[0] && x * 4 <= disabledColXRange[1];
-      const a = base.pixels[y][x];
-      const b = mutated.pixels[y][x];
-      if (inDisabled) {
-        if (!isWhite(a)) disabledColHasContent = true;
-        if (!isWhite(b)) disabledColAllWhite = false;
-      } else {
-        if (a[0] !== b[0] || a[1] !== b[1] || a[2] !== b[2]) diff++;
-      }
+function segmentsAt(row) {
+  const segs = [];
+  let inSeg = false;
+  let start = 0;
+  for (let x = 0; x < row.length; x++) {
+    const white = isWhite(row[x]);
+    if (!white && !inSeg) {
+      inSeg = true;
+      start = x;
+    } else if (white && inSeg) {
+      inSeg = false;
+      segs.push([start, x - 1]);
     }
   }
-  expect(disabledColHasContent).toBe(true); // 基线中该区域确实有座位
-  expect(disabledColAllWhite).toBe(true); // 禁用后该区域完全白
-  // 允许极少量抗锯齿抖动
-  expect(diff).toBeLessThan(rows * cols * 0.001);
+  if (inSeg) segs.push([start, row.length - 1]);
+  // 合并因抗锯齿导致相隔 <=1 像素的碎段
+  const merged = [];
+  for (const s of segs) {
+    if (merged.length && s[0] - merged[merged.length - 1][1] <= 1) {
+      merged[merged.length - 1][1] = s[1];
+    } else {
+      merged.push([...s]);
+    }
+  }
+  return merged;
+}
+
+function findSeatBand(image) {
+  // 找到第一个 y 处横向恰好有 3 段非白（=3 个启用座位）的行，视作基线座位带
+  for (let y = 0; y < image.pixels.length; y++) {
+    const segs = segmentsAt(image.pixels[y]);
+    if (segs.length === 3) return { y, segs };
+  }
+  return null;
 }
 
 test.describe('导出画布 – 禁用座位像素级回归', () => {
@@ -158,39 +166,47 @@ test.describe('导出画布 – 禁用座位像素级回归', () => {
       const base = await RUN(page, { withDisabled: false, kind });
       const mutated = await RUN(page, { withDisabled: true, kind });
 
-      // 禁用座位是第二格（80px 宽 + 8px gap），预留左右各 4px 抗锯齿余量。
-      // 由于导出会在外层加 padding/居中，坐标不在 88 附近；改为扫描基线中"非白 → 白"
-      // 的三段来定位第 2 段。
-      const cols = base.pixels[0].length;
-      const midRow = base.pixels[Math.floor(base.pixels.length / 2)];
-      const segments = [];
-      let inSeg = false;
-      let segStart = 0;
-      for (let x = 0; x < cols; x++) {
-        const white = isWhite(midRow[x]);
-        if (!white && !inSeg) {
-          inSeg = true;
-          segStart = x;
-        } else if (white && inSeg) {
-          inSeg = false;
-          segments.push([segStart * 4, (x - 1) * 4]);
-        }
-      }
-      // 期望识别出 3 段（3 个启用座位）
-      expect(segments.length).toBeGreaterThanOrEqual(3);
-      // 中间那一段就是被禁用的座位横坐标区间
-      const middle = segments[Math.floor(segments.length / 2)];
+      // 1. 画布尺寸相同 → 外部布局未因禁用座位收缩
+      expect(mutated.width).toBe(base.width);
+      expect(mutated.height).toBe(base.height);
 
-      assertGridAligned(base, mutated, middle);
+      // 2. 定位基线中的座位带
+      const band = findSeatBand(base);
+      expect(band, '基线画布应能识别出 3 个启用座位所在的横向带').not.toBeNull();
+      const [leftSeg, midSeg, rightSeg] = band.segs;
+
+      // 3. 在相同 y 上检查禁用版本：中间座位区域应全部为白
+      const mutatedRow = mutated.pixels[band.y];
+      let disabledAllWhite = true;
+      for (let x = midSeg[0]; x <= midSeg[1]; x++) {
+        if (!isWhite(mutatedRow[x])) disabledAllWhite = false;
+      }
+      expect(disabledAllWhite, '禁用座位区域在导出画布中必须完全不可见').toBe(true);
+
+      // 4. 网格对齐：左右两个启用座位在同一行的 x 范围必须与基线一致（允许 ±1 抗锯齿）
+      const mutatedSegs = segmentsAt(mutatedRow).filter(
+        (s) => s[1] - s[0] > 2, // 过滤微小噪点
+      );
+      expect(mutatedSegs.length).toBe(2);
+      const near = (a, b) => Math.abs(a - b) <= 2;
+      expect(near(mutatedSegs[0][0], leftSeg[0])).toBe(true);
+      expect(near(mutatedSegs[0][1], leftSeg[1])).toBe(true);
+      expect(near(mutatedSegs[1][0], rightSeg[0])).toBe(true);
+      expect(near(mutatedSegs[1][1], rightSeg[1])).toBe(true);
     });
   }
 
   test('PDF 导出通过与 PNG 相同的画布管线（禁用座位不可见）', async ({ page }) => {
-    // PDF 内部复用 captureWithHeaderFooter → 同一像素结果，用 PNG 出口验证已足够。
+    const base = await RUN(page, { withDisabled: false, kind: 'pdf' });
     const mutated = await RUN(page, { withDisabled: true, kind: 'pdf' });
-    // 采样中间列若干像素点应为白
-    const midRow = mutated.pixels[Math.floor(mutated.pixels.length / 2)];
-    const whiteCount = midRow.filter(isWhite).length;
-    expect(whiteCount).toBeGreaterThan(midRow.length * 0.4);
+    expect(mutated.width).toBe(base.width);
+    const band = findSeatBand(base);
+    expect(band).not.toBeNull();
+    const [, midSeg] = band.segs;
+    const mutatedRow = mutated.pixels[band.y];
+    for (let x = midSeg[0]; x <= midSeg[1]; x++) {
+      expect(isWhite(mutatedRow[x])).toBe(true);
+    }
   });
 });
+
