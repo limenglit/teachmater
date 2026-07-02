@@ -94,7 +94,9 @@ describe('export – disabled seats', () => {
     for (const el of Array.from(disabledSeats)) {
       expect(el.style.visibility).toBe('hidden');
       expect(el.style.background).toBe('transparent');
-      expect(el.style.border).toBe('none');
+      // jsdom's shorthand parser drops `border: none`, but the individual
+      // longhand values reflect the removed border.
+      expect(el.style.borderStyle || 'none').toBe('none');
       expect(el.textContent).toBe('');
     }
 
