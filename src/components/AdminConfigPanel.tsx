@@ -82,6 +82,7 @@ export default function AdminConfigPanel() {
             guest: { ...DEFAULT_TOOLKIT_TOOLS, ...((d.config as any).toolkitTools?.guest || {}) },
             registered: { ...DEFAULT_TOOLKIT_TOOLS, ...((d.config as any).toolkitTools?.registered || {}) },
           },
+          aiProvider: { ...DEFAULT_CONFIG.aiProvider, ...((d.config as any).aiProvider || {}) },
         });
       }
     }
