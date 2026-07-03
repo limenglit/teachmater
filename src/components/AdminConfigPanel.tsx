@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Save, Settings2 } from 'lucide-react';
-import type { SystemConfig, FeatureFlags } from '@/contexts/FeatureConfigContext';
+import type { SystemConfig, FeatureFlags, AIFallbackProvider } from '@/contexts/FeatureConfigContext';
 import { setSystemRequireSeatAssignmentBeforeCheckin } from '@/lib/seat-checkin-policy';
 import AdminToolkitConfigPanel, { DEFAULT_TOOLKIT_TOOLS, type ToolkitToolFlags, type ToolkitToolId } from './AdminToolkitConfigPanel';
 
@@ -41,6 +41,11 @@ const DEFAULT_CONFIG: SystemConfig = {
   toolkitTools: {
     guest: { ...DEFAULT_TOOLKIT_TOOLS },
     registered: { ...DEFAULT_TOOLKIT_TOOLS },
+  },
+  aiProvider: {
+    fallback: 'deepseek',
+    customBaseUrl: 'http://120.48.111.84:8080',
+    customModel: 'gpt-4o-mini',
   },
 };
 
@@ -77,6 +82,7 @@ export default function AdminConfigPanel() {
             guest: { ...DEFAULT_TOOLKIT_TOOLS, ...((d.config as any).toolkitTools?.guest || {}) },
             registered: { ...DEFAULT_TOOLKIT_TOOLS, ...((d.config as any).toolkitTools?.registered || {}) },
           },
+          aiProvider: { ...DEFAULT_CONFIG.aiProvider, ...((d.config as any).aiProvider || {}) },
         });
       }
     }
@@ -239,6 +245,71 @@ export default function AdminConfigPanel() {
             onCheckedChange={toggleSeatCheckinPolicy}
           />
         </div>
+      </div>
+
+      {/* AI 模型降级配置：主用 Gemini，Gemini 算力用完后走此处选择的备选通道 */}
+      <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            🤖 AI 模型选择
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            默认使用 Gemini。当 Gemini 算力/额度用完时，自动降级到下方所选通道。
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 p-2 rounded-lg bg-surface border border-border">
+          <span className="text-xs flex-1 font-medium">降级通道</span>
+          <select
+            className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+            value={config.aiProvider.fallback}
+            onChange={(e) =>
+              setConfig((prev) => ({
+                ...prev,
+                aiProvider: { ...prev.aiProvider, fallback: e.target.value as AIFallbackProvider },
+              }))
+            }
+          >
+            <option value="deepseek">DeepSeek（内置）</option>
+            <option value="custom_openai">自定义 OpenAI 兼容接口</option>
+          </select>
+        </div>
+
+        {config.aiProvider.fallback === 'custom_openai' && (
+          <div className="space-y-2 p-2 rounded-lg bg-surface border border-border">
+            <div className="space-y-1">
+              <label className="text-xs font-medium">API 地址</label>
+              <Input
+                value={config.aiProvider.customBaseUrl}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    aiProvider: { ...prev.aiProvider, customBaseUrl: e.target.value },
+                  }))
+                }
+                placeholder="http://120.48.111.84:8080"
+                className="h-8 text-xs"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">模型名称</label>
+              <Input
+                value={config.aiProvider.customModel}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    aiProvider: { ...prev.aiProvider, customModel: e.target.value },
+                  }))
+                }
+                placeholder="gpt-4o-mini"
+                className="h-8 text-xs"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              API-KEY 已作为后端环境变量 <code>OPENAI_API_KEY</code> 安全存储；如需替换请在密钥管理中更新。
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
