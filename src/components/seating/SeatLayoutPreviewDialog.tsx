@@ -32,7 +32,13 @@ interface Props {
  * committing the result back to the parent CustomLayout state.
  */
 export default function SeatLayoutPreviewDialog({ open, initial, onCancel, onApply }: Props) {
-  const { t } = useLanguage();
+  const { t: tRaw } = useLanguage();
+  // Fallback wrapper: t() returns the key itself when a translation is missing.
+  // Without this, the UI shows raw keys like "seat.preview.title" (see user report).
+  const t = (key: string) => {
+    const v = tRaw(key);
+    return v === key ? '' : v;
+  };
 
   const [rowCols, setRowCols] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
