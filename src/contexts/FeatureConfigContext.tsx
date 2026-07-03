@@ -116,6 +116,7 @@ export function FeatureConfigProvider({ children }: { children: ReactNode }) {
               guest: { ...DEFAULT_TOOLKIT_TOOLS, ...((raw as any).toolkitTools?.guest || {}) },
               registered: { ...DEFAULT_TOOLKIT_TOOLS, ...((raw as any).toolkitTools?.registered || {}) },
             },
+            aiProvider: { ...DEFAULT_AI_PROVIDER, ...((raw as any).aiProvider || {}) },
           };
 
           setConfig(nextConfig);
