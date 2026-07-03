@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Save, Settings2 } from 'lucide-react';
-import type { SystemConfig, FeatureFlags } from '@/contexts/FeatureConfigContext';
+import type { SystemConfig, FeatureFlags, AIFallbackProvider } from '@/contexts/FeatureConfigContext';
 import { setSystemRequireSeatAssignmentBeforeCheckin } from '@/lib/seat-checkin-policy';
 import AdminToolkitConfigPanel, { DEFAULT_TOOLKIT_TOOLS, type ToolkitToolFlags, type ToolkitToolId } from './AdminToolkitConfigPanel';
 
