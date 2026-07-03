@@ -21,6 +21,17 @@ export interface FeatureFlags {
   ai_daily_limit: number; // -1 = unlimited
 }
 
+export type AIFallbackProvider = 'deepseek' | 'custom_openai';
+
+export interface AIProviderConfig {
+  /** Primary provider is always Gemini. When its quota is exhausted, fall back to this. */
+  fallback: AIFallbackProvider;
+  /** Custom OpenAI-compatible endpoint base URL (used when fallback === 'custom_openai'). */
+  customBaseUrl: string;
+  /** Optional model name for the custom endpoint. */
+  customModel: string;
+}
+
 export interface SystemConfig {
   guest: FeatureFlags;
   registered: FeatureFlags;
@@ -31,7 +42,14 @@ export interface SystemConfig {
     guest: ToolkitToolFlags;
     registered: ToolkitToolFlags;
   };
+  aiProvider: AIProviderConfig;
 }
+
+const DEFAULT_AI_PROVIDER: AIProviderConfig = {
+  fallback: 'deepseek',
+  customBaseUrl: 'http://120.48.111.84:8080',
+  customModel: 'gpt-4o-mini',
+};
 
 const DEFAULT_CONFIG: SystemConfig = {
   guest: {
@@ -51,6 +69,7 @@ const DEFAULT_CONFIG: SystemConfig = {
     guest: { ...DEFAULT_TOOLKIT_TOOLS },
     registered: { ...DEFAULT_TOOLKIT_TOOLS },
   },
+  aiProvider: { ...DEFAULT_AI_PROVIDER },
 };
 
 interface FeatureConfigContextType {
