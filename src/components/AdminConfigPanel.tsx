@@ -42,6 +42,11 @@ const DEFAULT_CONFIG: SystemConfig = {
     guest: { ...DEFAULT_TOOLKIT_TOOLS },
     registered: { ...DEFAULT_TOOLKIT_TOOLS },
   },
+  aiProvider: {
+    fallback: 'deepseek',
+    customBaseUrl: 'http://120.48.111.84:8080',
+    customModel: 'gpt-4o-mini',
+  },
 };
 
 export default function AdminConfigPanel() {
