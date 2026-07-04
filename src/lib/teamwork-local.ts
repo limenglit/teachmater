@@ -191,6 +191,12 @@ export interface CustomLayoutSnapshot {
   disabledRows?: number[];
   /** Fully-disabled column indices (derived from disabledSeats; persisted for clarity & consistency checks). */
   disabledCols?: number[];
+  /**
+   * Per-segment alignment for irregular venues. Key format: `${row}-${segmentIndex}`,
+   * value: 'left' | 'right' | 'center' | 'justify'. Segments are defined by
+   * `colAisles` splitting [0..maxCols). Missing entries default to 'left'.
+   */
+  rowSegAlign?: Record<string, 'left' | 'right' | 'center' | 'justify'>;
   updatedAt: string;
 }
 
