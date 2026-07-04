@@ -101,10 +101,12 @@ export function alignRow(opts: {
     for (let c = seg.start; c < Math.min(seg.end, rowLength); c++) segCols.push(c);
     if (segCols.length === 0) return;
 
-    // Snapshot the current enabled names in this segment (order preserved by column).
-    const activeCols = segCols.filter((c) => !disabled.has(key(c)));
-    const activeNames = activeCols.map((c) => seatsRow[c] ?? null);
-    const n = activeCols.length;
+    // Alignment repositions NAMED seats within the segment. Unnamed but
+    // enabled cells are collapsed away (marked disabled) so the wall / aisle
+    // side stays visually flush — that's the whole point of alignment.
+    const namedCols = segCols.filter((c) => !disabled.has(key(c)) && !!seatsRow[c]);
+    const names = namedCols.map((c) => seatsRow[c] as string);
+    const n = names.length;
 
     const target = placementCols(segCols, n, alignment);
     const targetSet = new Set(target);
