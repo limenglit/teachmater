@@ -627,6 +627,7 @@ export default function CustomLayout({ students }: Props) {
     const restoredSet = new Set(sanitizeDisabledKeys(snap.disabledSeats || [], rc));
     applyFullyDisabled(restoredSet, rc, snap.disabledRows, snap.disabledCols);
     setDisabled(restoredSet);
+    setRowSegAlign(snap.rowSegAlign && typeof snap.rowSegAlign === 'object' ? { ...snap.rowSegAlign } : {});
     setRecordName(item.name);
     toast.success(t('seat.editor.common.restoredHistory') || '记录已恢复');
   };
