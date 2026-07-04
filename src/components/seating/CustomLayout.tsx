@@ -66,6 +66,8 @@ export default function CustomLayout({ students }: Props) {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [showOrgColorMark, setShowOrgColorMark] = useState(true);
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('customLayout'));
+  /** Per-segment alignment. Key `${row}-${segIdx}` → alignment. */
+  const [rowSegAlign, setRowSegAlign] = useState<Record<string, SeatAlignment>>({});
   /** Performance mode: when on, disables hover highlights and per-cell
    *  drop-target ring updates so dragging across a wide grid produces zero
    *  re-renders of seat cells. Persisted across reloads. */
