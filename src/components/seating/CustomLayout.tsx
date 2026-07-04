@@ -377,7 +377,69 @@ export default function CustomLayout({ students }: Props) {
     }
   };
 
-  /** Order students by selected strategy. */
+  /* -------- alignment (irregular venues, per column-aisle segment) -------- */
+  const segments = useMemo(() => computeSegments(colAisles, maxCols), [colAisles, maxCols]);
+  const alignKey = (r: number, segIdx: number) => `${r}-${segIdx}`;
+  const getSegAlign = useCallback(
+    (r: number, segIdx: number): SeatAlignment => rowSegAlign[alignKey(r, segIdx)] ?? 'left',
+    [rowSegAlign],
+  );
+
+  /**
+   * Re-align one row using its current per-segment alignment. Called after any
+   * alignment change so the visible layout matches the config immediately.
+   */
+  const applyRowAlignment = (
+    r: number,
+    overrideAlign?: Record<string, SeatAlignment>,
+  ) => {
+    const source = overrideAlign ?? rowSegAlign;
+    const perSeg = segments.map((_, i) => source[alignKey(r, i)] ?? 'left');
+    setSeats(prev => {
+      const rowLen = rowCols[r] || 0;
+      const row = prev[r] ? [...prev[r]] : Array.from({ length: rowLen }, () => null);
+      const { seatsRow, disabledAdd, disabledRemove } = alignRow({
+        r, rowLength: rowLen, seatsRow: row, disabled, segments,
+        segmentAlignments: perSeg,
+      });
+      if (disabledAdd.length || disabledRemove.length) {
+        setDisabled(prevD => {
+          const next = new Set(prevD);
+          disabledAdd.forEach(k => next.add(k));
+          disabledRemove.forEach(k => next.delete(k));
+          return next;
+        });
+      }
+      const nextGrid = prev.map(rr => [...rr]);
+      nextGrid[r] = seatsRow.slice(0, rowLen);
+      return nextGrid;
+    });
+  };
+
+  /** Set alignment for one segment (or all segments in a row) then re-align. */
+  const setAlignment = (r: number, segIdx: number | 'all', value: SeatAlignment) => {
+    pushUndo();
+    setRowSegAlign(prev => {
+      const next = { ...prev };
+      if (segIdx === 'all') {
+        segments.forEach((_, i) => { next[alignKey(r, i)] = value; });
+      } else {
+        next[alignKey(r, segIdx)] = value;
+      }
+      // Defer applyRowAlignment to next tick so it sees the fresh map.
+      queueMicrotask(() => applyRowAlignment(r, next));
+      return next;
+    });
+  };
+
+  /** Apply current alignment settings to every row (bulk button). */
+  const applyAlignmentAll = () => {
+    pushUndo();
+    for (let r = 0; r < rowCols.length; r++) applyRowAlignment(r);
+    toast.success(t('seat.custom.alignmentApplied') || '已应用对齐');
+  };
+
+
   const orderedNames = (shuffle: boolean): string[] => {
     if (shuffle || strategy === 'random') {
       return [...students.map(s => s.name)].sort(() => Math.random() - 0.5);
