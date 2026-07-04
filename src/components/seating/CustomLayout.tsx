@@ -32,6 +32,7 @@ import {
   renameCloudSeatHistory,
 } from '@/lib/seat-history-cloud';
 import { snapState, pushUndo as pushUndoLib, popUndo, popRedo, type BulkSnap } from '@/lib/bulk-undo';
+import { computeSegments, alignRow, type SeatAlignment } from '@/lib/seat-alignment';
 
 interface Student { id: string; name: string; organization?: string; gender?: string; title?: string }
 interface Props { students: Student[] }
