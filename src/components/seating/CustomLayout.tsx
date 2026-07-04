@@ -556,6 +556,7 @@ export default function CustomLayout({ students }: Props) {
       const restoredSet = new Set(sanitizeDisabledKeys(snap.disabledSeats || [], snap.rowCols));
       applyFullyDisabled(restoredSet, snap.rowCols, snap.disabledRows, snap.disabledCols);
       setDisabled(restoredSet);
+      if (snap.rowSegAlign && typeof snap.rowSegAlign === 'object') setRowSegAlign({ ...snap.rowSegAlign });
     }
     restoredOnceRef.current = true;
   }, [students]);
@@ -565,7 +566,7 @@ export default function CustomLayout({ students }: Props) {
     if (!restoredOnceRef.current) return;
     saveCustomLayoutSnapshot(buildSnapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy, seats, disabled]);
+  }, [rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy, seats, disabled, rowSegAlign]);
 
   // load history (local + cloud)
   useEffect(() => {
