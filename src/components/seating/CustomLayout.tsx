@@ -32,6 +32,7 @@ import {
   renameCloudSeatHistory,
 } from '@/lib/seat-history-cloud';
 import { snapState, pushUndo as pushUndoLib, popUndo, popRedo, type BulkSnap } from '@/lib/bulk-undo';
+import { computeSegments, alignRow, type SeatAlignment } from '@/lib/seat-alignment';
 
 interface Student { id: string; name: string; organization?: string; gender?: string; title?: string }
 interface Props { students: Student[] }
@@ -65,6 +66,8 @@ export default function CustomLayout({ students }: Props) {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [showOrgColorMark, setShowOrgColorMark] = useState(true);
   const [titleRankRuleText, setTitleRankRuleText] = useState(() => loadTitleRankRuleText('customLayout'));
+  /** Per-segment alignment. Key `${row}-${segIdx}` → alignment. */
+  const [rowSegAlign, setRowSegAlign] = useState<Record<string, SeatAlignment>>({});
   /** Performance mode: when on, disables hover highlights and per-cell
    *  drop-target ring updates so dragging across a wide grid produces zero
    *  re-renders of seat cells. Persisted across reloads. */
@@ -374,7 +377,69 @@ export default function CustomLayout({ students }: Props) {
     }
   };
 
-  /** Order students by selected strategy. */
+  /* -------- alignment (irregular venues, per column-aisle segment) -------- */
+  const segments = useMemo(() => computeSegments(colAisles, maxCols), [colAisles, maxCols]);
+  const alignKey = (r: number, segIdx: number) => `${r}-${segIdx}`;
+  const getSegAlign = useCallback(
+    (r: number, segIdx: number): SeatAlignment => rowSegAlign[alignKey(r, segIdx)] ?? 'left',
+    [rowSegAlign],
+  );
+
+  /**
+   * Re-align one row using its current per-segment alignment. Called after any
+   * alignment change so the visible layout matches the config immediately.
+   */
+  const applyRowAlignment = (
+    r: number,
+    overrideAlign?: Record<string, SeatAlignment>,
+  ) => {
+    const source = overrideAlign ?? rowSegAlign;
+    const perSeg = segments.map((_, i) => source[alignKey(r, i)] ?? 'left');
+    setSeats(prev => {
+      const rowLen = rowCols[r] || 0;
+      const row = prev[r] ? [...prev[r]] : Array.from({ length: rowLen }, () => null);
+      const { seatsRow, disabledAdd, disabledRemove } = alignRow({
+        r, rowLength: rowLen, seatsRow: row, disabled, segments,
+        segmentAlignments: perSeg,
+      });
+      if (disabledAdd.length || disabledRemove.length) {
+        setDisabled(prevD => {
+          const next = new Set(prevD);
+          disabledAdd.forEach(k => next.add(k));
+          disabledRemove.forEach(k => next.delete(k));
+          return next;
+        });
+      }
+      const nextGrid = prev.map(rr => [...rr]);
+      nextGrid[r] = seatsRow.slice(0, rowLen);
+      return nextGrid;
+    });
+  };
+
+  /** Set alignment for one segment (or all segments in a row) then re-align. */
+  const setAlignment = (r: number, segIdx: number | 'all', value: SeatAlignment) => {
+    pushUndo();
+    setRowSegAlign(prev => {
+      const next = { ...prev };
+      if (segIdx === 'all') {
+        segments.forEach((_, i) => { next[alignKey(r, i)] = value; });
+      } else {
+        next[alignKey(r, segIdx)] = value;
+      }
+      // Defer applyRowAlignment to next tick so it sees the fresh map.
+      queueMicrotask(() => applyRowAlignment(r, next));
+      return next;
+    });
+  };
+
+  /** Apply current alignment settings to every row (bulk button). */
+  const applyAlignmentAll = () => {
+    pushUndo();
+    for (let r = 0; r < rowCols.length; r++) applyRowAlignment(r);
+    toast.success(t('seat.custom.alignmentApplied') || '已应用对齐');
+  };
+
+
   const orderedNames = (shuffle: boolean): string[] => {
     if (shuffle || strategy === 'random') {
       return [...students.map(s => s.name)].sort(() => Math.random() - 0.5);
@@ -529,6 +594,7 @@ export default function CustomLayout({ students }: Props) {
     return {
       rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy,
       seats, disabledSeats: sanitized, disabledRows, disabledCols,
+      rowSegAlign,
       updatedAt: new Date().toISOString(),
     };
   };
@@ -552,6 +618,7 @@ export default function CustomLayout({ students }: Props) {
       const restoredSet = new Set(sanitizeDisabledKeys(snap.disabledSeats || [], snap.rowCols));
       applyFullyDisabled(restoredSet, snap.rowCols, snap.disabledRows, snap.disabledCols);
       setDisabled(restoredSet);
+      if (snap.rowSegAlign && typeof snap.rowSegAlign === 'object') setRowSegAlign({ ...snap.rowSegAlign });
     }
     restoredOnceRef.current = true;
   }, [students]);
@@ -561,7 +628,7 @@ export default function CustomLayout({ students }: Props) {
     if (!restoredOnceRef.current) return;
     saveCustomLayoutSnapshot(buildSnapshot());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy, seats, disabled]);
+  }, [rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy, seats, disabled, rowSegAlign]);
 
   // load history (local + cloud)
   useEffect(() => {
@@ -622,6 +689,7 @@ export default function CustomLayout({ students }: Props) {
     const restoredSet = new Set(sanitizeDisabledKeys(snap.disabledSeats || [], rc));
     applyFullyDisabled(restoredSet, rc, snap.disabledRows, snap.disabledCols);
     setDisabled(restoredSet);
+    setRowSegAlign(snap.rowSegAlign && typeof snap.rowSegAlign === 'object' ? { ...snap.rowSegAlign } : {});
     setRecordName(item.name);
     toast.success(t('seat.editor.common.restoredHistory') || '记录已恢复');
   };
@@ -1024,6 +1092,73 @@ export default function CustomLayout({ students }: Props) {
           />
           <span className="text-[11px] text-muted-foreground">px</span>
         </div>
+
+        {/* Row alignment (irregular venue: per row, per column-aisle segment) */}
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="text-xs font-medium text-foreground/80">
+              {t('seat.custom.alignmentTitle') || '行/段对齐（异形会场：靠墙 / 靠走道）'}
+            </div>
+            <span className="text-[11px] text-muted-foreground">
+              {t('seat.custom.alignmentHint') || '按列走道自动分段；每段可独立选择左/右/居中/两端对齐；座位数量不变，仅调整位置'}
+            </span>
+            <Button size="sm" variant="outline" className="ml-auto h-7" onClick={applyAlignmentAll}>
+              {t('seat.custom.applyAlignmentAll') || '重新应用全部对齐'}
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 max-h-56 overflow-auto pr-1">
+            {rowCols.map((_, r) => {
+              const segCount = segments.length;
+              // Whole-row select shows current value only when all segments share it.
+              const first = getSegAlign(r, 0);
+              const uniform = segments.every((_, i) => getSegAlign(r, i) === first);
+              return (
+                <div key={`align-${r}`} className="flex items-center gap-1.5 flex-wrap border border-border/50 rounded px-1.5 py-1">
+                  <span className="text-[11px] text-muted-foreground w-14 shrink-0">
+                    {(t('seat.custom.row') || '第') + (r + 1) + (t('seat.custom.rowSuffix') || '行')}
+                  </span>
+                  <select
+                    value={uniform ? first : 'mixed'}
+                    onChange={(e) => {
+                      const v = e.target.value as SeatAlignment | 'mixed';
+                      if (v === 'mixed') return;
+                      setAlignment(r, 'all', v);
+                    }}
+                    className="h-6 text-[11px] px-1 rounded border border-input bg-background"
+                    title={t('seat.custom.alignmentWholeRow') || '整行对齐（应用到所有段）'}
+                  >
+                    <option value="left">{t('seat.custom.alignLeft') || '左对齐'}</option>
+                    <option value="right">{t('seat.custom.alignRight') || '右对齐'}</option>
+                    <option value="center">{t('seat.custom.alignCenter') || '居中'}</option>
+                    <option value="justify">{t('seat.custom.alignJustify') || '两端对齐'}</option>
+                    {!uniform && <option value="mixed">{t('seat.custom.alignMixed') || '分段混合…'}</option>}
+                  </select>
+                  {segCount > 1 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {segments.map((_, si) => (
+                        <label key={`seg-${r}-${si}`} className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <span className="rounded bg-muted px-1">{`§${si + 1}`}</span>
+                          <select
+                            value={getSegAlign(r, si)}
+                            onChange={(e) => setAlignment(r, si, e.target.value as SeatAlignment)}
+                            className="h-5 text-[10px] px-0.5 rounded border border-input bg-background"
+                            title={t('seat.custom.alignmentSegment') || '本段对齐'}
+                          >
+                            <option value="left">←</option>
+                            <option value="center">↔</option>
+                            <option value="right">→</option>
+                            <option value="justify">⇔</option>
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
 
         {/* Doors / podium / window */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
