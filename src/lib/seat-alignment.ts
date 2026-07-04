@@ -113,7 +113,7 @@ export function alignRow(opts: {
 
     // Clear the whole segment, then write names into target slots in order.
     for (const c of segCols) next[c] = null;
-    target.forEach((c, idx) => { next[c] = activeNames[idx] ?? null; });
+    target.forEach((c, idx) => { next[c] = names[idx] ?? null; });
 
     // Update disabled deltas: target cols must be enabled, others disabled.
     for (const c of segCols) {
