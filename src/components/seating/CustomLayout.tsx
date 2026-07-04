@@ -532,6 +532,7 @@ export default function CustomLayout({ students }: Props) {
     return {
       rowCols, rowAisles, colAisles, aisleGap, doors, podiumSide, windowSide, strategy,
       seats, disabledSeats: sanitized, disabledRows, disabledCols,
+      rowSegAlign,
       updatedAt: new Date().toISOString(),
     };
   };
