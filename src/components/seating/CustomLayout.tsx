@@ -1107,6 +1107,31 @@ export default function CustomLayout({ students }: Props) {
           )}
         </div>
 
+        {/* Preset scenes */}
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 px-3 py-2">
+          <span className="text-xs font-medium text-foreground/80">
+            {t('seat.custom.presetTitle') || '示例场景'}
+          </span>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'irregular3') applyIrregularHallPreset();
+              e.currentTarget.value = '';
+            }}
+            className="h-7 text-xs px-2 rounded border border-input bg-background"
+            title={t('seat.custom.presetPickHint') || '选择一个内置示例快速填充布局'}
+          >
+            <option value="">{t('seat.custom.presetPick') || '选择示例…'}</option>
+            <option value="irregular3">
+              {t('seat.custom.presetIrregular3') || '异形会议厅：三段（10/8/10 → 11/19/11 · 10 行 · 4 列走道）'}
+            </option>
+          </select>
+          <span className="text-[11px] text-muted-foreground">
+            {t('seat.custom.presetHint') || '加载后可继续调整每段座位数与对齐方式'}
+          </span>
+        </div>
+
         {/* Row config */}
         <div className="space-y-1.5">
           <div className="text-xs font-medium text-foreground/80">{t('seat.custom.rowsConfig') || '各行列数（按行独立设置）'}</div>
