@@ -32,7 +32,7 @@ import {
   renameCloudSeatHistory,
 } from '@/lib/seat-history-cloud';
 import { snapState, pushUndo as pushUndoLib, popUndo, popRedo, type BulkSnap } from '@/lib/bulk-undo';
-import { computeSegments, alignRow, type SeatAlignment } from '@/lib/seat-alignment';
+import { computeSegments, alignRow, placementCols, type SeatAlignment } from '@/lib/seat-alignment';
 
 interface Student { id: string; name: string; organization?: string; gender?: string; title?: string }
 interface Props { students: Student[] }
@@ -438,6 +438,108 @@ export default function CustomLayout({ students }: Props) {
     for (let r = 0; r < rowCols.length; r++) applyRowAlignment(r);
     toast.success(t('seat.custom.alignmentApplied') || '已应用对齐');
   };
+
+  /**
+   * Set the exact number of seats in one segment of one row. Preserves existing
+   * named seats (in column order, up to `count`) and enables/disables cells to
+   * match the row's current alignment for that segment.
+   */
+  const setSegmentSeatCount = (r: number, segIdx: number, rawCount: number) => {
+    const seg = segments[segIdx];
+    if (!seg) return;
+    const rowLen = rowCols[r] || 0;
+    const segCols: number[] = [];
+    for (let c = seg.start; c < Math.min(seg.end, rowLen); c++) segCols.push(c);
+    const width = segCols.length;
+    if (width <= 0) return;
+    const target = Math.max(0, Math.min(width, Math.floor(rawCount) || 0));
+    const alignment = getSegAlign(r, segIdx);
+    const enabledCols = placementCols(segCols, target, alignment);
+    const enabledSet = new Set(enabledCols);
+    const currentNames = segCols
+      .filter(c => !disabled.has(seatKey(r, c)) && seats[r]?.[c])
+      .map(c => seats[r]![c] as string)
+      .slice(0, target);
+    pushUndo();
+    setSeats(prev => {
+      const g = prev.map(row => [...row]);
+      if (!g[r]) return g;
+      for (const c of segCols) g[r][c] = null;
+      enabledCols.forEach((c, i) => { g[r][c] = currentNames[i] ?? null; });
+      return g;
+    });
+    setDisabled(prev => {
+      const next = new Set(prev);
+      for (const c of segCols) {
+        const k = seatKey(r, c);
+        if (enabledSet.has(c)) next.delete(k);
+        else next.add(k);
+      }
+      return next;
+    });
+  };
+
+  /** Count currently-enabled (not disabled) cells within a segment of a row. */
+  const getSegmentEnabledCount = (r: number, segIdx: number): number => {
+    const seg = segments[segIdx];
+    if (!seg) return 0;
+    const rowLen = rowCols[r] || 0;
+    let n = 0;
+    for (let c = seg.start; c < Math.min(seg.end, rowLen); c++) {
+      if (!disabled.has(seatKey(r, c))) n++;
+    }
+    return n;
+  };
+
+  /**
+   * Built-in preset: irregular 3-block conference hall, 10 rows, with 4 column
+   * aisles (2 walls + 2 middle double-column aisles). Segment widths 11/19/11
+   * (max row = 41 cols). Each row's per-segment seat counts differ; all
+   * segments start centered so unused edge cells are disabled visually.
+   */
+  const IRREGULAR_HALL_PRESET = {
+    rowSegCounts: [
+      [10, 8, 10], [10, 12, 10], [11, 13, 11], [11, 14, 11], [11, 15, 11],
+      [11, 16, 11], [11, 17, 11], [11, 18, 11], [11, 19, 11], [11, 19, 11],
+    ],
+    segWidths: [11, 19, 11],
+  } as const;
+
+  const applyIrregularHallPreset = () => {
+    const { rowSegCounts, segWidths } = IRREGULAR_HALL_PRESET;
+    const totalCols = segWidths.reduce((a, b) => a + b, 0);
+    const newColAisles = [segWidths[0] - 1, segWidths[0] + segWidths[1] - 1];
+    const newRowCols = rowSegCounts.map(() => totalCols);
+    const newSeats: (string | null)[][] = rowSegCounts.map(() =>
+      Array.from({ length: totalCols }, () => null),
+    );
+    const newDisabled = new Set<string>();
+    const newSegAlign: Record<string, SeatAlignment> = {};
+    rowSegCounts.forEach((counts, r) => {
+      let colOffset = 0;
+      counts.forEach((n, si) => {
+        const width = segWidths[si];
+        const offset = Math.floor((width - n) / 2); // center
+        for (let c = 0; c < width; c++) {
+          if (c < offset || c >= offset + n) newDisabled.add(`${r}-${colOffset + c}`);
+        }
+        newSegAlign[`${r}-${si}`] = 'center';
+        colOffset += width;
+      });
+    });
+    pushUndo();
+    setRowCols(newRowCols);
+    setSeats(newSeats);
+    setColAisles(newColAisles);
+    setRowAisles([]);
+    setDisabled(newDisabled);
+    setRowSegAlign(newSegAlign);
+    setPodiumSide('top');
+    setWindowSide('left');
+    toast.success(t('seat.custom.presetLoaded') || '已加载「三段异形会议厅」示例（10 行 · 41 列 · 4 列走道）');
+  };
+
+
 
 
   const orderedNames = (shuffle: boolean): string[] => {
@@ -1005,6 +1107,31 @@ export default function CustomLayout({ students }: Props) {
           )}
         </div>
 
+        {/* Preset scenes */}
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-primary/30 bg-primary/5 px-3 py-2">
+          <span className="text-xs font-medium text-foreground/80">
+            {t('seat.custom.presetTitle') || '示例场景'}
+          </span>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'irregular3') applyIrregularHallPreset();
+              e.currentTarget.value = '';
+            }}
+            className="h-7 text-xs px-2 rounded border border-input bg-background"
+            title={t('seat.custom.presetPickHint') || '选择一个内置示例快速填充布局'}
+          >
+            <option value="">{t('seat.custom.presetPick') || '选择示例…'}</option>
+            <option value="irregular3">
+              {t('seat.custom.presetIrregular3') || '异形会议厅：三段（10/8/10 → 11/19/11 · 10 行 · 4 列走道）'}
+            </option>
+          </select>
+          <span className="text-[11px] text-muted-foreground">
+            {t('seat.custom.presetHint') || '加载后可继续调整每段座位数与对齐方式'}
+          </span>
+        </div>
+
         {/* Row config */}
         <div className="space-y-1.5">
           <div className="text-xs font-medium text-foreground/80">{t('seat.custom.rowsConfig') || '各行列数（按行独立设置）'}</div>
@@ -1149,8 +1276,18 @@ export default function CustomLayout({ students }: Props) {
                             <option value="right">→</option>
                             <option value="justify">⇔</option>
                           </select>
+                          <input
+                            type="number"
+                            min={0}
+                            max={segments[si] ? segments[si].end - segments[si].start : 0}
+                            value={getSegmentEnabledCount(r, si)}
+                            onChange={(e) => setSegmentSeatCount(r, si, Number(e.target.value))}
+                            className="h-5 w-10 text-[10px] px-1 rounded border border-input bg-background text-center tabular-nums"
+                            title={t('seat.custom.segmentSeatCount') || '本段座位数（改动后按当前对齐方式重排）'}
+                          />
                         </label>
                       ))}
+
                     </div>
                   )}
                 </div>
