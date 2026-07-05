@@ -46,7 +46,14 @@ const MAX_COLS_PER_ROW = 30;
 const MAX_ROWS = 30;
 
 export default function CustomLayout({ students }: Props) {
-  const { t } = useLanguage();
+  const { t: tRaw } = useLanguage();
+  // Fallback wrapper: t() returns the key itself when a translation is missing,
+  // which breaks the `t('x') || '中文默认'` pattern used throughout this file.
+  // Coerce missing keys to '' so the || fallback shows Chinese instead of raw keys.
+  const t = (key: string) => {
+    const v = tRaw(key);
+    return v === key ? '' : v;
+  };
 
   const [rowCols, setRowCols] = useState<number[]>([6, 6, 8, 8, 8]);
   const [rowAisles, setRowAisles] = useState<number[]>([1]);
