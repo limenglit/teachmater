@@ -1276,8 +1276,18 @@ export default function CustomLayout({ students }: Props) {
                             <option value="right">→</option>
                             <option value="justify">⇔</option>
                           </select>
+                          <input
+                            type="number"
+                            min={0}
+                            max={segments[si] ? segments[si].end - segments[si].start : 0}
+                            value={getSegmentEnabledCount(r, si)}
+                            onChange={(e) => setSegmentSeatCount(r, si, Number(e.target.value))}
+                            className="h-5 w-10 text-[10px] px-1 rounded border border-input bg-background text-center tabular-nums"
+                            title={t('seat.custom.segmentSeatCount') || '本段座位数（改动后按当前对齐方式重排）'}
+                          />
                         </label>
                       ))}
+
                     </div>
                   )}
                 </div>
