@@ -439,6 +439,108 @@ export default function CustomLayout({ students }: Props) {
     toast.success(t('seat.custom.alignmentApplied') || '已应用对齐');
   };
 
+  /**
+   * Set the exact number of seats in one segment of one row. Preserves existing
+   * named seats (in column order, up to `count`) and enables/disables cells to
+   * match the row's current alignment for that segment.
+   */
+  const setSegmentSeatCount = (r: number, segIdx: number, rawCount: number) => {
+    const seg = segments[segIdx];
+    if (!seg) return;
+    const rowLen = rowCols[r] || 0;
+    const segCols: number[] = [];
+    for (let c = seg.start; c < Math.min(seg.end, rowLen); c++) segCols.push(c);
+    const width = segCols.length;
+    if (width <= 0) return;
+    const target = Math.max(0, Math.min(width, Math.floor(rawCount) || 0));
+    const alignment = getSegAlign(r, segIdx);
+    const enabledCols = placementCols(segCols, target, alignment);
+    const enabledSet = new Set(enabledCols);
+    const currentNames = segCols
+      .filter(c => !disabled.has(seatKey(r, c)) && seats[r]?.[c])
+      .map(c => seats[r]![c] as string)
+      .slice(0, target);
+    pushUndo();
+    setSeats(prev => {
+      const g = prev.map(row => [...row]);
+      if (!g[r]) return g;
+      for (const c of segCols) g[r][c] = null;
+      enabledCols.forEach((c, i) => { g[r][c] = currentNames[i] ?? null; });
+      return g;
+    });
+    setDisabled(prev => {
+      const next = new Set(prev);
+      for (const c of segCols) {
+        const k = seatKey(r, c);
+        if (enabledSet.has(c)) next.delete(k);
+        else next.add(k);
+      }
+      return next;
+    });
+  };
+
+  /** Count currently-enabled (not disabled) cells within a segment of a row. */
+  const getSegmentEnabledCount = (r: number, segIdx: number): number => {
+    const seg = segments[segIdx];
+    if (!seg) return 0;
+    const rowLen = rowCols[r] || 0;
+    let n = 0;
+    for (let c = seg.start; c < Math.min(seg.end, rowLen); c++) {
+      if (!disabled.has(seatKey(r, c))) n++;
+    }
+    return n;
+  };
+
+  /**
+   * Built-in preset: irregular 3-block conference hall, 10 rows, with 4 column
+   * aisles (2 walls + 2 middle double-column aisles). Segment widths 11/19/11
+   * (max row = 41 cols). Each row's per-segment seat counts differ; all
+   * segments start centered so unused edge cells are disabled visually.
+   */
+  const IRREGULAR_HALL_PRESET = {
+    rowSegCounts: [
+      [10, 8, 10], [10, 12, 10], [11, 13, 11], [11, 14, 11], [11, 15, 11],
+      [11, 16, 11], [11, 17, 11], [11, 18, 11], [11, 19, 11], [11, 19, 11],
+    ],
+    segWidths: [11, 19, 11],
+  } as const;
+
+  const applyIrregularHallPreset = () => {
+    const { rowSegCounts, segWidths } = IRREGULAR_HALL_PRESET;
+    const totalCols = segWidths.reduce((a, b) => a + b, 0);
+    const newColAisles = [segWidths[0] - 1, segWidths[0] + segWidths[1] - 1];
+    const newRowCols = rowSegCounts.map(() => totalCols);
+    const newSeats: (string | null)[][] = rowSegCounts.map(() =>
+      Array.from({ length: totalCols }, () => null),
+    );
+    const newDisabled = new Set<string>();
+    const newSegAlign: Record<string, SeatAlignment> = {};
+    rowSegCounts.forEach((counts, r) => {
+      let colOffset = 0;
+      counts.forEach((n, si) => {
+        const width = segWidths[si];
+        const offset = Math.floor((width - n) / 2); // center
+        for (let c = 0; c < width; c++) {
+          if (c < offset || c >= offset + n) newDisabled.add(`${r}-${colOffset + c}`);
+        }
+        newSegAlign[`${r}-${si}`] = 'center';
+        colOffset += width;
+      });
+    });
+    pushUndo();
+    setRowCols(newRowCols);
+    setSeats(newSeats);
+    setColAisles(newColAisles);
+    setRowAisles([]);
+    setDisabled(newDisabled);
+    setRowSegAlign(newSegAlign);
+    setPodiumSide('top');
+    setWindowSide('left');
+    toast.success(t('seat.custom.presetLoaded') || '已加载「三段异形会议厅」示例（10 行 · 41 列 · 4 列走道）');
+  };
+
+
+
 
   const orderedNames = (shuffle: boolean): string[] => {
     if (shuffle || strategy === 'random') {
