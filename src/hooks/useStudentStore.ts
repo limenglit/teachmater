@@ -101,22 +101,20 @@ const makeId = (() => {
   };
 })();
 
-const normalizeStudentKey = (name: string) => name.trim().toLowerCase();
-
-const buildImportStudents = (incoming: Student[], existingKeys = new Set<string>()) => {
+const buildImportStudents = (incoming: Student[]) => {
   const students: Student[] = [];
   let skipped = 0;
 
   incoming.forEach((student) => {
     const name = student.name.trim();
-    const key = normalizeStudentKey(name);
-    if (!key || existingKeys.has(key)) {
+    if (!name) {
       skipped++;
       return;
     }
-    // Do not add this batch's names to `existingKeys`: two students in the
-    // same class can share a name, and a single import must preserve every row.
-    // Cross-batch duplicate skipping is still handled by the prebuilt existing set.
+    // Never deduplicate by name here. In real classes multiple students can
+    // share a name, and teachers may paste the missing same-name rows later;
+    // name-based duplicate skipping was the root cause of fixed count losses
+    // such as 30→27 and 59→49.
     students.push({ ...student, id: makeId(), name });
   });
 
@@ -322,8 +320,7 @@ export function useStudentStore(userId?: string | null) {
   // using studentsRef so callers get accurate {added, skipped}.
   const appendStudents = useCallback((incoming: Student[]) => {
     const prev = studentsRef.current;
-    const existing = new Set(prev.map(s => normalizeStudentKey(s.name)));
-    const { students: toAdd, skipped } = buildImportStudents(incoming, existing);
+    const { students: toAdd, skipped } = buildImportStudents(incoming);
     const added = toAdd.length;
     const next = [...prev, ...toAdd];
     studentsRef.current = next;
