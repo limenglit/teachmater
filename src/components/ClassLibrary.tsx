@@ -318,6 +318,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       }
 
       let totalInserted = 0;
+      let totalSkippedByDedupe = 0;
 
       for (const [collegeName, classMap] of grouped) {
         let college = colleges.find(c => c.name === collegeName);
@@ -341,7 +342,26 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
             const { error } = await supabase.from('class_students').delete().eq('class_id', cls.id);
             if (error) throw error;
           }
-          const inserts = buildClassStudentInserts(rows, cls.id, userId);
+
+          let effectiveRows = rows;
+          if (importDedupe) {
+            const existing = importMode === 'overwrite'
+              ? new Set<string>()
+              : new Set(students.filter(s => s.class_id === cls!.id).map(s => `${s.name}|${s.student_number || ''}`));
+            const seenBatch = new Set<string>();
+            effectiveRows = [];
+            for (const row of rows) {
+              const key = `${row.name}|${row.studentNumber || ''}`;
+              if (existing.has(key) || seenBatch.has(key)) {
+                totalSkippedByDedupe++;
+                continue;
+              }
+              seenBatch.add(key);
+              effectiveRows.push(row);
+            }
+          }
+
+          const inserts = buildClassStudentInserts(effectiveRows, cls.id, userId);
           await insertClassStudentRows(inserts);
           totalInserted += inserts.length;
         }
@@ -351,9 +371,13 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       setImportOpen(false);
       setPreviewData([]);
 
+      const desc = [
+        `成功导入 ${totalInserted} 名学生`,
+        importDedupe && totalSkippedByDedupe > 0 ? `去重跳过 ${totalSkippedByDedupe} 名` : '',
+      ].filter(Boolean).join('；');
       toast({
         title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
-        description: `成功导入 ${totalInserted} 名学生`,
+        description: desc,
         variant: totalInserted > 0 ? 'default' : 'destructive',
       });
     } catch {
