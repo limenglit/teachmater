@@ -228,7 +228,7 @@ export function useStudentStore(userId?: string | null) {
 
   const addStudent = useCallback((name: string, gender: StudentGender = 'unknown') => {
     if (!name.trim()) return;
-    setStudents(prev => [...prev, { id: `s_${Date.now()}`, name: name.trim(), gender }]);
+    setStudents(prev => [...prev, { id: makeId(), name: name.trim(), gender }]);
   }, []);
 
   const removeStudent = useCallback((id: string) => {
@@ -244,14 +244,13 @@ export function useStudentStore(userId?: string | null) {
   }, []);
 
   const importFromText = useCallback((text: string) => {
-    const newStudents = parseStudentsFromText(text);
+    const newStudents = parseStudentsFromText(text).map(s => ({ ...s, id: makeId() }));
     setStudents(newStudents);
     return { added: newStudents.length, skipped: 0, total: newStudents.length };
   }, []);
 
-  // Append a batch to the existing roster; skip names that already exist (case/whitespace-insensitive).
-  const appendFromText = useCallback((text: string) => {
-    const parsed = parseStudentsFromText(text);
+  // Append parsed Student objects directly (bypasses text round-trip).
+  const appendStudents = useCallback((incoming: Student[]) => {
     let added = 0;
     let skipped = 0;
     setStudents(prev => {
@@ -259,18 +258,25 @@ export function useStudentStore(userId?: string | null) {
       const existing = new Set(prev.map(s => norm(s.name)));
       const seenInBatch = new Set<string>();
       const toAdd: Student[] = [];
-      parsed.forEach((s, idx) => {
+      incoming.forEach((s) => {
         const key = norm(s.name);
         if (!key) { skipped++; return; }
         if (existing.has(key) || seenInBatch.has(key)) { skipped++; return; }
         seenInBatch.add(key);
-        toAdd.push({ ...s, id: `s_${Date.now()}_a_${idx}` });
+        toAdd.push({ ...s, id: makeId() });
         added++;
       });
       return [...prev, ...toAdd];
     });
-    return { added, skipped, total: parsed.length };
+    return { added, skipped, total: incoming.length };
   }, []);
 
-  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText, appendFromText };
+  // Append a batch parsed from raw text.
+  const appendFromText = useCallback((text: string) => {
+    const parsed = parseStudentsFromText(text);
+    return appendStudents(parsed);
+  }, [appendStudents]);
+
+  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText, appendFromText, appendStudents };
 }
+
