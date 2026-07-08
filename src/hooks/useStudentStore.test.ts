@@ -154,8 +154,8 @@ describe('useStudentStore', () => {
     expect(stored).toEqual([]);
   });
 
-  // Regression: 60-line 名单（含1个同名）应明确统计为 59 新增 + 1 重复
-  it('appendFromText counts duplicate names within the same incoming roster consistently', () => {
+  // Regression: 同一次导入里的同名学生必须保留；只按“已有名单”跳过二次追加重复。
+  it('appendFromText preserves same-name students within the same incoming roster', () => {
     const names = [
       '闫振华','郑灿灿','李名莉','刘亚闯','张子扬','马欢欢','晋懿普','常文博','魏三营','文紫薇',
       '郭文超','耿卓凡','王增华','贾小朋','许庆峰','胡志涛','李志林','李晓苗','胡瑞','徐亚光',
@@ -168,16 +168,17 @@ describe('useStudentStore', () => {
     const { result } = renderHook(() => useStudentStore('u_test'));
     let r: { added: number; skipped: number; total: number } = { added: 0, skipped: 0, total: 0 };
     act(() => { r = result.current.appendFromText(text); });
-    expect(r.added).toBe(59);
-    expect(r.skipped).toBe(1);
-    expect(r.total).toBe(59);
+    expect(r.added).toBe(60);
+    expect(r.skipped).toBe(0);
+    expect(r.total).toBe(60);
     expect(r.added + r.skipped).toBe(names.length);
-    expect(result.current.students.length).toBe(59);
+    expect(result.current.students.length).toBe(60);
+    expect(result.current.students.map(s => s.name)).toEqual(names);
     const ids = result.current.students.map(s => s.id);
-    expect(new Set(ids).size).toBe(59);
+    expect(new Set(ids).size).toBe(60);
   });
 
-  it('appendFromText keeps 30→27 cross-batch and in-batch duplicate statistics consistent', () => {
+  it('appendFromText keeps a 30-row cross-batch and in-batch duplicate mix consistent', () => {
     const existing = [{ id: 'existing_1', name: '学生01' }];
     localStorage.setItem(USER_KEY('u_combo_30'), JSON.stringify(existing));
     const incomingNames = [
@@ -192,15 +193,37 @@ describe('useStudentStore', () => {
     let r: { added: number; skipped: number; total: number } = { added: 0, skipped: 0, total: 0 };
     act(() => { r = result.current.appendFromText(incomingNames.join('\n')); });
 
-    expect(r.added).toBe(27);
-    expect(r.skipped).toBe(3);
+    expect(r.added).toBe(29);
+    expect(r.skipped).toBe(1);
     expect(r.added + r.skipped).toBe(30);
-    expect(r.total).toBe(28);
-    expect(result.current.students).toHaveLength(28);
+    expect(r.total).toBe(30);
+    expect(result.current.students).toHaveLength(30);
     expect(result.current.students.map(s => s.name)).toEqual([
       '学生01',
-      ...Array.from({ length: 27 }, (_, i) => `学生${String(i + 2).padStart(2, '0')}`),
+      '学生02', '学生02',
+      '学生03', '学生03',
+      ...Array.from({ length: 25 }, (_, i) => `学生${String(i + 4).padStart(2, '0')}`),
     ]);
+  });
+
+  it('importFromText replaces with all 30 rows even when names repeat inside the file', () => {
+    const incomingNames = [
+      '学生01',
+      '学生02', '学生02',
+      '学生03', '学生03',
+      ...Array.from({ length: 25 }, (_, i) => `学生${String(i + 4).padStart(2, '0')}`),
+    ];
+    expect(incomingNames).toHaveLength(30);
+
+    const { result } = renderHook(() => useStudentStore('u_replace_30'));
+    let r: { added: number; skipped: number; total: number } = { added: 0, skipped: 0, total: 0 };
+    act(() => { r = result.current.importFromText(incomingNames.join('\n')); });
+
+    expect(r.added).toBe(30);
+    expect(r.skipped).toBe(0);
+    expect(r.total).toBe(30);
+    expect(result.current.students).toHaveLength(30);
+    expect(result.current.students.map(s => s.name)).toEqual(incomingNames);
   });
 
   it('appendFromText reports final total, not added count, for the reported 59→49 cross-batch duplicate case', () => {
