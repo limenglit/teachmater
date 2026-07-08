@@ -56,10 +56,13 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importMode, setImportMode] = useState<'overwrite' | 'append'>('append');
+  const [importDedupe, setImportDedupe] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [textImportOpen, setTextImportOpen] = useState(false);
   const [textImportContent, setTextImportContent] = useState('');
+  const [textImportMode, setTextImportMode] = useState<'overwrite' | 'append'>('append');
+  const [textDedupe, setTextDedupe] = useState(false);
   const textFileRef = useRef<HTMLInputElement>(null);
 
   const userId = user?.id;
