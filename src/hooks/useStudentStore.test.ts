@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useStudentStore } from './useStudentStore';
+import { parseStudentsFromText, useStudentStore } from './useStudentStore';
 
 const STORAGE_KEY = 'teachmate_students';
 const USER_KEY = (userId: string) => `teachmate_students:${userId}`;
@@ -154,8 +154,8 @@ describe('useStudentStore', () => {
     expect(stored).toEqual([]);
   });
 
-  // Regression: 60-line 名单（含1个重复）走 append 完整分支，全部去重后新增59人
-  it('appendFromText handles a 60-line list with 1 duplicate → adds 59 unique to empty roster', () => {
+  // Regression: 60-line 名单（含1个同名）不能因为同名被少导，需保留完整行数
+  it('appendFromText preserves duplicate names within the same incoming roster', () => {
     const names = [
       '闫振华','郑灿灿','李名莉','刘亚闯','张子扬','马欢欢','晋懿普','常文博','魏三营','文紫薇',
       '郭文超','耿卓凡','王增华','贾小朋','许庆峰','胡志涛','李志林','李晓苗','胡瑞','徐亚光',
@@ -168,11 +168,33 @@ describe('useStudentStore', () => {
     const { result } = renderHook(() => useStudentStore('u_test'));
     let r: { added: number; skipped: number; total: number } = { added: 0, skipped: 0, total: 0 };
     act(() => { r = result.current.appendFromText(text); });
-    expect(r.added).toBe(59);
-    expect(r.skipped).toBe(1);
-    expect(result.current.students.length).toBe(59);
+    expect(r.added).toBe(60);
+    expect(r.skipped).toBe(0);
+    expect(result.current.students.length).toBe(60);
     const ids = result.current.students.map(s => s.id);
-    expect(new Set(ids).size).toBe(59);
+    expect(new Set(ids).size).toBe(60);
+  });
+
+  it('parses the reported 59-name roster without dropping any names', () => {
+    const names = [
+      '闫振华','郑灿灿','李名莉','刘亚闯','张子扬','马欢欢','晋懿普','常文博','魏三营','文紫薇',
+      '郭文超','耿卓凡','王增华','贾小朋','许庆峰','胡志涛','李志林','李晓苗','胡瑞','徐亚光',
+      '柴佳新','宋沛乐','杨凯丽','黄帅娜','李自玉','柴晓芳','李泽坤','张山','陈牧','袁素君',
+      '王宇晨','潘振南','杨琦琦','侯英','孙源','王文花','李甜甜','左东祥','谢耀坤','邹洪亮',
+      '张明阳','关庆辉','祝夏斌','贺秀秀','陈闻欣','魏宁宁','张昕','李啸林','张姗姗','刘志敏',
+      '陈艺文','邢淏鑫','毕博文','魏华阳','姚梦娟','郭宇航','陈明月','闫丽娟','李雪洋'
+    ];
+    const parsed = parseStudentsFromText(names.join('\n\n'));
+    expect(parsed.map(s => s.name)).toEqual(names);
+    expect(parsed).toHaveLength(59);
+  });
+
+  it('expands whitespace-wrapped plain-name rosters instead of taking only the first name per row', () => {
+    const text = '闫振华 郑灿灿 李名莉 刘亚闯 张子扬 马欢欢 晋懿普 常文博 魏三营 文紫薇\n郭文超 耿卓凡 王增华 贾小朋 许庆峰 胡志涛 李志林 李晓苗 胡瑞 徐亚光\n柴佳新 宋沛乐 杨凯丽 黄帅娜 李自玉 柴晓芳 李泽坤 张山 陈牧 袁素君\n王宇晨 潘振南 杨琦琦 侯英 孙源 王文花 李甜甜 左东祥 谢耀坤 邹洪亮\n张明阳 关庆辉 祝夏斌 贺秀秀 陈闻欣 魏宁宁 张昕 李啸林 张姗姗 刘志敏\n陈艺文 邢淏鑫 毕博文 魏华阳 姚梦娟 郭宇航 陈明月 闫丽娟 李雪洋';
+    const parsed = parseStudentsFromText(text);
+    expect(parsed).toHaveLength(59);
+    expect(parsed[0].name).toBe('闫振华');
+    expect(parsed[58].name).toBe('李雪洋');
   });
 
   // Second append of the same list is fully skipped (no accidental growth).

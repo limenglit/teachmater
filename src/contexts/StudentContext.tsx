@@ -11,6 +11,7 @@ interface StudentContextType {
   importFromText: (text: string) => { added: number; skipped: number; total: number };
   appendFromText: (text: string) => { added: number; skipped: number; total: number };
   appendStudents: (incoming: Student[]) => { added: number; skipped: number; total: number };
+  replaceStudents: (incoming: Student[]) => { added: number; skipped: number; total: number };
 }
 
 

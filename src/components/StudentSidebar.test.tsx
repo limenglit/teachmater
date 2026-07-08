@@ -26,7 +26,7 @@ describe('StudentSidebar', () => {
     expect(screen.getByText('张三')).toBeInTheDocument();
     expect(screen.getByText('李四')).toBeInTheDocument();
 
-    const clearBtn = screen.getByText('清空');
+    const clearBtn = screen.getByTitle('清空');
     fireEvent.click(clearBtn);
 
     expect(screen.queryByText('张三')).not.toBeInTheDocument();

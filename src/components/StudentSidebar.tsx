@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, onOpenLibrary }: Props) {
-  const { students, addStudent, removeStudent, clearAll, importFromText, appendStudents } = useStudents();
+  const { students, addStudent, removeStudent, clearAll, importFromText, appendStudents, replaceStudents } = useStudents();
 
   const { t } = useLanguage();
   const [newName, setNewName] = useState('');
@@ -62,14 +62,25 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
   // Parse + validate the current import text on the fly.
   const preview = useMemo(() => {
     const parsed = parseStudentsFromText(importText);
-    const rawLineCount = importText
+    const sourceLines = importText
       .replace(/^\uFEFF/, '')
       .split(/\r\n|[\n\r\u2028\u2029]/)
       .map(l => l.trim())
-      .filter(Boolean).length;
+      .filter(Boolean);
+    const rawEntryCount = sourceLines.reduce((count, line, index) => {
+      const firstLineHasHeader = index === 0 && /姓名|name/i.test(line);
+      if (firstLineHasHeader) return count;
+      const parts = /[\t,，]/.test(line)
+        ? line.split(/[\t,，]/).map(part => part.trim()).filter(Boolean)
+        : line.split(/\s+/).map(part => part.trim()).filter(Boolean);
+      const allLookLikeNames = parts.length > 1 && parts.every(part =>
+        /^[\p{Script=Han}·•]{2,4}$/u.test(part) &&
+        !/(学院|学校|中心|公司|部门|教研室|实验室|办公室|处|局|部|科|系|班|组|队|主任|老师|教师|教授|讲师|组长|副组长|班长|委员)$/.test(part)
+      );
+      return count + (allLookLikeNames ? parts.length : 1);
+    }, 0);
     // Header row is stripped by the parser when detected, so account for it.
-    const hasHeader = /姓名|name/i.test(importText.split(/\r?\n/)[0] ?? '');
-    const expected = hasHeader ? Math.max(0, rawLineCount - 1) : rawLineCount;
+    const expected = rawEntryCount;
     const skipped = Math.max(0, expected - parsed.length);
 
     const existingNames = new Set(students.map(s => s.name.trim()));
@@ -79,7 +90,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       const issues: Array<{ kind: 'error' | 'warn' | 'info'; key: string }> = [];
       if (!name) issues.push({ kind: 'error', key: 'sidebar.issueMissingName' });
       const prev = seen.get(name) ?? 0;
-      if (prev > 0) issues.push({ kind: 'error', key: 'sidebar.issueDupInImport' });
+      if (prev > 0) issues.push({ kind: 'warn', key: 'sidebar.issueDupInImport' });
       seen.set(name, prev + 1);
       if (existingNames.has(name)) issues.push({ kind: 'warn', key: 'sidebar.issueDupInRoster' });
       if (!s.gender || s.gender === 'unknown') issues.push({ kind: 'info', key: 'sidebar.issueOptionalMissing' });
@@ -96,22 +107,15 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       toast({ title: t('sidebar.importNothing') || '无有效数据可导入', variant: 'destructive' });
       return;
     }
-    // De-duplicate within the import while preserving order.
-    const seen = new Set<string>();
-    const deduped: Student[] = [];
-    preview.rows.forEach(({ student }) => {
-      const name = student.name.trim();
-      if (!name || seen.has(name)) return;
-      seen.add(name);
-      deduped.push(student);
-    });
+    const validRows = preview.rows
+      .filter(({ issues }) => !issues.some(issue => issue.kind === 'error'))
+      .map(({ student }) => student);
     // Pass Student objects directly — no fragile CSV round-trip.
     let result: { added: number; skipped: number; total: number };
     if (importMode === 'append') {
-      result = appendStudents(deduped);
+      result = appendStudents(validRows);
     } else {
-      clearAll();
-      result = appendStudents(deduped);
+      result = replaceStudents(validRows);
     }
 
     setImportText('');
