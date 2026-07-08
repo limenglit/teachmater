@@ -429,13 +429,25 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                     </>
                   )}
 
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">导入方式：</span>
+                    <label className="inline-flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="import-mode" checked={importMode === 'append'} onChange={() => setImportMode('append')} />
+                      <span>追加（保留现有 {students.length} 人，跳过重复）</span>
+                    </label>
+                    <label className="inline-flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="import-mode" checked={importMode === 'replace'} onChange={() => setImportMode('replace')} />
+                      <span>替换全部</span>
+                    </label>
+                  </div>
+
                   <Button
                     onClick={handleImport}
                     disabled={preview.validCount === 0}
                     className="w-full"
                     size="sm"
                   >
-                    {t('sidebar.importConfirm')}
+                    {importMode === 'append' ? '追加到名单' : (t('sidebar.importConfirm') || '导入')}
                     {preview.validCount > 0 && ` (${preview.validCount})`}
                   </Button>
                 </div>
