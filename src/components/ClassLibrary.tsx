@@ -278,8 +278,6 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     }
 
     let totalInserted = 0;
-    let totalSkippedExisting = 0;
-    const skippedNames: string[] = [];
 
     for (const [collegeName, classMap] of grouped) {
       let college = colleges.find(c => c.name === collegeName);
@@ -318,10 +316,6 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     setPreviewData([]);
 
     const parts: string[] = [`成功导入 ${totalInserted} 名学生`];
-    if (totalSkippedExisting > 0) {
-      const uniqueSkipped = [...new Set(skippedNames)].slice(0, 5).join('、');
-      parts.push(`已跳过 ${totalSkippedExisting} 个已存在: ${uniqueSkipped}${skippedNames.length > 5 ? '等' : ''}`);
-    }
     toast({
       title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
       description: parts.join('；'),
