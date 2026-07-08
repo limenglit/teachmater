@@ -111,6 +111,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       .filter(({ issues }) => !issues.some(issue => issue.kind === 'error'))
       .map(({ student }) => student);
     const prevCount = students.length;
+    const parsedCount = validRows.length;
     // Pass Student objects directly — no fragile CSV round-trip.
     let result: { added: number; skipped: number; total: number };
     if (importMode === 'append') {
@@ -122,7 +123,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     setImportText('');
     setImportOpen(false);
     const finalTotal = importMode === 'append' ? prevCount + result.added : result.added;
-    const desc = `新增 ${result.added} 人 · 跳过重复 ${result.skipped} 人 · 当前总人数 ${finalTotal} 人`;
+    const desc = `解析 ${parsedCount} 条 · 新增 ${result.added} 人 · 跳过重复 ${result.skipped} 人 · 当前总人数 ${finalTotal} 人`;
     toast({
       title: importMode === 'append' ? '追加成功' : (t('sidebar.importConfirm') || '导入成功'),
       description: desc,
@@ -134,18 +135,19 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       const text = await navigator.clipboard.readText();
       if (!text.trim()) return;
       const parsed = parseStudentsFromText(text);
+      const parsedCount = parsed.length;
       const prevCount = students.length;
       if (prevCount > 0) {
         const r = appendStudents(parsed);
         toast({
           title: '追加成功',
-          description: `新增 ${r.added} 人 · 跳过重复 ${r.skipped} 人 · 当前总人数 ${prevCount + r.added} 人`,
+          description: `解析 ${parsedCount} 条 · 新增 ${r.added} 人 · 跳过重复 ${r.skipped} 人 · 当前总人数 ${prevCount + r.added} 人`,
         });
       } else {
         const r = importFromText(text);
         toast({
           title: t('sidebar.pasteSuccess') || '粘贴成功',
-          description: `新增 ${r.added} 人 · 跳过重复 ${r.skipped} 人 · 当前总人数 ${r.added} 人`,
+          description: `解析 ${parsedCount} 条 · 新增 ${r.added} 人 · 跳过重复 ${r.skipped} 人 · 当前总人数 ${r.added} 人`,
         });
       }
     } catch {
