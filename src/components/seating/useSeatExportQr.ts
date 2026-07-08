@@ -1,5 +1,5 @@
-import { useMemo, useState, useCallback } from 'react';
-import { getActiveClassName } from '@/lib/class-context';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { getActiveClassName, ACTIVE_CLASS_CHANGED_EVENT } from '@/lib/class-context';
 import { createSeatCheckinSession } from '@/lib/seat-checkin-session';
 import { getRequireSeatAssignmentBeforeCheckin, isSeatAssignmentComplete } from '@/lib/seat-checkin-policy';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -15,15 +15,41 @@ interface UseSeatExportQrParams {
 
 export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, sceneConfig, sceneType, durationMinutes }: UseSeatExportQrParams) {
   const { t } = useLanguage();
+  const fallback = t('seat.qr.fallbackClass');
+  const [activeName, setActiveName] = useState<string>(() => getActiveClassName());
   const [checkinUrl, setCheckinUrl] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const cachedForNameRef = useRef<string | null>(null);
 
-  const className = useMemo(() => getActiveClassName() || t('seat.qr.fallbackClass'), [t]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sync = () => setActiveName(getActiveClassName());
+    window.addEventListener(ACTIVE_CLASS_CHANGED_EVENT, sync);
+    window.addEventListener('storage', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener(ACTIVE_CLASS_CHANGED_EVENT, sync);
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
+  const className = activeName || fallback;
+
+  // Invalidate cached check-in URL when class name changes so QR label & session
+  // stay in sync with the currently saved class.
+  useEffect(() => {
+    if (cachedForNameRef.current !== null && cachedForNameRef.current !== className) {
+      setCheckinUrl(null);
+    }
+  }, [className]);
 
   const resolveQrCode = async () => {
-    if (checkinUrl) {
-      return { value: checkinUrl, className };
+    // Always read latest name at export time to guard against stale memoized value.
+    const latestName = getActiveClassName() || fallback;
+    if (checkinUrl && cachedForNameRef.current === latestName) {
+      return { value: checkinUrl, className: latestName };
     }
 
     const requireSeatAssignment = getRequireSeatAssignmentBeforeCheckin();
@@ -43,10 +69,11 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
         sceneConfig,
         sceneType,
         durationMinutes: typeof durationMinutes === 'number' ? durationMinutes : 5,
-        className,
+        className: latestName,
       });
       setCheckinUrl(created.checkinUrl);
-      return { value: created.checkinUrl, className };
+      cachedForNameRef.current = latestName;
+      return { value: created.checkinUrl, className: latestName };
     } catch (err) {
       const msg = err instanceof Error ? err.message : '生成签到码失败';
       setLastError(msg);
@@ -58,11 +85,13 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
 
   const handleSessionCreated = (url: string) => {
     setCheckinUrl(url);
+    cachedForNameRef.current = getActiveClassName() || fallback;
     setLastError(null);
   };
 
   const reset = useCallback(() => {
     setCheckinUrl(null);
+    cachedForNameRef.current = null;
     setLastError(null);
     setIsCreating(false);
   }, []);
