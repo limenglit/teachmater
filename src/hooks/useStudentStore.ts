@@ -316,6 +316,7 @@ export function useStudentStore(userId?: string | null) {
       const key = norm(s.name);
       if (!key) { skipped++; return; }
       if (existing.has(key)) { skipped++; return; }
+      existing.add(key);
       toAdd.push({ ...s, id: makeId(), name: s.name.trim() });
       added++;
     });
