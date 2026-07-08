@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { parseStudentsFromText } from '@/hooks/useStudentStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -351,7 +352,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
   const confirmTextImport = async () => {
     if (!textImportContent.trim() || !selectedClass || !userId) return;
-    const rawNames = textImportContent.split(/\r\n|[\n\r\u2028\u2029]/).map(n => n.trim()).filter(Boolean);
+    const rawNames = parseStudentsFromText(textImportContent).map(student => student.name.trim()).filter(Boolean);
     if (rawNames.length === 0) return;
 
     // Build warning messages
