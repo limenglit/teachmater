@@ -363,9 +363,9 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                           <span>{t('sidebar.fixHintHeader')}</span>
                         </div>
                       )}
-                      {students.length > 0 && (
+                      {students.length > 0 && importMode === 'replace' && (
                         <p className="text-xs text-muted-foreground">
-                          {t('sidebar.previewReplaceWarn').replace('{count}', String(students.length))}
+                          {(t('sidebar.previewReplaceWarn') || '将覆盖现有 {count} 人').replace('{count}', String(students.length))}
                         </p>
                       )}
                       <div className="border border-border rounded-md overflow-hidden">
