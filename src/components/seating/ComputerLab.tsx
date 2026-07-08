@@ -533,8 +533,11 @@ export default function ComputerLab({ students }: Props) {
         data-seat-name={name}
         data-seat-closed={isClosed ? 'true' : 'false'}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
+        onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); } : undefined}
         onPointerDown={name && !isClosed ? (e) => {
           e.stopPropagation();
+          (e.nativeEvent as Event).stopPropagation?.();
+          seatDraggingRef.current = true;
           try { (e.currentTarget as Element).releasePointerCapture(e.pointerId); } catch {}
           setDragFrom(slot);
           setDropTarget(slot);
