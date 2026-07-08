@@ -132,7 +132,7 @@ test.describe('学生名单导入端到端回归', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.locator('button[title="清空"]').click();
-    await expect(page.getByText('0 人')).toBeVisible();
+    await expect(page.locator('.bg-accent').filter({ hasText: '0 人' })).toBeVisible();
   });
 
   test('上传 59 人 TXT 后侧栏总数、随机模块总数和本地名单都更新为 59', async ({ page }) => {
@@ -148,7 +148,7 @@ test.describe('学生名单导入端到端回归', () => {
     await expect(page.getByRole('button', { name: /追加到名单 \(59\)/ })).toBeEnabled();
     await page.getByRole('button', { name: /追加到名单 \(59\)/ }).click();
 
-    await expect(page.getByText('59 人').first()).toBeVisible();
+    await expect(page.locator('.bg-accent').filter({ hasText: '59 人' })).toBeVisible();
     await expect(page.getByText('滚轮模式 (59人)')).toBeVisible();
     await expect(page.getByText('剩余 59/59 人').first()).toBeVisible();
 
@@ -164,14 +164,14 @@ test.describe('学生名单导入端到端回归', () => {
     await openImportDialog(page);
     await page.locator('textarea').fill(REPORTED_ROSTER);
     await page.getByRole('button', { name: /追加到名单 \(59\)/ }).click();
-    await expect(page.getByText('59 人').first()).toBeVisible();
+    await expect(page.locator('.bg-accent').filter({ hasText: '59 人' })).toBeVisible();
 
     await openImportDialog(page);
     await page.locator('textarea').fill('追加甲\n追加乙\n追加丙');
     await expect(page.getByRole('dialog')).toContainText('共解析 3 条有效记录');
     await page.getByRole('button', { name: /追加到名单 \(3\)/ }).click();
 
-    await expect(page.getByText('62 人').first()).toBeVisible();
+    await expect(page.locator('.bg-accent').filter({ hasText: '62 人' })).toBeVisible();
     await expect(page.getByText('滚轮模式 (62人)')).toBeVisible();
     const storedNames = await page.evaluate(() => {
       const students = JSON.parse(localStorage.getItem('teachmate_students') || '[]');
