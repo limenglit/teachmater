@@ -76,10 +76,26 @@ const normalizeGender = (raw?: string): StudentGender => {
   return 'unknown';
 };
 
+const makeId = (() => {
+  let counter = 0;
+  return () => {
+    counter += 1;
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return `s_${crypto.randomUUID()}`;
+      }
+    } catch {
+      /* ignore */
+    }
+    return `s_${Date.now()}_${counter}_${Math.random().toString(36).slice(2, 8)}`;
+  };
+})();
+
 export const parseStudentsFromText = (text: string): Student[] => {
   const normalizedText = text
     .replace(/^\uFEFF/, '')
     .replace(/\u0000/g, '');
+
 
   const lines = normalizedText
     .split(/\r\n|[\n\r\u2028\u2029]/)
