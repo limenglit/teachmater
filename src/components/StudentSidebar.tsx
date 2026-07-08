@@ -105,11 +105,14 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       deduped.push(student);
     });
     // Pass Student objects directly — no fragile CSV round-trip.
-    const result = importMode === 'append'
-      ? appendStudents(deduped)
-      : importFromText(deduped.map(s => [s.name, s.gender ?? '', s.organization ?? '', s.title ?? ''].join(',')).length > 0
-          ? `姓名,性别,单位,职务\n${deduped.map(s => [s.name, s.gender ?? '', s.organization ?? '', s.title ?? ''].join(',')).join('\n')}`
-          : '');
+    let result: { added: number; skipped: number; total: number };
+    if (importMode === 'append') {
+      result = appendStudents(deduped);
+    } else {
+      clearAll();
+      result = appendStudents(deduped);
+    }
+
     setImportText('');
     setImportOpen(false);
     const desc = importMode === 'append'
