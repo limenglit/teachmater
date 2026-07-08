@@ -799,15 +799,29 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <label className="text-sm text-foreground">{t('library.existingClassHandling')}</label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="radio" checked={importMode === 'append'} onChange={() => setImportMode('append')} />
-                {t('library.append')}
+                {(() => {
+                  const targets = new Set(previewData.map(r => `${r.college}||${r.className}`));
+                  let existing = 0;
+                  for (const key of targets) {
+                    const [cn, kn] = key.split('||');
+                    const col = colleges.find(c => c.name === cn);
+                    const cls = col ? classes.find(c => c.college_id === col.id && c.name === kn) : null;
+                    if (cls) existing += students.filter(s => s.class_id === cls.id).length;
+                  }
+                  return `${t('library.append')}（保留现有 ${existing} 人）`;
+                })()}
               </label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="radio" checked={importMode === 'overwrite'} onChange={() => setImportMode('overwrite')} />
                 {t('library.overwrite')}
+              </label>
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer ml-auto">
+                <input type="checkbox" checked={importDedupe} onChange={e => setImportDedupe(e.target.checked)} />
+                去重
               </label>
             </div>
             <div className="flex gap-2">
