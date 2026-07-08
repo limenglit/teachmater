@@ -846,6 +846,21 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                 placeholder="张三&#10;李四&#10;王五"
                 rows={8}
               />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+                <label className="text-sm text-foreground">{t('library.existingClassHandling')}</label>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" checked={textImportMode === 'append'} onChange={() => setTextImportMode('append')} />
+                  {t('library.append')}（保留现有 {classStudents.length} 人）
+                </label>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" checked={textImportMode === 'overwrite'} onChange={() => setTextImportMode('overwrite')} />
+                  {t('library.overwrite')}
+                </label>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer ml-auto">
+                  <input type="checkbox" checked={textDedupe} onChange={e => setTextDedupe(e.target.checked)} />
+                  去重
+                </label>
+              </div>
               <Button onClick={confirmTextImport} className="mt-2 w-full" size="sm">{t('sidebar.importConfirm')}</Button>
             </div>
             <div className="border-t border-border pt-4">
