@@ -135,7 +135,7 @@ export const parseStudentsFromText = (text: string): Student[] => {
   const rows = hasHeader ? lines.slice(1) : lines;
 
   return rows
-    .flatMap((line, i) => {
+    .flatMap((line, i): Student[] => {
       const parts = splitParts(line);
 
       if (!hasHeader && parts.length > 1 && parts.every(looksLikeStandaloneName)) {
@@ -149,7 +149,7 @@ export const parseStudentsFromText = (text: string): Student[] => {
       }
 
       const name = (hasHeader && nameIdx >= 0 ? parts[nameIdx] : parts[0]) ?? '';
-      if (!name) return null;
+      if (!name) return [];
 
       let genderRaw: string | undefined;
       let organizationRaw: string | undefined;
@@ -191,13 +191,13 @@ export const parseStudentsFromText = (text: string): Student[] => {
       const organization = organizationRaw?.trim() || undefined;
       const title = titleRaw?.trim() || undefined;
 
-      return {
+      return [{
         id: makeId(),
         name,
         gender,
         organization,
         title,
-      } as Student;
+      } as Student];
 
     })
     .filter((student): student is Student => !!student);
