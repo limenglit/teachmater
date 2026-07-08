@@ -1,13 +1,19 @@
 const ACTIVE_CLASS_NAME_KEY = 'teachmate_active_class_name';
+export const ACTIVE_CLASS_CHANGED_EVENT = 'teachmate:active-class-changed';
 
 export function setActiveClassName(className: string) {
   if (typeof window === 'undefined') return;
   const normalized = className.trim();
   if (normalized) {
     window.localStorage.setItem(ACTIVE_CLASS_NAME_KEY, normalized);
-    return;
+  } else {
+    window.localStorage.removeItem(ACTIVE_CLASS_NAME_KEY);
   }
-  window.localStorage.removeItem(ACTIVE_CLASS_NAME_KEY);
+  try {
+    window.dispatchEvent(new CustomEvent(ACTIVE_CLASS_CHANGED_EVENT, { detail: normalized }));
+  } catch {
+    // ignore
+  }
 }
 
 export function getActiveClassName() {
