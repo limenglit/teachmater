@@ -84,20 +84,16 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     const skipped = Math.max(0, expected - parsed.length);
 
     const existingNames = new Set(students.map(s => s.name.trim()));
-    const seen = new Map<string, number>();
     const rows = parsed.map((s) => {
       const name = s.name.trim();
       const issues: Array<{ kind: 'error' | 'warn' | 'info'; key: string }> = [];
       if (!name) issues.push({ kind: 'error', key: 'sidebar.issueMissingName' });
-      const prev = seen.get(name) ?? 0;
-      if (prev > 0) issues.push({ kind: 'warn', key: 'sidebar.issueDupInImport' });
-      seen.set(name, prev + 1);
       if (existingNames.has(name)) issues.push({ kind: 'warn', key: 'sidebar.issueDupInRoster' });
       if (!s.gender || s.gender === 'unknown') issues.push({ kind: 'info', key: 'sidebar.issueOptionalMissing' });
       return { student: s, issues };
     });
 
-    const dupCount = rows.filter(r => r.issues.some(i => i.key === 'sidebar.issueDupInImport')).length;
+    const dupCount = rows.filter(r => r.issues.some(i => i.key === 'sidebar.issueDupInRoster')).length;
     const validCount = rows.filter(r => !r.issues.some(i => i.kind === 'error')).length;
     return { rows, skipped, dupCount, validCount, total: rows.length };
   }, [importText, students]);
