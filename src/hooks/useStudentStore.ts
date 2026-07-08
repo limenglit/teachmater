@@ -76,6 +76,16 @@ const normalizeGender = (raw?: string): StudentGender => {
   return 'unknown';
 };
 
+const looksLikeStandaloneName = (raw: string) => {
+  const value = raw.trim();
+  if (!value || normalizeGender(value) !== 'unknown') return false;
+  if (!/^[\p{Script=Han}·•]{2,4}$/u.test(value)) return false;
+  // Common organization / role endings. These make whitespace CSV rows such as
+  // "张三 物理学院 组长" stay as one structured student row, while copied
+  // multi-column name lists like "张三 李四 王五" expand to three students.
+  return !/(学院|学校|中心|公司|部门|教研室|实验室|办公室|处|局|部|科|系|班|组|队|主任|老师|教师|教授|讲师|组长|副组长|班长|委员)$/.test(value);
+};
+
 const makeId = (() => {
   let counter = 0;
   return () => {
@@ -125,8 +135,18 @@ export const parseStudentsFromText = (text: string): Student[] => {
   const rows = hasHeader ? lines.slice(1) : lines;
 
   return rows
-    .map((line, i) => {
+    .flatMap((line, i) => {
       const parts = splitParts(line);
+
+      if (!hasHeader && parts.length > 1 && parts.every(looksLikeStandaloneName)) {
+        return parts.map(name => ({
+          id: makeId(),
+          name,
+          gender: 'unknown' as StudentGender,
+          organization: undefined,
+          title: undefined,
+        }));
+      }
 
       const name = (hasHeader && nameIdx >= 0 ? parts[nameIdx] : parts[0]) ?? '';
       if (!name) return null;
@@ -268,22 +288,35 @@ export function useStudentStore(userId?: string | null) {
     return { added: newStudents.length, skipped: 0, total: newStudents.length };
   }, []);
 
+  const replaceStudents = useCallback((incoming: Student[]) => {
+    let skipped = 0;
+    const next = incoming.flatMap((student) => {
+      const name = student.name.trim();
+      if (!name) {
+        skipped++;
+        return [];
+      }
+      return [{ ...student, id: makeId(), name }];
+    });
+    studentsRef.current = next;
+    setStudents(next);
+    return { added: next.length, skipped, total: incoming.length };
+  }, []);
+
   // Append parsed Student objects directly. Computes counts synchronously
   // using studentsRef so callers get accurate {added, skipped}.
   const appendStudents = useCallback((incoming: Student[]) => {
     const norm = (s: string) => s.trim().toLowerCase();
     const prev = studentsRef.current;
     const existing = new Set(prev.map(s => norm(s.name)));
-    const seenInBatch = new Set<string>();
     const toAdd: Student[] = [];
     let added = 0;
     let skipped = 0;
     incoming.forEach((s) => {
       const key = norm(s.name);
       if (!key) { skipped++; return; }
-      if (existing.has(key) || seenInBatch.has(key)) { skipped++; return; }
-      seenInBatch.add(key);
-      toAdd.push({ ...s, id: makeId() });
+      if (existing.has(key)) { skipped++; return; }
+      toAdd.push({ ...s, id: makeId(), name: s.name.trim() });
       added++;
     });
     const next = [...prev, ...toAdd];
@@ -300,6 +333,6 @@ export function useStudentStore(userId?: string | null) {
     return appendStudents(parsed);
   }, [appendStudents]);
 
-  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText, appendFromText, appendStudents };
+  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText, appendFromText, appendStudents, replaceStudents };
 }
 
