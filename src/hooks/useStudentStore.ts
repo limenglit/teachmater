@@ -101,6 +101,26 @@ const makeId = (() => {
   };
 })();
 
+const normalizeStudentKey = (name: string) => name.trim().toLowerCase();
+
+const buildUniqueStudents = (incoming: Student[], existingKeys = new Set<string>()) => {
+  const students: Student[] = [];
+  let skipped = 0;
+
+  incoming.forEach((student) => {
+    const name = student.name.trim();
+    const key = normalizeStudentKey(name);
+    if (!key || existingKeys.has(key)) {
+      skipped++;
+      return;
+    }
+    existingKeys.add(key);
+    students.push({ ...student, id: makeId(), name });
+  });
+
+  return { students, skipped };
+};
+
 export const parseStudentsFromText = (text: string): Student[] => {
   const normalizedText = text
     .replace(/^\uFEFF/, '')
@@ -282,47 +302,31 @@ export function useStudentStore(userId?: string | null) {
   }, []);
 
   const importFromText = useCallback((text: string) => {
-    const newStudents = parseStudentsFromText(text).map(s => ({ ...s, id: makeId() }));
+    const parsed = parseStudentsFromText(text);
+    const { students: newStudents, skipped } = buildUniqueStudents(parsed);
     studentsRef.current = newStudents;
     setStudents(newStudents);
-    return { added: newStudents.length, skipped: 0, total: newStudents.length };
+    return { added: newStudents.length, skipped, total: newStudents.length };
   }, []);
 
   const replaceStudents = useCallback((incoming: Student[]) => {
-    let skipped = 0;
-    const next = incoming.flatMap((student) => {
-      const name = student.name.trim();
-      if (!name) {
-        skipped++;
-        return [];
-      }
-      return [{ ...student, id: makeId(), name }];
-    });
+    const { students: next, skipped } = buildUniqueStudents(incoming);
     studentsRef.current = next;
     setStudents(next);
-    return { added: next.length, skipped, total: incoming.length };
+    return { added: next.length, skipped, total: next.length };
   }, []);
 
   // Append parsed Student objects directly. Computes counts synchronously
   // using studentsRef so callers get accurate {added, skipped}.
   const appendStudents = useCallback((incoming: Student[]) => {
-    const norm = (s: string) => s.trim().toLowerCase();
     const prev = studentsRef.current;
-    const existing = new Set(prev.map(s => norm(s.name)));
-    const toAdd: Student[] = [];
-    let added = 0;
-    let skipped = 0;
-    incoming.forEach((s) => {
-      const key = norm(s.name);
-      if (!key) { skipped++; return; }
-      if (existing.has(key)) { skipped++; return; }
-      toAdd.push({ ...s, id: makeId(), name: s.name.trim() });
-      added++;
-    });
+    const existing = new Set(prev.map(s => normalizeStudentKey(s.name)));
+    const { students: toAdd, skipped } = buildUniqueStudents(incoming, existing);
+    const added = toAdd.length;
     const next = [...prev, ...toAdd];
     studentsRef.current = next;
     setStudents(next);
-    return { added, skipped, total: incoming.length };
+    return { added, skipped, total: next.length };
   }, []);
 
 
