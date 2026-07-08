@@ -422,7 +422,27 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
     setLoading(true);
     try {
-      const inserts = rawNames.map(name => ({
+      if (textImportMode === 'overwrite') {
+        const { error } = await supabase.from('class_students').delete().eq('class_id', selectedClass);
+        if (error) throw error;
+      }
+
+      let effectiveNames = rawNames;
+      let dedupeSkipped = 0;
+      if (textDedupe) {
+        const existing = textImportMode === 'overwrite'
+          ? new Set<string>()
+          : new Set(students.filter(s => s.class_id === selectedClass).map(s => s.name));
+        const seen = new Set<string>();
+        effectiveNames = [];
+        for (const name of rawNames) {
+          if (existing.has(name) || seen.has(name)) { dedupeSkipped++; continue; }
+          seen.add(name);
+          effectiveNames.push(name);
+        }
+      }
+
+      const inserts = effectiveNames.map(name => ({
         class_id: selectedClass,
         user_id: userId,
         name,
@@ -435,9 +455,10 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       setTextImportOpen(false);
 
       const desc = [
-        `成功导入 ${rawNames.length} 名学生`,
+        `成功导入 ${effectiveNames.length} 名学生`,
+        textDedupe && dedupeSkipped > 0 ? `去重跳过 ${dedupeSkipped} 名` : '',
         ...warnings,
-      ].join('；');
+      ].filter(Boolean).join('；');
       toast({ title: t('library.importSuccess'), description: desc });
     } catch {
       toast({ title: '导入失败', description: '名单未完整写入，请稍后重试', variant: 'destructive' });
