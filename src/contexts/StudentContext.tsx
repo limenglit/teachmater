@@ -10,7 +10,9 @@ interface StudentContextType {
   clearAll: () => void;
   importFromText: (text: string) => { added: number; skipped: number; total: number };
   appendFromText: (text: string) => { added: number; skipped: number; total: number };
+  appendStudents: (incoming: Student[]) => { added: number; skipped: number; total: number };
 }
+
 
 const StudentContext = createContext<StudentContextType | null>(null);
 
