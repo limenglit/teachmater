@@ -222,60 +222,76 @@ export function useStudentStore(userId?: string | null) {
     setStudents(loaded);
   }, [storageKey, userId, fallbackStudents]);
 
+  // Keep a live ref of `students` so imperative helpers can compute diffs
+  // synchronously without waiting for React's functional updater.
+  const studentsRef = useRef<Student[]>(students);
+  useEffect(() => { studentsRef.current = students; }, [students]);
+
   useEffect(() => {
     saveStudents(storageKey, students);
   }, [storageKey, students]);
 
   const addStudent = useCallback((name: string, gender: StudentGender = 'unknown') => {
     if (!name.trim()) return;
-    setStudents(prev => [...prev, { id: makeId(), name: name.trim(), gender }]);
+    setStudents(prev => {
+      const next = [...prev, { id: makeId(), name: name.trim(), gender }];
+      studentsRef.current = next;
+      return next;
+    });
   }, []);
 
   const removeStudent = useCallback((id: string) => {
-    setStudents(prev => prev.filter(s => s.id !== id));
+    setStudents(prev => {
+      const next = prev.filter(s => s.id !== id);
+      studentsRef.current = next;
+      return next;
+    });
   }, []);
 
   const updateStudent = useCallback((id: string, name: string) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+    setStudents(prev => {
+      const next = prev.map(s => s.id === id ? { ...s, name } : s);
+      studentsRef.current = next;
+      return next;
+    });
   }, []);
 
   const clearAll = useCallback(() => {
+    studentsRef.current = [];
     setStudents([]);
   }, []);
 
   const importFromText = useCallback((text: string) => {
     const newStudents = parseStudentsFromText(text).map(s => ({ ...s, id: makeId() }));
+    studentsRef.current = newStudents;
     setStudents(newStudents);
     return { added: newStudents.length, skipped: 0, total: newStudents.length };
   }, []);
 
-  // Append parsed Student objects directly (bypasses text round-trip).
+  // Append parsed Student objects directly. Computes counts synchronously
+  // using studentsRef so callers get accurate {added, skipped}.
   const appendStudents = useCallback((incoming: Student[]) => {
     const norm = (s: string) => s.trim().toLowerCase();
-    // Read the freshest current list via functional updater to avoid stale-closure counts.
+    const prev = studentsRef.current;
+    const existing = new Set(prev.map(s => norm(s.name)));
+    const seenInBatch = new Set<string>();
+    const toAdd: Student[] = [];
     let added = 0;
     let skipped = 0;
-    let toAdd: Student[] = [];
-    setStudents(prev => {
-      added = 0;
-      skipped = 0;
-      toAdd = [];
-      const existing = new Set(prev.map(s => norm(s.name)));
-      const seenInBatch = new Set<string>();
-      incoming.forEach((s) => {
-        const key = norm(s.name);
-        if (!key) { skipped++; return; }
-        if (existing.has(key) || seenInBatch.has(key)) { skipped++; return; }
-        seenInBatch.add(key);
-        toAdd.push({ ...s, id: makeId() });
-        added++;
-      });
-      return [...prev, ...toAdd];
+    incoming.forEach((s) => {
+      const key = norm(s.name);
+      if (!key) { skipped++; return; }
+      if (existing.has(key) || seenInBatch.has(key)) { skipped++; return; }
+      seenInBatch.add(key);
+      toAdd.push({ ...s, id: makeId() });
+      added++;
     });
-    // React 18: functional updater runs eagerly during setState for bail-out check,
-    // so `added`/`skipped` are populated by the time we return.
+    const next = [...prev, ...toAdd];
+    studentsRef.current = next;
+    setStudents(next);
     return { added, skipped, total: incoming.length };
   }, []);
+
 
 
   // Append a batch parsed from raw text.
