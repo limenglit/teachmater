@@ -154,8 +154,8 @@ describe('useStudentStore', () => {
     expect(stored).toEqual([]);
   });
 
-  // Regression: 60-line 名单（含1个同名）不能因为同名被少导，需保留完整行数
-  it('appendFromText preserves duplicate names within the same incoming roster', () => {
+  // Regression: 60-line 名单（含1个同名）应明确统计为 59 新增 + 1 重复
+  it('appendFromText counts duplicate names within the same incoming roster consistently', () => {
     const names = [
       '闫振华','郑灿灿','李名莉','刘亚闯','张子扬','马欢欢','晋懿普','常文博','魏三营','文紫薇',
       '郭文超','耿卓凡','王增华','贾小朋','许庆峰','胡志涛','李志林','李晓苗','胡瑞','徐亚光',
@@ -168,11 +168,63 @@ describe('useStudentStore', () => {
     const { result } = renderHook(() => useStudentStore('u_test'));
     let r: { added: number; skipped: number; total: number } = { added: 0, skipped: 0, total: 0 };
     act(() => { r = result.current.appendFromText(text); });
-    expect(r.added).toBe(60);
-    expect(r.skipped).toBe(0);
-    expect(result.current.students.length).toBe(60);
+    expect(r.added).toBe(59);
+    expect(r.skipped).toBe(1);
+    expect(r.total).toBe(59);
+    expect(r.added + r.skipped).toBe(names.length);
+    expect(result.current.students.length).toBe(59);
     const ids = result.current.students.map(s => s.id);
-    expect(new Set(ids).size).toBe(60);
+    expect(new Set(ids).size).toBe(59);
+  });
+
+  it('appendFromText keeps 30→27 cross-batch and in-batch duplicate statistics consistent', () => {
+    const existing = [{ id: 'existing_1', name: '学生01' }];
+    localStorage.setItem(USER_KEY('u_combo_30'), JSON.stringify(existing));
+    const incomingNames = [
+      '学生01', // 跨批重复
+      '学生02', '学生02', // 批内重复
+      '学生03', '学生03', // 批内重复
+      ...Array.from({ length: 25 }, (_, i) => `学生${String(i + 4).padStart(2, '0')}`),
+    ];
+    expect(incomingNames).toHaveLength(30);
+
+    const { result } = renderHook(() => useStudentStore('u_combo_30'));
+    let r: { added: number; skipped: number; total: number } = { added: 0, skipped: 0, total: 0 };
+    act(() => { r = result.current.appendFromText(incomingNames.join('\n')); });
+
+    expect(r.added).toBe(27);
+    expect(r.skipped).toBe(3);
+    expect(r.added + r.skipped).toBe(30);
+    expect(r.total).toBe(28);
+    expect(result.current.students).toHaveLength(28);
+    expect(result.current.students.map(s => s.name)).toEqual([
+      '学生01',
+      ...Array.from({ length: 27 }, (_, i) => `学生${String(i + 2).padStart(2, '0')}`),
+    ]);
+  });
+
+  it('appendFromText reports final total, not added count, for the reported 59→49 cross-batch duplicate case', () => {
+    const names = [
+      '闫振华','郑灿灿','李名莉','刘亚闯','张子扬','马欢欢','晋懿普','常文博','魏三营','文紫薇',
+      '郭文超','耿卓凡','王增华','贾小朋','许庆峰','胡志涛','李志林','李晓苗','胡瑞','徐亚光',
+      '柴佳新','宋沛乐','杨凯丽','黄帅娜','李自玉','柴晓芳','李泽坤','张山','陈牧','袁素君',
+      '王宇晨','潘振南','杨琦琦','侯英','孙源','王文花','李甜甜','左东祥','谢耀坤','邹洪亮',
+      '张明阳','关庆辉','祝夏斌','贺秀秀','陈闻欣','魏宁宁','张昕','李啸林','张姗姗','刘志敏',
+      '陈艺文','邢淏鑫','毕博文','魏华阳','姚梦娟','郭宇航','陈明月','闫丽娟','李雪洋'
+    ];
+    const existing = names.slice(0, 10).map((name, index) => ({ id: `existing_${index}`, name }));
+    localStorage.setItem(USER_KEY('u_cross_59'), JSON.stringify(existing));
+
+    const { result } = renderHook(() => useStudentStore('u_cross_59'));
+    let r: { added: number; skipped: number; total: number } = { added: 0, skipped: 0, total: 0 };
+    act(() => { r = result.current.appendFromText(names.join('\n')); });
+
+    expect(r.added).toBe(49);
+    expect(r.skipped).toBe(10);
+    expect(r.added + r.skipped).toBe(59);
+    expect(r.total).toBe(59);
+    expect(result.current.students).toHaveLength(59);
+    expect(result.current.students.map(s => s.name)).toEqual(names);
   });
 
   it('parses the reported 59-name roster without dropping any names', () => {
