@@ -18,11 +18,14 @@ import { readSpreadsheetFile, writeExcelFile, writeCsvFile } from '@/lib/excel-u
 import { buildClassRosterPreview, type ClassRosterPreviewRow } from '@/lib/roster-import';
 import { setActiveClassName } from '@/lib/class-context';
 import { decodeTextBytes } from '@/lib/text-file';
+import { buildClassStudentInserts, chunkClassStudentInserts, type ClassStudentInsertRow } from '@/lib/class-roster-import';
 
 interface College { id: string; name: string; user_id: string; sort_order?: number; }
 interface ClassItem { id: string; college_id: string; name: string; user_id: string; sort_order?: number; }
 interface ClassStudent { id: string; class_id: string; name: string; student_number: string; user_id: string; }
 type PreviewRow = ClassRosterPreviewRow;
+
+const CLASS_STUDENTS_PAGE_SIZE = 1000;
 
 interface ClassLibraryProps {
   onBackToList?: () => void;
@@ -74,17 +77,45 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     loadAll();
   }, [userId]);
 
+  const fetchAllClassStudents = async () => {
+    const all: ClassStudent[] = [];
+    for (let from = 0; ; from += CLASS_STUDENTS_PAGE_SIZE) {
+      const { data, error } = await supabase
+        .from('class_students')
+        .select('*')
+        .order('name')
+        .range(from, from + CLASS_STUDENTS_PAGE_SIZE - 1);
+      if (error) throw error;
+      const page = (data || []) as ClassStudent[];
+      all.push(...page);
+      if (page.length < CLASS_STUDENTS_PAGE_SIZE) break;
+    }
+    return all;
+  };
+
   const loadAll = async () => {
     setLoading(true);
-    const [c1, c2, c3] = await Promise.all([
-      supabase.from('colleges').select('*').order('sort_order' as never, { ascending: true }).order('name'),
-      supabase.from('classes').select('*').order('sort_order' as never, { ascending: true }).order('name'),
-      supabase.from('class_students').select('*').order('name'),
-    ]);
-    if (c1.data) setColleges(c1.data as College[]);
-    if (c2.data) setClasses(c2.data as ClassItem[]);
-    if (c3.data) setStudents(c3.data as ClassStudent[]);
-    setLoading(false);
+    try {
+      const [c1, c2, classStudents] = await Promise.all([
+        supabase.from('colleges').select('*').order('sort_order' as never, { ascending: true }).order('name'),
+        supabase.from('classes').select('*').order('sort_order' as never, { ascending: true }).order('name'),
+        fetchAllClassStudents(),
+      ]);
+      if (c1.data) setColleges(c1.data as College[]);
+      if (c2.data) setClasses(c2.data as ClassItem[]);
+      setStudents(classStudents);
+    } catch {
+      toast({ title: '班级库加载失败', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const insertClassStudentRows = async (inserts: ClassStudentInsertRow[]) => {
+    for (const batch of chunkClassStudentInserts(inserts)) {
+      const { error } = await supabase.from('class_students').insert(batch as never);
+      if (error) throw error;
+    }
   };
 
   const addCollege = async () => {
@@ -274,59 +305,58 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const confirmImport = async () => {
     if (!userId || previewData.length === 0) return;
     setLoading(true);
-
-    const grouped = new Map<string, Map<string, PreviewRow[]>>();
-    for (const row of previewData) {
-      if (!grouped.has(row.college)) grouped.set(row.college, new Map());
-      const classMap = grouped.get(row.college)!;
-      if (!classMap.has(row.className)) classMap.set(row.className, []);
-      classMap.get(row.className)!.push(row);
-    }
-
-    let totalInserted = 0;
-
-    for (const [collegeName, classMap] of grouped) {
-      let college = colleges.find(c => c.name === collegeName);
-      if (!college) {
-        const { data } = await supabase.from('colleges').insert({ name: collegeName, user_id: userId }).select().single();
-        if (data) college = data as College;
+    try {
+      const grouped = new Map<string, Map<string, PreviewRow[]>>();
+      for (const row of previewData) {
+        if (!grouped.has(row.college)) grouped.set(row.college, new Map());
+        const classMap = grouped.get(row.college)!;
+        if (!classMap.has(row.className)) classMap.set(row.className, []);
+        classMap.get(row.className)!.push(row);
       }
-      if (!college) continue;
 
-      for (const [className, rows] of classMap) {
-        let cls = classes.find(c => c.college_id === college!.id && c.name === className);
-        if (!cls) {
-          const { data } = await supabase.from('classes').insert({ name: className, college_id: college.id, user_id: userId }).select().single();
-          if (data) cls = data as ClassItem;
+      let totalInserted = 0;
+
+      for (const [collegeName, classMap] of grouped) {
+        let college = colleges.find(c => c.name === collegeName);
+        if (!college) {
+          const { data, error } = await supabase.from('colleges').insert({ name: collegeName, user_id: userId }).select().single();
+          if (error) throw error;
+          if (data) college = data as College;
         }
-        if (!cls) continue;
+        if (!college) continue;
 
-        if (importMode === 'overwrite') {
-          await supabase.from('class_students').delete().eq('class_id', cls.id);
-          const inserts = rows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
-          await supabase.from('class_students').insert(inserts);
-          totalInserted += inserts.length;
-        } else {
-          const newRows = rows;
-          if (newRows.length > 0) {
-            const inserts = newRows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
-            await supabase.from('class_students').insert(inserts);
-            totalInserted += inserts.length;
+        for (const [className, rows] of classMap) {
+          let cls = classes.find(c => c.college_id === college!.id && c.name === className);
+          if (!cls) {
+            const { data, error } = await supabase.from('classes').insert({ name: className, college_id: college.id, user_id: userId }).select().single();
+            if (error) throw error;
+            if (data) cls = data as ClassItem;
           }
+          if (!cls) continue;
+
+          if (importMode === 'overwrite') {
+            const { error } = await supabase.from('class_students').delete().eq('class_id', cls.id);
+            if (error) throw error;
+          }
+          const inserts = buildClassStudentInserts(rows, cls.id, userId);
+          await insertClassStudentRows(inserts);
+          totalInserted += inserts.length;
         }
       }
+
+      await loadAll();
+      setImportOpen(false);
+      setPreviewData([]);
+
+      toast({
+        title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
+        description: `成功导入 ${totalInserted} 名学生`,
+        variant: totalInserted > 0 ? 'default' : 'destructive',
+      });
+    } catch {
+      toast({ title: '导入失败', description: '名单未完整写入，请稍后重试', variant: 'destructive' });
+      setLoading(false);
     }
-
-    await loadAll();
-    setImportOpen(false);
-    setPreviewData([]);
-
-    const parts: string[] = [`成功导入 ${totalInserted} 名学生`];
-    toast({
-      title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
-      description: parts.join('；'),
-      variant: totalInserted > 0 ? 'default' : 'destructive',
-    });
   };
 
   const handleTextFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,23 +394,28 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     }
 
     setLoading(true);
-    const inserts = rawNames.map(name => ({
-      class_id: selectedClass,
-      user_id: userId,
-      name,
-      student_number: ''
-    }));
+    try {
+      const inserts = rawNames.map(name => ({
+        class_id: selectedClass,
+        user_id: userId,
+        name,
+        student_number: ''
+      }));
 
-    await supabase.from('class_students').insert(inserts);
-    await loadAll();
-    setTextImportContent('');
-    setTextImportOpen(false);
+      await insertClassStudentRows(inserts);
+      await loadAll();
+      setTextImportContent('');
+      setTextImportOpen(false);
 
-    const desc = [
-      `成功导入 ${rawNames.length} 名学生`,
-      ...warnings,
-    ].join('；');
-    toast({ title: t('library.importSuccess'), description: desc });
+      const desc = [
+        `成功导入 ${rawNames.length} 名学生`,
+        ...warnings,
+      ].join('；');
+      toast({ title: t('library.importSuccess'), description: desc });
+    } catch {
+      toast({ title: '导入失败', description: '名单未完整写入，请稍后重试', variant: 'destructive' });
+      setLoading(false);
+    }
   };
 
   const exportClassToExcel = () => {
