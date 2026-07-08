@@ -251,13 +251,17 @@ export function useStudentStore(userId?: string | null) {
 
   // Append parsed Student objects directly (bypasses text round-trip).
   const appendStudents = useCallback((incoming: Student[]) => {
+    const norm = (s: string) => s.trim().toLowerCase();
+    // Read the freshest current list via functional updater to avoid stale-closure counts.
     let added = 0;
     let skipped = 0;
+    let toAdd: Student[] = [];
     setStudents(prev => {
-      const norm = (s: string) => s.trim().toLowerCase();
+      added = 0;
+      skipped = 0;
+      toAdd = [];
       const existing = new Set(prev.map(s => norm(s.name)));
       const seenInBatch = new Set<string>();
-      const toAdd: Student[] = [];
       incoming.forEach((s) => {
         const key = norm(s.name);
         if (!key) { skipped++; return; }
@@ -268,8 +272,11 @@ export function useStudentStore(userId?: string | null) {
       });
       return [...prev, ...toAdd];
     });
+    // React 18: functional updater runs eagerly during setState for bail-out check,
+    // so `added`/`skipped` are populated by the time we return.
     return { added, skipped, total: incoming.length };
   }, []);
+
 
   // Append a batch parsed from raw text.
   const appendFromText = useCallback((text: string) => {
