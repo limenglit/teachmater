@@ -273,7 +273,14 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
         {students.map((student) => (
           <div
             key={student.id}
-            className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', `student:${student.name}`);
+              e.dataTransfer.setData('application/x-student-name', student.name);
+              e.dataTransfer.effectAllowed = 'copyMove';
+            }}
+            title={`拖拽 ${student.name} 到座位`}
+            className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing"
           >
             <User className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
             <span className="flex-1 text-sm text-foreground truncate">{student.name}</span>
