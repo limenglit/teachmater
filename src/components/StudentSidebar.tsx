@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
-import { decodeCsvBytes } from '@/lib/excel-utils';
+import { decodeTextBytes } from '@/lib/text-file';
 
 interface Props {
   onClose?: () => void;
@@ -53,7 +53,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const text = decodeCsvBytes(await file.arrayBuffer());
+      const text = decodeTextBytes(await file.arrayBuffer());
       setImportText(text);
     } catch {
       toast({ title: t('library.parseFailed') || '文件解析失败', variant: 'destructive' });
