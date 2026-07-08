@@ -172,12 +172,13 @@ export const parseStudentsFromText = (text: string): Student[] => {
       const title = titleRaw?.trim() || undefined;
 
       return {
-        id: `s_${Date.now()}_${i}`,
+        id: makeId(),
         name,
         gender,
         organization,
         title,
       } as Student;
+
     })
     .filter((student): student is Student => !!student);
 };
