@@ -19,6 +19,7 @@ interface Props {
 
 export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, onOpenLibrary }: Props) {
   const { students, addStudent, removeStudent, clearAll, importFromText, appendStudents } = useStudents();
+
   const { t } = useLanguage();
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
