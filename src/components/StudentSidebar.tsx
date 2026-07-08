@@ -18,11 +18,12 @@ interface Props {
 }
 
 export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, onOpenLibrary }: Props) {
-  const { students, addStudent, removeStudent, clearAll, importFromText } = useStudents();
+  const { students, addStudent, removeStudent, clearAll, importFromText, appendFromText } = useStudents();
   const { t } = useLanguage();
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [importMode, setImportMode] = useState<'replace' | 'append'>('append');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
