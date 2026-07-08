@@ -83,12 +83,10 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     const expected = rawEntryCount;
     const skipped = Math.max(0, expected - parsed.length);
 
-    const existingNames = new Set(students.map(s => s.name.trim()));
     const rows = parsed.map((s) => {
       const name = s.name.trim();
       const issues: Array<{ kind: 'error' | 'warn' | 'info'; key: string }> = [];
       if (!name) issues.push({ kind: 'error', key: 'sidebar.issueMissingName' });
-      if (existingNames.has(name)) issues.push({ kind: 'warn', key: 'sidebar.issueDupInRoster' });
       if (!s.gender || s.gender === 'unknown') issues.push({ kind: 'info', key: 'sidebar.issueOptionalMissing' });
       return { student: s, issues };
     });
@@ -117,7 +115,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
 
     setImportText('');
     setImportOpen(false);
-    const desc = `解析 ${parsedCount} 条 · 新增 ${result.added} 人 · 跳过重复 ${result.skipped} 人 · 当前总人数 ${result.total} 人`;
+    const desc = `解析 ${parsedCount} 条 · 新增 ${result.added} 人 · 跳过无效 ${result.skipped} 人 · 当前总人数 ${result.total} 人`;
     toast({
       title: importMode === 'append' ? '追加成功' : (t('sidebar.importConfirm') || '导入成功'),
       description: desc,
@@ -135,13 +133,13 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
         const r = appendStudents(parsed);
         toast({
           title: '追加成功',
-          description: `解析 ${parsedCount} 条 · 新增 ${r.added} 人 · 跳过重复 ${r.skipped} 人 · 当前总人数 ${r.total} 人`,
+          description: `解析 ${parsedCount} 条 · 新增 ${r.added} 人 · 跳过无效 ${r.skipped} 人 · 当前总人数 ${r.total} 人`,
         });
       } else {
         const r = importFromText(text);
         toast({
           title: t('sidebar.pasteSuccess') || '粘贴成功',
-          description: `解析 ${parsedCount} 条 · 新增 ${r.added} 人 · 跳过重复 ${r.skipped} 人 · 当前总人数 ${r.total} 人`,
+          description: `解析 ${parsedCount} 条 · 新增 ${r.added} 人 · 跳过无效 ${r.skipped} 人 · 当前总人数 ${r.total} 人`,
         });
       }
     } catch {
@@ -448,7 +446,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                     <span className="text-muted-foreground">导入方式：</span>
                     <label className="inline-flex items-center gap-1 cursor-pointer">
                       <input type="radio" name="import-mode" checked={importMode === 'append'} onChange={() => setImportMode('append')} />
-                      <span>追加（保留现有 {students.length} 人，跳过重复）</span>
+                      <span>追加（保留现有 {students.length} 人）</span>
                     </label>
                     <label className="inline-flex items-center gap-1 cursor-pointer">
                       <input type="radio" name="import-mode" checked={importMode === 'replace'} onChange={() => setImportMode('replace')} />

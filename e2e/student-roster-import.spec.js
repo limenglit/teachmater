@@ -131,6 +131,8 @@ const THIRTY_ROSTER_WITH_SAME_NAMES = [
   ...Array.from({ length: 25 }, (_, i) => `学生${String(i + 4).padStart(2, '0')}`),
 ].join('\n');
 
+const UNIQUE_27_ROSTER = Array.from({ length: 27 }, (_, i) => `补测学生${String(i + 1).padStart(2, '0')}`).join('\n');
+
 async function openImportDialog(page) {
   await page.getByRole('button', { name: '导入' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -225,5 +227,27 @@ test.describe('学生名单导入端到端回归', () => {
     expect(storedNames).toHaveLength(30);
     expect(storedNames.filter((name) => name === '学生02')).toHaveLength(2);
     expect(storedNames.filter((name) => name === '学生03')).toHaveLength(2);
+  });
+
+  test('二次粘贴补充同名学生也必须真实增加总数，不再提示成功但名单不变', async ({ page }) => {
+    await openImportDialog(page);
+    await page.locator('textarea').fill(UNIQUE_27_ROSTER);
+    await expect(page.getByRole('dialog')).toContainText('共解析 27 条有效记录');
+    await page.getByRole('button', { name: /追加到名单 \(27\)/ }).click();
+    await expect(page.locator('.bg-accent').filter({ hasText: '27 人' })).toBeVisible();
+
+    await openImportDialog(page);
+    await page.locator('textarea').fill('补测学生01\n补测学生02\n补测学生03');
+    await expect(page.getByRole('dialog')).toContainText('共解析 3 条有效记录');
+    await page.getByRole('button', { name: /追加到名单 \(3\)/ }).click();
+
+    await expect(page.locator('.bg-accent').filter({ hasText: '30 人' })).toBeVisible();
+    await expect(page.getByText('滚轮模式 (30人)')).toBeVisible();
+    const storedNames = await page.evaluate(() => {
+      const students = JSON.parse(localStorage.getItem('teachmate_students') || '[]');
+      return students.map((student) => student.name);
+    });
+    expect(storedNames).toHaveLength(30);
+    expect(storedNames.slice(27)).toEqual(['补测学生01', '补测学生02', '补测学生03']);
   });
 });
