@@ -14,10 +14,38 @@ export interface RosterColumns {
   numberCol: number;
 }
 
+export interface ClassRosterPreviewRow {
+  college: string;
+  className: string;
+  studentNumber: string;
+  name: string;
+}
+
+export interface ClassRosterPreviewOptions {
+  defaultCollegeName?: string;
+  defaultClassName?: string;
+}
+
+export interface ClassRosterPreviewResult {
+  preview: ClassRosterPreviewRow[];
+  skippedRows: number;
+  usedDefaultClass: boolean;
+}
+
 export function normalizeHeaderCell(s: string): string {
   return String(s ?? '')
     .toLowerCase()
     .replace(/[\s_\-\/\\()（）【】\[\]·.、,，:：;；*#"']/g, '');
+}
+
+function rowHasRecognizedRosterHeader(row: unknown[]): boolean {
+  const header = (row || []).map((c) => normalizeHeaderCell(String(c ?? '')));
+  return header.some((h) => (
+    /^(学生)?姓名$|^名字$|^name$|^fullname$/.test(h) ||
+    /^(学生)?院系$|^学院$|^系别$|^部门$|^单位$|^college$|^department$|^school$|^faculty$|^org$|^unit$/.test(h) ||
+    /^班级$|^行政班$|^教学班$|^class$|^grade$|^section$/.test(h) ||
+    /^学号$|^工号$|^编号$|^studentid$|^sid$|^no$|^number$/.test(h)
+  ));
 }
 
 /**
@@ -57,4 +85,63 @@ export function resolveRosterColumns(headerRow: unknown[]): RosterColumns {
   if (numberCol < 0) numberCol = header.length >= 4 ? 2 : -1;
 
   return { nameCol, collegeCol, classCol, numberCol };
+}
+
+/**
+ * Build a class-library import preview from spreadsheet rows.
+ * Important: this preserves every non-empty named row. Same-name students are
+ * valid in real classrooms, so callers must not deduplicate by name.
+ */
+export function buildClassRosterPreview(
+  rows: unknown[][],
+  options: ClassRosterPreviewOptions = {},
+): ClassRosterPreviewResult {
+  const defaultCollegeName = options.defaultCollegeName || '未分类院系';
+  const defaultClassName = options.defaultClassName || '未分类班级';
+  const firstRow = rows[0] || [];
+  const hasHeader = rowHasRecognizedRosterHeader(firstRow);
+  const { nameCol, collegeCol, classCol, numberCol } = hasHeader
+    ? resolveRosterColumns(firstRow)
+    : {
+        // Headerless spreadsheets are common when users export a plain list.
+        // For 4+ columns keep the legacy layout [院系, 班级, 学号, 姓名];
+        // for 1-3 columns treat the first column as 姓名 so rows are not lost.
+        collegeCol: firstRow.length >= 4 ? 0 : -1,
+        classCol: firstRow.length >= 4 ? 1 : -1,
+        numberCol: firstRow.length >= 4 ? 2 : -1,
+        nameCol: firstRow.length >= 4 ? 3 : 0,
+      };
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+
+  let skippedRows = 0;
+  let usedDefaultClass = false;
+  const preview: ClassRosterPreviewRow[] = [];
+
+  for (const row of dataRows) {
+    if (!row || row.every((c) => !c || String(c).trim() === '')) {
+      skippedRows++;
+      continue;
+    }
+
+    const name = String(row[nameCol] ?? '').trim();
+    if (!name) {
+      skippedRows++;
+      continue;
+    }
+
+    const college = collegeCol >= 0 ? String(row[collegeCol] ?? '').trim() : '';
+    const className = classCol >= 0 ? String(row[classCol] ?? '').trim() : '';
+    const resolvedCollege = college || defaultCollegeName;
+    const resolvedClassName = className || defaultClassName;
+    if (!college || !className) usedDefaultClass = true;
+
+    preview.push({
+      college: resolvedCollege,
+      className: resolvedClassName,
+      studentNumber: numberCol >= 0 ? String(row[numberCol] ?? '').trim() : '',
+      name,
+    });
+  }
+
+  return { preview, skippedRows, usedDefaultClass };
 }
