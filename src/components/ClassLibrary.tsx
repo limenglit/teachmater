@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { parseStudentsFromText } from '@/hooks/useStudentStore';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,13 +15,14 @@ import {
   ChevronRight, ChevronDown, Users, ArrowRight, Loader2, PanelLeftOpen, ArrowUpToLine, GripVertical
 } from 'lucide-react';
 import { readSpreadsheetFile, writeExcelFile, writeCsvFile } from '@/lib/excel-utils';
-import { resolveRosterColumns } from '@/lib/roster-import';
+import { buildClassRosterPreview, type ClassRosterPreviewRow } from '@/lib/roster-import';
 import { setActiveClassName } from '@/lib/class-context';
+import { decodeTextBytes } from '@/lib/text-file';
 
 interface College { id: string; name: string; user_id: string; sort_order?: number; }
 interface ClassItem { id: string; college_id: string; name: string; user_id: string; sort_order?: number; }
 interface ClassStudent { id: string; class_id: string; name: string; student_number: string; user_id: string; }
-interface PreviewRow { college: string; className: string; studentNumber: string; name: string; }
+type PreviewRow = ClassRosterPreviewRow;
 
 interface ClassLibraryProps {
   onBackToList?: () => void;
@@ -228,34 +230,17 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     try {
       const rows: any[][] = await readSpreadsheetFile(file);
 
-      if (rows.length < 2) {
+      if (rows.length < 1) {
         toast({ title: t('library.fileEmpty'), variant: 'destructive' });
         return;
       }
 
       const warnings: string[] = [];
-      let skippedRows = 0;
-
-      // Header detection: identify which column is which by header text.
-      // Tolerant of aliases (姓名/Name/学生姓名, 院系/学院/单位, 学号/工号 …).
-      const { nameCol, collegeCol, classCol, numberCol } = resolveRosterColumns(rows[0] || []);
-
       const fallbackClass = selectedClass ? classes.find(c => c.id === selectedClass) : null;
       const fallbackCollege = fallbackClass ? colleges.find(c => c.id === fallbackClass.college_id) : null;
       const defaultCollegeName = fallbackCollege?.name || '未分类院系';
       const defaultClassName = fallbackClass?.name || '未分类班级';
-
-      const preview: PreviewRow[] = [];
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row || row.every((c: any) => !c || String(c).trim() === '')) { skippedRows++; continue; }
-        const name = String(row[nameCol] ?? '').trim();
-        if (!name) { skippedRows++; continue; }
-        const college = String(row[collegeCol] ?? '').trim() || defaultCollegeName;
-        const className = String(row[classCol] ?? '').trim() || defaultClassName;
-        const studentNumber = numberCol >= 0 ? String(row[numberCol] ?? '').trim() : '';
-        preview.push({ college, className, studentNumber, name });
-      }
+      const { preview, skippedRows, usedDefaultClass } = buildClassRosterPreview(rows, { defaultCollegeName, defaultClassName });
 
       // Check for garbled encoding (common sign: replacement chars survived decoding)
       const allText = preview.map(r => r.name + r.college + r.className).join('');
@@ -265,27 +250,20 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       }
 
       if (skippedRows > 0) warnings.push(`已跳过 ${skippedRows} 个空行或缺少姓名的行`);
-      if (!selectedClass && preview.some(r => r.college === defaultCollegeName || r.className === defaultClassName)) {
+      if (!selectedClass && usedDefaultClass) {
         warnings.push('部分行未填写院系/班级，已使用「未分类」占位，可在选中目标班级后重新导入');
       }
 
-      // Deduplicate within file
-      const seen = new Set<string>();
-      const duplicates: string[] = [];
-      const deduped: PreviewRow[] = [];
-      for (const row of preview) {
-        const key = `${row.college}|${row.className}|${row.name}`;
-        if (seen.has(key)) { duplicates.push(row.name); } else { seen.add(key); deduped.push(row); }
-      }
-      if (duplicates.length > 0) {
-        warnings.push(`文件内重复已去重: ${[...new Set(duplicates)].slice(0, 5).join('、')}${duplicates.length > 5 ? '等' : ''}`);
+      if (preview.length === 0) {
+        toast({ title: t('library.fileEmpty'), variant: 'destructive' });
+        return;
       }
 
       if (warnings.length > 0) {
         toast({ title: '导入预览提示', description: warnings.join('；') });
       }
 
-      setPreviewData(deduped);
+      setPreviewData(preview);
       setImportOpen(true);
     } catch {
       toast({ title: t('library.parseFailed'), description: '文件解析失败，请检查文件格式或编码（建议使用 UTF-8 编码的 .xlsx 或 .csv 文件）', variant: 'destructive' });
@@ -306,8 +284,6 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     }
 
     let totalInserted = 0;
-    let totalSkippedExisting = 0;
-    const skippedNames: string[] = [];
 
     for (const [collegeName, classMap] of grouped) {
       let college = colleges.find(c => c.name === collegeName);
@@ -331,18 +307,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
           await supabase.from('class_students').insert(inserts);
           totalInserted += inserts.length;
         } else {
-          // Append mode: skip existing names
-          const existingNames = new Set(
-            students.filter(s => s.class_id === cls!.id).map(s => s.name)
-          );
-          const newRows = rows.filter(r => {
-            if (existingNames.has(r.name)) {
-              totalSkippedExisting++;
-              skippedNames.push(r.name);
-              return false;
-            }
-            return true;
-          });
+          const newRows = rows;
           if (newRows.length > 0) {
             const inserts = newRows.map(r => ({ class_id: cls!.id, user_id: userId, name: r.name, student_number: r.studentNumber }));
             await supabase.from('class_students').insert(inserts);
@@ -357,10 +322,6 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     setPreviewData([]);
 
     const parts: string[] = [`成功导入 ${totalInserted} 名学生`];
-    if (totalSkippedExisting > 0) {
-      const uniqueSkipped = [...new Set(skippedNames)].slice(0, 5).join('、');
-      parts.push(`已跳过 ${totalSkippedExisting} 个已存在: ${uniqueSkipped}${skippedNames.length > 5 ? '等' : ''}`);
-    }
     toast({
       title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
       description: parts.join('；'),
@@ -368,12 +329,11 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     });
   };
 
-  const handleTextFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTextFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
+    try {
+      const text = decodeTextBytes(await file.arrayBuffer());
       // Detect encoding issues
       const garbledChars = (text.match(/[�\ufffd]/g) || []).length;
       if (garbledChars > 0 && text.length > 0 && garbledChars / text.length > 0.05) {
@@ -384,67 +344,27 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
         });
       }
       setTextImportContent(text);
-    };
-    reader.readAsText(file, 'UTF-8');
-    if (textFileRef.current) textFileRef.current.value = '';
+    } catch {
+      toast({ title: t('library.parseFailed'), variant: 'destructive' });
+    } finally {
+      if (textFileRef.current) textFileRef.current.value = '';
+    }
   };
 
   const confirmTextImport = async () => {
     if (!textImportContent.trim() || !selectedClass || !userId) return;
-    const rawNames = textImportContent.split('\n').map(n => n.trim()).filter(Boolean);
+    const rawNames = parseStudentsFromText(textImportContent).map(student => student.name.trim()).filter(Boolean);
     if (rawNames.length === 0) return;
-
-    // Deduplicate within input
-    const seen = new Set<string>();
-    const duplicatesInInput: string[] = [];
-    const uniqueInputNames: string[] = [];
-    for (const name of rawNames) {
-      if (seen.has(name)) {
-        duplicatesInInput.push(name);
-      } else {
-        seen.add(name);
-        uniqueInputNames.push(name);
-      }
-    }
-
-    // Check against existing students in this class
-    const existingNames = new Set(
-      students.filter(s => s.class_id === selectedClass).map(s => s.name)
-    );
-    const alreadyExist: string[] = [];
-    const newNames: string[] = [];
-    for (const name of uniqueInputNames) {
-      if (existingNames.has(name)) {
-        alreadyExist.push(name);
-      } else {
-        newNames.push(name);
-      }
-    }
 
     // Build warning messages
     const warnings: string[] = [];
-    const emptyLineCount = textImportContent.split('\n').length - rawNames.length;
+    const emptyLineCount = textImportContent.split(/\r\n|[\n\r\u2028\u2029]/).length - rawNames.length;
     if (emptyLineCount > 0) {
       warnings.push(`已跳过 ${emptyLineCount} 个空行`);
     }
-    if (duplicatesInInput.length > 0) {
-      warnings.push(`输入中重复已去重: ${duplicatesInInput.join('、')}`);
-    }
-    if (alreadyExist.length > 0) {
-      warnings.push(`班级中已存在（已跳过）: ${alreadyExist.join('、')}`);
-    }
-
-    if (newNames.length === 0) {
-      toast({
-        title: '无新增学生',
-        description: warnings.join('；'),
-        variant: 'destructive',
-      });
-      return;
-    }
 
     setLoading(true);
-    const inserts = newNames.map(name => ({
+    const inserts = rawNames.map(name => ({
       class_id: selectedClass,
       user_id: userId,
       name,
@@ -457,7 +377,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     setTextImportOpen(false);
 
     const desc = [
-      `成功导入 ${newNames.length} 名学生`,
+      `成功导入 ${rawNames.length} 名学生`,
       ...warnings,
     ].join('；');
     toast({ title: t('library.importSuccess'), description: desc });

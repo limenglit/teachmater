@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
+import { decodeTextBytes } from '@/lib/text-file';
 
 interface Props {
   onClose?: () => void;
@@ -48,15 +49,17 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
+    try {
+      const text = decodeTextBytes(await file.arrayBuffer());
       setImportText(text);
-    };
-    reader.readAsText(file);
+    } catch {
+      toast({ title: t('library.parseFailed') || '文件解析失败', variant: 'destructive' });
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
+    }
   };
 
   // Parse + validate the current import text on the fly.

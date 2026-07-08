@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { decodeTextBytes } from './text-file';
 
 /**
  * Read an Excel/CSV file and return rows as a 2D array (like XLSX.utils.sheet_to_json with header:1)
@@ -26,30 +27,7 @@ export async function readExcelFile(data: ArrayBuffer): Promise<any[][]> {
  * uses on Chinese Windows when "Save As CSV" is selected without UTF-8).
  */
 export function decodeCsvBytes(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  // UTF-8 BOM
-  if (bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf) {
-    return new TextDecoder('utf-8').decode(bytes.subarray(3));
-  }
-  // UTF-16 LE/BE BOM
-  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) {
-    return new TextDecoder('utf-16le').decode(bytes.subarray(2));
-  }
-  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) {
-    return new TextDecoder('utf-16be').decode(bytes.subarray(2));
-  }
-
-  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-  const replacementCount = (utf8.match(/\ufffd/g) || []).length;
-  // If UTF-8 produced replacement characters, the file is likely GB18030 (Excel default on zh-CN)
-  if (replacementCount > 0) {
-    try {
-      return new TextDecoder('gb18030').decode(bytes);
-    } catch {
-      return utf8;
-    }
-  }
-  return utf8;
+  return decodeTextBytes(buffer);
 }
 
 /**

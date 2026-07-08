@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
 // 沙盒中 Playwright 自带的 chrome-headless-shell 可能缺少系统库；使用完整 chromium。
 test.skip(({ browserName }) => browserName !== 'chromium', '学生名单回归只需 Chromium 覆盖核心导入链路');
@@ -123,6 +124,8 @@ const REPORTED_ROSTER = `闫振华
 李雪洋`;
 
 const expectedNames = REPORTED_ROSTER.split(/\s+/).filter(Boolean);
+const ACTUAL_CR_ROSTER = readFileSync('docs/学生名单.txt', 'utf8');
+const actualCrRosterNames = ACTUAL_CR_ROSTER.split(/\r\n|[\n\r\u2028\u2029]/).map(name => name.trim()).filter(Boolean);
 
 const THIRTY_ROSTER_WITH_SAME_NAMES = [
   '学生01',
@@ -168,6 +171,28 @@ test.describe('学生名单导入端到端回归', () => {
     });
     expect(storedNames).toHaveLength(59);
     expect(storedNames).toEqual(expectedNames);
+  });
+
+  test('上传真实 CR 换行 TXT 名单后不漏第一行、不漏中间行，62 人必须完整显示', async ({ page }) => {
+    await openImportDialog(page);
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: '真实学生名单-62人.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(ACTUAL_CR_ROSTER, 'utf8'),
+    });
+
+    await expect(page.getByRole('dialog')).toContainText('共解析 62 条有效记录');
+    await page.getByRole('button', { name: /追加到名单 \(62\)/ }).click();
+
+    await expect(page.locator('.bg-accent').filter({ hasText: '62 人' })).toBeVisible();
+    await expect(page.getByText('滚轮模式 (62人)')).toBeVisible();
+    const storedNames = await page.evaluate(() => {
+      const students = JSON.parse(localStorage.getItem('teachmate_students') || '[]');
+      return students.map((student) => student.name);
+    });
+    expect(storedNames).toHaveLength(62);
+    expect(storedNames).toEqual(actualCrRosterNames);
   });
 
   test('二次批量追加后总数即时增长，不覆盖现有名单', async ({ page }) => {
