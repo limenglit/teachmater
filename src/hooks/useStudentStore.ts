@@ -229,7 +229,31 @@ export function useStudentStore(userId?: string | null) {
   const importFromText = useCallback((text: string) => {
     const newStudents = parseStudentsFromText(text);
     setStudents(newStudents);
+    return { added: newStudents.length, skipped: 0, total: newStudents.length };
   }, []);
 
-  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText };
+  // Append a batch to the existing roster; skip names that already exist (case/whitespace-insensitive).
+  const appendFromText = useCallback((text: string) => {
+    const parsed = parseStudentsFromText(text);
+    let added = 0;
+    let skipped = 0;
+    setStudents(prev => {
+      const norm = (s: string) => s.trim().toLowerCase();
+      const existing = new Set(prev.map(s => norm(s.name)));
+      const seenInBatch = new Set<string>();
+      const toAdd: Student[] = [];
+      parsed.forEach((s, idx) => {
+        const key = norm(s.name);
+        if (!key) { skipped++; return; }
+        if (existing.has(key) || seenInBatch.has(key)) { skipped++; return; }
+        seenInBatch.add(key);
+        toAdd.push({ ...s, id: `s_${Date.now()}_a_${idx}` });
+        added++;
+      });
+      return [...prev, ...toAdd];
+    });
+    return { added, skipped, total: parsed.length };
+  }, []);
+
+  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText, appendFromText };
 }
