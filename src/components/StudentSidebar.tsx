@@ -104,12 +104,12 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       seen.add(name);
       deduped.push(student);
     });
-    const text = deduped
-      .map(s => [s.name, s.gender ?? '', s.organization ?? '', s.title ?? ''].join(','))
-      .join('\n');
-    // Prepend a header row so the parser keeps gender/org/title columns.
-    const payload = `姓名,性别,单位,职务\n${text}`;
-    const result = importMode === 'append' ? appendFromText(payload) : importFromText(payload);
+    // Pass Student objects directly — no fragile CSV round-trip.
+    const result = importMode === 'append'
+      ? appendStudents(deduped)
+      : importFromText(deduped.map(s => [s.name, s.gender ?? '', s.organization ?? '', s.title ?? ''].join(',')).length > 0
+          ? `姓名,性别,单位,职务\n${deduped.map(s => [s.name, s.gender ?? '', s.organization ?? '', s.title ?? ''].join(',')).join('\n')}`
+          : '');
     setImportText('');
     setImportOpen(false);
     const desc = importMode === 'append'
@@ -122,9 +122,10 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     try {
       const text = await navigator.clipboard.readText();
       if (!text.trim()) return;
+      const parsed = parseStudentsFromText(text);
       // If roster already has students, append (skip duplicates) instead of wiping.
       if (students.length > 0) {
-        const r = appendFromText(text);
+        const r = appendStudents(parsed);
         toast({ title: '追加成功', description: `新增 ${r.added} 人${r.skipped > 0 ? `，跳过重复 ${r.skipped} 人` : ''}` });
       } else {
         const r = importFromText(text);
@@ -134,6 +135,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       toast({ title: t('sidebar.pasteFailed') || '粘贴失败', variant: 'destructive' });
     }
   };
+
 
   const handleDownload = () => {
     if (students.length === 0) return;
