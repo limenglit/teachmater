@@ -230,7 +230,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     try {
       const rows: any[][] = await readSpreadsheetFile(file);
 
-      if (rows.length < 2) {
+      if (rows.length < 1) {
         toast({ title: t('library.fileEmpty'), variant: 'destructive' });
         return;
       }
@@ -252,6 +252,11 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       if (skippedRows > 0) warnings.push(`已跳过 ${skippedRows} 个空行或缺少姓名的行`);
       if (!selectedClass && usedDefaultClass) {
         warnings.push('部分行未填写院系/班级，已使用「未分类」占位，可在选中目标班级后重新导入');
+      }
+
+      if (preview.length === 0) {
+        toast({ title: t('library.fileEmpty'), variant: 'destructive' });
+        return;
       }
 
       if (warnings.length > 0) {
