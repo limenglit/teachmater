@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export type StudentGender = 'male' | 'female' | 'unknown';
 
@@ -76,10 +76,26 @@ const normalizeGender = (raw?: string): StudentGender => {
   return 'unknown';
 };
 
+const makeId = (() => {
+  let counter = 0;
+  return () => {
+    counter += 1;
+    try {
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return `s_${crypto.randomUUID()}`;
+      }
+    } catch {
+      /* ignore */
+    }
+    return `s_${Date.now()}_${counter}_${Math.random().toString(36).slice(2, 8)}`;
+  };
+})();
+
 export const parseStudentsFromText = (text: string): Student[] => {
   const normalizedText = text
     .replace(/^\uFEFF/, '')
     .replace(/\u0000/g, '');
+
 
   const lines = normalizedText
     .split(/\r\n|[\n\r\u2028\u2029]/)
@@ -156,12 +172,13 @@ export const parseStudentsFromText = (text: string): Student[] => {
       const title = titleRaw?.trim() || undefined;
 
       return {
-        id: `s_${Date.now()}_${i}`,
+        id: makeId(),
         name,
         gender,
         organization,
         title,
       } as Student;
+
     })
     .filter((student): student is Student => !!student);
 };
@@ -205,55 +222,84 @@ export function useStudentStore(userId?: string | null) {
     setStudents(loaded);
   }, [storageKey, userId, fallbackStudents]);
 
+  // Keep a live ref of `students` so imperative helpers can compute diffs
+  // synchronously without waiting for React's functional updater.
+  const studentsRef = useRef<Student[]>(students);
+  useEffect(() => { studentsRef.current = students; }, [students]);
+
   useEffect(() => {
     saveStudents(storageKey, students);
   }, [storageKey, students]);
 
   const addStudent = useCallback((name: string, gender: StudentGender = 'unknown') => {
     if (!name.trim()) return;
-    setStudents(prev => [...prev, { id: `s_${Date.now()}`, name: name.trim(), gender }]);
+    setStudents(prev => {
+      const next = [...prev, { id: makeId(), name: name.trim(), gender }];
+      studentsRef.current = next;
+      return next;
+    });
   }, []);
 
   const removeStudent = useCallback((id: string) => {
-    setStudents(prev => prev.filter(s => s.id !== id));
+    setStudents(prev => {
+      const next = prev.filter(s => s.id !== id);
+      studentsRef.current = next;
+      return next;
+    });
   }, []);
 
   const updateStudent = useCallback((id: string, name: string) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+    setStudents(prev => {
+      const next = prev.map(s => s.id === id ? { ...s, name } : s);
+      studentsRef.current = next;
+      return next;
+    });
   }, []);
 
   const clearAll = useCallback(() => {
+    studentsRef.current = [];
     setStudents([]);
   }, []);
 
   const importFromText = useCallback((text: string) => {
-    const newStudents = parseStudentsFromText(text);
+    const newStudents = parseStudentsFromText(text).map(s => ({ ...s, id: makeId() }));
+    studentsRef.current = newStudents;
     setStudents(newStudents);
     return { added: newStudents.length, skipped: 0, total: newStudents.length };
   }, []);
 
-  // Append a batch to the existing roster; skip names that already exist (case/whitespace-insensitive).
-  const appendFromText = useCallback((text: string) => {
-    const parsed = parseStudentsFromText(text);
+  // Append parsed Student objects directly. Computes counts synchronously
+  // using studentsRef so callers get accurate {added, skipped}.
+  const appendStudents = useCallback((incoming: Student[]) => {
+    const norm = (s: string) => s.trim().toLowerCase();
+    const prev = studentsRef.current;
+    const existing = new Set(prev.map(s => norm(s.name)));
+    const seenInBatch = new Set<string>();
+    const toAdd: Student[] = [];
     let added = 0;
     let skipped = 0;
-    setStudents(prev => {
-      const norm = (s: string) => s.trim().toLowerCase();
-      const existing = new Set(prev.map(s => norm(s.name)));
-      const seenInBatch = new Set<string>();
-      const toAdd: Student[] = [];
-      parsed.forEach((s, idx) => {
-        const key = norm(s.name);
-        if (!key) { skipped++; return; }
-        if (existing.has(key) || seenInBatch.has(key)) { skipped++; return; }
-        seenInBatch.add(key);
-        toAdd.push({ ...s, id: `s_${Date.now()}_a_${idx}` });
-        added++;
-      });
-      return [...prev, ...toAdd];
+    incoming.forEach((s) => {
+      const key = norm(s.name);
+      if (!key) { skipped++; return; }
+      if (existing.has(key) || seenInBatch.has(key)) { skipped++; return; }
+      seenInBatch.add(key);
+      toAdd.push({ ...s, id: makeId() });
+      added++;
     });
-    return { added, skipped, total: parsed.length };
+    const next = [...prev, ...toAdd];
+    studentsRef.current = next;
+    setStudents(next);
+    return { added, skipped, total: incoming.length };
   }, []);
 
-  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText, appendFromText };
+
+
+  // Append a batch parsed from raw text.
+  const appendFromText = useCallback((text: string) => {
+    const parsed = parseStudentsFromText(text);
+    return appendStudents(parsed);
+  }, [appendStudents]);
+
+  return { students, addStudent, removeStudent, updateStudent, clearAll, importFromText, appendFromText, appendStudents };
 }
+
