@@ -17,6 +17,7 @@ import {
 import { readSpreadsheetFile, writeExcelFile, writeCsvFile } from '@/lib/excel-utils';
 import { buildClassRosterPreview, type ClassRosterPreviewRow } from '@/lib/roster-import';
 import { setActiveClassName } from '@/lib/class-context';
+import { decodeTextBytes } from '@/lib/text-file';
 
 interface College { id: string; name: string; user_id: string; sort_order?: number; }
 interface ClassItem { id: string; college_id: string; name: string; user_id: string; sort_order?: number; }
@@ -323,12 +324,11 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     });
   };
 
-  const handleTextFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTextFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
+    try {
+      const text = decodeTextBytes(await file.arrayBuffer());
       // Detect encoding issues
       const garbledChars = (text.match(/[�\ufffd]/g) || []).length;
       if (garbledChars > 0 && text.length > 0 && garbledChars / text.length > 0.05) {
@@ -339,9 +339,11 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
         });
       }
       setTextImportContent(text);
-    };
-    reader.readAsText(file, 'UTF-8');
-    if (textFileRef.current) textFileRef.current.value = '';
+    } catch {
+      toast({ title: t('library.parseFailed'), variant: 'destructive' });
+    } finally {
+      if (textFileRef.current) textFileRef.current.value = '';
+    }
   };
 
   const confirmTextImport = async () => {
