@@ -18,11 +18,12 @@ interface Props {
 }
 
 export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, onOpenLibrary }: Props) {
-  const { students, addStudent, removeStudent, clearAll, importFromText } = useStudents();
+  const { students, addStudent, removeStudent, clearAll, importFromText, appendFromText } = useStudents();
   const { t } = useLanguage();
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [importMode, setImportMode] = useState<'replace' | 'append'>('append');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
 
   const handleImport = () => {
     if (preview.validCount === 0) {
-      toast({ title: t('sidebar.importNothing'), variant: 'destructive' });
+      toast({ title: t('sidebar.importNothing') || '无有效数据可导入', variant: 'destructive' });
       return;
     }
     // De-duplicate within the import while preserving order.
@@ -107,21 +108,30 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       .map(s => [s.name, s.gender ?? '', s.organization ?? '', s.title ?? ''].join(','))
       .join('\n');
     // Prepend a header row so the parser keeps gender/org/title columns.
-    importFromText(`姓名,性别,单位,职务\n${text}`);
+    const payload = `姓名,性别,单位,职务\n${text}`;
+    const result = importMode === 'append' ? appendFromText(payload) : importFromText(payload);
     setImportText('');
     setImportOpen(false);
-    toast({ title: t('sidebar.importConfirm'), description: `${deduped.length} ${t('sidebar.persons')}` });
+    const desc = importMode === 'append'
+      ? `新增 ${result.added} 人${result.skipped > 0 ? `，跳过重复 ${result.skipped} 人` : ''}`
+      : `导入 ${result.added} 人`;
+    toast({ title: importMode === 'append' ? '追加成功' : (t('sidebar.importConfirm') || '导入成功'), description: desc });
   };
 
   const handlePasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (text.trim()) {
-        importFromText(text);
-        toast({ title: t('sidebar.pasteSuccess'), description: `${text.trim().split(/\n/).filter(Boolean).length} ${t('sidebar.persons')}` });
+      if (!text.trim()) return;
+      // If roster already has students, append (skip duplicates) instead of wiping.
+      if (students.length > 0) {
+        const r = appendFromText(text);
+        toast({ title: '追加成功', description: `新增 ${r.added} 人${r.skipped > 0 ? `，跳过重复 ${r.skipped} 人` : ''}` });
+      } else {
+        const r = importFromText(text);
+        toast({ title: t('sidebar.pasteSuccess') || '粘贴成功', description: `${r.added} ${t('sidebar.persons') || '人'}` });
       }
     } catch {
-      toast({ title: t('sidebar.pasteFailed'), variant: 'destructive' });
+      toast({ title: t('sidebar.pasteFailed') || '粘贴失败', variant: 'destructive' });
     }
   };
 
@@ -353,9 +363,9 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                           <span>{t('sidebar.fixHintHeader')}</span>
                         </div>
                       )}
-                      {students.length > 0 && (
+                      {students.length > 0 && importMode === 'replace' && (
                         <p className="text-xs text-muted-foreground">
-                          {t('sidebar.previewReplaceWarn').replace('{count}', String(students.length))}
+                          {(t('sidebar.previewReplaceWarn') || '将覆盖现有 {count} 人').replace('{count}', String(students.length))}
                         </p>
                       )}
                       <div className="border border-border rounded-md overflow-hidden">
@@ -419,13 +429,25 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                     </>
                   )}
 
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">导入方式：</span>
+                    <label className="inline-flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="import-mode" checked={importMode === 'append'} onChange={() => setImportMode('append')} />
+                      <span>追加（保留现有 {students.length} 人，跳过重复）</span>
+                    </label>
+                    <label className="inline-flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="import-mode" checked={importMode === 'replace'} onChange={() => setImportMode('replace')} />
+                      <span>替换全部</span>
+                    </label>
+                  </div>
+
                   <Button
                     onClick={handleImport}
                     disabled={preview.validCount === 0}
                     className="w-full"
                     size="sm"
                   >
-                    {t('sidebar.importConfirm')}
+                    {importMode === 'append' ? '追加到名单' : (t('sidebar.importConfirm') || '导入')}
                     {preview.validCount > 0 && ` (${preview.validCount})`}
                   </Button>
                 </div>
