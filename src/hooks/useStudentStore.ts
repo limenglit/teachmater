@@ -103,7 +103,7 @@ const makeId = (() => {
 
 const normalizeStudentKey = (name: string) => name.trim().toLowerCase();
 
-const buildUniqueStudents = (incoming: Student[], existingKeys = new Set<string>()) => {
+const buildImportStudents = (incoming: Student[], existingKeys = new Set<string>()) => {
   const students: Student[] = [];
   let skipped = 0;
 
@@ -114,7 +114,9 @@ const buildUniqueStudents = (incoming: Student[], existingKeys = new Set<string>
       skipped++;
       return;
     }
-    existingKeys.add(key);
+    // Do not add this batch's names to `existingKeys`: two students in the
+    // same class can share a name, and a single import must preserve every row.
+    // Cross-batch duplicate skipping is still handled by the prebuilt existing set.
     students.push({ ...student, id: makeId(), name });
   });
 
@@ -303,14 +305,14 @@ export function useStudentStore(userId?: string | null) {
 
   const importFromText = useCallback((text: string) => {
     const parsed = parseStudentsFromText(text);
-    const { students: newStudents, skipped } = buildUniqueStudents(parsed);
+    const { students: newStudents, skipped } = buildImportStudents(parsed);
     studentsRef.current = newStudents;
     setStudents(newStudents);
     return { added: newStudents.length, skipped, total: newStudents.length };
   }, []);
 
   const replaceStudents = useCallback((incoming: Student[]) => {
-    const { students: next, skipped } = buildUniqueStudents(incoming);
+    const { students: next, skipped } = buildImportStudents(incoming);
     studentsRef.current = next;
     setStudents(next);
     return { added: next.length, skipped, total: next.length };
@@ -321,7 +323,7 @@ export function useStudentStore(userId?: string | null) {
   const appendStudents = useCallback((incoming: Student[]) => {
     const prev = studentsRef.current;
     const existing = new Set(prev.map(s => normalizeStudentKey(s.name)));
-    const { students: toAdd, skipped } = buildUniqueStudents(incoming, existing);
+    const { students: toAdd, skipped } = buildImportStudents(incoming, existing);
     const added = toAdd.length;
     const next = [...prev, ...toAdd];
     studentsRef.current = next;

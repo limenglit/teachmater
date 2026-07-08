@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 // 沙盒中 Playwright 自带的 chrome-headless-shell 可能缺少系统库；使用完整 chromium。
-test.use({ launchOptions: { executablePath: '/bin/chromium' } });
+test.skip(({ browserName }) => browserName !== 'chromium', '学生名单回归只需 Chromium 覆盖核心导入链路');
+test.use({ launchOptions: { executablePath: '/bin/chromium', args: ['--no-sandbox'] } });
 
 const REPORTED_ROSTER = `闫振华
 
@@ -123,6 +124,13 @@ const REPORTED_ROSTER = `闫振华
 
 const expectedNames = REPORTED_ROSTER.split(/\s+/).filter(Boolean);
 
+const THIRTY_ROSTER_WITH_SAME_NAMES = [
+  '学生01',
+  '学生02', '学生02',
+  '学生03', '学生03',
+  ...Array.from({ length: 25 }, (_, i) => `学生${String(i + 4).padStart(2, '0')}`),
+].join('\n');
+
 async function openImportDialog(page) {
   await page.getByRole('button', { name: '导入' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -180,5 +188,42 @@ test.describe('学生名单导入端到端回归', () => {
     expect(storedNames).toHaveLength(62);
     expect(storedNames.slice(0, 59)).toEqual(expectedNames);
     expect(storedNames.slice(59)).toEqual(['追加甲', '追加乙', '追加丙']);
+  });
+
+  test('TXT 和粘贴导入均保留同一次名单中的同名学生，30 行不再变 27 行', async ({ page }) => {
+    await openImportDialog(page);
+    await page.locator('textarea').fill(THIRTY_ROSTER_WITH_SAME_NAMES);
+    await expect(page.getByRole('dialog')).toContainText('共解析 30 条有效记录');
+    await page.getByRole('button', { name: /追加到名单 \(30\)/ }).click();
+
+    await expect(page.locator('.bg-accent').filter({ hasText: '30 人' })).toBeVisible();
+    let storedNames = await page.evaluate(() => {
+      const students = JSON.parse(localStorage.getItem('teachmate_students') || '[]');
+      return students.map((student) => student.name);
+    });
+    expect(storedNames).toHaveLength(30);
+    expect(storedNames.filter((name) => name === '学生02')).toHaveLength(2);
+    expect(storedNames.filter((name) => name === '学生03')).toHaveLength(2);
+
+    await page.locator('button[title="清空"]').click();
+    await expect(page.locator('.bg-accent').filter({ hasText: '0 人' })).toBeVisible();
+
+    await openImportDialog(page);
+    await page.locator('input[type="file"]').setInputFiles({
+      name: '同名学生-30人.txt',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(THIRTY_ROSTER_WITH_SAME_NAMES, 'utf8'),
+    });
+    await expect(page.getByRole('dialog')).toContainText('共解析 30 条有效记录');
+    await page.getByRole('button', { name: /追加到名单 \(30\)/ }).click();
+
+    await expect(page.locator('.bg-accent').filter({ hasText: '30 人' })).toBeVisible();
+    storedNames = await page.evaluate(() => {
+      const students = JSON.parse(localStorage.getItem('teachmate_students') || '[]');
+      return students.map((student) => student.name);
+    });
+    expect(storedNames).toHaveLength(30);
+    expect(storedNames.filter((name) => name === '学生02')).toHaveLength(2);
+    expect(storedNames.filter((name) => name === '学生03')).toHaveLength(2);
   });
 });
