@@ -56,10 +56,13 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewRow[]>([]);
   const [importMode, setImportMode] = useState<'overwrite' | 'append'>('append');
+  const [importDedupe, setImportDedupe] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [textImportOpen, setTextImportOpen] = useState(false);
   const [textImportContent, setTextImportContent] = useState('');
+  const [textImportMode, setTextImportMode] = useState<'overwrite' | 'append'>('append');
+  const [textDedupe, setTextDedupe] = useState(false);
   const textFileRef = useRef<HTMLInputElement>(null);
 
   const userId = user?.id;
@@ -315,6 +318,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       }
 
       let totalInserted = 0;
+      let totalSkippedByDedupe = 0;
 
       for (const [collegeName, classMap] of grouped) {
         let college = colleges.find(c => c.name === collegeName);
@@ -338,7 +342,26 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
             const { error } = await supabase.from('class_students').delete().eq('class_id', cls.id);
             if (error) throw error;
           }
-          const inserts = buildClassStudentInserts(rows, cls.id, userId);
+
+          let effectiveRows = rows;
+          if (importDedupe) {
+            const existing = importMode === 'overwrite'
+              ? new Set<string>()
+              : new Set(students.filter(s => s.class_id === cls!.id).map(s => `${s.name}|${s.student_number || ''}`));
+            const seenBatch = new Set<string>();
+            effectiveRows = [];
+            for (const row of rows) {
+              const key = `${row.name}|${row.studentNumber || ''}`;
+              if (existing.has(key) || seenBatch.has(key)) {
+                totalSkippedByDedupe++;
+                continue;
+              }
+              seenBatch.add(key);
+              effectiveRows.push(row);
+            }
+          }
+
+          const inserts = buildClassStudentInserts(effectiveRows, cls.id, userId);
           await insertClassStudentRows(inserts);
           totalInserted += inserts.length;
         }
@@ -348,9 +371,13 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       setImportOpen(false);
       setPreviewData([]);
 
+      const desc = [
+        `成功导入 ${totalInserted} 名学生`,
+        importDedupe && totalSkippedByDedupe > 0 ? `去重跳过 ${totalSkippedByDedupe} 名` : '',
+      ].filter(Boolean).join('；');
       toast({
         title: totalInserted > 0 ? t('library.importSuccess') : '无新增学生',
-        description: `成功导入 ${totalInserted} 名学生`,
+        description: desc,
         variant: totalInserted > 0 ? 'default' : 'destructive',
       });
     } catch {
@@ -395,7 +422,27 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
     setLoading(true);
     try {
-      const inserts = rawNames.map(name => ({
+      if (textImportMode === 'overwrite') {
+        const { error } = await supabase.from('class_students').delete().eq('class_id', selectedClass);
+        if (error) throw error;
+      }
+
+      let effectiveNames = rawNames;
+      let dedupeSkipped = 0;
+      if (textDedupe) {
+        const existing = textImportMode === 'overwrite'
+          ? new Set<string>()
+          : new Set(students.filter(s => s.class_id === selectedClass).map(s => s.name));
+        const seen = new Set<string>();
+        effectiveNames = [];
+        for (const name of rawNames) {
+          if (existing.has(name) || seen.has(name)) { dedupeSkipped++; continue; }
+          seen.add(name);
+          effectiveNames.push(name);
+        }
+      }
+
+      const inserts = effectiveNames.map(name => ({
         class_id: selectedClass,
         user_id: userId,
         name,
@@ -408,9 +455,10 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       setTextImportOpen(false);
 
       const desc = [
-        `成功导入 ${rawNames.length} 名学生`,
+        `成功导入 ${effectiveNames.length} 名学生`,
+        textDedupe && dedupeSkipped > 0 ? `去重跳过 ${dedupeSkipped} 名` : '',
         ...warnings,
-      ].join('；');
+      ].filter(Boolean).join('；');
       toast({ title: t('library.importSuccess'), description: desc });
     } catch {
       toast({ title: '导入失败', description: '名单未完整写入，请稍后重试', variant: 'destructive' });
@@ -751,15 +799,29 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <label className="text-sm text-foreground">{t('library.existingClassHandling')}</label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="radio" checked={importMode === 'append'} onChange={() => setImportMode('append')} />
-                {t('library.append')}
+                {(() => {
+                  const targets = new Set(previewData.map(r => `${r.college}||${r.className}`));
+                  let existing = 0;
+                  for (const key of targets) {
+                    const [cn, kn] = key.split('||');
+                    const col = colleges.find(c => c.name === cn);
+                    const cls = col ? classes.find(c => c.college_id === col.id && c.name === kn) : null;
+                    if (cls) existing += students.filter(s => s.class_id === cls.id).length;
+                  }
+                  return `${t('library.append')}（保留现有 ${existing} 人）`;
+                })()}
               </label>
               <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="radio" checked={importMode === 'overwrite'} onChange={() => setImportMode('overwrite')} />
                 {t('library.overwrite')}
+              </label>
+              <label className="flex items-center gap-1.5 text-sm cursor-pointer ml-auto">
+                <input type="checkbox" checked={importDedupe} onChange={e => setImportDedupe(e.target.checked)} />
+                去重
               </label>
             </div>
             <div className="flex gap-2">
@@ -784,6 +846,21 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                 placeholder="张三&#10;李四&#10;王五"
                 rows={8}
               />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3">
+                <label className="text-sm text-foreground">{t('library.existingClassHandling')}</label>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" checked={textImportMode === 'append'} onChange={() => setTextImportMode('append')} />
+                  {t('library.append')}（保留现有 {classStudents.length} 人）
+                </label>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="radio" checked={textImportMode === 'overwrite'} onChange={() => setTextImportMode('overwrite')} />
+                  {t('library.overwrite')}
+                </label>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer ml-auto">
+                  <input type="checkbox" checked={textDedupe} onChange={e => setTextDedupe(e.target.checked)} />
+                  去重
+                </label>
+              </div>
               <Button onClick={confirmTextImport} className="mt-2 w-full" size="sm">{t('sidebar.importConfirm')}</Button>
             </div>
             <div className="border-t border-border pt-4">
