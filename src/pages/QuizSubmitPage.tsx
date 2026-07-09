@@ -154,6 +154,40 @@ export default function QuizSubmitPage() {
     return map;
   }, [studentResult]);
 
+  // Compute objective wrong answers for personalized recommendations.
+  // Skips short-answer (can't auto-judge) and questions without correct_answer.
+  const wrongItems = useMemo<QuizWrongItem[]>(() => {
+    if (!session || session.status !== 'ended' || !session.reveal_answers) return [];
+    const list: QuizWrongItem[] = [];
+    session.questions.forEach((q, idx) => {
+      if (q.type === 'short') return;
+      const ca = q.correct_answer;
+      if (ca === undefined || ca === null || ca === '') return;
+      const studentRaw = answers[idx] ?? serverAnswerMap.get(idx);
+      let correct = false;
+      if (q.type === 'multi') {
+        const sa = Array.isArray(studentRaw) ? [...studentRaw].sort() : [];
+        const co = Array.isArray(ca) ? [...ca].sort() : [];
+        correct = sa.length === co.length && sa.every((v, i) => v === co[i]);
+      } else {
+        const sa = Array.isArray(studentRaw) ? studentRaw[0] : studentRaw;
+        const co = Array.isArray(ca) ? ca[0] : ca;
+        correct = sa === co;
+      }
+      if (correct) return;
+      list.push({
+        index: idx,
+        type: q.type,
+        question: q.content,
+        options: q.options,
+        correctAnswer: formatCorrectAnswer(q),
+        studentAnswer: normalizeAnswer(studentRaw) || '未作答',
+      });
+    });
+    return list;
+  }, [session, answers, serverAnswerMap]);
+
+
   // Poll session status so students can see when teacher ends the quiz.
   // Stop polling once ended + revealed (nothing more to learn).
   // Transient network failures are swallowed silently so the next tick can retry.
