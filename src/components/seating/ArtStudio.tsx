@@ -671,8 +671,10 @@ export default function ArtStudio({ students }: Props) {
                 className={`absolute rounded-md border text-[10px] flex items-center justify-center px-1 text-center leading-tight cursor-grab active:cursor-grabbing select-none ${name ? 'bg-white border-primary/40 text-foreground shadow-sm' : 'bg-muted/60 border-border text-muted-foreground'}`}
                 style={{ left: pos.x - SEAT_W / 2, top: pos.y - SEAT_H / 2, width: `${SEAT_W}px`, height: `${SEAT_H}px` }}
                 onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'seat', key: node.key }); }}
-                onDragOver={(e) => acceptStudentDragOver(e)}
+                onDragOver={(e) => acceptStudentDragOver(e, { occupant: name })}
+                onDragLeave={handleStudentDragLeave}
                 onDrop={(e) => {
+                  clearStudentDropHint(e);
                   const dropped = readDraggedStudentName(e);
                   if (!dropped) return;
                   e.preventDefault();
