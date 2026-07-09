@@ -795,6 +795,15 @@ export default function BanquetHall({ students }: Props) {
               <g
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
+                onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed || isReservedTable })}
+                onDrop={(e) => {
+                  if (isClosed || isReservedTable) return;
+                  const dropped = readDraggedStudentName(e);
+                  if (!dropped) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAssignment(prev => applyStudentDropToGrid(prev, dropped, tableIndex, i));
+                }}
                 onMouseDown={name && !isClosed ? (e) => {
                   if (isReservedTable) return;
                   if (!isSeatSelected) {
