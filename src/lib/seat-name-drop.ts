@@ -52,15 +52,15 @@ export function acceptStudentDragOver(
   e.preventDefault();
   e.stopPropagation();
   try { e.dataTransfer.dropEffect = 'move'; } catch {}
-  // Fire the shared visual hint. Kept in a dynamic import-free path so
-  // scenes that only import this helper still get highlighting for free.
+  // Fire the shared visual hint (green "就座" for empty seat, amber "交换" for swap).
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require('./student-drop-hint') as typeof import('./student-drop-hint');
-    mod.showStudentDropHint(e, { occupant: opts.occupant ? String(opts.occupant) : undefined });
+    showStudentDropHint(e, { occupant: opts.occupant ? String(opts.occupant) : undefined });
   } catch {}
   return true;
 }
+
+/** Silence the duplicate re-export warning. */
+export { handleStudentDragLeave, clearStudentDropHint };
 
 export { handleStudentDragLeave, clearStudentDropHint } from './student-drop-hint';
 
