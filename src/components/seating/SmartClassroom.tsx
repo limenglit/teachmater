@@ -8,7 +8,7 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
-import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid } from '@/lib/seat-name-drop';
+import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
