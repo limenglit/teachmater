@@ -59,10 +59,7 @@ export function acceptStudentDragOver(
   return true;
 }
 
-/** Silence the duplicate re-export warning. */
 export { handleStudentDragLeave, clearStudentDropHint };
-
-export { handleStudentDragLeave, clearStudentDropHint } from './student-drop-hint';
 
 /**
  * Place `name` at (targetR, targetC) inside a 2D `string[][]` seat grid.
