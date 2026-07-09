@@ -5,7 +5,7 @@ import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2, Pencil } from 'lu
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
-import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid } from '@/lib/seat-name-drop';
+import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import {
@@ -848,8 +848,10 @@ export default function ConcertHall({ students }: Props) {
                       <g
                         key={`${ri}-${ci}`}
                         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
-                        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+                        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed, occupant: name })}
+                        onDragLeave={handleStudentDragLeave}
                         onDrop={(e) => {
+                          clearStudentDropHint(e);
                           if (isClosed) return;
                           const dropped = readDraggedStudentName(e);
                           if (!dropped) return;

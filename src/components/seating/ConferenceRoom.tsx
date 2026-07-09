@@ -6,7 +6,7 @@ import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useSeatExportQr } from './useSeatExportQr';
-import { acceptStudentDragOver, readDraggedStudentName } from '@/lib/seat-name-drop';
+import { acceptStudentDragOver, readDraggedStudentName, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
@@ -614,8 +614,10 @@ export default function ConferenceRoom({ students }: Props) {
       <g
         key={slot}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
-        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed, occupant: name })}
+        onDragLeave={handleStudentDragLeave}
         onDrop={(e) => {
+          clearStudentDropHint(e);
           if (isClosed) return;
           const dropped = readDraggedStudentName(e);
           if (!dropped) return;

@@ -10,6 +10,8 @@
  * without knowing the underlying grid shape.
  */
 
+import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } from './student-drop-hint';
+
 export const STUDENT_DRAG_MIME = 'application/x-student-name';
 export const STUDENT_DRAG_PREFIX = 'student:';
 
@@ -38,18 +40,26 @@ export function readDraggedStudentName(e: React.DragEvent): string | null {
   return null;
 }
 
-/** Standard onDragOver handler: allow drop when the payload is a student name. */
+/** Standard onDragOver handler: allow drop when the payload is a student name.
+ *  If `occupant` is provided the visual hint switches from "就座" to "交换：<occupant>".
+ */
 export function acceptStudentDragOver(
   e: React.DragEvent,
-  opts: { disabled?: boolean } = {},
+  opts: { disabled?: boolean; occupant?: string | null } = {},
 ): boolean {
   if (opts.disabled) return false;
   if (!isStudentDrag(e)) return false;
   e.preventDefault();
   e.stopPropagation();
   try { e.dataTransfer.dropEffect = 'move'; } catch {}
+  // Fire the shared visual hint (green "就座" for empty seat, amber "交换" for swap).
+  try {
+    showStudentDropHint(e, { occupant: opts.occupant ? String(opts.occupant) : undefined });
+  } catch {}
   return true;
 }
+
+export { handleStudentDragLeave, clearStudentDropHint };
 
 /**
  * Place `name` at (targetR, targetC) inside a 2D `string[][]` seat grid.

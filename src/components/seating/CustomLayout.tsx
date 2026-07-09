@@ -12,6 +12,7 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SeatLayoutPreviewDialog, { type ParsedLayout } from './SeatLayoutPreviewDialog';
 import { useSeatExportQr } from './useSeatExportQr';
 import { isStudentDrag, readDraggedStudentName, applyStudentDropToGrid } from '@/lib/seat-name-drop';
+import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } from '@/lib/student-drop-hint';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
@@ -619,6 +620,8 @@ export default function CustomLayout({ students }: Props) {
     if (isStudentDrag(e)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
+      const occupant = seatsRef.current[r]?.[c] || undefined;
+      showStudentDropHint(e, { occupant: occupant ?? undefined });
       return;
     }
     e.preventDefault();
@@ -632,6 +635,7 @@ export default function CustomLayout({ students }: Props) {
   }, []);
   const handleDrop = useCallback((e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
+    clearStudentDropHint(e);
     const dropped = readDraggedStudentName(e);
     if (dropped) {
       setSeats(prev => applyStudentDropToGrid(prev, dropped, r, c));

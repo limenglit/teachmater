@@ -5,7 +5,7 @@ import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2, Pencil } from 'lu
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
-import { acceptStudentDragOver, readDraggedStudentName } from '@/lib/seat-name-drop';
+import { acceptStudentDragOver, readDraggedStudentName, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import {
@@ -534,8 +534,10 @@ export default function ComputerLab({ students }: Props) {
         data-seat-name={name}
         data-seat-closed={isClosed ? 'true' : 'false'}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
-        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed, occupant: name })}
+        onDragLeave={handleStudentDragLeave}
         onDrop={(e) => {
+          clearStudentDropHint(e);
           if (isClosed) return;
           const dropped = readDraggedStudentName(e);
           if (!dropped) return;
