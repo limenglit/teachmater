@@ -38,18 +38,29 @@ export function readDraggedStudentName(e: React.DragEvent): string | null {
   return null;
 }
 
-/** Standard onDragOver handler: allow drop when the payload is a student name. */
+/** Standard onDragOver handler: allow drop when the payload is a student name.
+ *  If `occupant` is provided the visual hint switches from "就座" to "交换：<occupant>".
+ */
 export function acceptStudentDragOver(
   e: React.DragEvent,
-  opts: { disabled?: boolean } = {},
+  opts: { disabled?: boolean; occupant?: string | null } = {},
 ): boolean {
   if (opts.disabled) return false;
   if (!isStudentDrag(e)) return false;
   e.preventDefault();
   e.stopPropagation();
   try { e.dataTransfer.dropEffect = 'move'; } catch {}
+  // Fire the shared visual hint. Kept in a dynamic import-free path so
+  // scenes that only import this helper still get highlighting for free.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./student-drop-hint') as typeof import('./student-drop-hint');
+    mod.showStudentDropHint(e, { occupant: opts.occupant ? String(opts.occupant) : undefined });
+  } catch {}
   return true;
 }
+
+export { handleStudentDragLeave, clearStudentDropHint } from './student-drop-hint';
 
 /**
  * Place `name` at (targetR, targetC) inside a 2D `string[][]` seat grid.
