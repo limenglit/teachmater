@@ -10,6 +10,7 @@ import { FeatureConfigProvider } from "@/contexts/FeatureConfigContext";
 import { lazyRetry } from "@/lib/lazy-retry";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { StudentDropHintOverlay } from "@/lib/student-drop-hint";
 
 const DiscussPage = lazyRetry(() => import("./pages/DiscussPage"));
 const CheckInPage = lazyRetry(() => import("./pages/CheckInPage"));
