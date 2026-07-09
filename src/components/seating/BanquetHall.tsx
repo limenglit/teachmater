@@ -795,8 +795,10 @@ export default function BanquetHall({ students }: Props) {
               <g
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
-                onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed || isReservedTable })}
+                onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed || isReservedTable, occupant: name })}
+                onDragLeave={handleStudentDragLeave}
                 onDrop={(e) => {
+                  clearStudentDropHint(e);
                   if (isClosed || isReservedTable) return;
                   const dropped = readDraggedStudentName(e);
                   if (!dropped) return;
