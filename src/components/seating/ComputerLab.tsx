@@ -534,8 +534,10 @@ export default function ComputerLab({ students }: Props) {
         data-seat-name={name}
         data-seat-closed={isClosed ? 'true' : 'false'}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
-        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed, occupant: name })}
+        onDragLeave={handleStudentDragLeave}
         onDrop={(e) => {
+          clearStudentDropHint(e);
           if (isClosed) return;
           const dropped = readDraggedStudentName(e);
           if (!dropped) return;
