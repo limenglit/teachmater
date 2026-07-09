@@ -848,8 +848,10 @@ export default function ConcertHall({ students }: Props) {
                       <g
                         key={`${ri}-${ci}`}
                         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
-                        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+                        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed, occupant: name })}
+                        onDragLeave={handleStudentDragLeave}
                         onDrop={(e) => {
+                          clearStudentDropHint(e);
                           if (isClosed) return;
                           const dropped = readDraggedStudentName(e);
                           if (!dropped) return;
