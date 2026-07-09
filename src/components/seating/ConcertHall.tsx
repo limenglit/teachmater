@@ -848,6 +848,15 @@ export default function ConcertHall({ students }: Props) {
                       <g
                         key={`${ri}-${ci}`}
                         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
+                        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+                        onDrop={(e) => {
+                          if (isClosed) return;
+                          const dropped = readDraggedStudentName(e);
+                          if (!dropped) return;
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setAssignment(prev => applyStudentDropToGrid(prev, dropped, ri, ci));
+                        }}
                         onPointerDown={name && !isClosed ? (e) => {
                           e.stopPropagation();
                           try { (e.currentTarget as Element).releasePointerCapture(e.pointerId); } catch {}
