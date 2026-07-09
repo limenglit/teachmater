@@ -5,10 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Send, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { normalizeQuizOptionText } from '@/lib/quiz-utils';
 import { runQuizCall, sanitizeQuizQuestions } from '@/lib/quiz-error';
+import QuizRecommendations, { type QuizWrongItem } from '@/components/quiz/QuizRecommendations';
 
 interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
