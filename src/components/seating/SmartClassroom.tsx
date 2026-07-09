@@ -8,6 +8,7 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
+import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
@@ -780,6 +781,15 @@ export default function SmartClassroom({
               <g
                 key={i}
                 style={{ cursor: name && !isClosed ? 'grab' : 'pointer' }}
+                onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed || isReservedTable })}
+                onDrop={(e) => {
+                  if (isClosed || isReservedTable) return;
+                  const dropped = readDraggedStudentName(e);
+                  if (!dropped) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAssignment(prev => applyStudentDropToGrid(prev, dropped, tableIndex, i));
+                }}
                 onMouseDown={name && !isClosed ? (e) => {
                   if (isReservedTable) return;
                   e.preventDefault();

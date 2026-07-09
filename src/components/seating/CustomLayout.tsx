@@ -11,6 +11,7 @@ import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SeatLayoutPreviewDialog, { type ParsedLayout } from './SeatLayoutPreviewDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import { isStudentDrag, readDraggedStudentName, applyStudentDropToGrid } from '@/lib/seat-name-drop';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
@@ -615,6 +616,11 @@ export default function CustomLayout({ students }: Props) {
     if (seatsRef.current[r]?.[c]) dragFromRef.current = { r, c };
   }, []);
   const handleDragOver = useCallback((e: React.DragEvent, r: number, c: number) => {
+    if (isStudentDrag(e)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      return;
+    }
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     // Performance mode: don't update dropTarget at all during drag → zero
@@ -626,6 +632,13 @@ export default function CustomLayout({ students }: Props) {
   }, []);
   const handleDrop = useCallback((e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
+    const dropped = readDraggedStudentName(e);
+    if (dropped) {
+      setSeats(prev => applyStudentDropToGrid(prev, dropped, r, c));
+      dragFromRef.current = null;
+      setDropTarget(null);
+      return;
+    }
     const from = dragFromRef.current;
     if (!from) return;
     setSeats(prev => {

@@ -6,6 +6,7 @@ import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import { acceptStudentDragOver, readDraggedStudentName } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
@@ -613,6 +614,31 @@ export default function ConferenceRoom({ students }: Props) {
       <g
         key={slot}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
+        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+        onDrop={(e) => {
+          if (isClosed) return;
+          const dropped = readDraggedStudentName(e);
+          if (!dropped) return;
+          e.preventDefault();
+          e.stopPropagation();
+          setAssignment(prev => {
+            const next: ConferenceRoomAssignment = {
+              headLeft: prev.headLeft,
+              headRight: prev.headRight,
+              mainTop: [...prev.mainTop],
+              mainBottom: [...prev.mainBottom],
+              companionTop: prev.companionTop.map(row => [...row]),
+              companionBottom: prev.companionBottom.map(row => [...row]),
+            };
+            const fromSlot = allSlots.find(s => getSeatValue(next, s) === dropped) || null;
+            const targetPrev = getSeatValue(next, slot);
+            setSeatValue(next, slot, dropped);
+            if (fromSlot && fromSlot !== slot) {
+              setSeatValue(next, fromSlot, targetPrev);
+            }
+            return next;
+          });
+        }}
         onPointerDown={
           name && !isClosed
             ? e => {

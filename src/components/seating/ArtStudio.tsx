@@ -5,6 +5,7 @@ import { Shuffle, LayoutGrid, Palette, QrCode, Orbit, Move, UserRound } from 'lu
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { isSeatAssignmentComplete } from '@/lib/seat-checkin-policy';
+import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid } from '@/lib/seat-name-drop';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
@@ -670,6 +671,14 @@ export default function ArtStudio({ students }: Props) {
                 className={`absolute rounded-md border text-[10px] flex items-center justify-center px-1 text-center leading-tight cursor-grab active:cursor-grabbing select-none ${name ? 'bg-white border-primary/40 text-foreground shadow-sm' : 'bg-muted/60 border-border text-muted-foreground'}`}
                 style={{ left: pos.x - SEAT_W / 2, top: pos.y - SEAT_H / 2, width: `${SEAT_W}px`, height: `${SEAT_H}px` }}
                 onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'seat', key: node.key }); }}
+                onDragOver={(e) => acceptStudentDragOver(e)}
+                onDrop={(e) => {
+                  const dropped = readDraggedStudentName(e);
+                  if (!dropped) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setAssignment(prev => applyStudentDropToGrid(ensureAssignmentShape(prev), dropped, node.ringIndex, node.seatIndex));
+                }}
                 title={tFormat(t('seat.editor.art.seatTitle'), name || t('seat.editor.art.empty'), node.ringIndex + 1, node.seatIndex + 1, layerText)}
               >
                 <span className="truncate w-full">{name || t('seat.editor.art.easel')}</span>
