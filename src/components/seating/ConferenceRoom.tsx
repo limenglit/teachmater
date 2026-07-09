@@ -614,8 +614,10 @@ export default function ConferenceRoom({ students }: Props) {
       <g
         key={slot}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
-        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed, occupant: name })}
+        onDragLeave={handleStudentDragLeave}
         onDrop={(e) => {
+          clearStudentDropHint(e);
           if (isClosed) return;
           const dropped = readDraggedStudentName(e);
           if (!dropped) return;
