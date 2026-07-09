@@ -10,6 +10,8 @@
  * without knowing the underlying grid shape.
  */
 
+import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } from './student-drop-hint';
+
 export const STUDENT_DRAG_MIME = 'application/x-student-name';
 export const STUDENT_DRAG_PREFIX = 'student:';
 
