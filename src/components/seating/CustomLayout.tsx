@@ -620,6 +620,8 @@ export default function CustomLayout({ students }: Props) {
     if (isStudentDrag(e)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
+      const occupant = seatsRef.current[r]?.[c] || undefined;
+      showStudentDropHint(e, { occupant: occupant ?? undefined });
       return;
     }
     e.preventDefault();
