@@ -635,6 +635,7 @@ export default function CustomLayout({ students }: Props) {
   }, []);
   const handleDrop = useCallback((e: React.DragEvent, r: number, c: number) => {
     e.preventDefault();
+    clearStudentDropHint(e);
     const dropped = readDraggedStudentName(e);
     if (dropped) {
       setSeats(prev => applyStudentDropToGrid(prev, dropped, r, c));
