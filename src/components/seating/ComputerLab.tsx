@@ -534,6 +534,38 @@ export default function ComputerLab({ students }: Props) {
         data-seat-name={name}
         data-seat-closed={isClosed ? 'true' : 'false'}
         style={{ cursor: name && !isClosed ? 'grab' : 'pointer', touchAction: 'none' }}
+        onDragOver={(e) => acceptStudentDragOver(e, { disabled: isClosed })}
+        onDrop={(e) => {
+          if (isClosed) return;
+          const dropped = readDraggedStudentName(e);
+          if (!dropped) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const [tr, ts, tc] = slot.split('-');
+          const toRow = Number(tr);
+          const toCol = Number(tc);
+          if (!Number.isFinite(toRow) || !Number.isFinite(toCol)) return;
+          if (ts !== 'top' && ts !== 'bottom') return;
+          setAssignment(prev => {
+            const next = prev.map(g => ({ ...g, students: [...(g.students ?? [])] }));
+            // Locate any existing seat that holds this student
+            let fromGroup: typeof next[number] | undefined;
+            let fromCol = -1;
+            for (const g of next) {
+              const idx = (g.students ?? []).indexOf(dropped);
+              if (idx >= 0) { fromGroup = g; fromCol = idx; break; }
+            }
+            const toGroup = next.find(g => g.rowIndex === toRow && g.side === ts);
+            if (!toGroup) return prev;
+            while (toGroup.students.length <= toCol) toGroup.students.push('');
+            const targetPrev = toGroup.students[toCol] || '';
+            toGroup.students[toCol] = dropped;
+            if (fromGroup && !(fromGroup === toGroup && fromCol === toCol)) {
+              fromGroup.students[fromCol] = targetPrev;
+            }
+            return next;
+          });
+        }}
         onMouseDown={name && !isClosed ? (e) => { e.stopPropagation(); } : undefined}
         onPointerDown={name && !isClosed ? (e) => {
           e.stopPropagation();
