@@ -56,6 +56,7 @@ export default function QuizSubmitPage() {
   const [studentResult, setStudentResult] = useState<StudentResult | null>(null);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recOpen, setRecOpen] = useState(false);
 
   const tr = (key: string, fallback: string) => {
     const v = t(key);
