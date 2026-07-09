@@ -5,10 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { CheckCircle2, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, ChevronRight, Send, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { normalizeQuizOptionText } from '@/lib/quiz-utils';
 import { runQuizCall, sanitizeQuizQuestions } from '@/lib/quiz-error';
+import QuizRecommendations, { type QuizWrongItem } from '@/components/quiz/QuizRecommendations';
 
 interface QuizQuestion {
   type: 'single' | 'multi' | 'tf' | 'short';
@@ -55,6 +56,7 @@ export default function QuizSubmitPage() {
   const [studentResult, setStudentResult] = useState<StudentResult | null>(null);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [recOpen, setRecOpen] = useState(false);
 
   const tr = (key: string, fallback: string) => {
     const v = t(key);
@@ -151,6 +153,40 @@ export default function QuizSubmitPage() {
     });
     return map;
   }, [studentResult]);
+
+  // Compute objective wrong answers for personalized recommendations.
+  // Skips short-answer (can't auto-judge) and questions without correct_answer.
+  const wrongItems = useMemo<QuizWrongItem[]>(() => {
+    if (!session || session.status !== 'ended' || !session.reveal_answers) return [];
+    const list: QuizWrongItem[] = [];
+    session.questions.forEach((q, idx) => {
+      if (q.type === 'short') return;
+      const ca = q.correct_answer;
+      if (ca === undefined || ca === null || ca === '') return;
+      const studentRaw = answers[idx] ?? serverAnswerMap.get(idx);
+      let correct = false;
+      if (q.type === 'multi') {
+        const sa = Array.isArray(studentRaw) ? [...studentRaw].sort() : [];
+        const co = Array.isArray(ca) ? [...ca].sort() : [];
+        correct = sa.length === co.length && sa.every((v, i) => v === co[i]);
+      } else {
+        const sa = Array.isArray(studentRaw) ? studentRaw[0] : studentRaw;
+        const co = Array.isArray(ca) ? ca[0] : ca;
+        correct = sa === co;
+      }
+      if (correct) return;
+      list.push({
+        index: idx,
+        type: q.type,
+        question: q.content,
+        options: q.options,
+        correctAnswer: formatCorrectAnswer(q),
+        studentAnswer: normalizeAnswer(studentRaw) || '未作答',
+      });
+    });
+    return list;
+  }, [session, answers, serverAnswerMap]);
+
 
   // Poll session status so students can see when teacher ends the quiz.
   // Stop polling once ended + revealed (nothing more to learn).
@@ -429,6 +465,22 @@ export default function QuizSubmitPage() {
                 </p>
               </div>
             )}
+            {wrongItems.length > 0 && (
+              <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">AI 个性化学习推荐</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      你有 {wrongItems.length} 道错题，AI 可分析错误根源并推荐针对性讲解与视频。
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" className="w-full gap-1.5" onClick={() => setRecOpen(true)}>
+                  <Sparkles className="w-3.5 h-3.5" /> 生成个性化学习推荐
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground text-center">
@@ -436,8 +488,15 @@ export default function QuizSubmitPage() {
           </div>
         )}
       </div>
+      <QuizRecommendations
+        open={recOpen}
+        onOpenChange={setRecOpen}
+        sessionTitle={session.title}
+        wrongs={wrongItems}
+      />
     </div>
   );
+
 
   if (submitted) return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
