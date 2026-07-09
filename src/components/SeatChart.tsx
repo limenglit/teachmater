@@ -29,6 +29,7 @@ import {
   type ClassroomHistoryItem,
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
+import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } from '@/lib/student-drop-hint';
 import { deleteSeatHistoryLocal, renameSeatHistoryLocal } from '@/lib/teamwork-local';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
