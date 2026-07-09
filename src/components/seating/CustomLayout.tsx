@@ -11,6 +11,7 @@ import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SeatLayoutPreviewDialog, { type ParsedLayout } from './SeatLayoutPreviewDialog';
 import { useSeatExportQr } from './useSeatExportQr';
+import { isStudentDrag, readDraggedStudentName, applyStudentDropToGrid } from '@/lib/seat-name-drop';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
