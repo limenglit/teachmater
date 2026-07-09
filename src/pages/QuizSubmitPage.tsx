@@ -465,6 +465,22 @@ export default function QuizSubmitPage() {
                 </p>
               </div>
             )}
+            {wrongItems.length > 0 && (
+              <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-4 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">AI 个性化学习推荐</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      你有 {wrongItems.length} 道错题，AI 可分析错误根源并推荐针对性讲解与视频。
+                    </p>
+                  </div>
+                </div>
+                <Button size="sm" className="w-full gap-1.5" onClick={() => setRecOpen(true)}>
+                  <Sparkles className="w-3.5 h-3.5" /> 生成个性化学习推荐
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground text-center">
@@ -472,8 +488,15 @@ export default function QuizSubmitPage() {
           </div>
         )}
       </div>
+      <QuizRecommendations
+        open={recOpen}
+        onOpenChange={setRecOpen}
+        sessionTitle={session.title}
+        wrongs={wrongItems}
+      />
     </div>
   );
+
 
   if (submitted) return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
