@@ -278,6 +278,10 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
               e.dataTransfer.setData('text/plain', `student:${student.name}`);
               e.dataTransfer.setData('application/x-student-name', student.name);
               e.dataTransfer.effectAllowed = 'copyMove';
+              import('@/lib/student-drop-hint').then(m => m.setIncomingStudentName(student.name));
+            }}
+            onDragEnd={() => {
+              import('@/lib/student-drop-hint').then(m => { m.setIncomingStudentName(''); m.clearStudentDropHint(); });
             }}
             title={`拖拽 ${student.name} 到座位`}
             className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing"
