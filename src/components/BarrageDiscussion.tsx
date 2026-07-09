@@ -173,16 +173,14 @@ export default function BarrageDiscussion() {
     }
 
     const token = crypto.randomUUID();
-    const { data, error } = await supabase
+    const id = crypto.randomUUID();
+    const { error } = await supabase
       .from('discussion_topics' as any)
-      .insert({ title: topicTitle.trim(), creator_token: token, student_names: resolvedNames } as any)
-      .select('id')
-      .single();
+      .insert({ id, title: topicTitle.trim(), creator_token: token, student_names: resolvedNames } as any);
     if (error) {
       toast({ title: t('barrage.createFailed'), description: error.message, variant: 'destructive' });
       return;
     }
-    const id = (data as any).id;
     setTopicId(id);
     setCreatorToken(token);
     sessionStorage.setItem(`topic_token_${id}`, token);
