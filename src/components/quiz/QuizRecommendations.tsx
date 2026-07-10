@@ -133,8 +133,16 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
                     const rootCause = rec?.rootCause || '未归类（AI 未针对此题给出根源分析）';
                     const summary = rec?.explanation || '';
                     const topic = rec?.topic || '';
+                    const clickable = !!onJumpToQuestion;
                     return (
-                      <div key={i} className="p-3 rounded-md border border-border bg-muted/30 space-y-1.5">
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={clickable ? () => onJumpToQuestion!(w.index) : undefined}
+                        disabled={!clickable}
+                        title={clickable ? '点击跳转到该题回放' : undefined}
+                        className={`w-full text-left p-3 rounded-md border border-border bg-muted/30 space-y-1.5 ${clickable ? 'hover:bg-muted/60 hover:border-primary/50 cursor-pointer transition-colors' : ''}`}
+                      >
                         <div className="flex items-start justify-between gap-2 flex-wrap">
                           <div className="text-xs font-medium text-foreground flex-1 min-w-0">
                             <Badge variant="outline" className="text-[10px] mr-1.5">题 {pos}</Badge>
@@ -157,8 +165,12 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
                             <strong className="text-foreground">解析：</strong>{summary}
                           </p>
                         )}
-                      </div>
+                        {clickable && (
+                          <p className="text-[10px] text-primary/80 pt-0.5">→ 点击查看该题回放</p>
+                        )}
+                      </button>
                     );
+
                   })}
                 </div>
               </div>
