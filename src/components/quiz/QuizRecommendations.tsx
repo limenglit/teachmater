@@ -119,7 +119,51 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
               </div>
             )}
 
+            {wrongs.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-1.5">
+                  <Target className="w-4 h-4 text-rose-600" /> 错题根源与解析
+                </h4>
+                <div className="space-y-2">
+                  {wrongs.map((w, i) => {
+                    const pos = i + 1; // matches relatedQuestionIndexes (1-based)
+                    const rec = result.recommendations.find(r => (r.relatedQuestionIndexes || []).includes(pos));
+                    const rootCause = rec?.rootCause || '未归类（AI 未针对此题给出根源分析）';
+                    const summary = rec?.explanation || '';
+                    const topic = rec?.topic || '';
+                    return (
+                      <div key={i} className="p-3 rounded-md border border-border bg-muted/30 space-y-1.5">
+                        <div className="flex items-start justify-between gap-2 flex-wrap">
+                          <div className="text-xs font-medium text-foreground flex-1 min-w-0">
+                            <Badge variant="outline" className="text-[10px] mr-1.5">题 {pos}</Badge>
+                            <span className="line-clamp-2">{w.question}</span>
+                          </div>
+                          {topic && (
+                            <Badge variant="secondary" className="text-[10px] shrink-0">{topic}</Badge>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5">
+                          <span>正确：<span className="text-emerald-700 dark:text-emerald-400">{w.correctAnswer || '—'}</span></span>
+                          <span>你答：<span className="text-rose-700 dark:text-rose-400">{w.studentAnswer || '未作答'}</span></span>
+                        </div>
+                        <div className="flex items-start gap-1.5 text-xs text-rose-700 dark:text-rose-400">
+                          <Target className="w-3 h-3 mt-0.5 shrink-0" />
+                          <span><strong>根源：</strong>{rootCause}</span>
+                        </div>
+                        {summary && (
+                          <p className="text-xs text-foreground/80 leading-relaxed line-clamp-3">
+                            <strong className="text-foreground">解析：</strong>{summary}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
+
               {result.recommendations.map((r, i) => (
                 <div key={i} className="p-4 rounded-md border border-border bg-card space-y-2">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
