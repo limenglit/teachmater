@@ -429,7 +429,7 @@ export default function QuizSubmitPage() {
         {session.reveal_answers ? (
           <div className="space-y-3">
             {session.questions.map((q, idx) => (
-              <div key={`${idx}-${q.content}`} className="rounded-xl border border-border bg-card p-4">
+              <div key={`${idx}-${q.content}`} id={`quiz-review-q-${idx}`} className="rounded-xl border border-border bg-card p-4 scroll-mt-24 transition-shadow" data-quiz-review-idx={idx}>
                 <p className="text-sm font-medium text-foreground mb-2">Q{idx + 1}. {q.content}</p>
                 {q.options?.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
