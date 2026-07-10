@@ -493,7 +493,19 @@ export default function QuizSubmitPage() {
         onOpenChange={setRecOpen}
         sessionTitle={session.title}
         wrongs={wrongItems}
+        onJumpToQuestion={(idx) => {
+          setRecOpen(false);
+          setTimeout(() => {
+            const el = document.getElementById(`quiz-review-q-${idx}`);
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              el.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+              setTimeout(() => el.classList.remove('ring-2', 'ring-primary', 'ring-offset-2'), 2000);
+            }
+          }, 200);
+        }}
       />
+
     </div>
   );
 
