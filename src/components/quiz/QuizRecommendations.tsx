@@ -38,9 +38,11 @@ interface Props {
   onOpenChange: (v: boolean) => void;
   sessionTitle: string;
   wrongs: QuizWrongItem[];
+  onJumpToQuestion?: (index: number) => void;
 }
 
-export default function QuizRecommendations({ open, onOpenChange, sessionTitle, wrongs }: Props) {
+export default function QuizRecommendations({ open, onOpenChange, sessionTitle, wrongs, onJumpToQuestion }: Props) {
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ApiResult | null>(null);
   const [error, setError] = useState('');
