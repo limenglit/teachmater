@@ -495,15 +495,69 @@ export default function QuizSubmitPage() {
         wrongs={wrongItems}
         onJumpToQuestion={(idx) => {
           setRecOpen(false);
-          setTimeout(() => {
-            const el = document.getElementById(`quiz-review-q-${idx}`);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              el.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
-              setTimeout(() => el.classList.remove('ring-2', 'ring-primary', 'ring-offset-2'), 2000);
+          const targetId = `quiz-review-q-${idx}`;
+          const startedAt = Date.now();
+
+          // Poll until the element exists AND the dialog overlay/body-lock is cleared.
+          // Radix Dialog toggles body pointer-events/scroll during its close animation,
+          // which can otherwise cancel a smooth scroll.
+          const tryScroll = () => {
+            const el = document.getElementById(targetId);
+            const bodyLocked = document.body.style.overflow === 'hidden';
+            if (!el || bodyLocked) {
+              if (Date.now() - startedAt < 1200) {
+                requestAnimationFrame(tryScroll);
+              }
+              return;
             }
-          }, 200);
+
+            // Find nearest scrollable ancestor (falls back to window).
+            const getScrollParent = (node: HTMLElement | null): HTMLElement | Window => {
+              let cur: HTMLElement | null = node?.parentElement ?? null;
+              while (cur) {
+                const s = getComputedStyle(cur);
+                const oy = s.overflowY;
+                if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && cur.scrollHeight > cur.clientHeight) {
+                  return cur;
+                }
+                cur = cur.parentElement;
+              }
+              return window;
+            };
+
+            const scroller = getScrollParent(el);
+            // Responsive offset: leaves a comfortable gap above the question title,
+            // accounts for iOS safe-area and small viewports.
+            const safeTop = parseInt(
+              getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0',
+              10,
+            ) || 0;
+            const vh = window.innerHeight || 800;
+            const offset = Math.min(96, Math.max(16, Math.round(vh * 0.08))) + safeTop;
+
+            if (scroller === window) {
+              const rect = el.getBoundingClientRect();
+              const top = rect.top + window.scrollY - offset;
+              window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            } else {
+              const container = scroller as HTMLElement;
+              const cRect = container.getBoundingClientRect();
+              const eRect = el.getBoundingClientRect();
+              const top = container.scrollTop + (eRect.top - cRect.top) - offset;
+              container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+            }
+
+            el.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'ring-offset-background');
+            window.setTimeout(
+              () => el.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'ring-offset-background'),
+              2200,
+            );
+          };
+
+          // Kick off after the dialog begins closing.
+          window.setTimeout(() => requestAnimationFrame(tryScroll), 80);
         }}
+
       />
 
     </div>
