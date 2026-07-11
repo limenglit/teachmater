@@ -20,6 +20,10 @@ import CollaborativeCanvas from './board/CollaborativeCanvas';
 import { tFormat } from '@/contexts/LanguageContext';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import { loadLastGroups } from '@/lib/teamwork-local';
+
+const buildGroupPanelNames = (count: number) =>
+  Array.from({ length: count }, (_, i) => `第${i + 1}组`);
 
 export interface Board {
   id: string;
@@ -290,9 +294,26 @@ export default function BoardPanel() {
     if (!activeBoard) return;
     const patch: Partial<Board> = { view_mode: mode };
     if (mode === 'storyboard' && (!activeBoard.columns || activeBoard.columns.length < 2)) {
-      patch.columns = DEFAULT_STORYBOARD;
+      const lastGroups = loadLastGroups();
+      if (lastGroups.length >= 2) {
+        patch.columns = buildGroupPanelNames(lastGroups.length);
+      } else {
+        patch.columns = DEFAULT_STORYBOARD;
+      }
     }
     await updateBoardSettings(patch);
+  };
+
+  const syncStoryboardFromGroups = () => {
+    const lastGroups = loadLastGroups();
+    if (lastGroups.length < 2) {
+      toast({ title: '暂无可同步的分组，请先在"分组"里生成分组', variant: 'destructive' });
+      return;
+    }
+    const count = Math.max(2, Math.min(12, lastGroups.length));
+    setStoryCount(count);
+    setStoryThemes(buildGroupPanelNames(count).join('\n'));
+    toast({ title: `已同步 ${count} 个分组，点击"确认"保存` });
   };
 
   const saveStoryboardLayout = async () => {
@@ -876,6 +897,14 @@ export default function BoardPanel() {
                   className="w-full min-h-[180px] rounded-md border border-border bg-background p-3 text-sm"
                   placeholder={t('board.storyboardThemesPlaceholder')}
                 />
+                <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    自动关联"分组"：将故事板数量设为分组数，并按"第X组"命名每个面板。
+                  </p>
+                  <Button size="sm" variant="outline" onClick={syncStoryboardFromGroups}>
+                    从最近分组同步（{loadLastGroups().length || 0} 组）
+                  </Button>
+                </div>
                 <Button onClick={saveStoryboardLayout}>{t('common.confirm')}</Button>
               </div>
             )}
