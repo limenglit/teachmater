@@ -126,6 +126,7 @@ export default function BoardPanel() {
   const [newCollaborative, setNewCollaborative] = useState(false);
   const [storyCount, setStoryCount] = useState(4);
   const [storyThemes, setStoryThemes] = useState('');
+  const [latestGroupCount, setLatestGroupCount] = useState<number>(() => loadLastGroups().length);
   const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
 
   // Load boards
