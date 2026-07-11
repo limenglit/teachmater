@@ -798,9 +798,26 @@ export default function BoardPanel() {
             ))}
 
             {isCreator && currentViewMode === 'storyboard' && (
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowSettings(true)}>
-                <Settings className="w-3 h-3" /> {t('board.layoutSettings')}
-              </Button>
+              <>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowSettings(true)}>
+                  <Settings className="w-3 h-3" /> {t('board.layoutSettings')}
+                </Button>
+                {latestGroupCount >= 2 && (
+                  <Button
+                    variant={latestGroupCount !== (activeBoard.columns?.length || 0) ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => syncStoryboardFromGroups({ persist: true })}
+                    title="按最新分组重新同步故事板数量与"第X组"名称"
+                  >
+                    <Users className="w-3 h-3" />
+                    同步分组（{latestGroupCount}）
+                    {latestGroupCount !== (activeBoard.columns?.length || 0) && (
+                      <span className="ml-1 px-1 rounded bg-amber-500/20 text-amber-700 text-[10px]">变更</span>
+                    )}
+                  </Button>
+                )}
+              </>
             )}
 
             {isCreator && (
