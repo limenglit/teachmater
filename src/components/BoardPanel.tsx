@@ -126,6 +126,7 @@ export default function BoardPanel() {
   const [newCollaborative, setNewCollaborative] = useState(false);
   const [storyCount, setStoryCount] = useState(4);
   const [storyThemes, setStoryThemes] = useState('');
+  const [latestGroupCount, setLatestGroupCount] = useState<number>(() => loadLastGroups().length);
   const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
 
   // Load boards
@@ -142,6 +143,23 @@ export default function BoardPanel() {
     setStoryThemes((activeBoard.columns || []).join('\n'));
     setStoryCount(Math.max(2, (activeBoard.columns || []).length || 4));
   }, [activeBoard?.id, activeBoard?.columns]);
+
+  // Keep latest group count fresh so the resync UI reflects the newest grouping.
+  useEffect(() => {
+    const refresh = () => setLatestGroupCount(loadLastGroups().length);
+    refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key.includes('group') || e.key.includes('team')) refresh();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 3000);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const loadCloudBoards = async () => {
     setLoading(true);
@@ -304,16 +322,26 @@ export default function BoardPanel() {
     await updateBoardSettings(patch);
   };
 
-  const syncStoryboardFromGroups = () => {
+  const syncStoryboardFromGroups = async (options?: { persist?: boolean; silent?: boolean }) => {
+    const persist = options?.persist ?? false;
     const lastGroups = loadLastGroups();
+    setLatestGroupCount(lastGroups.length);
     if (lastGroups.length < 2) {
-      toast({ title: '暂无可同步的分组，请先在"分组"里生成分组', variant: 'destructive' });
+      if (!options?.silent) {
+        toast({ title: '暂无可同步的分组，请先在"分组"里生成分组', variant: 'destructive' });
+      }
       return;
     }
     const count = Math.max(2, Math.min(12, lastGroups.length));
+    const names = buildGroupPanelNames(count);
     setStoryCount(count);
-    setStoryThemes(buildGroupPanelNames(count).join('\n'));
-    toast({ title: `已同步 ${count} 个分组，点击"确认"保存` });
+    setStoryThemes(names.join('\n'));
+    if (persist && activeBoard) {
+      await updateBoardSetting('columns', names);
+      if (!options?.silent) toast({ title: `已按最新分组重新同步：${count} 个"第X组"面板` });
+    } else if (!options?.silent) {
+      toast({ title: `已同步 ${count} 个分组，点击"确认"保存` });
+    }
   };
 
   const saveStoryboardLayout = async () => {
@@ -770,9 +798,26 @@ export default function BoardPanel() {
             ))}
 
             {isCreator && currentViewMode === 'storyboard' && (
-              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowSettings(true)}>
-                <Settings className="w-3 h-3" /> {t('board.layoutSettings')}
-              </Button>
+              <>
+                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowSettings(true)}>
+                  <Settings className="w-3 h-3" /> {t('board.layoutSettings')}
+                </Button>
+                {latestGroupCount >= 2 && (
+                  <Button
+                    variant={latestGroupCount !== (activeBoard.columns?.length || 0) ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => syncStoryboardFromGroups({ persist: true })}
+                    title='按最新分组重新同步故事板数量与"第X组"名称'
+                  >
+                    <Users className="w-3 h-3" />
+                    同步分组（{latestGroupCount}）
+                    {latestGroupCount !== (activeBoard.columns?.length || 0) && (
+                      <span className="ml-1 px-1 rounded bg-amber-500/20 text-amber-700 text-[10px]">变更</span>
+                    )}
+                  </Button>
+                )}
+              </>
             )}
 
             {isCreator && (
@@ -899,11 +944,19 @@ export default function BoardPanel() {
                 />
                 <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    自动关联"分组"：将故事板数量设为分组数，并按"第X组"命名每个面板。
+                    自动关联"分组"：将故事板数量设为分组数，并按"第X组"命名每个面板。当前最新分组：{latestGroupCount || 0} 组
+                    {latestGroupCount >= 2 && latestGroupCount !== (activeBoard?.columns?.length || 0) && (
+                      <span className="ml-1 text-amber-600">（与当前故事板 {activeBoard?.columns?.length || 0} 个面板不一致）</span>
+                    )}
                   </p>
-                  <Button size="sm" variant="outline" onClick={syncStoryboardFromGroups}>
-                    从最近分组同步（{loadLastGroups().length || 0} 组）
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => syncStoryboardFromGroups()}>
+                      同步到编辑框（{latestGroupCount || 0} 组）
+                    </Button>
+                    <Button size="sm" onClick={() => syncStoryboardFromGroups({ persist: true })}>
+                      一键重新同步并保存
+                    </Button>
+                  </div>
                 </div>
                 <Button onClick={saveStoryboardLayout}>{t('common.confirm')}</Button>
               </div>
