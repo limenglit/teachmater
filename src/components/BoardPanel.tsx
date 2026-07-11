@@ -294,9 +294,26 @@ export default function BoardPanel() {
     if (!activeBoard) return;
     const patch: Partial<Board> = { view_mode: mode };
     if (mode === 'storyboard' && (!activeBoard.columns || activeBoard.columns.length < 2)) {
-      patch.columns = DEFAULT_STORYBOARD;
+      const lastGroups = loadLastGroups();
+      if (lastGroups.length >= 2) {
+        patch.columns = buildGroupPanelNames(lastGroups.length);
+      } else {
+        patch.columns = DEFAULT_STORYBOARD;
+      }
     }
     await updateBoardSettings(patch);
+  };
+
+  const syncStoryboardFromGroups = () => {
+    const lastGroups = loadLastGroups();
+    if (lastGroups.length < 2) {
+      toast({ title: '暂无可同步的分组，请先在"分组"里生成分组', variant: 'destructive' });
+      return;
+    }
+    const count = Math.max(2, Math.min(12, lastGroups.length));
+    setStoryCount(count);
+    setStoryThemes(buildGroupPanelNames(count).join('\n'));
+    toast({ title: `已同步 ${count} 个分组，点击"确认"保存` });
   };
 
   const saveStoryboardLayout = async () => {
