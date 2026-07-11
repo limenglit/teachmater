@@ -144,6 +144,23 @@ export default function BoardPanel() {
     setStoryCount(Math.max(2, (activeBoard.columns || []).length || 4));
   }, [activeBoard?.id, activeBoard?.columns]);
 
+  // Keep latest group count fresh so the resync UI reflects the newest grouping.
+  useEffect(() => {
+    const refresh = () => setLatestGroupCount(loadLastGroups().length);
+    refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || e.key.includes('group') || e.key.includes('team')) refresh();
+    };
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 3000);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', refresh);
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const loadCloudBoards = async () => {
     setLoading(true);
     // For logged-in users, load boards by user_id; also load boards by creator_token for backwards compat
