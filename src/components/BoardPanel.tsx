@@ -808,7 +808,7 @@ export default function BoardPanel() {
                     size="sm"
                     className="h-7 text-xs gap-1"
                     onClick={() => syncStoryboardFromGroups({ persist: true })}
-                    title="按最新分组重新同步故事板数量与"第X组"名称"
+                    title='按最新分组重新同步故事板数量与"第X组"名称'
                   >
                     <Users className="w-3 h-3" />
                     同步分组（{latestGroupCount}）
