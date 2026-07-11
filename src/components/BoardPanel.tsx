@@ -927,11 +927,19 @@ export default function BoardPanel() {
                 />
                 <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    自动关联"分组"：将故事板数量设为分组数，并按"第X组"命名每个面板。
+                    自动关联"分组"：将故事板数量设为分组数，并按"第X组"命名每个面板。当前最新分组：{latestGroupCount || 0} 组
+                    {latestGroupCount >= 2 && latestGroupCount !== (activeBoard?.columns?.length || 0) && (
+                      <span className="ml-1 text-amber-600">（与当前故事板 {activeBoard?.columns?.length || 0} 个面板不一致）</span>
+                    )}
                   </p>
-                  <Button size="sm" variant="outline" onClick={syncStoryboardFromGroups}>
-                    从最近分组同步（{loadLastGroups().length || 0} 组）
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => syncStoryboardFromGroups()}>
+                      同步到编辑框（{latestGroupCount || 0} 组）
+                    </Button>
+                    <Button size="sm" onClick={() => syncStoryboardFromGroups({ persist: true })}>
+                      一键重新同步并保存
+                    </Button>
+                  </div>
                 </div>
                 <Button onClick={saveStoryboardLayout}>{t('common.confirm')}</Button>
               </div>
