@@ -20,6 +20,10 @@ import CollaborativeCanvas from './board/CollaborativeCanvas';
 import { tFormat } from '@/contexts/LanguageContext';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import { loadLastGroups } from '@/lib/teamwork-local';
+
+const buildGroupPanelNames = (count: number) =>
+  Array.from({ length: count }, (_, i) => `第${i + 1}组`);
 
 export interface Board {
   id: string;
