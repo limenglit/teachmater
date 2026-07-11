@@ -322,16 +322,26 @@ export default function BoardPanel() {
     await updateBoardSettings(patch);
   };
 
-  const syncStoryboardFromGroups = () => {
+  const syncStoryboardFromGroups = async (options?: { persist?: boolean; silent?: boolean }) => {
+    const persist = options?.persist ?? false;
     const lastGroups = loadLastGroups();
+    setLatestGroupCount(lastGroups.length);
     if (lastGroups.length < 2) {
-      toast({ title: '暂无可同步的分组，请先在"分组"里生成分组', variant: 'destructive' });
+      if (!options?.silent) {
+        toast({ title: '暂无可同步的分组，请先在"分组"里生成分组', variant: 'destructive' });
+      }
       return;
     }
     const count = Math.max(2, Math.min(12, lastGroups.length));
+    const names = buildGroupPanelNames(count);
     setStoryCount(count);
-    setStoryThemes(buildGroupPanelNames(count).join('\n'));
-    toast({ title: `已同步 ${count} 个分组，点击"确认"保存` });
+    setStoryThemes(names.join('\n'));
+    if (persist && activeBoard) {
+      await updateBoardSetting('columns', names);
+      if (!options?.silent) toast({ title: `已按最新分组重新同步：${count} 个"第X组"面板` });
+    } else if (!options?.silent) {
+      toast({ title: `已同步 ${count} 个分组，点击"确认"保存` });
+    }
   };
 
   const saveStoryboardLayout = async () => {
