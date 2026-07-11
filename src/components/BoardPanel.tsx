@@ -897,6 +897,14 @@ export default function BoardPanel() {
                   className="w-full min-h-[180px] rounded-md border border-border bg-background p-3 text-sm"
                   placeholder={t('board.storyboardThemesPlaceholder')}
                 />
+                <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    自动关联"分组"：将故事板数量设为分组数，并按"第X组"命名每个面板。
+                  </p>
+                  <Button size="sm" variant="outline" onClick={syncStoryboardFromGroups}>
+                    从最近分组同步（{loadLastGroups().length || 0} 组）
+                  </Button>
+                </div>
                 <Button onClick={saveStoryboardLayout}>{t('common.confirm')}</Button>
               </div>
             )}
