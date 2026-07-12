@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard, Archive, Loader2, Palette, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard, Archive, Loader2, Palette, ExternalLink, Pencil, Check, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
 import BoardTimelineView from './board/BoardTimelineView';
@@ -123,6 +123,8 @@ export default function BoardPanel() {
   const [showRoster, setShowRoster] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
   const [newTitle, setNewTitle] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const [newCollaborative, setNewCollaborative] = useState(false);
   const [storyCount, setStoryCount] = useState(4);
   const [storyThemes, setStoryThemes] = useState('');
@@ -641,6 +643,66 @@ export default function BoardPanel() {
     return <BoardPPTMode cards={sortedCards} onExit={() => setShowPPT(false)} />;
   }
 
+  const startEditTitle = () => {
+    if (!activeBoard) return;
+    setTitleDraft(activeBoard.title || '');
+    setEditingTitle(true);
+  };
+  const cancelEditTitle = () => { setEditingTitle(false); setTitleDraft(''); };
+  const commitEditTitle = async () => {
+    if (!activeBoard) { cancelEditTitle(); return; }
+    const next = titleDraft.trim();
+    if (!next || next === activeBoard.title) { cancelEditTitle(); return; }
+    setEditingTitle(false);
+    await updateBoardSetting('title', next);
+    toast({ title: '白板名称已更新' });
+  };
+
+  const renderEditableTitle = (canEdit: boolean) => {
+    if (!activeBoard) return null;
+    if (editingTitle && canEdit) {
+      return (
+        <div className="flex items-center gap-1 min-w-0">
+          <input
+            autoFocus
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); commitEditTitle(); }
+              else if (e.key === 'Escape') { e.preventDefault(); cancelEditTitle(); }
+            }}
+            maxLength={80}
+            className="h-7 text-sm font-semibold bg-background border border-input rounded px-2 focus:outline-none focus:ring-2 focus:ring-primary min-w-0 w-40 sm:w-56"
+          />
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={commitEditTitle} title="保存">
+            <Check className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cancelEditTitle} title="取消">
+            <X className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1 min-w-0">
+        <h2 className="font-semibold text-foreground text-sm truncate">{activeBoard.title}</h2>
+        {canEdit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            onClick={startEditTitle}
+            title="重命名白板"
+            aria-label="重命名白板"
+          >
+            <Pencil className="w-3 h-3" />
+          </Button>
+        )}
+      </div>
+    );
+  };
+
+
   // Collaborative board view
   if (activeBoard && activeBoard.is_collaborative) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab?lang=${lang}`;
@@ -651,7 +713,7 @@ export default function BoardPanel() {
           <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
-          <h2 className="font-semibold text-foreground text-sm truncate">{activeBoard.title}</h2>
+          {renderEditableTitle(isCreator)}
           <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
             <Palette className="w-3 h-3" /> 在线协同
           </span>
@@ -767,7 +829,7 @@ export default function BoardPanel() {
           <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
-          <h2 className="font-semibold text-foreground text-sm truncate">{activeBoard.title}</h2>
+          {renderEditableTitle(isCreator)}
           {activeBoard.is_locked && (
             <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full flex items-center gap-1">
               <Lock className="w-3 h-3" /> {t('board.locked')}
