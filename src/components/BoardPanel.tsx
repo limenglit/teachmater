@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard, Archive, Loader2, Palette, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Settings, Lock, Unlock, Eye, QrCode, Download, Play, ArrowLeft, LayoutGrid, Clock, PenBox, Cloud as CloudIcon, FileText, Users, Clapperboard, Archive, Loader2, Palette, ExternalLink, Pencil, Check, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import BoardWallView from './board/BoardWallView';
 import BoardTimelineView from './board/BoardTimelineView';
