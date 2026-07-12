@@ -645,12 +645,23 @@ export default function BoardPanel() {
 
   const startEditTitle = () => {
     if (!activeBoard) return;
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    if (!isCreator) {
+      toast({ title: '只有白板创建者可以编辑名称', variant: 'destructive' });
+      return;
+    }
     setTitleDraft(activeBoard.title || '');
     setEditingTitle(true);
   };
   const cancelEditTitle = () => { setEditingTitle(false); setTitleDraft(''); };
   const commitEditTitle = async () => {
     if (!activeBoard) { cancelEditTitle(); return; }
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    if (!isCreator) {
+      cancelEditTitle();
+      toast({ title: '只有白板创建者可以编辑名称', variant: 'destructive' });
+      return;
+    }
     const next = titleDraft.trim();
     if (!next || next === activeBoard.title) { cancelEditTitle(); return; }
     setEditingTitle(false);
@@ -702,11 +713,15 @@ export default function BoardPanel() {
     );
   };
 
+  const isBoardCreator = (board: Board) => {
+    return !!getCreatorToken(board.id) || (!!user && (board as any).user_id === user.id);
+  };
+
 
   // Collaborative board view
   if (activeBoard && activeBoard.is_collaborative) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab?lang=${lang}`;
-    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    const isCreator = isBoardCreator(activeBoard);
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
@@ -820,7 +835,7 @@ export default function BoardPanel() {
   // Board detail view
   if (activeBoard) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/submit`;
-    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    const isCreator = isBoardCreator(activeBoard);
 
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
