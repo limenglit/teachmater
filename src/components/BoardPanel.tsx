@@ -713,8 +713,8 @@ export default function BoardPanel() {
     );
   };
 
-  const useIsCreator = () => {
-    return activeBoard ? (!!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id)) : false;
+  const isBoardCreator = (board: Board) => {
+    return !!getCreatorToken(board.id) || (!!user && (board as any).user_id === user.id);
   };
 
 
