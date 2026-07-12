@@ -26,6 +26,21 @@ const VisualizationPanel = lazyRetry(() => import('@/components/VisualizationPan
 const VocabPanel = lazyRetry(() => import('@/components/VocabPanel'));
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAIQuota } from '@/hooks/useAIQuota';
+
+const AIQuotaBadge = () => {
+  const { remaining, limit, loading } = useAIQuota();
+  if (loading) return null;
+  const unlimited = limit === -1;
+  return (
+    <span
+      className="text-xs text-muted-foreground font-light hidden sm:inline"
+      title={unlimited ? 'AI 次数：无限制' : `今日 AI 剩余 ${remaining} / ${limit} 次`}
+    >
+      · AI 剩余 {unlimited ? '∞' : `${remaining}/${limit}`}
+    </span>
+  );
+};
 
 const PanelFallback = () => (
   <div className="flex items-center justify-center h-full min-h-[300px] text-sm text-muted-foreground">
