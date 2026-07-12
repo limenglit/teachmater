@@ -829,7 +829,7 @@ export default function BoardPanel() {
           <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
-          <h2 className="font-semibold text-foreground text-sm truncate">{activeBoard.title}</h2>
+          {renderEditableTitle(isCreator)}
           {activeBoard.is_locked && (
             <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full flex items-center gap-1">
               <Lock className="w-3 h-3" /> {t('board.locked')}
