@@ -645,6 +645,11 @@ export default function BoardPanel() {
 
   const startEditTitle = () => {
     if (!activeBoard) return;
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    if (!isCreator) {
+      toast({ title: '只有白板创建者可以编辑名称', variant: 'destructive' });
+      return;
+    }
     setTitleDraft(activeBoard.title || '');
     setEditingTitle(true);
   };
