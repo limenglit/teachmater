@@ -713,6 +713,10 @@ export default function BoardPanel() {
     );
   };
 
+  const useIsCreator = () => {
+    return activeBoard ? (!!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id)) : false;
+  };
+
 
   // Collaborative board view
   if (activeBoard && activeBoard.is_collaborative) {
