@@ -123,6 +123,8 @@ export default function BoardPanel() {
   const [showRoster, setShowRoster] = useState(false);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
   const [newTitle, setNewTitle] = useState('');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
   const [newCollaborative, setNewCollaborative] = useState(false);
   const [storyCount, setStoryCount] = useState(4);
   const [storyThemes, setStoryThemes] = useState('');
