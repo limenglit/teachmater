@@ -656,6 +656,12 @@ export default function BoardPanel() {
   const cancelEditTitle = () => { setEditingTitle(false); setTitleDraft(''); };
   const commitEditTitle = async () => {
     if (!activeBoard) { cancelEditTitle(); return; }
+    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    if (!isCreator) {
+      cancelEditTitle();
+      toast({ title: '只有白板创建者可以编辑名称', variant: 'destructive' });
+      return;
+    }
     const next = titleDraft.trim();
     if (!next || next === activeBoard.title) { cancelEditTitle(); return; }
     setEditingTitle(false);
