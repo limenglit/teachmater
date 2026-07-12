@@ -143,6 +143,7 @@ const Index = () => {
               <span className="text-xs sm:text-sm text-muted-foreground font-light hidden sm:inline">
                 {isApproved && nickname ? `--${nickname}| 的课堂创新平台` : t('app.subtitle')}
               </span>
+              {isApproved && <AIQuotaBadge />}
             </div>
             <div className="flex items-center gap-1">
               {/* Mobile sidebar toggle */}
