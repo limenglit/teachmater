@@ -721,7 +721,7 @@ export default function BoardPanel() {
   // Collaborative board view
   if (activeBoard && activeBoard.is_collaborative) {
     const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab?lang=${lang}`;
-    const isCreator = !!getCreatorToken(activeBoard.id) || (!!user && (activeBoard as any).user_id === user.id);
+    const isCreator = isBoardCreator(activeBoard);
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
