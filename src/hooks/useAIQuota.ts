@@ -99,6 +99,27 @@ export function useAIQuota(): AIQuota {
 
   const key = storageKey(user?.id);
 
+  // Cross-instance sync: any consume() call broadcasts, all hook instances refresh.
+  useEffect(() => {
+    const bump = () => setTick(t => t + 1);
+    const onCustom = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { key?: string } | undefined;
+      if (!detail?.key || detail.key === key) bump();
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === key) bump();
+    };
+    const onFocus = () => bump();
+    window.addEventListener('ai-quota-changed', onCustom as EventListener);
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.removeEventListener('ai-quota-changed', onCustom as EventListener);
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [key]);
+
   const remaining = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     tick; // dependency for reactivity
@@ -114,6 +135,10 @@ export function useAIQuota(): AIQuota {
     usage.count += 1;
     writeUsage(key, usage);
     setTick(t => t + 1);
+    // Notify all other hook instances in this tab.
+    try {
+      window.dispatchEvent(new CustomEvent('ai-quota-changed', { detail: { key } }));
+    } catch { /* noop */ }
     return true;
   }, [effectiveLimit, key]);
 
