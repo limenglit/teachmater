@@ -27,18 +27,41 @@ const VocabPanel = lazyRetry(() => import('@/components/VocabPanel'));
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAIQuota } from '@/hooks/useAIQuota';
+import RechargeDialog from '@/components/RechargeDialog';
 
 const AIQuotaBadge = () => {
-  const { remaining, limit, loading } = useAIQuota();
+  const { remaining, limit, purchasedRemaining, purchasedExpiresAt, loading, refreshPurchased } = useAIQuota();
+  const [rechargeOpen, setRechargeOpen] = useState(false);
   if (loading) return null;
   const unlimited = limit === -1;
+  const freeLabel = unlimited ? '∞' : `${remaining}/${limit}`;
   return (
-    <span
-      className="text-xs text-muted-foreground font-light hidden sm:inline"
-      title={unlimited ? 'AI 次数：无限制' : `今日 AI 剩余 ${remaining} / ${limit} 次`}
-    >
-      · AI 剩余 {unlimited ? '∞' : `${remaining}/${limit}`}
-    </span>
+    <>
+      <span
+        className="text-xs text-muted-foreground font-light hidden sm:inline"
+        title={
+          unlimited
+            ? 'AI 次数：无限制'
+            : `今日免费剩余 ${remaining}/${limit} 次${purchasedRemaining > 0 ? ` · 已购余额 ${purchasedRemaining} 次（${purchasedExpiresAt} 到期）` : ''}`
+        }
+      >
+        · AI 剩余 {freeLabel}
+        {purchasedRemaining > 0 && <span className="text-primary"> +{purchasedRemaining}</span>}
+      </span>
+      <button
+        type="button"
+        onClick={() => setRechargeOpen(true)}
+        className="text-xs text-primary hover:underline font-light"
+        title="充值 AI 算力"
+      >
+        充值
+      </button>
+      <RechargeDialog
+        open={rechargeOpen}
+        onOpenChange={setRechargeOpen}
+        onOrderSubmitted={() => { void refreshPurchased(); }}
+      />
+    </>
   );
 };
 
