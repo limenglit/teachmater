@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_credit_orders: {
+        Row: {
+          amount_cny: number
+          created_at: string
+          credits: number
+          id: string
+          package_key: string
+          pay_method: string
+          payer_note: string | null
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          screenshot_url: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount_cny: number
+          created_at?: string
+          credits: number
+          id?: string
+          package_key: string
+          pay_method: string
+          payer_note?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          amount_cny?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          package_key?: string
+          pay_method?: string
+          payer_note?: string | null
+          reject_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_usage_log: {
         Row: {
           count: number
@@ -1269,6 +1317,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ai_credits: {
+        Row: {
+          credits_balance: number
+          expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          credits_balance?: number
+          expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          credits_balance?: number
+          expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_ai_limits: {
         Row: {
           daily_limit: number
@@ -1559,6 +1628,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_approve_ai_credit_order: {
+        Args: { p_order_id: string }
+        Returns: undefined
+      }
       admin_get_users_with_limits: {
         Args: never
         Returns: {
@@ -1580,6 +1653,25 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_list_ai_credit_orders: {
+        Args: { p_status?: string }
+        Returns: {
+          amount_cny: number
+          created_at: string
+          credits: number
+          email: string
+          id: string
+          nickname: string
+          package_key: string
+          pay_method: string
+          payer_note: string
+          reject_reason: string
+          reviewed_at: string
+          screenshot_url: string
+          status: string
+          user_id: string
+        }[]
+      }
       admin_list_pending_vocab_sets: {
         Args: never
         Returns: {
@@ -1592,6 +1684,10 @@ export type Database = {
           id: string
           title: string
         }[]
+      }
+      admin_reject_ai_credit_order: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: undefined
       }
       admin_set_ai_limits: {
         Args: { p_daily_limit: number; p_user_ids: string[] }
@@ -1608,6 +1704,16 @@ export type Database = {
         Returns: undefined
       }
       consume_ai_quota: { Args: { p_user_id: string }; Returns: boolean }
+      consume_purchased_ai_credit: { Args: never; Returns: boolean }
+      create_ai_credit_order: {
+        Args: {
+          p_package_key: string
+          p_pay_method: string
+          p_payer_note: string
+          p_screenshot_url: string
+        }
+        Returns: string
+      }
       create_seat_checkin_session: {
         Args: {
           p_class_name?: string
@@ -1755,6 +1861,37 @@ export type Database = {
         Returns: Json
       }
       get_effective_page_limit: { Args: { p_user_id: string }; Returns: number }
+      get_my_ai_credit_orders: {
+        Args: never
+        Returns: {
+          amount_cny: number
+          created_at: string
+          credits: number
+          id: string
+          package_key: string
+          pay_method: string
+          payer_note: string | null
+          reject_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          screenshot_url: string | null
+          status: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "ai_credit_orders"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      get_my_ai_credits: {
+        Args: never
+        Returns: {
+          balance: number
+          expires_at: string
+        }[]
+      }
       get_my_status: { Args: never; Returns: string }
       get_my_username: { Args: never; Returns: string }
       get_pending_users: {

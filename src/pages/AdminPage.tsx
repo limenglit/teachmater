@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen, FileText } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen, FileText, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminConfigPanel from '@/components/AdminConfigPanel';
 import AdminAIQuotaPanel from '@/components/AdminAIQuotaPanel';
 import AdminPagesQuotaPanel from '@/components/AdminPagesQuotaPanel';
 import AdminVocabReview from '@/components/AdminVocabReview';
+import AdminAIOrdersPanel from '@/components/AdminAIOrdersPanel';
 import { useDocumentHead } from '@/hooks/useDocumentHead';
 
 interface PendingUser {
@@ -37,7 +38,7 @@ export default function AdminPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchActing, setBatchActing] = useState(false);
-  const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai' | 'pages' | 'vocab'>('users');
+  const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai' | 'pages' | 'vocab' | 'orders'>('users');
 
   useEffect(() => {
     if (!user) {
@@ -286,6 +287,14 @@ export default function AdminPage() {
           >
             <BookOpen className="w-3.5 h-3.5" /> 词库审核
           </Button>
+          <Button
+            size="sm"
+            variant={adminTab === 'orders' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('orders')}
+          >
+            <Wallet className="w-3.5 h-3.5" /> 充值订单
+          </Button>
         </div>
 
         {adminTab === 'config' ? (
@@ -296,6 +305,8 @@ export default function AdminPage() {
           <AdminPagesQuotaPanel />
         ) : adminTab === 'vocab' ? (
           <AdminVocabReview />
+        ) : adminTab === 'orders' ? (
+          <AdminAIOrdersPanel />
         ) : (
         <>
         <div className="flex flex-col sm:flex-row gap-2">
