@@ -112,18 +112,22 @@ export function useAIQuota(): AIQuota {
     return Math.max(0, effectiveLimit - usage.count);
   }, [effectiveLimit, key, tick]);
 
-  const consume = useCallback(async (): Promise<boolean> => {
+  const consume = useCallback((): boolean => {
     if (isAdmin) return true;
-    // Try purchased pack first
+    // Prefer purchased pack: optimistic local decrement + async server deduction.
     if (user && purchasedRemaining > 0) {
-      const { data, error } = await (supabase as any).rpc('consume_purchased_ai_credit');
-      if (!error && data === true) {
-        setTick(t => t + 1);
+      setPurchasedRemaining(n => Math.max(0, n - 1));
+      void (async () => {
+        const { error } = await (supabase as any).rpc('consume_purchased_ai_credit');
+        if (error) {
+          // Roll back on failure; refresh from server to reconcile.
+          void refreshPurchased();
+        }
         try { window.dispatchEvent(new CustomEvent('ai-quota-changed', { detail: { key } })); } catch { /* noop */ }
-        return true;
-      }
+      })();
+      return true;
     }
-    // Fallback: daily local counter
+    // Fallback: daily free counter
     if (effectiveLimit === -1) return true;
     const usage = readUsage(key);
     if (usage.count >= effectiveLimit) return false;
@@ -132,7 +136,7 @@ export function useAIQuota(): AIQuota {
     setTick(t => t + 1);
     try { window.dispatchEvent(new CustomEvent('ai-quota-changed', { detail: { key } })); } catch { /* noop */ }
     return true;
-  }, [effectiveLimit, key, isAdmin, user, purchasedRemaining]);
+  }, [effectiveLimit, key, isAdmin, user, purchasedRemaining, refreshPurchased]);
 
   return {
     remaining,
