@@ -183,8 +183,9 @@ export default function AdminAIOrdersPanel() {
                         </Button>
                       </>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full whitespace-nowrap
-                        ${o.status === 'approved' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}">
+                      <span className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                        o.status === 'approved' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+                      }`}>
                         {o.status === 'approved' ? <><CheckCircle2 className="w-3 h-3" />已通过</> : <><XCircle className="w-3 h-3" />已拒绝</>}
                       </span>
                     )}
