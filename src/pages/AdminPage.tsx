@@ -287,6 +287,14 @@ export default function AdminPage() {
           >
             <BookOpen className="w-3.5 h-3.5" /> 词库审核
           </Button>
+          <Button
+            size="sm"
+            variant={adminTab === 'orders' ? 'default' : 'ghost'}
+            className="gap-1 text-xs"
+            onClick={() => setAdminTab('orders')}
+          >
+            <Wallet className="w-3.5 h-3.5" /> 充值订单
+          </Button>
         </div>
 
         {adminTab === 'config' ? (
@@ -297,6 +305,8 @@ export default function AdminPage() {
           <AdminPagesQuotaPanel />
         ) : adminTab === 'vocab' ? (
           <AdminVocabReview />
+        ) : adminTab === 'orders' ? (
+          <AdminAIOrdersPanel />
         ) : (
         <>
         <div className="flex flex-col sm:flex-row gap-2">
