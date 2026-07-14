@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
-import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen, FileText } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen, FileText, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminConfigPanel from '@/components/AdminConfigPanel';
 import AdminAIQuotaPanel from '@/components/AdminAIQuotaPanel';
 import AdminPagesQuotaPanel from '@/components/AdminPagesQuotaPanel';
 import AdminVocabReview from '@/components/AdminVocabReview';
+import AdminAIOrdersPanel from '@/components/AdminAIOrdersPanel';
 import { useDocumentHead } from '@/hooks/useDocumentHead';
 
 interface PendingUser {
