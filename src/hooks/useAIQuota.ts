@@ -29,18 +29,14 @@ function writeUsage(key: string, usage: DailyUsage) {
 }
 
 export interface AIQuota {
-  /** Free remaining today. -1 unlimited. */
   remaining: number;
-  /** Free daily limit. -1 unlimited. */
   limit: number;
-  /** Purchased pack remaining (current month). 0 if none/expired. */
   purchasedRemaining: number;
-  /** Purchased pack expiration date (YYYY-MM-DD) or null. */
   purchasedExpiresAt: string | null;
-  /** Try to consume 1 call (purchased first, then daily). Returns false if over. */
-  consume: () => Promise<boolean>;
+  /** Try to consume 1 call. Purchased pack is deducted first (optimistically);
+   *  falls back to daily free counter. Returns false if fully depleted. */
+  consume: () => boolean;
   loading: boolean;
-  /** Manually refresh purchased balance (e.g. after checkout). */
   refreshPurchased: () => Promise<void>;
 }
 
