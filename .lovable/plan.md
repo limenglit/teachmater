@@ -1,44 +1,94 @@
-## 目标
+# AI 算力订阅充值实现方案
 
-侧边名单已可拖（`StudentSidebar` 已发出 `application/x-student-name` payload）。当前只有普通"教室"（`SeatChart`）与自由布局（`CustomLayout`）接收该拖拽。本次为其余 7 个场景补齐相同能力：
+## 一、套餐配置（写死在前端配置）
 
-- 智慧教室 SmartClassroom（圆桌）
-- 宴会厅 BanquetHall（圆桌）
-- 音乐厅 ConcertHall（分排）
-- 电脑教室 ComputerLab（分排+行方向）
-- 会议室 ConferenceRoom（U/口/长桌多区域）
-- 美术教室 ArtStudio（自由坐标）
-- 自由布局 CustomLayout（复核已有实现）
+| 套餐 | 价格 | AI 次数 |
+|------|------|---------|
+| 入门包 | ￥10 | 100 次 |
+| 标准包 | ￥20 | 300 次 |
 
-## 交互规范（所有场景一致）
+有效期：**充值到账当月**，跨月自动清零。跨月由 `expires_at` 字段 + 消费时判断。
 
-1. 侧边栏拖出学生 → 松开在某座位：
-   - 若目标座位空：该学生就座。
-   - 若目标座位已有其他学生：占位者的位置不动，把新学生放上去 → 原位学生返回名单（保持"不重复上座"）。
-   - 若被拖学生已在其他座位：与目标座位交换（原座位换成目标座位的旧学生，或原座位清空）。
-2. 目标座位若被禁用/关闭/预留 → 忽略拖拽。
-3. 拖拽用与已有一致的 `text/plain: "student:<name>"` + `application/x-student-name` 双通道。
+## 二、数据库改动（新增迁移）
 
-## 技术方案
+### 1. `payment_qrcodes`（管理员维护收款码）
+放在 `system_config.config.paymentQR = { wechat_url, alipay_url, note }`，无需新表。
 
-统一新增一个纯函数 `applyStudentDropToAssignment`（放在 `src/lib/seat-utils.ts` 或新文件 `seat-name-drop.ts`），针对通用二维 `string[][]` 座位模型执行"放置/交换"。对不同 shape 的场景做轻量适配：
+### 2. `user_ai_credits`（用户购买余额）
+- `user_id uuid PK`
+- `credits_balance int`（剩余次数）
+- `expires_at date`（当月月末）
+- `updated_at timestamptz`
 
-- **SmartClassroom / BanquetHall**：`assignment: string[][]`，直接调用。给每个座位 `<div>` 加 `onDragOver`/`onDrop`（不影响已有 pointer 交换逻辑）。跳过 `isClosed || isReservedTable`。
-- **ConcertHall**：`assignment: string[][]`（按 row），同上。
-- **ComputerLab**：`assignment: ComputerLabRowAssignment[]`（每行一个数组，含 `students: string[]`）。为每个座位 `<g>`/`<foreignObject>` 加 drop 事件，写入 `setAssignment(prev => …)` 使用行内 index。
-- **ConferenceRoom**：`assignment: { top, bottom, left, right, ... }`，按 side+index 定位。为每个座位 cell 加 drop。
-- **ArtStudio**：座位是"节点集合"（`nodes` + `seatPositions`），无 grid。做法：以 `seatNodes` 数组（已存在）为准，给每个 seat 节点加 drop；写入到 `assignment`（或对应的 name→node 映射）。查看该文件确认命名后实现。
-- **CustomLayout**：确认现有 `handleDrop` 已处理 student payload；若未处理，扩展。
+### 3. `ai_credit_orders`（订单）
+- `id uuid PK`
+- `user_id uuid`
+- `package_key text`（`p10_100` / `p20_300`）
+- `amount_cny numeric`
+- `credits int`
+- `pay_method text`（`wechat` / `alipay`）
+- `screenshot_url text`（付款截图）
+- `payer_note text`（用户备注/后四位）
+- `status text`（`pending` / `approved` / `rejected`）
+- `reject_reason text`
+- `created_at`, `reviewed_at`, `reviewed_by`
 
-DragOver 需 `preventDefault()` + `dropEffect='move'` 才能触发 drop；只在检测到 `text/plain` 以 `student:` 开头 或 `types` 包含 `application/x-student-name` 时激活，避免干扰各场景已有的行/桌自身拖动。
+GRANT + RLS：用户只能读写自己订单；管理员通过 SECURITY DEFINER RPC 审核。
 
-## 校验
+### 4. Storage bucket `payment-screenshots`（公开读）
 
-- 手工：把已就座学生拖到另一空位（应搬迁）、拖到已就座位（应交换）、把名单里未就座学生拖到空位（应就座）、拖到关闭/预留位（应无反应）。
-- 单元：为 `applyStudentDropToAssignment` 写 vitest（空位/交换/搬迁三条主路径）。
-- 端到端：在其中一个场景（ComputerLab）用 Playwright 触发 `dispatchEvent('dragstart'/'drop')`，验证 DOM 中学生姓名出现在目标座位。
+### 5. RPC 函数
+- `create_ai_credit_order(package_key, pay_method, screenshot_url, payer_note)` — 用户下单
+- `admin_list_ai_credit_orders(status)` — 管理员列表
+- `admin_approve_ai_credit_order(order_id)` — 通过：将该套餐 credits 累加到 `user_ai_credits.credits_balance`，`expires_at` 设为当月月末（如已过期则重置余额）
+- `admin_reject_ai_credit_order(order_id, reason)`
+- `consume_purchased_ai_credit(user_id)` — 消费 1 次：若 `expires_at >= today` 且余额>0 则 -1 并返回 true，否则 false（供 useAIQuota 优先消耗）
+- `get_my_ai_credits()` — 返回 `{ balance, expires_at }`（自动过滤过期）
 
-## 涉及文件
+## 三、前端改动
 
-- 新增：`src/lib/seat-name-drop.ts` + 对应测试
-- 修改：`SmartClassroom.tsx`、`BanquetHall.tsx`、`ConcertHall.tsx`、`ComputerLab.tsx`、`ConferenceRoom.tsx`、`ArtStudio.tsx`、必要时 `CustomLayout.tsx`
+### 1. `useAIQuota` 扩展
+- 新增 `purchasedRemaining`, `purchasedExpiresAt`
+- `remaining` UI 显示：`免费剩余 X / 已购 Y 次`
+- `consume()` 顺序：
+  1. Admin → 无限
+  2. 已购余额>0 且未过期 → 调 `consume_purchased_ai_credit` RPC
+  3. 否则走原有每日免费额度 localStorage 逻辑
+- 广播 `ai-quota-changed` 事件保持实时同步
+
+### 2. 主页 `Index.tsx`
+在昵称旁 AI 剩余徽章后追加 **「充值」按钮**，点击打开 `RechargeDialog`。
+
+### 3. `RechargeDialog` 组件（新）
+- 展示两个套餐卡片，选择套餐
+- 切换微信/支付宝，显示对应收款二维码（来自 `system_config.paymentQR`）
+- 提示：备注请填写你的邮箱/昵称
+- 上传付款截图（Storage）
+- 填写备注（付款金额、订单号后四位等）
+- 提交 → 调用 `create_ai_credit_order` → toast「已提交，等待管理员审核」
+
+### 4. `MyOrdersDialog`（新，可选简化为 RechargeDialog 内的历史区）
+显示我的订单历史与状态。
+
+### 5. Admin 端
+在 `AdminPage` 新增两块：
+- **「收款码配置」**：上传/替换微信、支付宝二维码图片，保存到 `system_config.paymentQR`
+- **「AI 充值订单审核」**：列表待审核订单，显示用户、套餐、金额、截图缩略图（点开大图）、备注、时间；操作按钮：通过 / 拒绝（填原因）
+
+## 四、消费点接入
+无需改现有 AI 调用点——`consume()` 内部自动决定扣哪个池子。
+
+## 五、跨月清零机制
+`get_my_ai_credits()` RPC 里：若 `expires_at < today` 则视为 0（不实际删除，审批时重置）。UI 展示 `已购 0 次（已过期）`。
+
+## 六、安全 & 细节
+- 订单 amount/credits 由服务端根据 `package_key` 白名单派生，不接受客户端传值
+- 截图 URL 校验为本项目 Storage 域名
+- 管理员审核时使用 `has_role(auth.uid(), 'admin')` 校验
+- 拒绝后不发放算力，用户可再次提交新订单
+
+## 交付分两步
+**Step 1**：数据库迁移 + RPC + Storage bucket
+**Step 2**：前端 UI（充值弹窗、Admin 审核、useAIQuota 接入）
+
+确认后我立即开始实施 Step 1。
