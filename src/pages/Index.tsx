@@ -58,6 +58,14 @@ const AIQuotaBadge = () => {
       >
         充值
       </button>
+      <button
+        type="button"
+        onClick={() => navigate('/my-recharge-orders')}
+        className="text-xs text-muted-foreground hover:text-foreground hover:underline font-light hidden sm:inline"
+        title="查看我的充值订单"
+      >
+        订单
+      </button>
       <RechargeDialog
         open={rechargeOpen}
         onOpenChange={setRechargeOpen}
