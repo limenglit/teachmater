@@ -150,7 +150,11 @@ export default function MyRechargeOrdersPage() {
             <p className="text-sm">
               {orders.length === 0 ? '暂无充值订单' : '没有符合当前筛选条件的订单'}
             </p>
-            <Button variant="link" size="sm" onClick={() => setRechargeOpen(true)}>
+            <Button
+              variant="link"
+              size="sm"
+              onClick={() => orders.length === 0 ? setRechargeOpen(true) : setFilterStatus('all')}
+            >
               {orders.length === 0 ? '立即充值' : '返回全部'}
             </Button>
           </div>
