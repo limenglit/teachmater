@@ -32,6 +32,7 @@ const SeatingRuleValidator = lazyRetry(() => import("./pages/SeatingRuleValidato
 const PagesManager = lazyRetry(() => import("./pages/PagesManager"));
 const UserPageView = lazyRetry(() => import("./pages/UserPageView"));
 const CoursewareGenerator = lazyRetry(() => import("./pages/CoursewareGenerator"));
+const MyRechargeOrdersPage = lazyRetry(() => import("./pages/MyRechargeOrdersPage"));
 
 const queryClient = new QueryClient();
 
