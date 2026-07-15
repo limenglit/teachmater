@@ -32,6 +32,7 @@ const SeatingRuleValidator = lazyRetry(() => import("./pages/SeatingRuleValidato
 const PagesManager = lazyRetry(() => import("./pages/PagesManager"));
 const UserPageView = lazyRetry(() => import("./pages/UserPageView"));
 const CoursewareGenerator = lazyRetry(() => import("./pages/CoursewareGenerator"));
+const MyRechargeOrdersPage = lazyRetry(() => import("./pages/MyRechargeOrdersPage"));
 
 const queryClient = new QueryClient();
 
@@ -68,6 +69,7 @@ const App = () => (
                 <Route path="/seating-rule-check" element={<Suspense fallback={<Loading />}><SeatingRuleValidator /></Suspense>} />
                 <Route path="/pages" element={<Suspense fallback={<Loading />}><PagesManager /></Suspense>} />
                 <Route path="/courseware" element={<Suspense fallback={<Loading />}><CoursewareGenerator /></Suspense>} />
+                <Route path="/my-recharge-orders" element={<Suspense fallback={<Loading />}><MyRechargeOrdersPage /></Suspense>} />
                 {/* 公开 Page 访问：/用户名/页面名 — 必须放在 catch-all 之前、其它具名路由之后 */}
                 <Route path="/:username/:slug" element={<Suspense fallback={<Loading />}><UserPageView /></Suspense>} />
                 <Route path="*" element={<NotFound />} />

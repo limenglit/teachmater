@@ -33,6 +33,7 @@ import RechargeDialog from '@/components/RechargeDialog';
 const AIQuotaBadge = () => {
   const { remaining, limit, purchasedRemaining, purchasedExpiresAt, loading, refreshPurchased } = useAIQuota();
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  const navigate = useNavigate();
   useAIOrderNotifier(() => { void refreshPurchased(); });
   if (loading) return null;
   const unlimited = limit === -1;
@@ -57,6 +58,14 @@ const AIQuotaBadge = () => {
         title="充值 AI 算力"
       >
         充值
+      </button>
+      <button
+        type="button"
+        onClick={() => navigate('/my-recharge-orders')}
+        className="text-xs text-muted-foreground hover:text-foreground hover:underline font-light hidden sm:inline"
+        title="查看我的充值订单"
+      >
+        订单
       </button>
       <RechargeDialog
         open={rechargeOpen}
