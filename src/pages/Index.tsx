@@ -33,6 +33,7 @@ import RechargeDialog from '@/components/RechargeDialog';
 const AIQuotaBadge = () => {
   const { remaining, limit, purchasedRemaining, purchasedExpiresAt, loading, refreshPurchased } = useAIQuota();
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  const navigate = useNavigate();
   useAIOrderNotifier(() => { void refreshPurchased(); });
   if (loading) return null;
   const unlimited = limit === -1;
