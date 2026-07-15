@@ -50,6 +50,33 @@ export default function MyRechargeOrdersPage() {
   const [orders, setOrders] = useState<MyOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [sortBy, setSortBy] = useState<'created_desc' | 'created_asc' | 'reviewed_desc' | 'reviewed_asc'>('created_desc');
+
+  const filteredOrders = useMemo(() => {
+    const list = filterStatus === 'all' ? orders : orders.filter(o => o.status === filterStatus);
+    return [...list].sort((a, b) => {
+      switch (sortBy) {
+        case 'created_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'created_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'reviewed_asc': {
+          const ta = a.reviewed_at ? new Date(a.reviewed_at).getTime() : 0;
+          const tb = b.reviewed_at ? new Date(b.reviewed_at).getTime() : 0;
+          return ta - tb;
+        }
+        case 'reviewed_desc': {
+          const ta = a.reviewed_at ? new Date(a.reviewed_at).getTime() : 0;
+          const tb = b.reviewed_at ? new Date(b.reviewed_at).getTime() : 0;
+          if (ta === 0 && tb === 0) return 0;
+          if (ta === 0) return 1;
+          if (tb === 0) return -1;
+          return tb - ta;
+        }
+      }
+    });
+  }, [orders, filterStatus, sortBy]);
 
   const load = async () => {
     setLoading(true);
