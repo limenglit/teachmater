@@ -27,11 +27,13 @@ const VocabPanel = lazyRetry(() => import('@/components/VocabPanel'));
 import { LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAIQuota } from '@/hooks/useAIQuota';
+import { useAIOrderNotifier } from '@/hooks/useAIOrderNotifier';
 import RechargeDialog from '@/components/RechargeDialog';
 
 const AIQuotaBadge = () => {
   const { remaining, limit, purchasedRemaining, purchasedExpiresAt, loading, refreshPurchased } = useAIQuota();
   const [rechargeOpen, setRechargeOpen] = useState(false);
+  useAIOrderNotifier(() => { void refreshPurchased(); });
   if (loading) return null;
   const unlimited = limit === -1;
   const freeLabel = unlimited ? '∞' : `${remaining}/${limit}`;
