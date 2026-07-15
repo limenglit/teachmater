@@ -113,6 +113,33 @@ export default function MyRechargeOrdersPage() {
           查看每笔 AI 算力充值的支付状态与到账情况。已到账的算力当月有效。
         </p>
 
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-5">
+          <Tabs value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)} className="w-full sm:w-auto">
+            <TabsList className="grid grid-cols-4 w-full sm:w-auto">
+              <TabsTrigger value="all">全部</TabsTrigger>
+              <TabsTrigger value="pending">待审核</TabsTrigger>
+              <TabsTrigger value="approved">已到账</TabsTrigger>
+              <TabsTrigger value="rejected">失败</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <ListFilter className="w-4 h-4 text-muted-foreground shrink-0" />
+            <ArrowUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-full sm:w-44">
+                <SelectValue placeholder="排序" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created_desc">最新提交</SelectItem>
+                <SelectItem value="created_asc">最早提交</SelectItem>
+                <SelectItem value="reviewed_desc">最近更新</SelectItem>
+                <SelectItem value="reviewed_asc">最早更新</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />加载中...
