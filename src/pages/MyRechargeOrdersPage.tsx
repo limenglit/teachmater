@@ -144,17 +144,19 @@ export default function MyRechargeOrdersPage() {
           <div className="flex items-center justify-center py-16 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />加载中...
           </div>
-        ) : orders.length === 0 ? (
+        ) : filteredOrders.length === 0 ? (
           <div className="text-center py-16 border border-dashed border-border rounded-lg text-muted-foreground">
             <Receipt className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">暂无充值订单</p>
+            <p className="text-sm">
+              {orders.length === 0 ? '暂无充值订单' : '没有符合当前筛选条件的订单'}
+            </p>
             <Button variant="link" size="sm" onClick={() => setRechargeOpen(true)}>
-              立即充值
+              {orders.length === 0 ? '立即充值' : '返回全部'}
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
-            {orders.map(o => (
+            {filteredOrders.map(o => (
               <div key={o.id} className="border border-border rounded-lg p-4 bg-card">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
