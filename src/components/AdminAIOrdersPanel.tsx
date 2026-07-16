@@ -167,8 +167,8 @@ export default function AdminAIOrdersPanel() {
       <section className="p-3 border border-border rounded-lg bg-card">
         <div className="flex items-center gap-2 mb-3">
           <h3 className="text-sm font-semibold flex-1">充值订单</h3>
-          <Button size="sm" variant="default" onClick={() => autoMatch()} disabled={autoMatching} className="h-7 text-xs gap-1">
-            {autoMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+          <Button size="sm" variant="default" onClick={() => autoMatch()} disabled={autoMatching !== null} className="h-7 text-xs gap-1">
+            {autoMatching === 'all' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
             AI 自动匹配
           </Button>
           <Button size="sm" variant="ghost" onClick={() => load()} className="h-7 text-xs gap-1">
