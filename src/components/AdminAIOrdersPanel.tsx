@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload, Sparkles } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -30,9 +30,33 @@ export default function AdminAIOrdersPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [acting, setActing] = useState<string | null>(null);
+  const [autoMatching, setAutoMatching] = useState(false);
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+
+  const autoMatch = async (orderId?: string) => {
+    setAutoMatching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', {
+        body: orderId ? { order_id: orderId } : {},
+      });
+      if (error) throw error;
+      const d = data as { scanned: number; approved: number; results: Array<{ email: string; approved: boolean; reason: string }> };
+      const failed = d.results.filter(r => !r.approved);
+      toast({
+        title: `扫描 ${d.scanned} 单，自动通过 ${d.approved} 单`,
+        description: failed.length
+          ? `未通过 ${failed.length} 单：` + failed.slice(0, 3).map(r => `${r.email} - ${r.reason}`).join('；')
+          : '全部匹配成功',
+      });
+      void load();
+    } catch (e: any) {
+      toast({ title: '自动匹配失败', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setAutoMatching(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -134,9 +158,16 @@ export default function AdminAIOrdersPanel() {
       <section className="p-3 border border-border rounded-lg bg-card">
         <div className="flex items-center gap-2 mb-3">
           <h3 className="text-sm font-semibold flex-1">充值订单</h3>
+          <Button size="sm" variant="default" onClick={() => autoMatch()} disabled={autoMatching} className="h-7 text-xs gap-1">
+            {autoMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            AI 自动匹配
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => load()} className="h-7 text-xs gap-1">
             <RefreshCw className="w-3 h-3" /> 刷新
           </Button>
+        </div>
+        <div className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+          自动匹配：OCR 识别付款截图金额，与套餐价格（￥10=100次 / ￥20=300次）比对，匹配成功自动到账。
         </div>
         <div className="flex gap-1 mb-3">
           {(['pending', 'approved', 'rejected', 'all'] as const).map(k => (
@@ -176,6 +207,10 @@ export default function AdminAIOrdersPanel() {
                       <>
                         <Button size="sm" className="h-6 text-[11px] px-2 gap-1" onClick={() => approve(o.id)} disabled={acting === o.id}>
                           <CheckCircle2 className="w-3 h-3" />通过
+                        </Button>
+                        <Button size="sm" variant="secondary" className="h-6 text-[11px] px-2 gap-1"
+                          onClick={() => autoMatch(o.id)} disabled={autoMatching}>
+                          <Sparkles className="w-3 h-3" />智能
                         </Button>
                         <Button size="sm" variant="outline" className="h-6 text-[11px] px-2 gap-1 text-destructive border-destructive/30"
                           onClick={() => reject(o.id)} disabled={acting === o.id}>
