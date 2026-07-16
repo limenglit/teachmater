@@ -208,6 +208,10 @@ export default function AdminAIOrdersPanel() {
                         <Button size="sm" className="h-6 text-[11px] px-2 gap-1" onClick={() => approve(o.id)} disabled={acting === o.id}>
                           <CheckCircle2 className="w-3 h-3" />通过
                         </Button>
+                        <Button size="sm" variant="secondary" className="h-6 text-[11px] px-2 gap-1"
+                          onClick={() => autoMatch(o.id)} disabled={autoMatching}>
+                          <Sparkles className="w-3 h-3" />智能
+                        </Button>
                         <Button size="sm" variant="outline" className="h-6 text-[11px] px-2 gap-1 text-destructive border-destructive/30"
                           onClick={() => reject(o.id)} disabled={acting === o.id}>
                           <XCircle className="w-3 h-3" />拒绝
