@@ -30,31 +30,40 @@ export default function AdminAIOrdersPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [acting, setActing] = useState<string | null>(null);
-  const [autoMatching, setAutoMatching] = useState(false);
+  const [autoMatching, setAutoMatching] = useState<string | 'all' | null>(null);
+  const [matchResults, setMatchResults] = useState<Record<string, { approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>>({});
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
 
   const autoMatch = async (orderId?: string) => {
-    setAutoMatching(true);
+    setAutoMatching(orderId || 'all');
     try {
       const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', {
         body: orderId ? { order_id: orderId } : {},
       });
       if (error) throw error;
-      const d = data as { scanned: number; approved: number; results: Array<{ email: string; approved: boolean; reason: string }> };
+      const d = data as {
+        scanned: number; approved: number;
+        results: Array<{ id: string; email: string; approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>;
+      };
+      setMatchResults(prev => {
+        const next = { ...prev };
+        for (const r of d.results) next[r.id] = { approved: r.approved, reason: r.reason, hint: r.hint, ocr_amount: r.ocr_amount };
+        return next;
+      });
       const failed = d.results.filter(r => !r.approved);
       toast({
         title: `扫描 ${d.scanned} 单，自动通过 ${d.approved} 单`,
         description: failed.length
-          ? `未通过 ${failed.length} 单：` + failed.slice(0, 3).map(r => `${r.email} - ${r.reason}`).join('；')
+          ? `未通过 ${failed.length} 单，已在订单下方显示原因与补充建议`
           : '全部匹配成功',
       });
       void load();
     } catch (e: any) {
       toast({ title: '自动匹配失败', description: e.message || String(e), variant: 'destructive' });
     } finally {
-      setAutoMatching(false);
+      setAutoMatching(null);
     }
   };
 
