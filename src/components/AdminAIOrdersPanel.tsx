@@ -30,31 +30,40 @@ export default function AdminAIOrdersPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [acting, setActing] = useState<string | null>(null);
-  const [autoMatching, setAutoMatching] = useState(false);
+  const [autoMatching, setAutoMatching] = useState<string | 'all' | null>(null);
+  const [matchResults, setMatchResults] = useState<Record<string, { approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>>({});
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
 
   const autoMatch = async (orderId?: string) => {
-    setAutoMatching(true);
+    setAutoMatching(orderId || 'all');
     try {
       const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', {
         body: orderId ? { order_id: orderId } : {},
       });
       if (error) throw error;
-      const d = data as { scanned: number; approved: number; results: Array<{ email: string; approved: boolean; reason: string }> };
+      const d = data as {
+        scanned: number; approved: number;
+        results: Array<{ id: string; email: string; approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>;
+      };
+      setMatchResults(prev => {
+        const next = { ...prev };
+        for (const r of d.results) next[r.id] = { approved: r.approved, reason: r.reason, hint: r.hint, ocr_amount: r.ocr_amount };
+        return next;
+      });
       const failed = d.results.filter(r => !r.approved);
       toast({
         title: `扫描 ${d.scanned} 单，自动通过 ${d.approved} 单`,
         description: failed.length
-          ? `未通过 ${failed.length} 单：` + failed.slice(0, 3).map(r => `${r.email} - ${r.reason}`).join('；')
+          ? `未通过 ${failed.length} 单，已在订单下方显示原因与补充建议`
           : '全部匹配成功',
       });
       void load();
     } catch (e: any) {
       toast({ title: '自动匹配失败', description: e.message || String(e), variant: 'destructive' });
     } finally {
-      setAutoMatching(false);
+      setAutoMatching(null);
     }
   };
 
@@ -158,8 +167,8 @@ export default function AdminAIOrdersPanel() {
       <section className="p-3 border border-border rounded-lg bg-card">
         <div className="flex items-center gap-2 mb-3">
           <h3 className="text-sm font-semibold flex-1">充值订单</h3>
-          <Button size="sm" variant="default" onClick={() => autoMatch()} disabled={autoMatching} className="h-7 text-xs gap-1">
-            {autoMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+          <Button size="sm" variant="default" onClick={() => autoMatch()} disabled={autoMatching !== null} className="h-7 text-xs gap-1">
+            {autoMatching === 'all' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
             AI 自动匹配
           </Button>
           <Button size="sm" variant="ghost" onClick={() => load()} className="h-7 text-xs gap-1">
@@ -201,6 +210,15 @@ export default function AdminAIOrdersPanel() {
                     </div>
                     {o.payer_note && <div className="mt-0.5">备注：{o.payer_note}</div>}
                     {o.reject_reason && <div className="mt-0.5 text-destructive">拒绝原因：{o.reject_reason}</div>}
+                    {matchResults[o.id] && !matchResults[o.id].approved && (
+                      <div className="mt-1 p-1.5 rounded bg-warning/10 border border-warning/30 text-[11px] text-warning-foreground/90 space-y-0.5">
+                        <div className="font-medium text-warning">识别未通过：{matchResults[o.id].reason}</div>
+                        {matchResults[o.id].hint && <div className="text-muted-foreground">补充建议：{matchResults[o.id].hint}</div>}
+                      </div>
+                    )}
+                    {matchResults[o.id]?.approved && (
+                      <div className="mt-1 text-[11px] text-success">✓ AI 已自动通过：{matchResults[o.id].reason}</div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1">
                     {o.status === 'pending' ? (
@@ -209,8 +227,9 @@ export default function AdminAIOrdersPanel() {
                           <CheckCircle2 className="w-3 h-3" />通过
                         </Button>
                         <Button size="sm" variant="secondary" className="h-6 text-[11px] px-2 gap-1"
-                          onClick={() => autoMatch(o.id)} disabled={autoMatching}>
-                          <Sparkles className="w-3 h-3" />智能
+                          onClick={() => autoMatch(o.id)} disabled={autoMatching !== null}>
+                          {autoMatching === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                          {matchResults[o.id] && !matchResults[o.id].approved ? '重试识别' : '智能'}
                         </Button>
                         <Button size="sm" variant="outline" className="h-6 text-[11px] px-2 gap-1 text-destructive border-destructive/30"
                           onClick={() => reject(o.id)} disabled={acting === o.id}>

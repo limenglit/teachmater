@@ -121,11 +121,17 @@ Deno.serve(async (req) => {
   const targets: Order[] = ((orders || []) as Order[])
     .filter(o => !body.order_id || o.id === body.order_id);
 
-  const results: Array<{ id: string; email: string; approved: boolean; reason: string; ocr_amount?: number | null }> = [];
+  const results: Array<{
+    id: string; email: string; approved: boolean; reason: string;
+    ocr_amount?: number | null; hint?: string; missing?: string[];
+  }> = [];
 
   for (const o of targets) {
     const expected = EXPECTED[o.package_key];
-    if (!expected) { results.push({ id: o.id, email: o.email, approved: false, reason: '未知套餐' }); continue; }
+    if (!expected) {
+      results.push({ id: o.id, email: o.email, approved: false, reason: '未知套餐', hint: '请联系管理员核对套餐配置' });
+      continue;
+    }
 
     const note = (o.payer_note || '').toLowerCase();
     const emailLocal = (o.email || '').toLowerCase().split('@')[0];
@@ -134,27 +140,51 @@ Deno.serve(async (req) => {
       (emailLocal.length >= 3 && note.includes(emailLocal)) ||
       (o.nickname && note.includes(o.nickname.toLowerCase())));
 
+    const missing: string[] = [];
+    if (!o.screenshot_url) missing.push('screenshot');
+    if (!o.payer_note || o.payer_note.trim().length < 2) missing.push('payer_note');
+
     let ocrAmount: number | null = null;
+    let ocrText = '';
     if (o.screenshot_url) {
       const ocr = await ocrScreenshot(o.screenshot_url, LOVABLE_KEY);
       ocrAmount = ocr.amount;
+      ocrText = ocr.raw_text;
     }
     const amountMatches = ocrAmount !== null && Math.abs(ocrAmount - expected) < 0.01;
 
-    // Auto-approve if amount matches OCR, OR (amount matches package expected AND note references user)
-    // We already know order.amount_cny == expected server-side, so the key signal is OCR amount.
     if (amountMatches) {
       const { error: apErr } = await supabase.rpc('admin_approve_ai_credit_order', { p_order_id: o.id });
       if (apErr) {
         results.push({ id: o.id, email: o.email, approved: false, reason: apErr.message, ocr_amount: ocrAmount });
       } else {
-        results.push({ id: o.id, email: o.email, approved: true, reason: `OCR 金额 ￥${ocrAmount} 匹配套餐${noteMatchesUser ? '，备注含用户信息' : ''}`, ocr_amount: ocrAmount });
+        results.push({
+          id: o.id, email: o.email, approved: true, ocr_amount: ocrAmount,
+          reason: `OCR 金额 ￥${ocrAmount} 匹配套餐${noteMatchesUser ? '，备注含用户信息' : ''}`,
+        });
       }
     } else {
-      results.push({
-        id: o.id, email: o.email, approved: false, ocr_amount: ocrAmount,
-        reason: ocrAmount === null ? '未能识别付款金额' : `OCR 金额 ￥${ocrAmount} 与套餐 ￥${expected} 不匹配`,
-      });
+      let reason: string;
+      let hint: string;
+      if (!o.screenshot_url) {
+        reason = '缺少付款截图';
+        hint = '请上传清晰的微信/支付宝付款成功截图（需能看到金额）';
+        missing.push('screenshot');
+      } else if (ocrAmount === null) {
+        reason = '未能识别付款金额';
+        hint = '截图不清晰或未包含金额，请重新上传显示 "￥' + expected + '" 完整数字的截图' +
+          (ocrText ? `（识别到文字：${ocrText.slice(0, 60)}）` : '');
+        missing.push('clearer_screenshot');
+      } else {
+        reason = `OCR 金额 ￥${ocrAmount} 与套餐 ￥${expected} 不匹配`;
+        hint = `请核对：本次充值应为 ￥${expected}（${o.credits}次）。若已支付其他金额，请拒绝并请用户重新按套餐支付。`;
+        missing.push('amount_mismatch');
+      }
+      if (!noteMatchesUser && o.payer_note) {
+        hint += `；备注建议包含用户邮箱 ${o.email} 便于核对`;
+        missing.push('payer_note_email');
+      }
+      results.push({ id: o.id, email: o.email, approved: false, ocr_amount: ocrAmount, reason, hint, missing });
     }
   }
 
