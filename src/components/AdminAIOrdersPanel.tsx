@@ -218,8 +218,9 @@ export default function AdminAIOrdersPanel() {
                           <CheckCircle2 className="w-3 h-3" />通过
                         </Button>
                         <Button size="sm" variant="secondary" className="h-6 text-[11px] px-2 gap-1"
-                          onClick={() => autoMatch(o.id)} disabled={autoMatching}>
-                          <Sparkles className="w-3 h-3" />智能
+                          onClick={() => autoMatch(o.id)} disabled={autoMatching !== null}>
+                          {autoMatching === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                          {matchResults[o.id] && !matchResults[o.id].approved ? '重试识别' : '智能'}
                         </Button>
                         <Button size="sm" variant="outline" className="h-6 text-[11px] px-2 gap-1 text-destructive border-destructive/30"
                           onClick={() => reject(o.id)} disabled={acting === o.id}>
