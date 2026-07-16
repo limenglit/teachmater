@@ -210,6 +210,15 @@ export default function AdminAIOrdersPanel() {
                     </div>
                     {o.payer_note && <div className="mt-0.5">备注：{o.payer_note}</div>}
                     {o.reject_reason && <div className="mt-0.5 text-destructive">拒绝原因：{o.reject_reason}</div>}
+                    {matchResults[o.id] && !matchResults[o.id].approved && (
+                      <div className="mt-1 p-1.5 rounded bg-warning/10 border border-warning/30 text-[11px] text-warning-foreground/90 space-y-0.5">
+                        <div className="font-medium text-warning">识别未通过：{matchResults[o.id].reason}</div>
+                        {matchResults[o.id].hint && <div className="text-muted-foreground">补充建议：{matchResults[o.id].hint}</div>}
+                      </div>
+                    )}
+                    {matchResults[o.id]?.approved && (
+                      <div className="mt-1 text-[11px] text-success">✓ AI 已自动通过：{matchResults[o.id].reason}</div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1">
                     {o.status === 'pending' ? (
