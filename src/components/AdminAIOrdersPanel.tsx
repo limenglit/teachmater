@@ -158,9 +158,16 @@ export default function AdminAIOrdersPanel() {
       <section className="p-3 border border-border rounded-lg bg-card">
         <div className="flex items-center gap-2 mb-3">
           <h3 className="text-sm font-semibold flex-1">充值订单</h3>
+          <Button size="sm" variant="default" onClick={() => autoMatch()} disabled={autoMatching} className="h-7 text-xs gap-1">
+            {autoMatching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            AI 自动匹配
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => load()} className="h-7 text-xs gap-1">
             <RefreshCw className="w-3 h-3" /> 刷新
           </Button>
+        </div>
+        <div className="text-[11px] text-muted-foreground mb-2 leading-relaxed">
+          自动匹配：OCR 识别付款截图金额，与套餐价格（￥10=100次 / ￥20=300次）比对，匹配成功自动到账。
         </div>
         <div className="flex gap-1 mb-3">
           {(['pending', 'approved', 'rejected', 'all'] as const).map(k => (
