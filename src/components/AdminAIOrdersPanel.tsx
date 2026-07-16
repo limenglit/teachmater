@@ -30,9 +30,33 @@ export default function AdminAIOrdersPanel() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [acting, setActing] = useState<string | null>(null);
+  const [autoMatching, setAutoMatching] = useState(false);
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+
+  const autoMatch = async (orderId?: string) => {
+    setAutoMatching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', {
+        body: orderId ? { order_id: orderId } : {},
+      });
+      if (error) throw error;
+      const d = data as { scanned: number; approved: number; results: Array<{ email: string; approved: boolean; reason: string }> };
+      const failed = d.results.filter(r => !r.approved);
+      toast({
+        title: `扫描 ${d.scanned} 单，自动通过 ${d.approved} 单`,
+        description: failed.length
+          ? `未通过 ${failed.length} 单：` + failed.slice(0, 3).map(r => `${r.email} - ${r.reason}`).join('；')
+          : '全部匹配成功',
+      });
+      void load();
+    } catch (e: any) {
+      toast({ title: '自动匹配失败', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setAutoMatching(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
