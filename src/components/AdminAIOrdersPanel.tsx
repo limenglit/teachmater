@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload, Sparkles } from 'lucide-react';
 
 interface Order {
   id: string;
