@@ -94,6 +94,47 @@ export default function AdminAIOrdersPanel() {
     }
   };
 
+  const computeMissingNoteParts = (o: Order): { email: boolean; amount: boolean } => {
+    const note = (o.payer_note || '').toLowerCase();
+    return {
+      email: !note.includes(o.email.toLowerCase()),
+      amount: !new RegExp(`(^|[^0-9])${o.amount_cny}(\\.0+)?([^0-9]|$)`).test(note),
+    };
+  };
+
+  const [quickFilling, setQuickFilling] = useState<string | null>(null);
+  const quickFillNote = async (o: Order) => {
+    const missing = computeMissingNoteParts(o);
+    if (!missing.email && !missing.amount) {
+      toast({ title: '备注已完整', description: '邮箱和金额都已存在，正在重新识别…' });
+      await autoMatch(o.id);
+      return;
+    }
+    const parts: string[] = [];
+    if (o.payer_note && o.payer_note.trim()) parts.push(o.payer_note.trim());
+    if (missing.email) parts.push(o.email);
+    if (missing.amount) parts.push(`￥${o.amount_cny}`);
+    const nextNote = parts.join(' · ').slice(0, 500);
+    setQuickFilling(o.id);
+    try {
+      const { error } = await (supabase as any).rpc('admin_update_ai_credit_order_screenshot', {
+        p_order_id: o.id,
+        p_screenshot_url: null,
+        p_payer_note: nextNote,
+      });
+      if (error) throw error;
+      toast({ title: '备注已补充', description: nextNote });
+      await load();
+      await autoMatch(o.id);
+    } catch (e: any) {
+      toast({ title: '补充失败', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setQuickFilling(null);
+    }
+  };
+
+
+
 
   const autoMatch = async (orderId?: string) => {
     setAutoMatching(orderId || 'all');
