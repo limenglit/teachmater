@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload, Sparkles, ImagePlus } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -35,6 +36,64 @@ export default function AdminAIOrdersPanel() {
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [retryOrder, setRetryOrder] = useState<Order | null>(null);
+  const [retryFile, setRetryFile] = useState<File | null>(null);
+  const [retryNote, setRetryNote] = useState('');
+  const [retrySubmitting, setRetrySubmitting] = useState(false);
+  const retryPreviewUrl = useRef<string | null>(null);
+
+  const openRetryDialog = (o: Order) => {
+    setRetryOrder(o);
+    setRetryFile(null);
+    setRetryNote(o.payer_note || '');
+    if (retryPreviewUrl.current) { URL.revokeObjectURL(retryPreviewUrl.current); retryPreviewUrl.current = null; }
+  };
+
+  const closeRetryDialog = () => {
+    if (retryPreviewUrl.current) { URL.revokeObjectURL(retryPreviewUrl.current); retryPreviewUrl.current = null; }
+    setRetryOrder(null);
+    setRetryFile(null);
+    setRetryNote('');
+  };
+
+  const submitRetry = async () => {
+    if (!retryOrder) return;
+    setRetrySubmitting(true);
+    try {
+      let newUrl: string | null = null;
+      if (retryFile) {
+        const ext = retryFile.name.split('.').pop()?.toLowerCase() || 'png';
+        const path = `retry/${retryOrder.id}-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('payment-screenshots')
+          .upload(path, retryFile, { upsert: true, contentType: retryFile.type });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage.from('payment-screenshots')
+          .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+        if (!signed?.signedUrl) throw new Error('生成签名链接失败');
+        newUrl = signed.signedUrl;
+      }
+      const noteChanged = retryNote !== (retryOrder.payer_note || '');
+      if (newUrl || noteChanged) {
+        const { error } = await (supabase as any).rpc('admin_update_ai_credit_order_screenshot', {
+          p_order_id: retryOrder.id,
+          p_screenshot_url: newUrl,
+          p_payer_note: noteChanged ? retryNote : null,
+        });
+        if (error) throw error;
+      } else if (!retryFile) {
+        // nothing changed, still allow re-run
+      }
+      const orderId = retryOrder.id;
+      closeRetryDialog();
+      await load();
+      await autoMatch(orderId);
+    } catch (e: any) {
+      toast({ title: '提交失败', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setRetrySubmitting(false);
+    }
+  };
+
 
   const autoMatch = async (orderId?: string) => {
     setAutoMatching(orderId || 'all');
@@ -227,7 +286,8 @@ export default function AdminAIOrdersPanel() {
                           <CheckCircle2 className="w-3 h-3" />通过
                         </Button>
                         <Button size="sm" variant="secondary" className="h-6 text-[11px] px-2 gap-1"
-                          onClick={() => autoMatch(o.id)} disabled={autoMatching !== null}>
+                          onClick={() => (matchResults[o.id] && !matchResults[o.id].approved) ? openRetryDialog(o) : autoMatch(o.id)}
+                          disabled={autoMatching !== null}>
                           {autoMatching === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                           {matchResults[o.id] && !matchResults[o.id].approved ? '重试识别' : '智能'}
                         </Button>
@@ -256,6 +316,71 @@ export default function AdminAIOrdersPanel() {
           <img src={preview} alt="付款截图" className="max-w-full max-h-full rounded" />
         </div>
       )}
+
+      <Dialog open={!!retryOrder} onOpenChange={(v) => { if (!v) closeRetryDialog(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>重试识别 · 补充付款信息</DialogTitle>
+            <DialogDescription className="text-xs">
+              上传更清晰的付款截图，或补充邮箱/金额备注，保存后自动重新执行 OCR 匹配。
+            </DialogDescription>
+          </DialogHeader>
+          {retryOrder && (
+            <div className="space-y-3 text-xs">
+              <div className="p-2 rounded bg-muted/40 space-y-0.5">
+                <div><span className="text-muted-foreground">用户：</span>{retryOrder.nickname || retryOrder.email}（{retryOrder.email}）</div>
+                <div><span className="text-muted-foreground">应付：</span>￥{retryOrder.amount_cny} · {retryOrder.credits}次 · {retryOrder.pay_method === 'wechat' ? '微信' : '支付宝'}</div>
+                {matchResults[retryOrder.id] && !matchResults[retryOrder.id].approved && (
+                  <>
+                    <div className="text-warning">上次失败：{matchResults[retryOrder.id].reason}</div>
+                    {matchResults[retryOrder.id].hint && (
+                      <div className="text-muted-foreground">建议：{matchResults[retryOrder.id].hint}</div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-muted-foreground">付款截图（可选，覆盖原截图）</label>
+                <div className="flex items-start gap-2">
+                  {(retryFile || retryOrder.screenshot_url) && (
+                    <img
+                      src={retryFile ? (retryPreviewUrl.current || '') : (retryOrder.screenshot_url as string)}
+                      alt=""
+                      className="w-20 h-20 object-cover rounded border border-border"
+                    />
+                  )}
+                  <label className="inline-flex items-center gap-1 text-primary cursor-pointer border border-dashed border-primary/40 rounded px-2 py-1.5">
+                    <ImagePlus className="w-3 h-3" /> 选择新截图
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={e => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        if (retryPreviewUrl.current) URL.revokeObjectURL(retryPreviewUrl.current);
+                        retryPreviewUrl.current = URL.createObjectURL(f);
+                        setRetryFile(f);
+                      }} />
+                  </label>
+                </div>
+                <div className="text-[10px] text-muted-foreground">要点：￥金额清晰可见、包含付款时间、避免遮挡。</div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-muted-foreground">付款备注（含邮箱与金额可提升识别成功率）</label>
+                <Textarea rows={3} value={retryNote} onChange={e => setRetryNote(e.target.value)}
+                  placeholder={`例如：${retryOrder.email} 充值 ￥${retryOrder.amount_cny}`} className="text-xs" />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={closeRetryDialog} disabled={retrySubmitting}>取消</Button>
+            <Button size="sm" onClick={submitRetry} disabled={retrySubmitting}>
+              {retrySubmitting && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
+              保存并重新识别
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
