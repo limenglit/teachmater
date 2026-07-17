@@ -119,8 +119,12 @@ Deno.serve(async (req) => {
     });
   }
 
-  let body: { order_id?: string } = {};
+  let body: { order_id?: string; override_amount?: number | null; override_email?: string | null } = {};
   try { body = await req.json(); } catch { /* empty body ok */ }
+  const hasOverride = body.order_id && (
+    typeof body.override_amount === 'number' ||
+    (typeof body.override_email === 'string' && body.override_email.trim().length > 0)
+  );
 
   // Load pending orders (single or all)
   const { data: orders, error: listErr } = await supabase.rpc('admin_list_ai_credit_orders', {
@@ -136,7 +140,8 @@ Deno.serve(async (req) => {
 
   const results: Array<{
     id: string; email: string; approved: boolean; reason: string;
-    ocr_amount?: number | null; hint?: string; missing?: string[];
+    ocr_amount?: number | null; ocr_email?: string | null;
+    hint?: string; missing?: string[]; manual?: boolean;
   }> = [];
 
   for (const o of targets) {
@@ -146,40 +151,52 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const note = (o.payer_note || '').toLowerCase();
-    const emailLocal = (o.email || '').toLowerCase().split('@')[0];
-    const noteMatchesUser =
-      !!o.email && (note.includes(o.email.toLowerCase()) ||
-      (emailLocal.length >= 3 && note.includes(emailLocal)) ||
-      (o.nickname && note.includes(o.nickname.toLowerCase())));
-
     const missing: string[] = [];
     if (!o.screenshot_url) missing.push('screenshot');
     if (!o.payer_note || o.payer_note.trim().length < 2) missing.push('payer_note');
 
     let ocrAmount: number | null = null;
+    let ocrEmail: string | null = null;
     let ocrText = '';
-    if (o.screenshot_url) {
+    const manualOverride = hasOverride && body.order_id === o.id;
+    if (manualOverride) {
+      if (typeof body.override_amount === 'number') ocrAmount = body.override_amount;
+      if (typeof body.override_email === 'string' && body.override_email.trim()) ocrEmail = body.override_email.trim();
+    } else if (o.screenshot_url) {
       const ocr = await ocrScreenshot(o.screenshot_url, LOVABLE_KEY);
       ocrAmount = ocr.amount;
+      ocrEmail = ocr.email;
       ocrText = ocr.raw_text;
     }
+
+    const note = (o.payer_note || '').toLowerCase();
+    const emailLc = (o.email || '').toLowerCase();
+    const emailLocal = emailLc.split('@')[0];
+    const noteMatchesUser =
+      !!o.email && (note.includes(emailLc) ||
+      (emailLocal.length >= 3 && note.includes(emailLocal)) ||
+      (o.nickname && note.includes(o.nickname.toLowerCase())));
+    const ocrEmailMatches = !!ocrEmail && ocrEmail.toLowerCase() === emailLc;
+    const userConfirmed = noteMatchesUser || ocrEmailMatches;
+
     const amountMatches = ocrAmount !== null && Math.abs(ocrAmount - expected) < 0.01;
 
     if (amountMatches) {
       const { error: apErr } = await supabase.rpc('admin_approve_ai_credit_order', { p_order_id: o.id });
       if (apErr) {
-        results.push({ id: o.id, email: o.email, approved: false, reason: apErr.message, ocr_amount: ocrAmount });
+        results.push({ id: o.id, email: o.email, approved: false, reason: apErr.message, ocr_amount: ocrAmount, ocr_email: ocrEmail });
       } else {
+        const src = manualOverride ? '管理员确认' : 'OCR';
         results.push({
-          id: o.id, email: o.email, approved: true, ocr_amount: ocrAmount,
-          reason: `OCR 金额 ￥${ocrAmount} 匹配套餐${noteMatchesUser ? '，备注含用户信息' : ''}`,
+          id: o.id, email: o.email, approved: true,
+          ocr_amount: ocrAmount, ocr_email: ocrEmail, manual: manualOverride,
+          reason: `${src}金额 ￥${ocrAmount} 匹配套餐${userConfirmed ? '，用户信息一致' : ''}`,
         });
       }
     } else {
       let reason: string;
       let hint: string;
-      if (!o.screenshot_url) {
+      if (!o.screenshot_url && !manualOverride) {
         reason = '缺少付款截图';
         hint = '请上传清晰的微信/支付宝付款成功截图（需能看到金额）';
         missing.push('screenshot');
@@ -189,15 +206,19 @@ Deno.serve(async (req) => {
           (ocrText ? `（识别到文字：${ocrText.slice(0, 60)}）` : '');
         missing.push('clearer_screenshot');
       } else {
-        reason = `OCR 金额 ￥${ocrAmount} 与套餐 ￥${expected} 不匹配`;
+        reason = `${manualOverride ? '确认' : 'OCR'}金额 ￥${ocrAmount} 与套餐 ￥${expected} 不匹配`;
         hint = `请核对：本次充值应为 ￥${expected}（${o.credits}次）。若已支付其他金额，请拒绝并请用户重新按套餐支付。`;
         missing.push('amount_mismatch');
       }
-      if (!noteMatchesUser && o.payer_note) {
-        hint += `；备注建议包含用户邮箱 ${o.email} 便于核对`;
+      if (!userConfirmed) {
+        hint += `；建议在备注或截图中显示用户邮箱 ${o.email}`;
         missing.push('payer_note_email');
       }
-      results.push({ id: o.id, email: o.email, approved: false, ocr_amount: ocrAmount, reason, hint, missing });
+      results.push({
+        id: o.id, email: o.email, approved: false,
+        ocr_amount: ocrAmount, ocr_email: ocrEmail, manual: manualOverride,
+        reason, hint, missing,
+      });
     }
   }
 
