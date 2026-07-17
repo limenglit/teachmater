@@ -94,6 +94,47 @@ export default function AdminAIOrdersPanel() {
     }
   };
 
+  const computeMissingNoteParts = (o: Order): { email: boolean; amount: boolean } => {
+    const note = (o.payer_note || '').toLowerCase();
+    return {
+      email: !note.includes(o.email.toLowerCase()),
+      amount: !new RegExp(`(^|[^0-9])${o.amount_cny}(\\.0+)?([^0-9]|$)`).test(note),
+    };
+  };
+
+  const [quickFilling, setQuickFilling] = useState<string | null>(null);
+  const quickFillNote = async (o: Order) => {
+    const missing = computeMissingNoteParts(o);
+    if (!missing.email && !missing.amount) {
+      toast({ title: '备注已完整', description: '邮箱和金额都已存在，正在重新识别…' });
+      await autoMatch(o.id);
+      return;
+    }
+    const parts: string[] = [];
+    if (o.payer_note && o.payer_note.trim()) parts.push(o.payer_note.trim());
+    if (missing.email) parts.push(o.email);
+    if (missing.amount) parts.push(`￥${o.amount_cny}`);
+    const nextNote = parts.join(' · ').slice(0, 500);
+    setQuickFilling(o.id);
+    try {
+      const { error } = await (supabase as any).rpc('admin_update_ai_credit_order_screenshot', {
+        p_order_id: o.id,
+        p_screenshot_url: null,
+        p_payer_note: nextNote,
+      });
+      if (error) throw error;
+      toast({ title: '备注已补充', description: nextNote });
+      await load();
+      await autoMatch(o.id);
+    } catch (e: any) {
+      toast({ title: '补充失败', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setQuickFilling(null);
+    }
+  };
+
+
+
 
   const autoMatch = async (orderId?: string) => {
     setAutoMatching(orderId || 'all');
@@ -269,12 +310,31 @@ export default function AdminAIOrdersPanel() {
                     </div>
                     {o.payer_note && <div className="mt-0.5">备注：{o.payer_note}</div>}
                     {o.reject_reason && <div className="mt-0.5 text-destructive">拒绝原因：{o.reject_reason}</div>}
-                    {matchResults[o.id] && !matchResults[o.id].approved && (
-                      <div className="mt-1 p-1.5 rounded bg-warning/10 border border-warning/30 text-[11px] text-warning-foreground/90 space-y-0.5">
-                        <div className="font-medium text-warning">识别未通过：{matchResults[o.id].reason}</div>
-                        {matchResults[o.id].hint && <div className="text-muted-foreground">补充建议：{matchResults[o.id].hint}</div>}
-                      </div>
-                    )}
+                    {matchResults[o.id] && !matchResults[o.id].approved && (() => {
+                      const missing = computeMissingNoteParts(o);
+                      const canQuickFill = missing.email || missing.amount;
+                      const missingLabels = [
+                        missing.email ? `邮箱 ${o.email}` : null,
+                        missing.amount ? `金额 ￥${o.amount_cny}` : null,
+                      ].filter(Boolean).join('、');
+                      return (
+                        <div className="mt-1 p-1.5 rounded bg-warning/10 border border-warning/30 text-[11px] text-warning-foreground/90 space-y-1">
+                          <div className="font-medium text-warning">识别未通过：{matchResults[o.id].reason}</div>
+                          {matchResults[o.id].hint && <div className="text-muted-foreground">补充建议：{matchResults[o.id].hint}</div>}
+                          {canQuickFill && (
+                            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                              <span className="text-muted-foreground">缺失：{missingLabels}</span>
+                              <Button size="sm" variant="secondary" className="h-6 text-[11px] px-2 gap-1"
+                                onClick={() => quickFillNote(o)}
+                                disabled={quickFilling === o.id || autoMatching !== null}>
+                                {quickFilling === o.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                一键补充并重试
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {matchResults[o.id]?.approved && (
                       <div className="mt-1 text-[11px] text-success">✓ AI 已自动通过：{matchResults[o.id].reason}</div>
                     )}
