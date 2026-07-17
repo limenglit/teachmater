@@ -19,6 +19,7 @@ interface Order {
 
 interface OCRResult {
   amount: number | null;
+  email: string | null;
   raw_text: string;
 }
 
