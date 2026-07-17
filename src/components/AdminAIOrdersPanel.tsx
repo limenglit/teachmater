@@ -87,13 +87,31 @@ export default function AdminAIOrdersPanel() {
           p_payer_note: noteChanged ? retryNote : null,
         });
         if (error) throw error;
-      } else if (!retryFile) {
-        // nothing changed, still allow re-run
       }
+
+      // Detect manual overrides for OCR fields
+      const prev = matchResults[retryOrder.id];
+      const amtNum = retryAmount.trim() === '' ? null : Number(retryAmount);
+      if (amtNum !== null && !Number.isFinite(amtNum)) {
+        throw new Error('金额必须是数字');
+      }
+      const emailStr = retryEmail.trim();
+      if (emailStr && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+        throw new Error('邮箱格式不正确');
+      }
+      const amtChanged = amtNum !== null && amtNum !== (prev?.ocr_amount ?? null);
+      const emailChanged = !!emailStr && emailStr.toLowerCase() !== (prev?.ocr_email || '').toLowerCase();
+      // If admin uploaded a new screenshot they likely want re-OCR, ignore manual overrides.
+      const useOverrides = !retryFile && (amtChanged || emailChanged);
+      const overrides = useOverrides ? {
+        amount: amtNum !== null ? amtNum : (prev?.ocr_amount ?? null),
+        email: emailStr || (prev?.ocr_email ?? null),
+      } : undefined;
+
       const orderId = retryOrder.id;
       closeRetryDialog();
       await load();
-      await autoMatch(orderId);
+      await autoMatch(orderId, overrides);
     } catch (e: any) {
       toast({ title: '提交失败', description: e.message || String(e), variant: 'destructive' });
     } finally {
