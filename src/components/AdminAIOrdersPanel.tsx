@@ -32,13 +32,15 @@ export default function AdminAIOrdersPanel() {
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [acting, setActing] = useState<string | null>(null);
   const [autoMatching, setAutoMatching] = useState<string | 'all' | null>(null);
-  const [matchResults, setMatchResults] = useState<Record<string, { approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>>({});
+  const [matchResults, setMatchResults] = useState<Record<string, { approved: boolean; reason: string; hint?: string; ocr_amount?: number | null; ocr_email?: string | null }>>({});
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [retryOrder, setRetryOrder] = useState<Order | null>(null);
   const [retryFile, setRetryFile] = useState<File | null>(null);
   const [retryNote, setRetryNote] = useState('');
+  const [retryAmount, setRetryAmount] = useState<string>('');
+  const [retryEmail, setRetryEmail] = useState<string>('');
   const [retrySubmitting, setRetrySubmitting] = useState(false);
   const retryPreviewUrl = useRef<string | null>(null);
 
@@ -46,6 +48,9 @@ export default function AdminAIOrdersPanel() {
     setRetryOrder(o);
     setRetryFile(null);
     setRetryNote(o.payer_note || '');
+    const prev = matchResults[o.id];
+    setRetryAmount(prev?.ocr_amount != null ? String(prev.ocr_amount) : '');
+    setRetryEmail(prev?.ocr_email || '');
     if (retryPreviewUrl.current) { URL.revokeObjectURL(retryPreviewUrl.current); retryPreviewUrl.current = null; }
   };
 
@@ -54,6 +59,8 @@ export default function AdminAIOrdersPanel() {
     setRetryOrder(null);
     setRetryFile(null);
     setRetryNote('');
+    setRetryAmount('');
+    setRetryEmail('');
   };
 
   const submitRetry = async () => {
