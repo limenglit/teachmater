@@ -143,20 +143,23 @@ export default function AdminAIOrdersPanel() {
 
 
 
-  const autoMatch = async (orderId?: string) => {
+  const autoMatch = async (orderId?: string, overrides?: { amount?: number | null; email?: string | null }) => {
     setAutoMatching(orderId || 'all');
     try {
-      const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', {
-        body: orderId ? { order_id: orderId } : {},
-      });
+      const reqBody: Record<string, unknown> = orderId ? { order_id: orderId } : {};
+      if (overrides) {
+        if (typeof overrides.amount === 'number' && Number.isFinite(overrides.amount)) reqBody.override_amount = overrides.amount;
+        if (overrides.email) reqBody.override_email = overrides.email;
+      }
+      const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', { body: reqBody });
       if (error) throw error;
       const d = data as {
         scanned: number; approved: number;
-        results: Array<{ id: string; email: string; approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>;
+        results: Array<{ id: string; email: string; approved: boolean; reason: string; hint?: string; ocr_amount?: number | null; ocr_email?: string | null }>;
       };
       setMatchResults(prev => {
         const next = { ...prev };
-        for (const r of d.results) next[r.id] = { approved: r.approved, reason: r.reason, hint: r.hint, ocr_amount: r.ocr_amount };
+        for (const r of d.results) next[r.id] = { approved: r.approved, reason: r.reason, hint: r.hint, ocr_amount: r.ocr_amount, ocr_email: r.ocr_email };
         return next;
       });
       const failed = d.results.filter(r => !r.approved);
