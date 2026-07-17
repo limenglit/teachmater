@@ -25,11 +25,16 @@ interface OCRResult {
 
 const EXPECTED: Record<string, number> = { p10_100: 10, p20_300: 20 };
 
+function extractEmail(text: string): string | null {
+  const m = text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
+  return m ? m[0] : null;
+}
+
 async function ocrScreenshot(imageUrl: string, apiKey: string): Promise<OCRResult> {
   try {
     // Fetch image → base64 (some signed URLs cannot be fetched by the model directly)
     const resp = await fetch(imageUrl);
-    if (!resp.ok) return { amount: null, raw_text: '' };
+    if (!resp.ok) return { amount: null, email: null, raw_text: '' };
     const bytes = new Uint8Array(await resp.arrayBuffer());
     let bin = '';
     for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
@@ -44,7 +49,7 @@ async function ocrScreenshot(imageUrl: string, apiKey: string): Promise<OCRResul
           content: [
             {
               type: 'text',
-              text: '这是一张微信/支付宝付款截图。请识别付款金额（人民币，单位元，仅返回数字）以及可读文本。严格按 JSON 返回：{"amount": number, "raw_text": string}。如无法识别金额则 amount 为 null。',
+              text: '这是一张微信/支付宝付款截图。请识别付款金额（人民币，单位元，仅返回数字）、截图中出现的用户邮箱（若有），以及可读文本。严格按 JSON 返回：{"amount": number|null, "email": string|null, "raw_text": string}。',
             },
             { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
           ],
@@ -57,20 +62,27 @@ async function ocrScreenshot(imageUrl: string, apiKey: string): Promise<OCRResul
       headers: { 'Content-Type': 'application/json', 'Lovable-API-Key': apiKey },
       body: JSON.stringify(body),
     });
-    if (!r.ok) return { amount: null, raw_text: '' };
+    if (!r.ok) return { amount: null, email: null, raw_text: '' };
     const j = await r.json();
     const content = j?.choices?.[0]?.message?.content || '';
     try {
       const parsed = JSON.parse(content);
       const amt = typeof parsed.amount === 'number' ? parsed.amount
         : parsed.amount ? Number(String(parsed.amount).replace(/[^\d.]/g, '')) : null;
-      return { amount: Number.isFinite(amt as number) ? (amt as number) : null, raw_text: String(parsed.raw_text || '') };
+      const raw = String(parsed.raw_text || '');
+      const email = (typeof parsed.email === 'string' && parsed.email.includes('@'))
+        ? parsed.email : extractEmail(raw);
+      return {
+        amount: Number.isFinite(amt as number) ? (amt as number) : null,
+        email,
+        raw_text: raw,
+      };
     } catch {
       const m = content.match(/(\d+(?:\.\d+)?)/);
-      return { amount: m ? Number(m[1]) : null, raw_text: content };
+      return { amount: m ? Number(m[1]) : null, email: extractEmail(content), raw_text: content };
     }
   } catch {
-    return { amount: null, raw_text: '' };
+    return { amount: null, email: null, raw_text: '' };
   }
 }
 
