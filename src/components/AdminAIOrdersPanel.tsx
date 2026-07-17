@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Clock, RefreshCw, Upload, Sparkles, ImagePlus } from 'lucide-react';
 
 interface Order {
   id: string;
