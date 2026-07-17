@@ -454,9 +454,39 @@ export default function AdminAIOrdersPanel() {
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-muted-foreground">
+                  本次 OCR 提取结果（可手动更正后重新匹配）
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground mb-0.5">识别金额（￥）</div>
+                    <Input type="number" step="0.01" inputMode="decimal" value={retryAmount}
+                      onChange={e => setRetryAmount(e.target.value)}
+                      placeholder={`应为 ${retryOrder.amount_cny}`} className="text-xs h-8" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground mb-0.5">识别邮箱</div>
+                    <Input type="email" value={retryEmail}
+                      onChange={e => setRetryEmail(e.target.value)}
+                      placeholder={retryOrder.email} className="text-xs h-8" />
+                  </div>
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {retryFile
+                    ? '已选新截图 · 将忽略手动值，重新执行 OCR。'
+                    : '留空则使用上次 OCR 结果；填写后将以你的值作为最终匹配依据。'}
+                </div>
+                {(matchResults[retryOrder.id]?.ocr_amount != null || matchResults[retryOrder.id]?.ocr_email) && (
+                  <div className="text-[10px] text-muted-foreground">
+                    上次 OCR：金额 {matchResults[retryOrder.id]?.ocr_amount ?? '—'} · 邮箱 {matchResults[retryOrder.id]?.ocr_email || '—'}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-muted-foreground">付款备注（含邮箱与金额可提升识别成功率）</label>
                 <Textarea rows={3} value={retryNote} onChange={e => setRetryNote(e.target.value)}
-                  placeholder={`例如：${retryOrder.email} 充值 ￥${retryOrder.amount_cny}`} className="text-xs" />
+                  placeholder={`例如：${retryOrder.email} 充值 ￥${retryOrder.amount_cny}`} maxLength={500} className="text-xs" />
               </div>
             </div>
           )}
