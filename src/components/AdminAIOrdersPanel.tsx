@@ -32,13 +32,15 @@ export default function AdminAIOrdersPanel() {
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [acting, setActing] = useState<string | null>(null);
   const [autoMatching, setAutoMatching] = useState<string | 'all' | null>(null);
-  const [matchResults, setMatchResults] = useState<Record<string, { approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>>({});
+  const [matchResults, setMatchResults] = useState<Record<string, { approved: boolean; reason: string; hint?: string; ocr_amount?: number | null; ocr_email?: string | null }>>({});
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [retryOrder, setRetryOrder] = useState<Order | null>(null);
   const [retryFile, setRetryFile] = useState<File | null>(null);
   const [retryNote, setRetryNote] = useState('');
+  const [retryAmount, setRetryAmount] = useState<string>('');
+  const [retryEmail, setRetryEmail] = useState<string>('');
   const [retrySubmitting, setRetrySubmitting] = useState(false);
   const retryPreviewUrl = useRef<string | null>(null);
 
@@ -46,6 +48,9 @@ export default function AdminAIOrdersPanel() {
     setRetryOrder(o);
     setRetryFile(null);
     setRetryNote(o.payer_note || '');
+    const prev = matchResults[o.id];
+    setRetryAmount(prev?.ocr_amount != null ? String(prev.ocr_amount) : '');
+    setRetryEmail(prev?.ocr_email || '');
     if (retryPreviewUrl.current) { URL.revokeObjectURL(retryPreviewUrl.current); retryPreviewUrl.current = null; }
   };
 
@@ -54,6 +59,8 @@ export default function AdminAIOrdersPanel() {
     setRetryOrder(null);
     setRetryFile(null);
     setRetryNote('');
+    setRetryAmount('');
+    setRetryEmail('');
   };
 
   const submitRetry = async () => {
@@ -80,13 +87,31 @@ export default function AdminAIOrdersPanel() {
           p_payer_note: noteChanged ? retryNote : null,
         });
         if (error) throw error;
-      } else if (!retryFile) {
-        // nothing changed, still allow re-run
       }
+
+      // Detect manual overrides for OCR fields
+      const prev = matchResults[retryOrder.id];
+      const amtNum = retryAmount.trim() === '' ? null : Number(retryAmount);
+      if (amtNum !== null && !Number.isFinite(amtNum)) {
+        throw new Error('金额必须是数字');
+      }
+      const emailStr = retryEmail.trim();
+      if (emailStr && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+        throw new Error('邮箱格式不正确');
+      }
+      const amtChanged = amtNum !== null && amtNum !== (prev?.ocr_amount ?? null);
+      const emailChanged = !!emailStr && emailStr.toLowerCase() !== (prev?.ocr_email || '').toLowerCase();
+      // If admin uploaded a new screenshot they likely want re-OCR, ignore manual overrides.
+      const useOverrides = !retryFile && (amtChanged || emailChanged);
+      const overrides = useOverrides ? {
+        amount: amtNum !== null ? amtNum : (prev?.ocr_amount ?? null),
+        email: emailStr || (prev?.ocr_email ?? null),
+      } : undefined;
+
       const orderId = retryOrder.id;
       closeRetryDialog();
       await load();
-      await autoMatch(orderId);
+      await autoMatch(orderId, overrides);
     } catch (e: any) {
       toast({ title: '提交失败', description: e.message || String(e), variant: 'destructive' });
     } finally {
@@ -136,20 +161,23 @@ export default function AdminAIOrdersPanel() {
 
 
 
-  const autoMatch = async (orderId?: string) => {
+  const autoMatch = async (orderId?: string, overrides?: { amount?: number | null; email?: string | null }) => {
     setAutoMatching(orderId || 'all');
     try {
-      const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', {
-        body: orderId ? { order_id: orderId } : {},
-      });
+      const reqBody: Record<string, unknown> = orderId ? { order_id: orderId } : {};
+      if (overrides) {
+        if (typeof overrides.amount === 'number' && Number.isFinite(overrides.amount)) reqBody.override_amount = overrides.amount;
+        if (overrides.email) reqBody.override_email = overrides.email;
+      }
+      const { data, error } = await supabase.functions.invoke('auto-match-ai-orders', { body: reqBody });
       if (error) throw error;
       const d = data as {
         scanned: number; approved: number;
-        results: Array<{ id: string; email: string; approved: boolean; reason: string; hint?: string; ocr_amount?: number | null }>;
+        results: Array<{ id: string; email: string; approved: boolean; reason: string; hint?: string; ocr_amount?: number | null; ocr_email?: string | null }>;
       };
       setMatchResults(prev => {
         const next = { ...prev };
-        for (const r of d.results) next[r.id] = { approved: r.approved, reason: r.reason, hint: r.hint, ocr_amount: r.ocr_amount };
+        for (const r of d.results) next[r.id] = { approved: r.approved, reason: r.reason, hint: r.hint, ocr_amount: r.ocr_amount, ocr_email: r.ocr_email };
         return next;
       });
       const failed = d.results.filter(r => !r.approved);
@@ -426,9 +454,39 @@ export default function AdminAIOrdersPanel() {
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-muted-foreground">
+                  本次 OCR 提取结果（可手动更正后重新匹配）
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground mb-0.5">识别金额（￥）</div>
+                    <Input type="number" step="0.01" inputMode="decimal" value={retryAmount}
+                      onChange={e => setRetryAmount(e.target.value)}
+                      placeholder={`应为 ${retryOrder.amount_cny}`} className="text-xs h-8" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground mb-0.5">识别邮箱</div>
+                    <Input type="email" value={retryEmail}
+                      onChange={e => setRetryEmail(e.target.value)}
+                      placeholder={retryOrder.email} className="text-xs h-8" />
+                  </div>
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  {retryFile
+                    ? '已选新截图 · 将忽略手动值，重新执行 OCR。'
+                    : '留空则使用上次 OCR 结果；填写后将以你的值作为最终匹配依据。'}
+                </div>
+                {(matchResults[retryOrder.id]?.ocr_amount != null || matchResults[retryOrder.id]?.ocr_email) && (
+                  <div className="text-[10px] text-muted-foreground">
+                    上次 OCR：金额 {matchResults[retryOrder.id]?.ocr_amount ?? '—'} · 邮箱 {matchResults[retryOrder.id]?.ocr_email || '—'}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-muted-foreground">付款备注（含邮箱与金额可提升识别成功率）</label>
                 <Textarea rows={3} value={retryNote} onChange={e => setRetryNote(e.target.value)}
-                  placeholder={`例如：${retryOrder.email} 充值 ￥${retryOrder.amount_cny}`} className="text-xs" />
+                  placeholder={`例如：${retryOrder.email} 充值 ￥${retryOrder.amount_cny}`} maxLength={500} className="text-xs" />
               </div>
             </div>
           )}
