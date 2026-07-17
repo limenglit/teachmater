@@ -36,6 +36,64 @@ export default function AdminAIOrdersPanel() {
   const [qr, setQr] = useState<PaymentQR>({});
   const [savingQR, setSavingQR] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [retryOrder, setRetryOrder] = useState<Order | null>(null);
+  const [retryFile, setRetryFile] = useState<File | null>(null);
+  const [retryNote, setRetryNote] = useState('');
+  const [retrySubmitting, setRetrySubmitting] = useState(false);
+  const retryPreviewUrl = useRef<string | null>(null);
+
+  const openRetryDialog = (o: Order) => {
+    setRetryOrder(o);
+    setRetryFile(null);
+    setRetryNote(o.payer_note || '');
+    if (retryPreviewUrl.current) { URL.revokeObjectURL(retryPreviewUrl.current); retryPreviewUrl.current = null; }
+  };
+
+  const closeRetryDialog = () => {
+    if (retryPreviewUrl.current) { URL.revokeObjectURL(retryPreviewUrl.current); retryPreviewUrl.current = null; }
+    setRetryOrder(null);
+    setRetryFile(null);
+    setRetryNote('');
+  };
+
+  const submitRetry = async () => {
+    if (!retryOrder) return;
+    setRetrySubmitting(true);
+    try {
+      let newUrl: string | null = null;
+      if (retryFile) {
+        const ext = retryFile.name.split('.').pop()?.toLowerCase() || 'png';
+        const path = `retry/${retryOrder.id}-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('payment-screenshots')
+          .upload(path, retryFile, { upsert: true, contentType: retryFile.type });
+        if (upErr) throw upErr;
+        const { data: signed } = await supabase.storage.from('payment-screenshots')
+          .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
+        if (!signed?.signedUrl) throw new Error('生成签名链接失败');
+        newUrl = signed.signedUrl;
+      }
+      const noteChanged = retryNote !== (retryOrder.payer_note || '');
+      if (newUrl || noteChanged) {
+        const { error } = await (supabase as any).rpc('admin_update_ai_credit_order_screenshot', {
+          p_order_id: retryOrder.id,
+          p_screenshot_url: newUrl,
+          p_payer_note: noteChanged ? retryNote : null,
+        });
+        if (error) throw error;
+      } else if (!retryFile) {
+        // nothing changed, still allow re-run
+      }
+      const orderId = retryOrder.id;
+      closeRetryDialog();
+      await load();
+      await autoMatch(orderId);
+    } catch (e: any) {
+      toast({ title: '提交失败', description: e.message || String(e), variant: 'destructive' });
+    } finally {
+      setRetrySubmitting(false);
+    }
+  };
+
 
   const autoMatch = async (orderId?: string) => {
     setAutoMatching(orderId || 'all');
