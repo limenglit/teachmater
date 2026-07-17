@@ -1697,6 +1697,14 @@ export type Database = {
         Args: { p_page_limit: number; p_user_ids: string[] }
         Returns: undefined
       }
+      admin_update_ai_credit_order_screenshot: {
+        Args: {
+          p_order_id: string
+          p_payer_note?: string
+          p_screenshot_url: string
+        }
+        Returns: undefined
+      }
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
       approve_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
       clear_board_strokes: {
