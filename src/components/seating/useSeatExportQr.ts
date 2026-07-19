@@ -61,7 +61,11 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
   const resolveQrCode = async () => {
     // Always read latest name at export time to guard against stale memoized value.
     const latestName = getActiveClassName() || fallback;
-    if (checkinUrl && cachedForNameRef.current === latestName) {
+    if (
+      checkinUrl &&
+      cachedForNameRef.current === latestName &&
+      cachedForConfigRef.current === sceneConfigSig
+    ) {
       return { value: checkinUrl, className: latestName };
     }
 
@@ -86,6 +90,7 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
       });
       setCheckinUrl(created.checkinUrl);
       cachedForNameRef.current = latestName;
+      cachedForConfigRef.current = sceneConfigSig;
       return { value: created.checkinUrl, className: latestName };
     } catch (err) {
       const msg = err instanceof Error ? err.message : '生成签到码失败';
@@ -99,12 +104,14 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
   const handleSessionCreated = (url: string) => {
     setCheckinUrl(url);
     cachedForNameRef.current = getActiveClassName() || fallback;
+    cachedForConfigRef.current = sceneConfigSig;
     setLastError(null);
   };
 
   const reset = useCallback(() => {
     setCheckinUrl(null);
     cachedForNameRef.current = null;
+    cachedForConfigRef.current = null;
     setLastError(null);
     setIsCreating(false);
   }, []);
