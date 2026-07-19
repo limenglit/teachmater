@@ -1119,7 +1119,13 @@ export default function SeatChart() {
                       <Plus className="w-3 h-3" /> {t('seat.rowAisle')}
                     </Button>
                     <button
-                      onClick={() => setWindowOnLeft(prev => !prev)}
+                      onClick={() => {
+                        setWindowOnLeft(prev => !prev);
+                        const flipLR = (p: DoorPosition): DoorPosition =>
+                          p === 'left' ? 'right' : p === 'right' ? 'left' : p;
+                        setFrontDoorPosition(prev => flipLR(prev));
+                        setBackDoorPosition(prev => flipLR(prev));
+                      }}
                       className="p-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       title={t('seat.swapDoorWindow')}
                     >
