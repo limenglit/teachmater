@@ -21,6 +21,7 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
   const [isCreating, setIsCreating] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const cachedForNameRef = useRef<string | null>(null);
+  const cachedForConfigRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -37,18 +38,34 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
 
   const className = activeName || fallback;
 
-  // Invalidate cached check-in URL when class name changes so QR label & session
-  // stay in sync with the currently saved class.
+  // Stable signature of the scene config so any door/window/aisle swap invalidates
+  // the cached check-in URL — students always see the freshest navigation route.
+  const sceneConfigSig = (() => {
+    try { return JSON.stringify(sceneConfig ?? {}); } catch { return ''; }
+  })();
+
+  // Invalidate cached check-in URL when class name or scene config changes so
+  // QR label, indoor navigation route, and arrows stay in sync.
   useEffect(() => {
     if (cachedForNameRef.current !== null && cachedForNameRef.current !== className) {
       setCheckinUrl(null);
     }
   }, [className]);
 
+  useEffect(() => {
+    if (cachedForConfigRef.current !== null && cachedForConfigRef.current !== sceneConfigSig) {
+      setCheckinUrl(null);
+    }
+  }, [sceneConfigSig]);
+
   const resolveQrCode = async () => {
     // Always read latest name at export time to guard against stale memoized value.
     const latestName = getActiveClassName() || fallback;
-    if (checkinUrl && cachedForNameRef.current === latestName) {
+    if (
+      checkinUrl &&
+      cachedForNameRef.current === latestName &&
+      cachedForConfigRef.current === sceneConfigSig
+    ) {
       return { value: checkinUrl, className: latestName };
     }
 
@@ -73,6 +90,7 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
       });
       setCheckinUrl(created.checkinUrl);
       cachedForNameRef.current = latestName;
+      cachedForConfigRef.current = sceneConfigSig;
       return { value: created.checkinUrl, className: latestName };
     } catch (err) {
       const msg = err instanceof Error ? err.message : '生成签到码失败';
@@ -86,12 +104,14 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
   const handleSessionCreated = (url: string) => {
     setCheckinUrl(url);
     cachedForNameRef.current = getActiveClassName() || fallback;
+    cachedForConfigRef.current = sceneConfigSig;
     setLastError(null);
   };
 
   const reset = useCallback(() => {
     setCheckinUrl(null);
     cachedForNameRef.current = null;
+    cachedForConfigRef.current = null;
     setLastError(null);
     setIsCreating(false);
   }, []);
