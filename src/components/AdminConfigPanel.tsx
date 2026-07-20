@@ -33,7 +33,7 @@ const DEFAULT_CONFIG: SystemConfig = {
   registered: {
     random: true, teamwork: true, seats: true, board: true, quiz: true,
     sketch: true, ppt: true, visual: true, achieve: true, community: true, toolkit: true,
-    ai_daily_limit: -1,
+    ai_daily_limit: 3,
   },
   checkinPolicy: {
     require_seat_assignment_before_checkin: true,
