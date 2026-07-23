@@ -1,4 +1,10 @@
-import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type',
+};
 
 interface ErrorItem {
   word: string;
@@ -35,6 +41,39 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const svc = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: user.id });
+    if (quotaOk === false) {
+      return new Response(JSON.stringify({ error: 'AI 配额已用尽' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY 未配置' }), {
@@ -53,7 +92,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Aggregate by word + frequency
     const freq = new Map<string, ErrorItem>();
     for (const e of errors) {
       const key = e.word.trim().toLowerCase();
@@ -131,8 +169,8 @@ ${errorList}
       });
     }
     if (!resp.ok) {
-      const text = await resp.text();
-      return new Response(JSON.stringify({ error: `AI 调用失败: ${text.slice(0, 200)}` }), {
+      console.error('recommend-learning AI error', resp.status);
+      return new Response(JSON.stringify({ error: 'AI 调用失败' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -149,7 +187,6 @@ ${errorList}
       parsed = m ? JSON.parse(m[0]) : { summary: '', weakAreas: [], recommendations: [] };
     }
 
-    // Enrich with video URLs (server-side, so client doesn't need to know the format)
     const recommendations: Recommendation[] = (parsed.recommendations || []).map((r) => {
       const q = (r.bilibiliQuery || r.topic || '').trim();
       const encoded = encodeURIComponent(q);
@@ -174,7 +211,8 @@ ${errorList}
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (e) {
-    return new Response(JSON.stringify({ error: (e as Error).message || '服务器异常' }), {
+    console.error('recommend-learning error', e);
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
