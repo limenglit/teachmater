@@ -80,8 +80,15 @@ serve(async (req) => {
       slideCount = 10,
       style = "icon",
       language = "zh-CN",
-      model = "deepseek/deepseek-chat",
+      model: requestedModel = "deepseek/deepseek-chat",
     } = await req.json();
+
+    const ALLOWED_MODELS = new Set([
+      "deepseek/deepseek-chat",
+      "google/gemini-2.5-flash",
+      "google/gemini-2.5-flash-lite",
+    ]);
+    const model = ALLOWED_MODELS.has(requestedModel) ? requestedModel : "deepseek/deepseek-chat";
 
     if (!topic || String(topic).trim().length < 3) {
       return new Response(JSON.stringify({ error: "Topic too short" }), {

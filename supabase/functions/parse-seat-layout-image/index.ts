@@ -130,6 +130,6 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("parse-seat-layout-image error:", e);
-    return errorResponse(`Internal error: ${(e as Error).message}`, 500);
+    return errorResponse("Internal error", 500);
   }
 });
