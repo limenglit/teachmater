@@ -62,19 +62,23 @@ export function useAIOrderNotifier(onApproved?: () => void) {
       }
     };
 
+    let firstPoll = true;
     const poll = async () => {
       const { data, error } = await (supabase as any).rpc('get_my_ai_credit_orders');
       if (cancelled || error) return;
-      const seen = readNotified();
-      // Seed pending orders so their existing "pending" state is remembered
-      // but we still fire when they later flip to approved/rejected.
-      for (const o of (data as Order[]) || []) {
-        if (o.status === 'pending' && !seen[o.id]) {
-          seen[o.id] = 'pending';
+      const orders = (data as Order[]) || [];
+      if (firstPoll) {
+        // Seed every existing order state so we don't spam toasts for
+        // historical orders on a fresh browser/localStorage.
+        const seen = readNotified();
+        for (const o of orders) {
+          if (!seen[o.id]) seen[o.id] = o.status;
         }
+        writeNotified(seen);
+        firstPoll = false;
+        return;
       }
-      writeNotified(seen);
-      for (const o of (data as Order[]) || []) {
+      for (const o of orders) {
         handleOrder(o);
       }
     };
