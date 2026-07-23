@@ -54,7 +54,7 @@ export default function StoryboardPanel() {
     }
 
     // Check AI limit
-    if (aiQuota.remaining === 0) {
+    if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
       toast.error(t('storyboard.guestLimitReached'));
       return;
     }
