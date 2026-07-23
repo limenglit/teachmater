@@ -42,7 +42,7 @@ export default function VisualizationPanel() {
   const exportRef = useRef<HTMLDivElement>(null);
 
   const handleAnalyze = useCallback(async (text: string) => {
-    if (aiQuota.remaining === 0) {
+    if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
       toast({ title: t('ai.guestLimitReached'), variant: 'destructive' });
       return;
     }
