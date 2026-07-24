@@ -36,9 +36,54 @@ interface Props {
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
+type TableShape = 'round' | 'square' | 'rect';
 type RefKey = 'screen' | 'podium' | 'frontDoor' | 'backDoor' | 'window';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
+
+/** Compute seat centre positions around a table body (square/rect), starting
+ *  top-left and going clockwise. Round tables keep the original polar layout. */
+function getSeatPositions(
+  shape: Exclude<TableShape, 'round'>,
+  cx: number,
+  cy: number,
+  sidePeople: 1 | 2,
+): { positions: { x: number; y: number }[]; body: { x: number; y: number; w: number; h: number } } {
+  const seatOffset = 20;
+  if (shape === 'square') {
+    const half = 32;
+    const body = { x: cx - half, y: cy - half, w: half * 2, h: half * 2 };
+    const s = sidePeople;
+    const pts = (from: [number, number], to: [number, number]) =>
+      Array.from({ length: s }, (_, i) => {
+        const t = (i + 1) / (s + 1);
+        return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
+      });
+    const positions = [
+      ...pts([cx - half, cy - half - seatOffset], [cx + half, cy - half - seatOffset]), // top L→R
+      ...pts([cx + half + seatOffset, cy - half], [cx + half + seatOffset, cy + half]), // right T→B
+      ...pts([cx + half, cy + half + seatOffset], [cx - half, cy + half + seatOffset]), // bottom R→L
+      ...pts([cx - half - seatOffset, cy + half], [cx - half - seatOffset, cy - half]), // left B→T
+    ];
+    return { positions, body };
+  }
+  // rect: 2 on long (top/bottom), 1 on short (left/right)
+  const hw = 42;
+  const hh = 25;
+  const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
+  const along = (from: [number, number], to: [number, number], n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const t = (i + 1) / (n + 1);
+      return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
+    });
+  const positions = [
+    ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], 2), // top 2
+    ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], 1), // right 1
+    ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], 2), // bottom 2
+    ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], 1), // left 1
+  ];
+  return { positions, body };
+}
 
 function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
   const badgeW = 94;
@@ -76,6 +121,8 @@ export default function SmartClassroom({
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
 
   const [seatsPerTable, setSeatsPerTable] = useState(6);
+  const [tableShape, setTableShape] = useState<TableShape>('round');
+  const [squareSidePeople, setSquareSidePeople] = useState<1 | 2>(2);
   const [tableCols, setTableCols] = useState(initialTableCols);
   const [tableRows, setTableRows] = useState(initialTableRows);
   const [tableCount, setTableCount] = useState(initialTableCount);
@@ -562,6 +609,12 @@ export default function SmartClassroom({
     setTableRows(Math.max(1, Math.ceil(requiredTableCount / tableCols)));
   }, [students.length, seatsPerTable, tableCols, tableCount]);
 
+  // Non-round tables have a fixed seat count derived from their geometry.
+  useEffect(() => {
+    if (tableShape === 'square') setSeatsPerTable(4 * squareSidePeople);
+    else if (tableShape === 'rect') setSeatsPerTable(6);
+  }, [tableShape, squareSidePeople]);
+
   useEffect(() => {
     setRefPositions(defaultRefPositions);
   }, [defaultRefPositions]);
@@ -731,13 +784,27 @@ export default function SmartClassroom({
   };
 
   const renderRoundTable = (tableIndex: number, people: string[]) => {
-    const radius = 52;
-    const seatRadius = 16;
     const cx = 80;
     const cy = 80;
+    const roundRadius = 52;
+    const seatRadius = 16;
     const totalSlots = seatsPerTable;
     const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
     const isReservedTable = reservedTables.has(tableIndex);
+
+    // Compute seat centres and (for square/rect) the table body rect.
+    let seatCentres: { x: number; y: number }[];
+    let bodyRect: { x: number; y: number; w: number; h: number } | null = null;
+    if (tableShape === 'round') {
+      seatCentres = Array.from({ length: totalSlots }, (_, i) => {
+        const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
+        return { x: cx + roundRadius * Math.cos(angle), y: cy + roundRadius * Math.sin(angle) };
+      });
+    } else {
+      const g = getSeatPositions(tableShape, cx, cy, squareSidePeople);
+      seatCentres = g.positions;
+      bodyRect = g.body;
+    }
 
     return (
       <div
@@ -755,24 +822,34 @@ export default function SmartClassroom({
             }}
             style={{ cursor: 'pointer' }}
           >
-            <circle
-              cx={cx}
-              cy={cy}
-              r={36}
-              className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
-              strokeWidth={2}
-            />
-            <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-primary text-[10px] font-medium'}>
+            {tableShape === 'round' ? (
+              <circle
+                cx={cx}
+                cy={cy}
+                r={36}
+                className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
+                strokeWidth={2}
+              />
+            ) : bodyRect ? (
+              <rect
+                x={bodyRect.x}
+                y={bodyRect.y}
+                width={bodyRect.w}
+                height={bodyRect.h}
+                rx={6}
+                ry={6}
+                className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
+                strokeWidth={2}
+              />
+            ) : null}
+            <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-primary text-[10px] font-medium'}>
               {tFormat(t('seat.editor.smart.tableNum'), tableIndex + 1)}
             </text>
-            <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-muted-foreground text-[10px]'}>
+            <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-muted-foreground text-[10px]'}>
               {isReservedTable ? t('seat.editor.common.reserved') : t('seat.editor.common.open')}
             </text>
           </g>
-          {Array.from({ length: totalSlots }).map((_, i) => {
-            const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
-            const sx = cx + radius * Math.cos(angle);
-            const sy = cy + radius * Math.sin(angle);
+          {seatCentres.map(({ x: sx, y: sy }, i) => {
             const name = people[i] || '';
             const isClosed = closedSeats.has(seatKey(tableIndex, i));
             const isDragging = dragFrom?.table === tableIndex && dragFrom?.seat === i;
@@ -842,6 +919,7 @@ export default function SmartClassroom({
       </div>
     );
   };
+
 
   return (
     <div
@@ -931,9 +1009,42 @@ export default function SmartClassroom({
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          桌型
+          <select
+            value={tableShape}
+            onChange={e => setTableShape(e.target.value as TableShape)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="round">圆桌</option>
+            <option value="square">方桌</option>
+            <option value="rect">长方桌</option>
+          </select>
+        </label>
+        {tableShape === 'square' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            每边人数
+            <select
+              value={squareSidePeople}
+              onChange={e => setSquareSidePeople(Number(e.target.value) === 1 ? 1 : 2)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value={1}>1 人/边（共 4 人）</option>
+              <option value={2}>2 人/边（共 8 人）</option>
+            </select>
+          </label>
+        )}
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {t('seat.editor.common.perTable')}
-          <Input type="number" min={3} max={12} value={seatsPerTable}
-            onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          <Input
+            type="number"
+            min={3}
+            max={12}
+            value={seatsPerTable}
+            disabled={tableShape !== 'round'}
+            onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))}
+            className="w-16 h-8 text-center disabled:opacity-60"
+            title={tableShape !== 'round' ? '非圆桌时由桌型自动决定' : undefined}
+          />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {t('seat.editor.common.rows')}
