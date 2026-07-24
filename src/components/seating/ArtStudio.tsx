@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Shuffle, LayoutGrid, Palette, QrCode, Orbit, Move, UserRound } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
-import { isSeatAssignmentComplete } from '@/lib/seat-checkin-policy';
+
 import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
@@ -483,8 +483,8 @@ export default function ArtStudio({ students }: Props) {
     ? assignment
     : ensureAssignmentShape([]);
   const seatAssignmentReady = useMemo(
-    () => isSeatAssignmentComplete(seatData, students.map(student => student.name)),
-    [seatData, students]
+    () => seatData.some(row => Array.isArray(row) && row.some(n => !!n && String(n).trim().length > 0)),
+    [seatData]
   );
 
   const layoutName = layoutMode === 'radial' ? t('seat.editor.art.layoutRadial') : t('seat.editor.art.layoutConcentric');

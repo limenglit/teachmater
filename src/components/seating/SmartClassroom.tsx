@@ -670,9 +670,11 @@ export default function SmartClassroom({
     backDoorPosition: backDoor,
     entryDoorMode: entryDoor,
   };
+  const seatAssignmentReady = assignment.some(row => row.some(n => !!n && n.trim().length > 0));
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
+    seatAssignmentReady,
     sceneConfig: exportSceneConfig,
     sceneType: 'smartClassroom',
   });
@@ -1523,6 +1525,7 @@ export default function SmartClassroom({
         onOpenChange={setCheckinOpen}
         seatData={assignment}
         studentNames={students.map(s => s.name)}
+        seatAssignmentReady={seatAssignmentReady}
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}
         className={recordName.trim()}
