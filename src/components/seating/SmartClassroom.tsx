@@ -36,9 +36,54 @@ interface Props {
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
+type TableShape = 'round' | 'square' | 'rect';
 type RefKey = 'screen' | 'podium' | 'frontDoor' | 'backDoor' | 'window';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
+
+/** Compute seat centre positions around a table body (square/rect), starting
+ *  top-left and going clockwise. Round tables keep the original polar layout. */
+function getSeatPositions(
+  shape: Exclude<TableShape, 'round'>,
+  cx: number,
+  cy: number,
+  sidePeople: 1 | 2,
+): { positions: { x: number; y: number }[]; body: { x: number; y: number; w: number; h: number } } {
+  const seatOffset = 20;
+  if (shape === 'square') {
+    const half = 32;
+    const body = { x: cx - half, y: cy - half, w: half * 2, h: half * 2 };
+    const s = sidePeople;
+    const pts = (from: [number, number], to: [number, number]) =>
+      Array.from({ length: s }, (_, i) => {
+        const t = (i + 1) / (s + 1);
+        return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
+      });
+    const positions = [
+      ...pts([cx - half, cy - half - seatOffset], [cx + half, cy - half - seatOffset]), // top L→R
+      ...pts([cx + half + seatOffset, cy - half], [cx + half + seatOffset, cy + half]), // right T→B
+      ...pts([cx + half, cy + half + seatOffset], [cx - half, cy + half + seatOffset]), // bottom R→L
+      ...pts([cx - half - seatOffset, cy + half], [cx - half - seatOffset, cy - half]), // left B→T
+    ];
+    return { positions, body };
+  }
+  // rect: 2 on long (top/bottom), 1 on short (left/right)
+  const hw = 42;
+  const hh = 25;
+  const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
+  const along = (from: [number, number], to: [number, number], n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const t = (i + 1) / (n + 1);
+      return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
+    });
+  const positions = [
+    ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], 2), // top 2
+    ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], 1), // right 1
+    ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], 2), // bottom 2
+    ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], 1), // left 1
+  ];
+  return { positions, body };
+}
 
 function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
   const badgeW = 94;
