@@ -97,6 +97,48 @@ function getSeatPositions(
   return { positions, body };
 }
 
+/** Return the minimum horizontal/vertical gap (in px) between adjacent tables
+ *  so that seat circles and name labels of neighbours don't collide, based on
+ *  the table shape and side-people counts. The SVG viewbox is 160×160 with the
+ *  table centred at (80,80); anything beyond ±80 spills into the neighbour. */
+function getMinTableGaps(
+  shape: TableShape,
+  squareSidePeople: 1 | 2,
+  customLong: number,
+  customShort: number,
+): { col: number; row: number } {
+  const seatOffset = 20;
+  const seatRadius = 16;
+  const breathing = 8; // extra room so names never touch the neighbour
+  const base = 12; // never go below this even for tiny round tables
+  if (shape === 'round') {
+    // seats sit on r=52 with radius 16 → extent ≈ 68 from centre, fits in 80.
+    return { col: base + 8, row: base + 8 };
+  }
+  if (shape === 'square') {
+    const halfBody = 32;
+    const extent = halfBody + seatOffset + seatRadius; // ≈ 68
+    const spill = Math.max(0, extent - 80);
+    const g = Math.max(base + 8, spill * 2 + breathing);
+    return { col: g, row: g };
+  }
+  if (shape === 'custom') {
+    const hw = Math.max(28, Math.max(1, Math.floor(customLong)) * 14);
+    const hh = Math.max(20, Math.max(1, Math.floor(customShort)) * 14);
+    const extentX = hw + seatOffset + seatRadius;
+    const extentY = hh + seatOffset + seatRadius;
+    const col = Math.max(base, (extentX - 80) * 2 + breathing);
+    const row = Math.max(base, (extentY - 80) * 2 + breathing);
+    return { col, row };
+  }
+  // rect
+  const extentX = 42 + seatOffset + seatRadius; // 78
+  const extentY = 25 + seatOffset + seatRadius; // 61
+  const col = Math.max(base, (extentX - 80) * 2 + breathing);
+  const row = Math.max(base, (extentY - 80) * 2 + breathing);
+  return { col, row };
+}
+
 function getDefaultRefPositions(roomWidth: number, roomHeight: number): RefPositions {
   const badgeW = 94;
   const centeredX = Math.round((roomWidth - badgeW) / 2);
