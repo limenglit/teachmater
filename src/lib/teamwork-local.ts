@@ -35,10 +35,14 @@ export interface SmartClassroomSnapshot {
   assignment: string[][];
   closedSeats: string[];
   reservedTables?: number[];
-  /** Table shape for smart classroom scene (round | square | rect). */
-  tableShape?: 'round' | 'square' | 'rect';
+  /** Table shape for smart classroom scene (round | square | rect | custom). */
+  tableShape?: 'round' | 'square' | 'rect' | 'custom';
   /** Number of seats per side for square tables (1 or 2). */
   squareSidePeople?: 1 | 2;
+  /** People per long side (top/bottom) for custom rectangular tables. */
+  customLongPeople?: number;
+  /** People per short side (left/right) for custom rectangular tables. */
+  customShortPeople?: number;
   updatedAt: string;
 }
 
