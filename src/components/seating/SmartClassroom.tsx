@@ -1525,6 +1525,7 @@ export default function SmartClassroom({
         onOpenChange={setCheckinOpen}
         seatData={assignment}
         studentNames={students.map(s => s.name)}
+        seatAssignmentReady={seatAssignmentReady}
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}
         className={recordName.trim()}
