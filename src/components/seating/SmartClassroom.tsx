@@ -48,22 +48,39 @@ function getSeatPositions(
   cx: number,
   cy: number,
   sidePeople: 1 | 2,
+  customLong = 3,
+  customShort = 2,
 ): { positions: { x: number; y: number }[]; body: { x: number; y: number; w: number; h: number } } {
   const seatOffset = 20;
+  const along = (from: [number, number], to: [number, number], n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const t = (i + 1) / (n + 1);
+      return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
+    });
   if (shape === 'square') {
     const half = 32;
     const body = { x: cx - half, y: cy - half, w: half * 2, h: half * 2 };
     const s = sidePeople;
-    const pts = (from: [number, number], to: [number, number]) =>
-      Array.from({ length: s }, (_, i) => {
-        const t = (i + 1) / (s + 1);
-        return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
-      });
     const positions = [
-      ...pts([cx - half, cy - half - seatOffset], [cx + half, cy - half - seatOffset]), // top L→R
-      ...pts([cx + half + seatOffset, cy - half], [cx + half + seatOffset, cy + half]), // right T→B
-      ...pts([cx + half, cy + half + seatOffset], [cx - half, cy + half + seatOffset]), // bottom R→L
-      ...pts([cx - half - seatOffset, cy + half], [cx - half - seatOffset, cy - half]), // left B→T
+      ...along([cx - half, cy - half - seatOffset], [cx + half, cy - half - seatOffset], s),
+      ...along([cx + half + seatOffset, cy - half], [cx + half + seatOffset, cy + half], s),
+      ...along([cx + half, cy + half + seatOffset], [cx - half, cy + half + seatOffset], s),
+      ...along([cx - half - seatOffset, cy + half], [cx - half - seatOffset, cy - half], s),
+    ];
+    return { positions, body };
+  }
+  if (shape === 'custom') {
+    const L = Math.max(1, Math.floor(customLong));
+    const W = Math.max(1, Math.floor(customShort));
+    // Body dimensions scale with seat counts (min sizes for readability).
+    const hw = Math.max(28, L * 14);
+    const hh = Math.max(20, W * 14);
+    const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
+    const positions = [
+      ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], L),
+      ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], W),
+      ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], L),
+      ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], W),
     ];
     return { positions, body };
   }
@@ -71,16 +88,11 @@ function getSeatPositions(
   const hw = 42;
   const hh = 25;
   const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
-  const along = (from: [number, number], to: [number, number], n: number) =>
-    Array.from({ length: n }, (_, i) => {
-      const t = (i + 1) / (n + 1);
-      return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
-    });
   const positions = [
-    ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], 2), // top 2
-    ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], 1), // right 1
-    ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], 2), // bottom 2
-    ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], 1), // left 1
+    ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], 2),
+    ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], 1),
+    ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], 2),
+    ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], 1),
   ];
   return { positions, body };
 }
