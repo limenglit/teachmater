@@ -575,6 +575,7 @@ export default function SmartClassroom({
     groupCount,
     mode,
     tableGap,
+    tableGapRow,
     assignment,
     closedSeats: Array.from(closedSeats),
     reservedTables: Array.from(reservedTables),
@@ -622,6 +623,7 @@ export default function SmartClassroom({
     setGroupCount(Math.max(1, snapshot.groupCount));
     setMode(snapshot.mode);
     setTableGap(Math.max(0, snapshot.tableGap));
+    setTableGapRow(Math.max(0, snapshot.tableGapRow ?? snapshot.tableGap));
     setAssignment(sanitizedAssignment);
     setClosedSeats(new Set(snapshot.closedSeats || []));
     setReservedTables(new Set(snapshot.reservedTables || []));
@@ -653,7 +655,7 @@ export default function SmartClassroom({
   };
 
   const roomWidth = Math.max(920, tableCols * 160 + Math.max(0, tableCols - 1) * tableGap + 220);
-  const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGap + 240);
+  const roomHeight = Math.max(640, tableRows * 160 + Math.max(0, tableRows - 1) * tableGapRow + 240);
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const exportSceneConfig = {
@@ -743,6 +745,7 @@ export default function SmartClassroom({
       setGroupCount(Math.max(1, snapshot.groupCount));
       setMode(snapshot.mode);
       setTableGap(Math.max(0, snapshot.tableGap));
+      setTableGapRow(Math.max(0, snapshot.tableGapRow ?? snapshot.tableGap));
       setAssignment(sanitizedAssignment);
       setClosedSeats(new Set(snapshot.closedSeats || []));
       setReservedTables(new Set(snapshot.reservedTables || []));
@@ -788,6 +791,7 @@ export default function SmartClassroom({
       groupCount,
       mode,
       tableGap,
+      tableGapRow,
       assignment,
       closedSeats: Array.from(closedSeats),
       reservedTables: Array.from(reservedTables),
@@ -797,7 +801,7 @@ export default function SmartClassroom({
       customShortPeople,
       updatedAt: new Date().toISOString(),
     });
-  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames, tableShape, squareSidePeople, customLongPeople, customShortPeople]);
+  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, tableGapRow, closedSeats, reservedTables, linkedGroupNames, tableShape, squareSidePeople, customLongPeople, customShortPeople]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -1213,10 +1217,14 @@ export default function SmartClassroom({
               onChange={e => setGroupCount(Math.max(2, Math.min(20, Number(e.target.value))))} className="w-16 h-8 text-center" />
           </label>
         )}
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <label className="flex items-center gap-2 text-sm text-muted-foreground" title="列间距（水平方向）">
           {t('seat.editor.common.tableSpacing')}
-          <Input type="number" min={0} max={100} value={tableGap}
-            onChange={e => setTableGap(Math.max(0, Math.min(100, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          <span className="text-[11px] opacity-70">列</span>
+          <Input type="number" min={0} max={200} value={tableGap}
+            onChange={e => setTableGap(Math.max(0, Math.min(200, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          <span className="text-[11px] opacity-70">行</span>
+          <Input type="number" min={0} max={200} value={tableGapRow}
+            onChange={e => setTableGapRow(Math.max(0, Math.min(200, Number(e.target.value))))} className="w-16 h-8 text-center" />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
           <input
@@ -1461,7 +1469,7 @@ export default function SmartClassroom({
               })()}
 
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, gap: `${tableGap}px` }}>
+                <div className="inline-grid pointer-events-auto" style={{ gridTemplateColumns: `repeat(${tableCols}, 1fr)`, columnGap: `${tableGap}px`, rowGap: `${tableGapRow}px` }}>
                   {assignment.map((people, i) => renderRoundTable(i, people))}
                 </div>
               </div>
