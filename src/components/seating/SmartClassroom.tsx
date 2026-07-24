@@ -36,7 +36,7 @@ interface Props {
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
-type TableShape = 'round' | 'square' | 'rect';
+type TableShape = 'round' | 'square' | 'rect' | 'custom';
 type RefKey = 'screen' | 'podium' | 'frontDoor' | 'backDoor' | 'window';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
