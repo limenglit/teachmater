@@ -1007,22 +1007,29 @@ export default function SmartClassroom({
                   style={{ transition: 'all 0.15s' }}
                 />
                 {isClosed && (
-                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive pointer-events-none" style={{ fontSize: nameFontSize }}>
                     {t('seat.editor.common.off')}
                   </text>
                 )}
-                {name && !isDragging && (
-                  <text
-                    x={sx}
-                    y={sy + 1}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground text-xs pointer-events-none"
-                    style={{ fill: getNameColor(name) }}
-                  >
-                    {name.length > 3 ? name.slice(0, 3) : name}
-                  </text>
-                )}
+                {name && !isDragging && (() => {
+                  // Estimate CJK/latin width and shrink font if the name is too long
+                  // to fit inside the (auto-sized) seat circle.
+                  const est = Array.from(name).reduce((w, ch) => w + (/[\u4e00-\u9fff\uff00-\uffef]/.test(ch) ? 1 : 0.55), 0) * nameFontSize;
+                  const fits = est <= nameMaxWidth;
+                  return (
+                    <text
+                      x={sx}
+                      y={sy + 1}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-foreground pointer-events-none"
+                      style={{ fill: getNameColor(name), fontSize: nameFontSize }}
+                      {...(fits ? {} : { textLength: nameMaxWidth, lengthAdjust: 'spacingAndGlyphs' as const })}
+                    >
+                      {name}
+                    </text>
+                  );
+                })()}
               </g>
             );
           })}
