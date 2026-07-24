@@ -586,6 +586,12 @@ export default function SmartClassroom({
     if (snapshot.squareSidePeople === 1 || snapshot.squareSidePeople === 2) {
       setSquareSidePeople(snapshot.squareSidePeople);
     }
+    if (typeof snapshot.customLongPeople === 'number' && snapshot.customLongPeople > 0) {
+      setCustomLongPeople(Math.floor(snapshot.customLongPeople));
+    }
+    if (typeof snapshot.customShortPeople === 'number' && snapshot.customShortPeople > 0) {
+      setCustomShortPeople(Math.floor(snapshot.customShortPeople));
+    }
     setRecordName(item.name);
     saveSmartClassroomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
     toast.success(t('seat.editor.common.restoredHistory'));
