@@ -778,13 +778,27 @@ export default function SmartClassroom({
   };
 
   const renderRoundTable = (tableIndex: number, people: string[]) => {
-    const radius = 52;
-    const seatRadius = 16;
     const cx = 80;
     const cy = 80;
+    const roundRadius = 52;
+    const seatRadius = 16;
     const totalSlots = seatsPerTable;
     const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
     const isReservedTable = reservedTables.has(tableIndex);
+
+    // Compute seat centres and (for square/rect) the table body rect.
+    let seatCentres: { x: number; y: number }[];
+    let bodyRect: { x: number; y: number; w: number; h: number } | null = null;
+    if (tableShape === 'round') {
+      seatCentres = Array.from({ length: totalSlots }, (_, i) => {
+        const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
+        return { x: cx + roundRadius * Math.cos(angle), y: cy + roundRadius * Math.sin(angle) };
+      });
+    } else {
+      const g = getSeatPositions(tableShape, cx, cy, squareSidePeople);
+      seatCentres = g.positions;
+      bodyRect = g.body;
+    }
 
     return (
       <div
@@ -802,24 +816,34 @@ export default function SmartClassroom({
             }}
             style={{ cursor: 'pointer' }}
           >
-            <circle
-              cx={cx}
-              cy={cy}
-              r={36}
-              className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
-              strokeWidth={2}
-            />
-            <text x={cx} y={cy - 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-primary text-[10px] font-medium'}>
+            {tableShape === 'round' ? (
+              <circle
+                cx={cx}
+                cy={cy}
+                r={36}
+                className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
+                strokeWidth={2}
+              />
+            ) : bodyRect ? (
+              <rect
+                x={bodyRect.x}
+                y={bodyRect.y}
+                width={bodyRect.w}
+                height={bodyRect.h}
+                rx={6}
+                ry={6}
+                className={isReservedTable ? 'fill-amber-100 stroke-amber-500' : 'fill-primary/10 stroke-primary/30'}
+                strokeWidth={2}
+              />
+            ) : null}
+            <text x={cx} y={cy - 6} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-primary text-[10px] font-medium'}>
               {tFormat(t('seat.editor.smart.tableNum'), tableIndex + 1)}
             </text>
-            <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-xs font-semibold' : 'fill-muted-foreground text-[10px]'}>
+            <text x={cx} y={cy + 8} textAnchor="middle" dominantBaseline="middle" className={isReservedTable ? 'fill-amber-700 text-[10px] font-semibold' : 'fill-muted-foreground text-[10px]'}>
               {isReservedTable ? t('seat.editor.common.reserved') : t('seat.editor.common.open')}
             </text>
           </g>
-          {Array.from({ length: totalSlots }).map((_, i) => {
-            const angle = (2 * Math.PI * i) / totalSlots - Math.PI / 2;
-            const sx = cx + radius * Math.cos(angle);
-            const sy = cy + radius * Math.sin(angle);
+          {seatCentres.map(({ x: sx, y: sy }, i) => {
             const name = people[i] || '';
             const isClosed = closedSeats.has(seatKey(tableIndex, i));
             const isDragging = dragFrom?.table === tableIndex && dragFrom?.seat === i;
@@ -889,6 +913,7 @@ export default function SmartClassroom({
       </div>
     );
   };
+
 
   return (
     <div
