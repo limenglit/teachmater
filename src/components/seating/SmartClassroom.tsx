@@ -883,7 +883,6 @@ export default function SmartClassroom({
     const cx = 80;
     const cy = 80;
     const roundRadius = 52;
-    const seatRadius = 16;
     const totalSlots = seatsPerTable;
     const pos = tablePositions[tableIndex] || { x: 0, y: 0 };
     const isReservedTable = reservedTables.has(tableIndex);
@@ -901,6 +900,22 @@ export default function SmartClassroom({
       seatCentres = g.positions;
       bodyRect = g.body;
     }
+
+    // Auto-size seats so adjacent circles never overlap, and scale the name
+    // font to match — full names stay legible without truncation.
+    let minSeatDist = Infinity;
+    for (let i = 0; i < seatCentres.length; i++) {
+      for (let j = i + 1; j < seatCentres.length; j++) {
+        const dx = seatCentres[i].x - seatCentres[j].x;
+        const dy = seatCentres[i].y - seatCentres[j].y;
+        const d = Math.hypot(dx, dy);
+        if (d < minSeatDist) minSeatDist = d;
+      }
+    }
+    if (!Number.isFinite(minSeatDist)) minSeatDist = 40;
+    const seatRadius = Math.max(9, Math.min(18, Math.floor(minSeatDist / 2 - 2)));
+    const nameFontSize = Math.max(8, Math.min(13, Math.round(seatRadius * 0.9)));
+    const nameMaxWidth = (seatRadius - 1) * 2;
 
     return (
       <div
@@ -992,22 +1007,29 @@ export default function SmartClassroom({
                   style={{ transition: 'all 0.15s' }}
                 />
                 {isClosed && (
-                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive text-xs pointer-events-none">
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle" className="fill-destructive pointer-events-none" style={{ fontSize: nameFontSize }}>
                     {t('seat.editor.common.off')}
                   </text>
                 )}
-                {name && !isDragging && (
-                  <text
-                    x={sx}
-                    y={sy + 1}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground text-xs pointer-events-none"
-                    style={{ fill: getNameColor(name) }}
-                  >
-                    {name.length > 3 ? name.slice(0, 3) : name}
-                  </text>
-                )}
+                {name && !isDragging && (() => {
+                  // Estimate CJK/latin width and shrink font if the name is too long
+                  // to fit inside the (auto-sized) seat circle.
+                  const est = Array.from(name).reduce((w, ch) => w + (/[\u4e00-\u9fff\uff00-\uffef]/.test(ch) ? 1 : 0.55), 0) * nameFontSize;
+                  const fits = est <= nameMaxWidth;
+                  return (
+                    <text
+                      x={sx}
+                      y={sy + 1}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-foreground pointer-events-none"
+                      style={{ fill: getNameColor(name), fontSize: nameFontSize }}
+                      {...(fits ? {} : { textLength: nameMaxWidth, lengthAdjust: 'spacingAndGlyphs' as const })}
+                    >
+                      {name}
+                    </text>
+                  );
+                })()}
               </g>
             );
           })}
