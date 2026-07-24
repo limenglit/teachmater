@@ -1009,9 +1009,42 @@ export default function SmartClassroom({
           />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          桌型
+          <select
+            value={tableShape}
+            onChange={e => setTableShape(e.target.value as TableShape)}
+            className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+          >
+            <option value="round">圆桌</option>
+            <option value="square">方桌</option>
+            <option value="rect">长方桌</option>
+          </select>
+        </label>
+        {tableShape === 'square' && (
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            每边人数
+            <select
+              value={squareSidePeople}
+              onChange={e => setSquareSidePeople(Number(e.target.value) === 1 ? 1 : 2)}
+              className="h-8 px-2 rounded-md border border-input bg-background text-foreground text-sm"
+            >
+              <option value={1}>1 人/边（共 4 人）</option>
+              <option value={2}>2 人/边（共 8 人）</option>
+            </select>
+          </label>
+        )}
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {t('seat.editor.common.perTable')}
-          <Input type="number" min={3} max={12} value={seatsPerTable}
-            onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))} className="w-16 h-8 text-center" />
+          <Input
+            type="number"
+            min={3}
+            max={12}
+            value={seatsPerTable}
+            disabled={tableShape !== 'round'}
+            onChange={e => setSeatsPerTable(Math.max(3, Math.min(12, Number(e.target.value))))}
+            className="w-16 h-8 text-center disabled:opacity-60"
+            title={tableShape !== 'round' ? '非圆桌时由桌型自动决定' : undefined}
+          />
         </label>
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {t('seat.editor.common.rows')}
