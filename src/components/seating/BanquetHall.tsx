@@ -1195,6 +1195,7 @@ export default function BanquetHall({ students }: Props) {
         onOpenChange={setCheckinOpen}
         seatData={assignment}
         studentNames={students.map(s => s.name)}
+        seatAssignmentReady={seatAssignmentReady}
         sceneType="banquet"
         sceneConfig={exportSceneConfig}
         className={recordName.trim()}
