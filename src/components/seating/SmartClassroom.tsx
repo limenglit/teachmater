@@ -537,6 +537,8 @@ export default function SmartClassroom({
     reservedTables: Array.from(reservedTables),
     tableShape,
     squareSidePeople,
+    customLongPeople,
+    customShortPeople,
     updatedAt: new Date().toISOString(),
   });
 
