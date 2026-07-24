@@ -521,6 +521,8 @@ export default function SmartClassroom({
     assignment,
     closedSeats: Array.from(closedSeats),
     reservedTables: Array.from(reservedTables),
+    tableShape,
+    squareSidePeople,
     updatedAt: new Date().toISOString(),
   });
 
