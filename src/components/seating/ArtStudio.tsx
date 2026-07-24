@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Shuffle, LayoutGrid, Palette, QrCode, Orbit, Move, UserRound } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
-import { isSeatAssignmentComplete } from '@/lib/seat-checkin-policy';
+
 import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
