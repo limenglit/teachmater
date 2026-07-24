@@ -146,6 +146,7 @@ export default function SmartClassroom({
   const [closedSeats, setClosedSeats] = useState<Set<string>>(new Set());
   const [reservedTables, setReservedTables] = useState<Set<number>>(new Set());
   const [tableGap, setTableGap] = useState(20);
+  const [tableGapRow, setTableGapRow] = useState(20);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => getDefaultRefPositions(920, 640));
   const [refVisible, setRefVisible] = useState<RefVisible>({
