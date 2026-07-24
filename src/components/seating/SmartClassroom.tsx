@@ -680,6 +680,10 @@ export default function SmartClassroom({
       setAssignment(sanitizedAssignment);
       setClosedSeats(new Set(snapshot.closedSeats || []));
       setReservedTables(new Set(snapshot.reservedTables || []));
+      if (snapshot.tableShape) setTableShape(snapshot.tableShape);
+      if (snapshot.squareSidePeople === 1 || snapshot.squareSidePeople === 2) {
+        setSquareSidePeople(snapshot.squareSidePeople);
+      }
       valid = true;
     }
     if (!valid) {
