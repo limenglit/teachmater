@@ -750,9 +750,11 @@ export default function SmartClassroom({
       reservedTables: Array.from(reservedTables),
       tableShape,
       squareSidePeople,
+      customLongPeople,
+      customShortPeople,
       updatedAt: new Date().toISOString(),
     });
-  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames, tableShape, squareSidePeople]);
+  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames, tableShape, squareSidePeople, customLongPeople, customShortPeople]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
