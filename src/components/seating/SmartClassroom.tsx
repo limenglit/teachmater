@@ -36,7 +36,7 @@ interface Props {
 }
 
 type SmartSeatMode = 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
-type TableShape = 'round' | 'square' | 'rect';
+type TableShape = 'round' | 'square' | 'rect' | 'custom';
 type RefKey = 'screen' | 'podium' | 'frontDoor' | 'backDoor' | 'window';
 type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
@@ -48,22 +48,39 @@ function getSeatPositions(
   cx: number,
   cy: number,
   sidePeople: 1 | 2,
+  customLong = 3,
+  customShort = 2,
 ): { positions: { x: number; y: number }[]; body: { x: number; y: number; w: number; h: number } } {
   const seatOffset = 20;
+  const along = (from: [number, number], to: [number, number], n: number) =>
+    Array.from({ length: n }, (_, i) => {
+      const t = (i + 1) / (n + 1);
+      return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
+    });
   if (shape === 'square') {
     const half = 32;
     const body = { x: cx - half, y: cy - half, w: half * 2, h: half * 2 };
     const s = sidePeople;
-    const pts = (from: [number, number], to: [number, number]) =>
-      Array.from({ length: s }, (_, i) => {
-        const t = (i + 1) / (s + 1);
-        return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
-      });
     const positions = [
-      ...pts([cx - half, cy - half - seatOffset], [cx + half, cy - half - seatOffset]), // top L→R
-      ...pts([cx + half + seatOffset, cy - half], [cx + half + seatOffset, cy + half]), // right T→B
-      ...pts([cx + half, cy + half + seatOffset], [cx - half, cy + half + seatOffset]), // bottom R→L
-      ...pts([cx - half - seatOffset, cy + half], [cx - half - seatOffset, cy - half]), // left B→T
+      ...along([cx - half, cy - half - seatOffset], [cx + half, cy - half - seatOffset], s),
+      ...along([cx + half + seatOffset, cy - half], [cx + half + seatOffset, cy + half], s),
+      ...along([cx + half, cy + half + seatOffset], [cx - half, cy + half + seatOffset], s),
+      ...along([cx - half - seatOffset, cy + half], [cx - half - seatOffset, cy - half], s),
+    ];
+    return { positions, body };
+  }
+  if (shape === 'custom') {
+    const L = Math.max(1, Math.floor(customLong));
+    const W = Math.max(1, Math.floor(customShort));
+    // Body dimensions scale with seat counts (min sizes for readability).
+    const hw = Math.max(28, L * 14);
+    const hh = Math.max(20, W * 14);
+    const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
+    const positions = [
+      ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], L),
+      ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], W),
+      ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], L),
+      ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], W),
     ];
     return { positions, body };
   }
@@ -71,16 +88,11 @@ function getSeatPositions(
   const hw = 42;
   const hh = 25;
   const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
-  const along = (from: [number, number], to: [number, number], n: number) =>
-    Array.from({ length: n }, (_, i) => {
-      const t = (i + 1) / (n + 1);
-      return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
-    });
   const positions = [
-    ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], 2), // top 2
-    ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], 1), // right 1
-    ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], 2), // bottom 2
-    ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], 1), // left 1
+    ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], 2),
+    ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], 1),
+    ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], 2),
+    ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], 1),
   ];
   return { positions, body };
 }
@@ -123,6 +135,8 @@ export default function SmartClassroom({
   const [seatsPerTable, setSeatsPerTable] = useState(6);
   const [tableShape, setTableShape] = useState<TableShape>('round');
   const [squareSidePeople, setSquareSidePeople] = useState<1 | 2>(2);
+  const [customLongPeople, setCustomLongPeople] = useState<number>(3);
+  const [customShortPeople, setCustomShortPeople] = useState<number>(2);
   const [tableCols, setTableCols] = useState(initialTableCols);
   const [tableRows, setTableRows] = useState(initialTableRows);
   const [tableCount, setTableCount] = useState(initialTableCount);
@@ -523,6 +537,8 @@ export default function SmartClassroom({
     reservedTables: Array.from(reservedTables),
     tableShape,
     squareSidePeople,
+    customLongPeople,
+    customShortPeople,
     updatedAt: new Date().toISOString(),
   });
 
@@ -569,6 +585,12 @@ export default function SmartClassroom({
     if (snapshot.tableShape) setTableShape(snapshot.tableShape);
     if (snapshot.squareSidePeople === 1 || snapshot.squareSidePeople === 2) {
       setSquareSidePeople(snapshot.squareSidePeople);
+    }
+    if (typeof snapshot.customLongPeople === 'number' && snapshot.customLongPeople > 0) {
+      setCustomLongPeople(Math.floor(snapshot.customLongPeople));
+    }
+    if (typeof snapshot.customShortPeople === 'number' && snapshot.customShortPeople > 0) {
+      setCustomShortPeople(Math.floor(snapshot.customShortPeople));
     }
     setRecordName(item.name);
     saveSmartClassroomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
@@ -619,7 +641,8 @@ export default function SmartClassroom({
   useEffect(() => {
     if (tableShape === 'square') setSeatsPerTable(4 * squareSidePeople);
     else if (tableShape === 'rect') setSeatsPerTable(6);
-  }, [tableShape, squareSidePeople]);
+    else if (tableShape === 'custom') setSeatsPerTable(2 * (customLongPeople + customShortPeople));
+  }, [tableShape, squareSidePeople, customLongPeople, customShortPeople]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
@@ -684,6 +707,12 @@ export default function SmartClassroom({
       if (snapshot.squareSidePeople === 1 || snapshot.squareSidePeople === 2) {
         setSquareSidePeople(snapshot.squareSidePeople);
       }
+      if (typeof snapshot.customLongPeople === 'number' && snapshot.customLongPeople > 0) {
+        setCustomLongPeople(Math.floor(snapshot.customLongPeople));
+      }
+      if (typeof snapshot.customShortPeople === 'number' && snapshot.customShortPeople > 0) {
+        setCustomShortPeople(Math.floor(snapshot.customShortPeople));
+      }
       valid = true;
     }
     if (!valid) {
@@ -721,9 +750,11 @@ export default function SmartClassroom({
       reservedTables: Array.from(reservedTables),
       tableShape,
       squareSidePeople,
+      customLongPeople,
+      customShortPeople,
       updatedAt: new Date().toISOString(),
     });
-  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames, tableShape, squareSidePeople]);
+  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames, tableShape, squareSidePeople, customLongPeople, customShortPeople]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -813,7 +844,7 @@ export default function SmartClassroom({
         return { x: cx + roundRadius * Math.cos(angle), y: cy + roundRadius * Math.sin(angle) };
       });
     } else {
-      const g = getSeatPositions(tableShape, cx, cy, squareSidePeople);
+      const g = getSeatPositions(tableShape, cx, cy, squareSidePeople, customLongPeople, customShortPeople);
       seatCentres = g.positions;
       bodyRect = g.body;
     }
@@ -1030,6 +1061,7 @@ export default function SmartClassroom({
             <option value="round">圆桌</option>
             <option value="square">方桌</option>
             <option value="rect">长方桌</option>
+            <option value="custom">自定义</option>
           </select>
         </label>
         {tableShape === 'square' && (
@@ -1044,6 +1076,35 @@ export default function SmartClassroom({
               <option value={2}>2 人/边（共 8 人）</option>
             </select>
           </label>
+        )}
+        {tableShape === 'custom' && (
+          <>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              长
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={customLongPeople}
+                onChange={e => setCustomLongPeople(Math.max(1, Math.min(20, Math.floor(Number(e.target.value)) || 1)))}
+                className="w-16 h-8 text-center"
+              />
+              人
+            </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              宽
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={customShortPeople}
+                onChange={e => setCustomShortPeople(Math.max(1, Math.min(20, Math.floor(Number(e.target.value)) || 1)))}
+                className="w-16 h-8 text-center"
+              />
+              人
+            </label>
+            <span className="text-xs text-muted-foreground">共 {2 * (customLongPeople + customShortPeople)} 人</span>
+          </>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {t('seat.editor.common.perTable')}
