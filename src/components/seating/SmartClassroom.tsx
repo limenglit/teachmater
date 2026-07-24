@@ -1061,6 +1061,7 @@ export default function SmartClassroom({
             <option value="round">圆桌</option>
             <option value="square">方桌</option>
             <option value="rect">长方桌</option>
+            <option value="custom">自定义</option>
           </select>
         </label>
         {tableShape === 'square' && (
@@ -1075,6 +1076,35 @@ export default function SmartClassroom({
               <option value={2}>2 人/边（共 8 人）</option>
             </select>
           </label>
+        )}
+        {tableShape === 'custom' && (
+          <>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              长
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={customLongPeople}
+                onChange={e => setCustomLongPeople(Math.max(1, Math.min(20, Math.floor(Number(e.target.value)) || 1)))}
+                className="w-16 h-8 text-center"
+              />
+              人
+            </label>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              宽
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={customShortPeople}
+                onChange={e => setCustomShortPeople(Math.max(1, Math.min(20, Math.floor(Number(e.target.value)) || 1)))}
+                className="w-16 h-8 text-center"
+              />
+              人
+            </label>
+            <span className="text-xs text-muted-foreground">共 {2 * (customLongPeople + customShortPeople)} 人</span>
+          </>
         )}
         <label className="flex items-center gap-2 text-sm text-muted-foreground">
           {t('seat.editor.common.perTable')}
