@@ -609,6 +609,12 @@ export default function SmartClassroom({
     setTableRows(Math.max(1, Math.ceil(requiredTableCount / tableCols)));
   }, [students.length, seatsPerTable, tableCols, tableCount]);
 
+  // Non-round tables have a fixed seat count derived from their geometry.
+  useEffect(() => {
+    if (tableShape === 'square') setSeatsPerTable(4 * squareSidePeople);
+    else if (tableShape === 'rect') setSeatsPerTable(6);
+  }, [tableShape, squareSidePeople]);
+
   useEffect(() => {
     setRefPositions(defaultRefPositions);
   }, [defaultRefPositions]);
