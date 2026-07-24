@@ -189,6 +189,12 @@ export default function SmartClassroom({
   const [reservedTables, setReservedTables] = useState<Set<number>>(new Set());
   const [tableGap, setTableGap] = useState(20);
   const [tableGapRow, setTableGapRow] = useState(20);
+  // Auto-bump spacing to a shape-aware minimum so names never overlap the neighbour.
+  useEffect(() => {
+    const { col, row } = getMinTableGaps(tableShape, squareSidePeople, customLongPeople, customShortPeople);
+    setTableGap(prev => (prev < col ? Math.ceil(col) : prev));
+    setTableGapRow(prev => (prev < row ? Math.ceil(row) : prev));
+  }, [tableShape, squareSidePeople, customLongPeople, customShortPeople]);
   const [tablePositions, setTablePositions] = useState<{ x: number; y: number }[]>([]);
   const [refPositions, setRefPositions] = useState<RefPositions>(() => getDefaultRefPositions(920, 640));
   const [refVisible, setRefVisible] = useState<RefVisible>({
