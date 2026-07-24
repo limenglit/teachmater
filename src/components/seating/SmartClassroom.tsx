@@ -121,6 +121,8 @@ export default function SmartClassroom({
   const initialTableRows = Math.max(1, Math.ceil(initialTableCount / initialTableCols));
 
   const [seatsPerTable, setSeatsPerTable] = useState(6);
+  const [tableShape, setTableShape] = useState<TableShape>('round');
+  const [squareSidePeople, setSquareSidePeople] = useState<1 | 2>(2);
   const [tableCols, setTableCols] = useState(initialTableCols);
   const [tableRows, setTableRows] = useState(initialTableRows);
   const [tableCount, setTableCount] = useState(initialTableCount);
