@@ -521,6 +521,8 @@ export default function SmartClassroom({
     assignment,
     closedSeats: Array.from(closedSeats),
     reservedTables: Array.from(reservedTables),
+    tableShape,
+    squareSidePeople,
     updatedAt: new Date().toISOString(),
   });
 
@@ -564,6 +566,10 @@ export default function SmartClassroom({
     setAssignment(sanitizedAssignment);
     setClosedSeats(new Set(snapshot.closedSeats || []));
     setReservedTables(new Set(snapshot.reservedTables || []));
+    if (snapshot.tableShape) setTableShape(snapshot.tableShape);
+    if (snapshot.squareSidePeople === 1 || snapshot.squareSidePeople === 2) {
+      setSquareSidePeople(snapshot.squareSidePeople);
+    }
     setRecordName(item.name);
     saveSmartClassroomSnapshot({ ...snapshot, assignment: sanitizedAssignment });
     toast.success(t('seat.editor.common.restoredHistory'));
@@ -674,6 +680,10 @@ export default function SmartClassroom({
       setAssignment(sanitizedAssignment);
       setClosedSeats(new Set(snapshot.closedSeats || []));
       setReservedTables(new Set(snapshot.reservedTables || []));
+      if (snapshot.tableShape) setTableShape(snapshot.tableShape);
+      if (snapshot.squareSidePeople === 1 || snapshot.squareSidePeople === 2) {
+        setSquareSidePeople(snapshot.squareSidePeople);
+      }
       valid = true;
     }
     if (!valid) {
@@ -709,9 +719,11 @@ export default function SmartClassroom({
       assignment,
       closedSeats: Array.from(closedSeats),
       reservedTables: Array.from(reservedTables),
+      tableShape,
+      squareSidePeople,
       updatedAt: new Date().toISOString(),
     });
-  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames]);
+  }, [assignment, seatsPerTable, tableCount, tableCols, tableRows, groupCount, mode, tableGap, closedSeats, reservedTables, linkedGroupNames, tableShape, squareSidePeople]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
