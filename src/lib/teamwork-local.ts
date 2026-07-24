@@ -32,6 +32,8 @@ export interface SmartClassroomSnapshot {
   groupCount: number;
   mode: 'tableRoundRobin' | 'tableGrouped' | 'verticalS' | 'horizontalS' | 'orgTablePodium';
   tableGap: number;
+  /** Optional row spacing between tables (px). Falls back to tableGap when absent. */
+  tableGapRow?: number;
   assignment: string[][];
   closedSeats: string[];
   reservedTables?: number[];
