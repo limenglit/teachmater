@@ -844,7 +844,7 @@ export default function SmartClassroom({
         return { x: cx + roundRadius * Math.cos(angle), y: cy + roundRadius * Math.sin(angle) };
       });
     } else {
-      const g = getSeatPositions(tableShape, cx, cy, squareSidePeople);
+      const g = getSeatPositions(tableShape, cx, cy, squareSidePeople, customLongPeople, customShortPeople);
       seatCentres = g.positions;
       bodyRect = g.body;
     }
