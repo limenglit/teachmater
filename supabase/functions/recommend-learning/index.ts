@@ -41,37 +41,35 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Auth is OPTIONAL: this endpoint is used by student-facing public vocab
+    // sessions (opened via QR without sign-in). Signed-in users get their
+    // server-side AI quota consumed; guest sessions rely on the Lovable AI
+    // Gateway rate limits + input size caps below.
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    let userId: string | null = null;
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabase.auth.getUser(token);
+      if (user) userId = user.id;
     }
 
-    const svc = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
-    const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: user.id });
-    if (quotaOk === false) {
-      return new Response(JSON.stringify({ error: 'AI 配额已用尽' }), {
-        status: 429,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (userId) {
+      const svc = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      );
+      const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: userId });
+      if (quotaOk === false) {
+        return new Response(JSON.stringify({ error: 'AI 配额已用尽' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const apiKey = Deno.env.get('LOVABLE_API_KEY');
