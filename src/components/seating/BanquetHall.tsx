@@ -179,9 +179,11 @@ export default function BanquetHall({ students }: Props) {
     frontDoor: refVisible.frontDoor ? refPositions.frontDoor : null,
     backDoor: refVisible.backDoor ? refPositions.backDoor : null,
   };
+  const seatAssignmentReady = assignment.some(row => row.some(n => !!n && n.trim().length > 0));
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
+    seatAssignmentReady,
     sceneConfig: exportSceneConfig,
     sceneType: 'banquet',
   });
