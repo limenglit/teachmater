@@ -641,7 +641,8 @@ export default function SmartClassroom({
   useEffect(() => {
     if (tableShape === 'square') setSeatsPerTable(4 * squareSidePeople);
     else if (tableShape === 'rect') setSeatsPerTable(6);
-  }, [tableShape, squareSidePeople]);
+    else if (tableShape === 'custom') setSeatsPerTable(2 * (customLongPeople + customShortPeople));
+  }, [tableShape, squareSidePeople, customLongPeople, customShortPeople]);
 
   useEffect(() => {
     setRefPositions(defaultRefPositions);
