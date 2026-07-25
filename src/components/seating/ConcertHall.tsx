@@ -203,10 +203,11 @@ export default function ConcertHall({ students }: Props) {
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const exportSceneConfig = { seatsPerRow, rowCount };
-  const seatAssignmentReady = useMemo(
-    () => isSeatAssignmentComplete(assignment, students.map(student => student.name)),
-    [assignment, students]
+  const seatReadiness = useMemo(
+    () => evaluateSeatCheckinReadiness(assignment),
+    [assignment]
   );
+  const seatAssignmentReady = seatReadiness.ready;
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
