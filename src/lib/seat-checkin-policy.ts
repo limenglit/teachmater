@@ -72,6 +72,7 @@ export interface SeatCheckinReadiness {
  */
 export const evaluateSeatCheckinReadiness = (seatData: unknown): SeatCheckinReadiness => {
   let assigned = 0;
+  const seen = new WeakSet<object>();
   const stack: unknown[] = [seatData];
   while (stack.length > 0) {
     const cur = stack.pop();
@@ -79,8 +80,10 @@ export const evaluateSeatCheckinReadiness = (seatData: unknown): SeatCheckinRead
       if (normalize(cur)) assigned++;
       continue;
     }
-    if (Array.isArray(cur)) { for (const item of cur) stack.push(item); continue; }
     if (cur && typeof cur === 'object') {
+      if (seen.has(cur as object)) continue;
+      seen.add(cur as object);
+      if (Array.isArray(cur)) { for (const item of cur) stack.push(item); continue; }
       for (const v of Object.values(cur as Record<string, unknown>)) stack.push(v);
     }
   }
