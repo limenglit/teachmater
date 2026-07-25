@@ -35,6 +35,9 @@ interface Props {
   seatData: unknown;
   studentNames: string[];
   seatAssignmentReady?: boolean;
+  /** Unified human-readable reason (ready or not) surfaced from evaluateSeatCheckinReadiness. */
+  seatReadinessReason?: string;
+
   sceneConfig: Record<string, unknown>;
   sceneType: string;
   className?: string;
@@ -258,6 +261,8 @@ export default function SeatCheckinDialog({
   seatData,
   studentNames,
   seatAssignmentReady,
+  seatReadinessReason,
+
   sceneConfig,
   sceneType,
   className,
@@ -410,9 +415,10 @@ export default function SeatCheckinDialog({
 
   const createSession = async () => {
     if (requireSeatAssignment && !seatAssignmentComplete) {
-      toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
+      toast({ title: seatReadinessReason || t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
       return;
     }
+
 
     setLoading(true);
     setCreateError(null);
@@ -718,8 +724,12 @@ export default function SeatCheckinDialog({
                 {t('seatCheckinDialog.requireDesc')}
               </p>
               {requireSeatAssignment && !seatAssignmentComplete && (
-                <p className="text-xs text-destructive">{t('seatCheckinDialog.seatNotReady')}</p>
+                <p className="text-xs text-destructive">{seatReadinessReason || t('seatCheckinDialog.seatNotReady')}</p>
               )}
+              {requireSeatAssignment && seatAssignmentComplete && seatReadinessReason && (
+                <p className="text-xs text-primary">{seatReadinessReason}</p>
+              )}
+
             </div>
 
             <Button onClick={createSession} disabled={loading || (requireSeatAssignment && !seatAssignmentComplete)} className="w-full">

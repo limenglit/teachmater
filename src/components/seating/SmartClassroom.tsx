@@ -8,7 +8,9 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
+import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
+
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
@@ -670,7 +672,8 @@ export default function SmartClassroom({
     backDoorPosition: backDoor,
     entryDoorMode: entryDoor,
   };
-  const seatAssignmentReady = assignment.some(row => row.some(n => !!n && n.trim().length > 0));
+  const seatReadiness = useMemo(() => evaluateSeatCheckinReadiness(assignment), [assignment]);
+  const seatAssignmentReady = seatReadiness.ready;
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
@@ -678,6 +681,7 @@ export default function SmartClassroom({
     sceneConfig: exportSceneConfig,
     sceneType: 'smartClassroom',
   });
+
   const defaultRefPositions = useMemo(() => getDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
   const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
@@ -1526,6 +1530,8 @@ export default function SmartClassroom({
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         seatAssignmentReady={seatAssignmentReady}
+        seatReadinessReason={seatReadiness.reason}
+
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}
         className={recordName.trim()}

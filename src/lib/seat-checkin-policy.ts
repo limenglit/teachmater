@@ -58,3 +58,39 @@ export const isSeatAssignmentComplete = (seatData: unknown, studentNames: string
 
   return targetNames.every(name => assigned.has(name));
 };
+
+export interface SeatCheckinReadiness {
+  ready: boolean;
+  assignedCount: number;
+  reason: string;
+}
+
+/**
+ * Unified check-in readiness rule shared across classroom / smart classroom /
+ * banquet hall / art studio scenes: a scene is ready to start check-in as long
+ * as at least one seat is occupied. Returns a human-readable reason for UI use.
+ */
+export const evaluateSeatCheckinReadiness = (seatData: unknown): SeatCheckinReadiness => {
+  let assigned = 0;
+  const stack: unknown[] = [seatData];
+  while (stack.length > 0) {
+    const cur = stack.pop();
+    if (typeof cur === 'string') {
+      if (normalize(cur)) assigned++;
+      continue;
+    }
+    if (Array.isArray(cur)) { for (const item of cur) stack.push(item); continue; }
+    if (cur && typeof cur === 'object') {
+      for (const v of Object.values(cur as Record<string, unknown>)) stack.push(v);
+    }
+  }
+  const ready = assigned > 0;
+  return {
+    ready,
+    assignedCount: assigned,
+    reason: ready
+      ? `已排座 ${assigned} 人，可发起签到`
+      : '尚未安排任何座位，暂不可发起签到',
+  };
+};
+
