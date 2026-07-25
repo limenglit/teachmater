@@ -962,6 +962,7 @@ export default function ConcertHall({ students }: Props) {
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         seatAssignmentReady={seatAssignmentReady}
+        seatReadinessReason={seatReadiness.reason}
         sceneType="concertHall"
         sceneConfig={exportSceneConfig}
         className={recordName.trim()}
