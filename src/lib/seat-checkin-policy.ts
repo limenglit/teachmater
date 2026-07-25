@@ -72,16 +72,31 @@ export interface SeatCheckinReadiness {
  */
 export const evaluateSeatCheckinReadiness = (seatData: unknown): SeatCheckinReadiness => {
   let assigned = 0;
-  const stack: unknown[] = [seatData];
+  const seen = new WeakSet<object>();
+  // Only strings that are (a) array elements, or (b) values of a `name`-typed
+  // key in an object, are treated as seat occupants. Other object string
+  // properties (e.g. `id: 't1'`, `label: 'Row 1'`) must not inflate the count.
+  const NAME_KEYS = new Set(['name', 'student', 'studentName', 'occupant']);
+  type Frame = { value: unknown; fromArray: boolean; key?: string };
+  const stack: Frame[] = [{ value: seatData, fromArray: true }];
   while (stack.length > 0) {
-    const cur = stack.pop();
-    if (typeof cur === 'string') {
-      if (normalize(cur)) assigned++;
+    const { value, fromArray, key } = stack.pop()!;
+    if (typeof value === 'string') {
+      if (fromArray || (key && NAME_KEYS.has(key))) {
+        if (normalize(value)) assigned++;
+      }
       continue;
     }
-    if (Array.isArray(cur)) { for (const item of cur) stack.push(item); continue; }
-    if (cur && typeof cur === 'object') {
-      for (const v of Object.values(cur as Record<string, unknown>)) stack.push(v);
+    if (value && typeof value === 'object') {
+      if (seen.has(value as object)) continue;
+      seen.add(value as object);
+      if (Array.isArray(value)) {
+        for (const item of value) stack.push({ value: item, fromArray: true });
+        continue;
+      }
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        stack.push({ value: v, fromArray: false, key: k });
+      }
     }
   }
   const ready = assigned > 0;
