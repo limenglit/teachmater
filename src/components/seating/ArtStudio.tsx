@@ -6,6 +6,8 @@ import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 
 import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
+import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
+
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
 interface Props {
@@ -482,10 +484,9 @@ export default function ArtStudio({ students }: Props) {
   const seatData = assignment.length > 0
     ? assignment
     : ensureAssignmentShape([]);
-  const seatAssignmentReady = useMemo(
-    () => seatData.some(row => Array.isArray(row) && row.some(n => !!n && String(n).trim().length > 0)),
-    [seatData]
-  );
+  const seatReadiness = useMemo(() => evaluateSeatCheckinReadiness(seatData), [seatData]);
+  const seatAssignmentReady = seatReadiness.ready;
+
 
   const layoutName = layoutMode === 'radial' ? t('seat.editor.art.layoutRadial') : t('seat.editor.art.layoutConcentric');
 
@@ -729,6 +730,8 @@ export default function ArtStudio({ students }: Props) {
         seatData={seatData}
         studentNames={students.map(s => s.name)}
         seatAssignmentReady={seatAssignmentReady}
+        seatReadinessReason={seatReadiness.reason}
+
         sceneConfig={{ layoutMode, ringCount, innerRingSeats, ringGrowth }}
         sceneType="artStudio"
         className={t('seat.editor.scene.art')}
