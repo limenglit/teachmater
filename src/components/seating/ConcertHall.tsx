@@ -18,7 +18,7 @@ import {
   renameSeatHistoryLocal,
 } from '@/lib/teamwork-local';
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
-import { isSeatAssignmentComplete } from '@/lib/seat-checkin-policy';
+import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 import type { StudentGender } from '@/hooks/useStudentStore';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
