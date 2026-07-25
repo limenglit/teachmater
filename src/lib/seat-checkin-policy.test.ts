@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { isSeatAssignmentComplete } from './seat-checkin-policy';
+import { isSeatAssignmentComplete, evaluateSeatCheckinReadiness } from './seat-checkin-policy';
+
+describe('evaluateSeatCheckinReadiness', () => {
+  it('reports not ready with a reason when no seat is occupied', () => {
+    const r = evaluateSeatCheckinReadiness([[null, null], [null, '']]);
+    expect(r.ready).toBe(false);
+    expect(r.assignedCount).toBe(0);
+    expect(r.reason).toContain('暂不可');
+  });
+
+  it('reports ready with the assigned count as soon as one seat is filled', () => {
+    const r = evaluateSeatCheckinReadiness([[null, '张三'], [null, null]]);
+    expect(r.ready).toBe(true);
+    expect(r.assignedCount).toBe(1);
+    expect(r.reason).toContain('1');
+  });
+
+  it('walks nested arrays and objects (art studio / ring layouts)', () => {
+    const r = evaluateSeatCheckinReadiness({ ring: [['a', null], { extra: ['b', '  '] }] });
+    expect(r.ready).toBe(true);
+    expect(r.assignedCount).toBe(2);
+  });
+});
+
 
 describe('isSeatAssignmentComplete', () => {
   it('treats full-width and repeated whitespace as the same student name', () => {
