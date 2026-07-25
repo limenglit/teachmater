@@ -16,6 +16,8 @@ import ArtStudio from '@/components/seating/ArtStudio';
 import CustomLayout from '@/components/seating/CustomLayout';
 import SeatRuleComposer from '@/components/seating/SeatRuleComposer';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
+import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
+
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { toast } from 'sonner';
@@ -713,13 +715,15 @@ export default function SeatChart() {
   }, [seatScale]);
   useZoomGestures({ setScale: setSeatScale, targetRef: seatScrollRef });
   const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition, disabledSeats: Array.from(disabledSeats) };
+  const seatReadiness = useMemo(() => evaluateSeatCheckinReadiness(seats), [seats]);
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
     studentNames: students.map(s => s.name),
-    seatAssignmentReady: seats.length > 0,
+    seatAssignmentReady: seatReadiness.ready,
     sceneConfig: exportSceneConfig,
     sceneType: 'classroom',
   });
+
   const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-sm';
   const sideMarkerIconClass = 'inline-flex items-center justify-center w-6 h-6 rounded-md border border-primary/30 bg-primary/10 text-sm leading-none';
 
@@ -1489,7 +1493,7 @@ export default function SeatChart() {
                 <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。</span>
               </p>
             )}
-            <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seats.length > 0} sceneType="classroom"
+            <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seatReadiness.ready} seatReadinessReason={seatReadiness.reason} sceneType="classroom"
               sceneConfig={exportSceneConfig} className={recordName.trim()} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
               onMergeGuests={(guests) => {
                 // Update local seat grid in-place
