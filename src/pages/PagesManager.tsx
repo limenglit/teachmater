@@ -249,6 +249,10 @@ export default function PagesManager() {
           </section>
         )}
 
+        {/* 图片资源 */}
+        {username && user && <PageImagesManager userId={user.id} disabled={!!notApproved} />}
+
+
         {/* 页面列表 */}
         <section>
           <h2 className="text-sm font-medium mb-3">我的页面（{pages.length}）</h2>
