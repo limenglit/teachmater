@@ -141,12 +141,31 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
           className="hidden"
         />
         <Button size="sm" variant="outline" className="gap-2" disabled={disabled || uploading} onClick={() => fileRef.current?.click()}>
-          <ImagePlus className="w-4 h-4" /> {uploading ? '上传中…' : '上传图片'}
+          <ImagePlus className="w-4 h-4" />
+          {uploading ? (progress ? `上传中 ${progress.done}/${progress.total}…` : '上传中…') : '上传图片'}
         </Button>
+      </div>
+      <div
+        onDragOver={(e) => { e.preventDefault(); if (!disabled && !uploading) setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => !disabled && !uploading && fileRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        className={`mb-3 rounded-lg border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${
+          dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+        } ${disabled || uploading ? 'opacity-60 pointer-events-none' : ''}`}
+      >
+        <ImagePlus className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+        <p className="text-sm">{dragging ? '松开即可上传' : '把图片拖到这里，或点击选择（支持一次多张）'}</p>
+        {uploading && progress && (
+          <p className="text-xs text-muted-foreground mt-1">正在上传 {progress.done}/{progress.total}</p>
+        )}
       </div>
       <p className="text-xs text-muted-foreground mb-3">
         上传后在 HTML 里直接写相对路径，例如 <code className="px-1 py-0.5 bg-muted rounded">&lt;img src="images/logo.png"&gt;</code>，页面发布后会自动指向你的图片目录。图片为所有页面共用。
       </p>
+
       {loading ? (
         <p className="text-sm text-muted-foreground">加载中…</p>
       ) : images.length === 0 ? (
