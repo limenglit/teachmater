@@ -21,6 +21,9 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
   const [images, setImages] = useState<PageImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
+
   const [copied, setCopied] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -50,10 +53,11 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
     load();
   }, [load]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return;
     setUploading(true);
+    setProgress({ done: 0, total: files.length });
+
     let ok = 0;
     try {
       for (const file of files) {
@@ -78,6 +82,7 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
           continue;
         }
         ok += 1;
+        setProgress({ done: ok, total: files.length });
       }
       if (ok > 0) {
         toast({ title: `已上传 ${ok} 张图片`, description: '在 HTML 中用 images/文件名 引用即可' });
@@ -85,9 +90,27 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
       }
     } finally {
       setUploading(false);
+      setProgress(null);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    void uploadFiles(Array.from(e.target.files || []));
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    if (disabled || uploading) return;
+    const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith('image/') || isSupportedPageImage(f.name));
+    if (files.length === 0) {
+      toast({ title: '没有可上传的图片', description: '请拖入 png/jpg/gif/webp/svg 等图片文件', variant: 'destructive' });
+      return;
+    }
+    void uploadFiles(files);
+  };
+
 
   const remove = async (img: PageImage) => {
     if (!confirm(`删除图片 images/${img.name} ？引用它的页面将无法显示该图片。`)) return;
@@ -118,12 +141,31 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
           className="hidden"
         />
         <Button size="sm" variant="outline" className="gap-2" disabled={disabled || uploading} onClick={() => fileRef.current?.click()}>
-          <ImagePlus className="w-4 h-4" /> {uploading ? '上传中…' : '上传图片'}
+          <ImagePlus className="w-4 h-4" />
+          {uploading ? (progress ? `上传中 ${progress.done}/${progress.total}…` : '上传中…') : '上传图片'}
         </Button>
+      </div>
+      <div
+        onDragOver={(e) => { e.preventDefault(); if (!disabled && !uploading) setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => !disabled && !uploading && fileRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        className={`mb-3 rounded-lg border-2 border-dashed p-6 text-center cursor-pointer transition-colors ${
+          dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+        } ${disabled || uploading ? 'opacity-60 pointer-events-none' : ''}`}
+      >
+        <ImagePlus className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
+        <p className="text-sm">{dragging ? '松开即可上传' : '把图片拖到这里，或点击选择（支持一次多张）'}</p>
+        {uploading && progress && (
+          <p className="text-xs text-muted-foreground mt-1">正在上传 {progress.done}/{progress.total}</p>
+        )}
       </div>
       <p className="text-xs text-muted-foreground mb-3">
         上传后在 HTML 里直接写相对路径，例如 <code className="px-1 py-0.5 bg-muted rounded">&lt;img src="images/logo.png"&gt;</code>，页面发布后会自动指向你的图片目录。图片为所有页面共用。
       </p>
+
       {loading ? (
         <p className="text-sm text-muted-foreground">加载中…</p>
       ) : images.length === 0 ? (
