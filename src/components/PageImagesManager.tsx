@@ -50,10 +50,11 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
     load();
   }, [load]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const uploadFiles = async (files: File[]) => {
     if (files.length === 0) return;
     setUploading(true);
+    setProgress({ done: 0, total: files.length });
+
     let ok = 0;
     try {
       for (const file of files) {
