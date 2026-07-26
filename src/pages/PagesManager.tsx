@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { normalizeHtmlFileToUtf8 } from '@/lib/html-normalize';
 import { getPageStoragePath, getPublicPageUrl, normalizePageSlug, validatePageSlug } from '@/lib/page-slug';
+import PageImagesManager from '@/components/PageImagesManager';
 import { Upload, Trash2, ExternalLink, Copy, Check, ArrowLeft, Globe, Lock, Eye } from 'lucide-react';
 
 interface UserPage {
