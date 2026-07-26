@@ -79,6 +79,7 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
           continue;
         }
         ok += 1;
+        setProgress({ done: ok, total: files.length });
       }
       if (ok > 0) {
         toast({ title: `已上传 ${ok} 张图片`, description: '在 HTML 中用 images/文件名 引用即可' });
@@ -86,9 +87,27 @@ export default function PageImagesManager({ userId, disabled }: { userId: string
       }
     } finally {
       setUploading(false);
+      setProgress(null);
       if (fileRef.current) fileRef.current.value = '';
     }
   };
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    void uploadFiles(Array.from(e.target.files || []));
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    if (disabled || uploading) return;
+    const files = Array.from(e.dataTransfer.files || []).filter((f) => f.type.startsWith('image/') || isSupportedPageImage(f.name));
+    if (files.length === 0) {
+      toast({ title: '没有可上传的图片', description: '请拖入 png/jpg/gif/webp/svg 等图片文件', variant: 'destructive' });
+      return;
+    }
+    void uploadFiles(files);
+  };
+
 
   const remove = async (img: PageImage) => {
     if (!confirm(`删除图片 images/${img.name} ？引用它的页面将无法显示该图片。`)) return;
