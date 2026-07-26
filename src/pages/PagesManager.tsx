@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { normalizeHtmlFileToUtf8 } from '@/lib/html-normalize';
 import { getPageStoragePath, getPublicPageUrl, normalizePageSlug, validatePageSlug } from '@/lib/page-slug';
+import PageImagesManager from '@/components/PageImagesManager';
 import { Upload, Trash2, ExternalLink, Copy, Check, ArrowLeft, Globe, Lock, Eye } from 'lucide-react';
 
 interface UserPage {
@@ -247,6 +248,10 @@ export default function PagesManager() {
             <p className="text-xs text-muted-foreground mt-2">支持中文文件名作为页面名（如：课堂导入.html）；空格和标点会自动规范化。若已存在同名页面，会提示你修改后再上传，不会自动覆盖。</p>
           </section>
         )}
+
+        {/* 图片资源 */}
+        {username && user && <PageImagesManager userId={user.id} disabled={!!notApproved} />}
+
 
         {/* 页面列表 */}
         <section>

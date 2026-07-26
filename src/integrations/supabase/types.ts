@@ -1957,6 +1957,7 @@ export type Database = {
           storage_path: string
           title: string
           updated_at: string
+          user_id: string
         }[]
       }
       get_quiz_session_for_student: {
