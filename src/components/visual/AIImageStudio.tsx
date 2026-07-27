@@ -34,7 +34,7 @@ export default function AIImageStudio() {
   const handleFile = async (file?: File) => {
     if (!file) return;
     try {
-      const text = await readTextFile(file);
+      const text = decodeTextBytes(await file.arrayBuffer());
       setFileName(file.name);
       update({ docText: text.slice(0, 2000) });
     } catch {
