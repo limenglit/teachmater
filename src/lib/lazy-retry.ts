@@ -3,7 +3,7 @@ import { Component, createElement, lazy, type ComponentType, type ErrorInfo, typ
 const CHUNK_RELOAD_KEY = 'chunk_reload_ts';
 const REACT_RUNTIME_RELOAD_KEY = 'react_runtime_reload_ts';
 const RELOAD_COOLDOWN_MS = 10_000;
-const REACT_RUNTIME_RELOAD_COOLDOWN_MS = 30_000;
+const REACT_RUNTIME_RELOAD_COOLDOWN_MS = 3_000;
 const MODULE_LOAD_ERROR_MESSAGES = [
   'Importing a module script failed',
   'Failed to fetch dynamically imported module',
@@ -69,15 +69,18 @@ function waitForReload<T>() {
 export function tryReloadForReactRuntimeMismatch() {
   if (typeof window === 'undefined') return false;
 
-  const last = Number(sessionStorage.getItem(REACT_RUNTIME_RELOAD_KEY) || '0');
   const now = Date.now();
-  if (now - last <= REACT_RUNTIME_RELOAD_COOLDOWN_MS) {
+  const last = Number(sessionStorage.getItem(REACT_RUNTIME_RELOAD_KEY) || '0');
+  const url = new URL(window.location.href);
+  const previousRecover = Number(url.searchParams.get('__react_recover') || '0');
+
+  if (now - last <= REACT_RUNTIME_RELOAD_COOLDOWN_MS && previousRecover > 0) {
     return false;
   }
 
   sessionStorage.setItem(REACT_RUNTIME_RELOAD_KEY, String(now));
-  const url = new URL(window.location.href);
   url.searchParams.set('__react_recover', String(now));
+  url.searchParams.set('__app_runtime', String(now));
   window.location.replace(url.toString());
   return true;
 }
