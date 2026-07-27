@@ -52,33 +52,37 @@ serve(async (req) => {
 
     // 优先使用火山引擎；不可用时自动降级到 Lovable AI 生图
     if (ARK_API_KEY) {
-      try {
-        const resp = await fetch(ARK_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${ARK_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model,
-            prompt,
-            size,
-            response_format: 'url',
-            watermark: false,
-          }),
-        });
+      // 依次尝试可用模型（账号可能仅开通其中之一）
+      const candidates = [model, ...[...ALLOWED_MODELS].filter(m => m !== model)];
+      for (const m of candidates) {
+        try {
+          const resp = await fetch(ARK_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${ARK_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: m,
+              prompt,
+              size,
+              response_format: 'url',
+              watermark: false,
+            }),
+          });
 
-        if (resp.ok) {
-          const data = await resp.json();
-          const item = data?.data?.[0];
-          const imageUrl = item?.url || (item?.b64_json ? `data:image/png;base64,${item.b64_json}` : null);
-          if (imageUrl) return json({ imageUrl, model, size, provider: 'ark' });
-          console.error('Ark returned no image');
-        } else {
-          console.error('Ark error:', resp.status, await resp.text());
+          if (resp.ok) {
+            const data = await resp.json();
+            const item = data?.data?.[0];
+            const imageUrl = item?.url || (item?.b64_json ? `data:image/png;base64,${item.b64_json}` : null);
+            if (imageUrl) return json({ imageUrl, model: m, size, provider: 'ark' });
+            console.error('Ark returned no image for model', m);
+          } else {
+            console.error('Ark error:', m, resp.status, await resp.text());
+          }
+        } catch (arkErr) {
+          console.error('Ark request failed:', m, arkErr);
         }
-      } catch (arkErr) {
-        console.error('Ark request failed:', arkErr);
       }
     }
 
