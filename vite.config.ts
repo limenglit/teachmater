@@ -27,7 +27,10 @@ export default defineConfig(({ mode }) => ({
     cssTarget: ['chrome80', 'firefox78', 'safari14', 'edge88'],
   },
   optimizeDeps: {
-    force: true,
+    // Scan the whole app up front. Without this, Vite can discover a lazy
+    // dependency after the first modules have already been served, re-optimize
+    // deps mid-load, and leave React imports bound to different dep hashes.
+    entries: ['index.html', 'src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}'],
     // Always pre-bundle the React core together so every dependency shares
     // one React instance (prevents "dispatcher is null" hook errors).
     include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
@@ -37,7 +40,10 @@ export default defineConfig(({ mode }) => ({
       target: 'es2020',
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [
+    react(),
+    mode === "development" && componentTagger({ jsxSource: false }),
+  ].filter(Boolean),
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
