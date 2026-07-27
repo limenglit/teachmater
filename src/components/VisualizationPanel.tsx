@@ -12,6 +12,7 @@ import DataChartRenderer from './visual/DataChartRenderer';
 import ExportButtons from './ExportButtons';
 import { type AnalysisResult, type TemplateStyle, type ChartType, type StructureType, type VisualHistoryItem, type VisualSettings, DEFAULT_VISUAL_SETTINGS } from './visual/visualTypes';
 import { useAIQuota } from '@/hooks/useAIQuota';
+import AIImageStudio from './visual/AIImageStudio';
 
 const HISTORY_KEY = 'visual_history';
 
