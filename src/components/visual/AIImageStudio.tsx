@@ -16,7 +16,7 @@ import {
   DEFAULT_AI_IMAGE_PARAMS,
   buildPrompt,
 } from './aiImageTypes';
-import { readTextFile } from '@/lib/text-file';
+import { decodeTextBytes } from '@/lib/text-file';
 
 export default function AIImageStudio() {
   const { user } = useAuth();
