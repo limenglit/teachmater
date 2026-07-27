@@ -1,4 +1,4 @@
-import { lazy, type ComponentType } from 'react';
+import { Component, createElement, lazy, type ComponentType, type ErrorInfo, type ReactNode } from 'react';
 
 const CHUNK_RELOAD_KEY = 'chunk_reload_ts';
 const REACT_RUNTIME_RELOAD_KEY = 'react_runtime_reload_ts';
@@ -66,7 +66,7 @@ function waitForReload<T>() {
   });
 }
 
-function tryReloadForReactRuntimeMismatch() {
+export function tryReloadForReactRuntimeMismatch() {
   if (typeof window === 'undefined') return false;
 
   const last = Number(sessionStorage.getItem(REACT_RUNTIME_RELOAD_KEY) || '0');
@@ -80,6 +80,47 @@ function tryReloadForReactRuntimeMismatch() {
   url.searchParams.set('__react_recover', String(now));
   window.location.replace(url.toString());
   return true;
+}
+
+type ReactRuntimeRecoveryBoundaryProps = {
+  children: ReactNode;
+};
+
+type ReactRuntimeRecoveryBoundaryState = {
+  error: Error | null;
+};
+
+export class ReactRuntimeRecoveryBoundary extends Component<
+  ReactRuntimeRecoveryBoundaryProps,
+  ReactRuntimeRecoveryBoundaryState
+> {
+  state: ReactRuntimeRecoveryBoundaryState = { error: null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    const text = `${getErrorText(error)}\n${errorInfo.componentStack ?? ''}`;
+    if (isReactRuntimeMismatchError(text)) {
+      tryReloadForReactRuntimeMismatch();
+    }
+  }
+
+  render() {
+    const { error } = this.state;
+    if (error) {
+      return createElement(
+        'div',
+        { className: 'flex min-h-screen items-center justify-center bg-background p-6 text-center text-muted-foreground' },
+        isReactRuntimeMismatchError(error)
+          ? '正在刷新课堂工具…'
+          : '页面加载失败，请刷新后重试。',
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 export function handleVitePreloadError(event: Event) {
