@@ -3,6 +3,17 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 
+const appRuntimeVersion = String(Date.now());
+
+const versionedAppEntryPlugin = () => ({
+  name: 'teachmate-versioned-app-entry',
+  transformIndexHtml(html: string) {
+    return html
+      .replace('/src/main.tsx"', `/src/main.tsx?v=${appRuntimeVersion}"`)
+      .replace('/src/main.tsx"', `/src/main.tsx?v=${appRuntimeVersion}"`);
+  },
+});
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -149,6 +160,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
+    versionedAppEntryPlugin(),
     react({ devTarget: 'es2020' }),
     mode === "development" && componentTagger({ jsxSource: false }),
   ].filter(Boolean),
