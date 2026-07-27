@@ -49,36 +49,72 @@ serve(async (req) => {
     const size = ALLOWED_SIZES.has(body?.size) ? body.size : '2048x2048';
 
     const ARK_API_KEY = Deno.env.get('ARK_API_KEY');
-    if (!ARK_API_KEY) return json({ error: '未配置火山引擎 API Key' }, 500);
 
-    const resp = await fetch(ARK_ENDPOINT, {
+    // 优先使用火山引擎；不可用时自动降级到 Lovable AI 生图
+    if (ARK_API_KEY) {
+      try {
+        const resp = await fetch(ARK_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${ARK_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            prompt,
+            size,
+            response_format: 'url',
+            watermark: false,
+          }),
+        });
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const item = data?.data?.[0];
+          const imageUrl = item?.url || (item?.b64_json ? `data:image/png;base64,${item.b64_json}` : null);
+          if (imageUrl) return json({ imageUrl, model, size, provider: 'ark' });
+          console.error('Ark returned no image');
+        } else {
+          console.error('Ark error:', resp.status, await resp.text());
+        }
+      } catch (arkErr) {
+        console.error('Ark request failed:', arkErr);
+      }
+    }
+
+    // 降级：Lovable AI 生图
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      return json({ error: '生图服务暂不可用：火山引擎 API Key 无效或已过期，请更新后重试' }, 502);
+    }
+
+    const fbResp = await fetch('https://ai.gateway.lovable.dev/v1/images/generations', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${ARK_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model,
-        prompt,
-        size,
-        response_format: 'url',
-        watermark: false,
+        model: 'google/gemini-3.1-flash-image',
+        messages: [{ role: 'user', content: prompt }],
+        modalities: ['image', 'text'],
       }),
     });
 
-    if (resp.status === 429) return json({ error: '火山引擎接口限流，请稍后重试' }, 429);
-    if (!resp.ok) {
-      const txt = await resp.text();
-      console.error('Ark error:', resp.status, txt);
+    if (fbResp.status === 429) return json({ error: '生图请求过于频繁，请稍后重试' }, 429);
+    if (fbResp.status === 402) return json({ error: 'AI 算力额度不足，请充值后重试' }, 402);
+    if (!fbResp.ok) {
+      console.error('Fallback image error:', fbResp.status, await fbResp.text());
       return json({ error: '生图服务返回错误' }, 502);
     }
 
-    const data = await resp.json();
-    const item = data?.data?.[0];
-    const imageUrl = item?.url || (item?.b64_json ? `data:image/png;base64,${item.b64_json}` : null);
-    if (!imageUrl) return json({ error: '未返回图片' }, 502);
+    const fbData = await fbResp.json();
+    const fbItem = fbData?.data?.[0];
+    const fbUrl = fbItem?.url || (fbItem?.b64_json ? `data:image/png;base64,${fbItem.b64_json}` : null);
+    if (!fbUrl) return json({ error: '未返回图片' }, 502);
 
-    return json({ imageUrl, model, size });
+    return json({ imageUrl: fbUrl, model: 'google/gemini-3.1-flash-image', size, provider: 'lovable' });
+
   } catch (e) {
     console.error('generate-visual-image error:', e);
     return json({ error: 'Internal error' }, 500);
