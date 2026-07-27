@@ -1,11 +1,19 @@
 import { lazy, type ComponentType } from 'react';
 
 const CHUNK_RELOAD_KEY = 'chunk_reload_ts';
+const REACT_RUNTIME_RELOAD_KEY = 'react_runtime_reload_ts';
 const RELOAD_COOLDOWN_MS = 10_000;
+const REACT_RUNTIME_RELOAD_COOLDOWN_MS = 30_000;
 const MODULE_LOAD_ERROR_MESSAGES = [
   'Importing a module script failed',
   'Failed to fetch dynamically imported module',
   'error loading dynamically imported module',
+];
+const REACT_RUNTIME_MISMATCH_MESSAGES = [
+  'dispatcher.useState',
+  "Cannot read properties of null (reading 'useState')",
+  "null is not an object (evaluating 'dispatcher.useState')",
+  'Invalid hook call',
 ];
 
 type VitePreloadErrorEvent = Event & {
@@ -16,6 +24,27 @@ type VitePreloadErrorEvent = Event & {
 export function isModuleLoadError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error ?? '');
   return MODULE_LOAD_ERROR_MESSAGES.some((pattern) => message.includes(pattern));
+}
+
+function getErrorText(error: unknown) {
+  if (error instanceof Error) {
+    return `${error.message}\n${error.stack ?? ''}`;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const maybeErrorEvent = error as { message?: unknown; error?: unknown; reason?: unknown };
+    return [maybeErrorEvent.message, maybeErrorEvent.error, maybeErrorEvent.reason]
+      .map((part) => getErrorText(part))
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  return String(error ?? '');
+}
+
+export function isReactRuntimeMismatchError(error: unknown) {
+  const message = getErrorText(error);
+  return REACT_RUNTIME_MISMATCH_MESSAGES.some((pattern) => message.includes(pattern));
 }
 
 function tryReloadForChunkError() {
@@ -37,12 +66,37 @@ function waitForReload<T>() {
   });
 }
 
+function tryReloadForReactRuntimeMismatch() {
+  if (typeof window === 'undefined') return false;
+
+  const last = Number(sessionStorage.getItem(REACT_RUNTIME_RELOAD_KEY) || '0');
+  const now = Date.now();
+  if (now - last <= REACT_RUNTIME_RELOAD_COOLDOWN_MS) {
+    return false;
+  }
+
+  sessionStorage.setItem(REACT_RUNTIME_RELOAD_KEY, String(now));
+  const url = new URL(window.location.href);
+  url.searchParams.set('__react_recover', String(now));
+  window.location.replace(url.toString());
+  return true;
+}
+
 export function handleVitePreloadError(event: Event) {
   const preloadEvent = event as VitePreloadErrorEvent;
   if (!isModuleLoadError(preloadEvent.payload)) return;
 
   preloadEvent.preventDefault();
   tryReloadForChunkError();
+}
+
+export function handleRuntimeError(event: ErrorEvent | PromiseRejectionEvent) {
+  if (!isReactRuntimeMismatchError(event)) return;
+
+  if ('preventDefault' in event) {
+    event.preventDefault();
+  }
+  tryReloadForReactRuntimeMismatch();
 }
 
 /** Retry dynamic import once then force-reload to pick up new chunks */

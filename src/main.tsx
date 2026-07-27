@@ -1,8 +1,14 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { handleVitePreloadError } from "./lib/lazy-retry";
+import { handleRuntimeError, handleVitePreloadError } from "./lib/lazy-retry";
 
 window.addEventListener("vite:preloadError", handleVitePreloadError);
+window.addEventListener("error", handleRuntimeError);
+window.addEventListener("unhandledrejection", handleRuntimeError);
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+
+if (rootElement) {
+  createRoot(rootElement).render(<App />);
+}
