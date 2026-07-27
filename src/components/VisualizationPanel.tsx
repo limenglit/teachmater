@@ -117,9 +117,30 @@ export default function VisualizationPanel() {
   // Override structure_type for rendering
   const renderAnalysis = analysis ? { ...analysis, structure_type: structureType } : null;
 
+  if (mode === 'ai') {
+    return (
+      <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-primary" />
+              {t('visual.title')}
+            </h2>
+            <p className="text-xs text-muted-foreground">火山引擎豆包 · AI 制图</p>
+          </div>
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <button onClick={() => setMode('structured')} className="px-3 py-1.5 text-xs rounded-md font-medium text-muted-foreground">结构化图示</button>
+            <button className="px-3 py-1.5 text-xs rounded-md font-medium bg-background shadow-sm">AI 生图</button>
+          </div>
+        </div>
+        <AIImageStudio />
+      </div>
+    );
+  }
+
   return (
     <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <h2 className="text-lg font-bold flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-primary" />
@@ -127,11 +148,18 @@ export default function VisualizationPanel() {
           </h2>
           <p className="text-xs text-muted-foreground">{t('visual.subtitle')}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-1.5">
-          <History className="w-4 h-4" />
-          {t('visual.history')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 bg-muted rounded-lg p-1">
+            <button className="px-3 py-1.5 text-xs rounded-md font-medium bg-background shadow-sm">结构化图示</button>
+            <button onClick={() => setMode('ai')} className="px-3 py-1.5 text-xs rounded-md font-medium text-muted-foreground">AI 生图</button>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-1.5">
+            <History className="w-4 h-4" />
+            {t('visual.history')}
+          </Button>
+        </div>
       </div>
+
 
       {showHistory && (
         <div className="bg-card border border-border rounded-lg p-3 space-y-2">
