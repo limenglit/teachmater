@@ -7,10 +7,9 @@ const appRuntimeVersion = String(Date.now());
 
 const versionedAppEntryPlugin = () => ({
   name: 'teachmate-versioned-app-entry',
+  enforce: 'post' as const,
   transformIndexHtml(html: string) {
-    return html
-      .replace('/src/main.tsx"', `/src/main.tsx?v=${appRuntimeVersion}"`)
-      .replace('/src/main.tsx"', `/src/main.tsx?v=${appRuntimeVersion}"`);
+    return html.replace(/\/src\/main\.tsx(?:\?[^"']*)?/g, `/src/main.tsx?v=${appRuntimeVersion}`);
   },
 });
 
