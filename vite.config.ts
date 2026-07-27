@@ -8,6 +8,16 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    headers: {
+      // Vite's dep URLs include browser-hash query strings. In the Lovable
+      // preview iframe, stale transformed source can otherwise keep importing
+      // an older React dep URL while react-dom imports the freshly optimized
+      // one, creating two React module instances and triggering
+      // "dispatcher.useState is null" on the first hook.
+      'Cache-Control': 'no-store, max-age=0, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    },
     hmr: {
       overlay: false,
     },
@@ -17,6 +27,7 @@ export default defineConfig(({ mode }) => ({
     cssTarget: ['chrome80', 'firefox78', 'safari14', 'edge88'],
   },
   optimizeDeps: {
+    force: true,
     // Always pre-bundle the React core together so every dependency shares
     // one React instance (prevents "dispatcher is null" hook errors).
     include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
@@ -33,6 +44,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
       react: path.resolve(__dirname, "./node_modules/react"),
       "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
+      "react-dom/client": path.resolve(__dirname, "./node_modules/react-dom/client.js"),
+      "react/jsx-runtime": path.resolve(__dirname, "./node_modules/react/jsx-runtime.js"),
+      "react/jsx-dev-runtime": path.resolve(__dirname, "./node_modules/react/jsx-dev-runtime.js"),
     },
   },
 }));
