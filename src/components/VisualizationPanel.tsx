@@ -31,6 +31,7 @@ export default function VisualizationPanel() {
   const { user } = useAuth();
   const aiQuota = useAIQuota();
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'structured' | 'ai'>('structured');
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [colorScheme, setColorScheme] = useState('ocean');
   const [template, setTemplate] = useState<TemplateStyle>('modern');
