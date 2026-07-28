@@ -5,7 +5,7 @@ import { useAIQuota } from '@/hooks/useAIQuota';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History, FlaskConical, CheckCircle2, AlertTriangle, XCircle, Circle } from 'lucide-react';
 import {
   AIImageParams,
   AI_BACKGROUNDS,
