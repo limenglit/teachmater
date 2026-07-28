@@ -129,6 +129,101 @@ export default function AIImageStudio() {
     }
   };
 
+  // ===== 一键端到端回归测试 =====
+  const REG_PROMPT =
+    '绘制一幅图用于讲解人工智能的一个研究方向： 智能机器人的原理。白色背景，细节准确，科研风格，文字简练，中文标注图片内容。';
+
+  const setStep = (index: number, patch: Partial<RegStep>) =>
+    setRegSteps(prev => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+
+  const runRegression = useCallback(async () => {
+    const steps: RegStep[] = [
+      { label: '检查登录状态与 AI 额度', status: 'pending' },
+      { label: '调用生图接口（火山引擎 Visual）', status: 'pending' },
+      { label: '校验返回图片可用', status: 'pending' },
+      { label: '确认服务商链路', status: 'pending' },
+      { label: '写入历史记录', status: 'pending' },
+    ];
+    setRegSteps(steps);
+    setRegRunning(true);
+    try {
+      // 1
+      setStep(0, { status: 'running' });
+      if (!user) {
+        setStep(0, { status: 'fail', detail: '未登录，请先登录后再测试' });
+        return;
+      }
+      if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+        setStep(0, { status: 'fail', detail: '今日 AI 次数已用完' });
+        return;
+      }
+      setStep(0, { status: 'pass', detail: `剩余 ${aiQuota.remaining + aiQuota.purchasedRemaining} 次` });
+
+      // 2
+      setStep(1, { status: 'running' });
+      const size = resolveSize(params.ratio, params.resolution);
+      const started = Date.now();
+      const { data, error } = await supabase.functions.invoke('generate-visual-image', {
+        body: { prompt: REG_PROMPT, size, model: params.model, watermark: false, seed: null },
+      });
+      if (error || data?.error) {
+        setStep(1, { status: 'fail', detail: data?.error || error?.message || '接口调用失败' });
+        return;
+      }
+      setStep(1, { status: 'pass', detail: `耗时 ${((Date.now() - started) / 1000).toFixed(1)}s` });
+
+      // 3
+      setStep(2, { status: 'running' });
+      if (!data?.imageUrl) {
+        setStep(2, { status: 'fail', detail: '未返回图片' });
+        return;
+      }
+      setImageUrl(data.imageUrl);
+      setShowHistory(false);
+      aiQuota.consume();
+      setStep(2, { status: 'pass', detail: `尺寸 ${data.size || size}` });
+
+      // 4
+      setStep(3, { status: 'running' });
+      const provider = data.provider || 'unknown';
+      setStep(3, {
+        status: provider === 'volc-visual' ? 'pass' : 'warn',
+        detail:
+          provider === 'volc-visual'
+            ? '火山引擎 Visual（cn-north-1 / cv）'
+            : `已降级：${provider}（${data.model || ''}）`,
+      });
+
+      // 5
+      setStep(4, { status: 'running' });
+      try {
+        await saveAIImageToHistory({
+          imageUrl: data.imageUrl,
+          title: '回归测试 · 智能机器人的原理',
+          prompt: REG_PROMPT,
+          docText: REG_PROMPT,
+          chartType: params.chartType,
+          subStyle: params.subStyle,
+          params: params as unknown as Record<string, unknown>,
+          model: data.model || params.model,
+          provider,
+          size: data.size || size,
+        });
+        setHistoryKey(k => k + 1);
+        setStep(4, { status: 'pass', detail: '已保存到历史记录' });
+      } catch {
+        setStep(4, { status: 'fail', detail: '历史记录保存失败' });
+      }
+    } catch (e) {
+      toast({ title: '回归测试执行异常', variant: 'destructive' });
+      console.error(e);
+    } finally {
+      setRegRunning(false);
+    }
+  }, [params, user, aiQuota]);
+
+
+
   return (
     <div className="flex flex-col xl:flex-row gap-4">
       {/* 左侧配置 */}
