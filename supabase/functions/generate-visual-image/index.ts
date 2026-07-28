@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callVolcVisual } from "../_shared/volc-sign.ts";
+
+// 即梦 Seedream 4.0 文生图 req_key
+const VISUAL_REQ_KEY = "jimeng_t2i_v40";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -66,10 +71,73 @@ serve(async (req) => {
     const seed = Number.isFinite(body?.seed) ? Math.trunc(body.seed) : undefined;
 
     const ARK_API_KEY = Deno.env.get('ARK_API_KEY');
+    const VOLC_AK = Deno.env.get('VOLC_ACCESS_KEY_ID');
+    const VOLC_SK = Deno.env.get('VOLC_SECRET_ACCESS_KEY');
 
-    // 优先使用火山引擎；不可用时自动降级到 Lovable AI 生图
     let size = normalizeSize(body?.size, model);
+    const [wStr, hStr] = size.split('x');
+
+    // 1) 优先走火山引擎 Visual (即梦/Seedream) —— 地域 cn-north-1，服务 cv
+    if (VOLC_AK && VOLC_SK) {
+      try {
+        const submit = await callVolcVisual({
+          accessKeyId: VOLC_AK,
+          secretAccessKey: VOLC_SK,
+          action: 'CVSync2AsyncSubmitTask',
+          version: '2022-08-31',
+          body: {
+            req_key: VISUAL_REQ_KEY,
+            prompt,
+            width: Number(wStr),
+            height: Number(hStr),
+            ...(seed !== undefined ? { seed } : {}),
+            use_pre_llm: true,
+          },
+        });
+        const submitData = await submit.json().catch(() => null);
+        const taskId = submitData?.data?.task_id;
+        if (!taskId) {
+          console.error('Visual submit failed:', submit.status, JSON.stringify(submitData));
+        } else {
+          for (let i = 0; i < 30; i++) {
+            await new Promise((r) => setTimeout(r, 2000));
+            const poll = await callVolcVisual({
+              accessKeyId: VOLC_AK,
+              secretAccessKey: VOLC_SK,
+              action: 'CVSync2AsyncGetResult',
+              version: '2022-08-31',
+              body: {
+                req_key: VISUAL_REQ_KEY,
+                task_id: taskId,
+                req_json: JSON.stringify({ return_url: true, logo_info: { add_logo: watermark } }),
+              },
+            });
+            const pollData = await poll.json().catch(() => null);
+            const status = pollData?.data?.status;
+            const url = pollData?.data?.image_urls?.[0];
+            const b64 = pollData?.data?.binary_data_base64?.[0];
+            if (url || b64) {
+              return json({
+                imageUrl: url ?? `data:image/jpeg;base64,${b64}`,
+                model: VISUAL_REQ_KEY,
+                size,
+                provider: 'volc-visual',
+              });
+            }
+            if (status === 'done' || status === 'not_found' || status === 'expired') {
+              console.error('Visual task ended without image:', JSON.stringify(pollData));
+              break;
+            }
+          }
+        }
+      } catch (visualErr) {
+        console.error('Visual request failed:', visualErr);
+      }
+    }
+
+    // 2) 兼容旧的方舟 Ark 链路
     if (ARK_API_KEY) {
+
       // 依次尝试可用模型（账号可能仅开通其中之一）
       const candidates = [model, ...[...ALLOWED_MODELS].filter(m => m !== model)];
       for (const m of candidates) {
