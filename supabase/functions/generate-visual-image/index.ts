@@ -18,7 +18,23 @@ const ALLOWED_MODELS = new Set([
   "doubao-seedream-4-0-250828",
   "doubao-seedream-3-0-t2i-250415",
 ]);
-const ALLOWED_SIZES = new Set(["1024x1024", "2048x2048", "2304x1728", "1728x2304", "2560x1440"]);
+// 方舟 Seedream 尺寸范围：边长 512–4096，总像素不超过 ~4096*4096
+const MAX_PIXELS = { "doubao-seedream-4-0-250828": 4096, "doubao-seedream-3-0-t2i-250415": 2048 } as Record<string, number>;
+
+function normalizeSize(raw: unknown, model: string): string {
+  const fallback = "2048x2048";
+  if (typeof raw !== "string") return fallback;
+  const m = /^(\d{3,4})x(\d{3,4})$/.exec(raw.trim());
+  if (!m) return fallback;
+  let w = Number(m[1]);
+  let h = Number(m[2]);
+  const cap = MAX_PIXELS[model] ?? 4096;
+  const scale = Math.min(1, cap / Math.max(w, h));
+  w = Math.max(512, Math.round((w * scale) / 8) * 8);
+  h = Math.max(512, Math.round((h * scale) / 8) * 8);
+  return `${w}x${h}`;
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -46,15 +62,18 @@ serve(async (req) => {
     if (prompt.length < 4) return json({ error: 'Prompt too short' }, 400);
 
     const model = ALLOWED_MODELS.has(body?.model) ? body.model : 'doubao-seedream-4-0-250828';
-    const size = ALLOWED_SIZES.has(body?.size) ? body.size : '2048x2048';
+    const watermark = body?.watermark === true;
+    const seed = Number.isFinite(body?.seed) ? Math.trunc(body.seed) : undefined;
 
     const ARK_API_KEY = Deno.env.get('ARK_API_KEY');
 
     // 优先使用火山引擎；不可用时自动降级到 Lovable AI 生图
+    let size = normalizeSize(body?.size, model);
     if (ARK_API_KEY) {
       // 依次尝试可用模型（账号可能仅开通其中之一）
       const candidates = [model, ...[...ALLOWED_MODELS].filter(m => m !== model)];
       for (const m of candidates) {
+        size = normalizeSize(body?.size, m);
         try {
           const resp = await fetch(ARK_ENDPOINT, {
             method: 'POST',
@@ -67,9 +86,11 @@ serve(async (req) => {
               prompt,
               size,
               response_format: 'url',
-              watermark: false,
+              watermark,
+              ...(seed !== undefined ? { seed } : {}),
             }),
           });
+
 
           if (resp.ok) {
             const data = await resp.json();
