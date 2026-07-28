@@ -86,6 +86,27 @@ export default function AIImageStudio() {
       setImageUrl(data.imageUrl);
       aiQuota.consume();
       toast({ title: '生成成功' });
+
+      // 保存到系统历史记录（存储桶 + 数据库）
+      try {
+        await saveAIImageToHistory({
+          imageUrl: data.imageUrl,
+          title: `${activeType.name} · ${params.subStyle}`,
+          prompt: buildPrompt(params),
+          docText: params.docText,
+          chartType: params.chartType,
+          subStyle: params.subStyle,
+          params: params as unknown as Record<string, unknown>,
+          model: data.model || params.model,
+          provider: data.provider || '',
+          size: data.size || resolveSize(params.ratio, params.resolution),
+        });
+        setHistoryKey(k => k + 1);
+      } catch (e) {
+        console.error('save ai image history failed', e);
+        toast({ title: '图片已生成，但历史记录保存失败', variant: 'destructive' });
+      }
+
     } catch {
       toast({ title: '生成失败，请稍后重试', variant: 'destructive' });
     } finally {
