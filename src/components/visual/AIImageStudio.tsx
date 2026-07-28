@@ -8,14 +8,21 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon } from 'lucide-react';
 import {
   AIImageParams,
+  AI_BACKGROUNDS,
   AI_FONTS,
+  AI_LANGUAGES,
+  AI_MODELS,
   AI_PALETTES,
-  AI_SIZES,
+  AI_RATIOS,
+  AI_RESOLUTIONS,
   AI_STYLES,
+  AI_TEXT_DENSITY,
   CHART_TYPES,
   DEFAULT_AI_IMAGE_PARAMS,
   buildPrompt,
+  resolveSize,
 } from './aiImageTypes';
+
 import { decodeTextBytes } from '@/lib/text-file';
 
 export default function AIImageStudio() {
