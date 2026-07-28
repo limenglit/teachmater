@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callVolcVisual } from "../_shared/volc-sign.ts";
+
+// 即梦 Seedream 4.0 文生图 req_key
+const VISUAL_REQ_KEY = "jimeng_t2i_v40";
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
