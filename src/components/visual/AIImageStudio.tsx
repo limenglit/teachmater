@@ -27,6 +27,12 @@ import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
 import { decodeTextBytes } from '@/lib/text-file';
 
+interface RegStep {
+  label: string;
+  status: 'pending' | 'running' | 'pass' | 'warn' | 'fail';
+  detail?: string;
+}
+
 export default function AIImageStudio() {
   const { user } = useAuth();
   const aiQuota = useAIQuota();
@@ -36,7 +42,10 @@ export default function AIImageStudio() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  const [regSteps, setRegSteps] = useState<RegStep[]>([]);
+  const [regRunning, setRegRunning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
 
