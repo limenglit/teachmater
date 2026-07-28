@@ -5,7 +5,7 @@ import { useAIQuota } from '@/hooks/useAIQuota';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History, FlaskConical, CheckCircle2, AlertTriangle, XCircle, Circle } from 'lucide-react';
 import {
   AIImageParams,
   AI_BACKGROUNDS,
@@ -27,6 +27,12 @@ import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
 import { decodeTextBytes } from '@/lib/text-file';
 
+interface RegStep {
+  label: string;
+  status: 'pending' | 'running' | 'pass' | 'warn' | 'fail';
+  detail?: string;
+}
+
 export default function AIImageStudio() {
   const { user } = useAuth();
   const aiQuota = useAIQuota();
@@ -36,7 +42,10 @@ export default function AIImageStudio() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [historyKey, setHistoryKey] = useState(0);
+  const [regSteps, setRegSteps] = useState<RegStep[]>([]);
+  const [regRunning, setRegRunning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
 
@@ -129,12 +138,164 @@ export default function AIImageStudio() {
     }
   };
 
+  // ===== 一键端到端回归测试 =====
+  const REG_PROMPT =
+    '绘制一幅图用于讲解人工智能的一个研究方向： 智能机器人的原理。白色背景，细节准确，科研风格，文字简练，中文标注图片内容。';
+
+  const setStep = (index: number, patch: Partial<RegStep>) =>
+    setRegSteps(prev => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+
+  const runRegression = useCallback(async () => {
+    const steps: RegStep[] = [
+      { label: '检查登录状态与 AI 额度', status: 'pending' },
+      { label: '调用生图接口（火山引擎 Visual）', status: 'pending' },
+      { label: '校验返回图片可用', status: 'pending' },
+      { label: '确认服务商链路', status: 'pending' },
+      { label: '写入历史记录', status: 'pending' },
+    ];
+    setRegSteps(steps);
+    setRegRunning(true);
+    try {
+      // 1
+      setStep(0, { status: 'running' });
+      if (!user) {
+        setStep(0, { status: 'fail', detail: '未登录，请先登录后再测试' });
+        return;
+      }
+      if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+        setStep(0, { status: 'fail', detail: '今日 AI 次数已用完' });
+        return;
+      }
+      setStep(0, { status: 'pass', detail: `剩余 ${aiQuota.remaining + aiQuota.purchasedRemaining} 次` });
+
+      // 2
+      setStep(1, { status: 'running' });
+      const size = resolveSize(params.ratio, params.resolution);
+      const started = Date.now();
+      const { data, error } = await supabase.functions.invoke('generate-visual-image', {
+        body: { prompt: REG_PROMPT, size, model: params.model, watermark: false, seed: null },
+      });
+      if (error || data?.error) {
+        setStep(1, { status: 'fail', detail: data?.error || error?.message || '接口调用失败' });
+        return;
+      }
+      setStep(1, { status: 'pass', detail: `耗时 ${((Date.now() - started) / 1000).toFixed(1)}s` });
+
+      // 3
+      setStep(2, { status: 'running' });
+      if (!data?.imageUrl) {
+        setStep(2, { status: 'fail', detail: '未返回图片' });
+        return;
+      }
+      setImageUrl(data.imageUrl);
+      setShowHistory(false);
+      aiQuota.consume();
+      setStep(2, { status: 'pass', detail: `尺寸 ${data.size || size}` });
+
+      // 4
+      setStep(3, { status: 'running' });
+      const provider = data.provider || 'unknown';
+      setStep(3, {
+        status: provider === 'volc-visual' ? 'pass' : 'warn',
+        detail:
+          provider === 'volc-visual'
+            ? '火山引擎 Visual（cn-north-1 / cv）'
+            : `已降级：${provider}（${data.model || ''}）`,
+      });
+
+      // 5
+      setStep(4, { status: 'running' });
+      try {
+        await saveAIImageToHistory({
+          imageUrl: data.imageUrl,
+          title: '回归测试 · 智能机器人的原理',
+          prompt: REG_PROMPT,
+          docText: REG_PROMPT,
+          chartType: params.chartType,
+          subStyle: params.subStyle,
+          params: params as unknown as Record<string, unknown>,
+          model: data.model || params.model,
+          provider,
+          size: data.size || size,
+        });
+        setHistoryKey(k => k + 1);
+        setStep(4, { status: 'pass', detail: '已保存到历史记录' });
+      } catch {
+        setStep(4, { status: 'fail', detail: '历史记录保存失败' });
+      }
+    } catch (e) {
+      toast({ title: '回归测试执行异常', variant: 'destructive' });
+      console.error(e);
+    } finally {
+      setRegRunning(false);
+    }
+  }, [params, user, aiQuota]);
+
+
+
+  const regDone = regSteps.length > 0 && !regRunning;
+  const regPassed = regDone && regSteps.every(s => s.status === 'pass' || s.status === 'warn');
+  const regProgress = regSteps.length
+    ? Math.round((regSteps.filter(s => s.status !== 'pending' && s.status !== 'running').length / regSteps.length) * 100)
+    : 0;
+
   return (
     <div className="flex flex-col xl:flex-row gap-4">
       {/* 左侧配置 */}
       <div className="w-full xl:w-[380px] shrink-0 space-y-3">
+        {/* 一键端到端回归测试 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold text-muted-foreground tracking-wide">🧪 端到端回归测试</h3>
+            <Button size="sm" variant="outline" onClick={runRegression} disabled={regRunning}>
+              {regRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
+              <span className="ml-1 text-xs">{regRunning ? '测试中…' : '一键测试'}</span>
+            </Button>
+          </div>
+
+          {regSteps.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${regProgress}%` }}
+                />
+              </div>
+              <ul className="space-y-1.5">
+                {regSteps.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[11px]">
+                    <span className="mt-0.5 w-3.5 shrink-0 text-center">
+                      {s.status === 'running' ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      ) : s.status === 'pass' ? (
+                        <CheckCircle2 className="w-3 h-3 text-primary" />
+                      ) : s.status === 'warn' ? (
+                        <AlertTriangle className="w-3 h-3 text-amber-500" />
+                      ) : s.status === 'fail' ? (
+                        <XCircle className="w-3 h-3 text-destructive" />
+                      ) : (
+                        <Circle className="w-3 h-3 text-muted-foreground/50" />
+                      )}
+                    </span>
+                    <span className={s.status === 'pending' ? 'text-muted-foreground/60' : 'text-foreground'}>
+                      {s.label}
+                      {s.detail && <span className="ml-1 text-muted-foreground">— {s.detail}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {regDone && (
+                <p className={`text-[11px] font-semibold ${regPassed ? 'text-primary' : 'text-destructive'}`}>
+                  {regPassed ? '回归测试通过 ✅' : '回归测试未通过 ❌'}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* 文档内容 */}
         <section className="bg-card border border-border rounded-xl p-3">
+
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">📄 文档内容</h3>
           <Textarea
             value={params.docText}
