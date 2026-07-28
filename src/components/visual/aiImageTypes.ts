@@ -50,12 +50,61 @@ export const AI_STYLES = [
   { key: 'creative', name: '创意活泼' },
 ];
 
-export const AI_SIZES = [
-  { key: '2048x2048', name: '正方形 1:1' },
-  { key: '2304x1728', name: '横版 4:3' },
-  { key: '1728x2304', name: '竖版 3:4' },
-  { key: '2560x1440', name: '宽屏 16:9' },
+// 火山方舟 Seedream 支持的生图模型
+export const AI_MODELS = [
+  { key: 'doubao-seedream-4-0-250828', name: 'Seedream 4.0（推荐）', maxTier: '4K' },
+  { key: 'doubao-seedream-3-0-t2i-250415', name: 'Seedream 3.0 文生图', maxTier: '2K' },
 ];
+
+// 分辨率档位
+export const AI_RESOLUTIONS = [
+  { key: '1K', name: '1K 标准（快）' },
+  { key: '2K', name: '2K 高清' },
+  { key: '4K', name: '4K 超清（慢）' },
+];
+
+// 画面比例 → 各档位实际像素（符合方舟 Seedream 尺寸范围）
+export interface RatioDef {
+  key: string;
+  name: string;
+  dims: Record<string, string>;
+}
+
+export const AI_RATIOS: RatioDef[] = [
+  { key: '1:1', name: '正方形 1:1', dims: { '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' } },
+  { key: '4:3', name: '横版 4:3', dims: { '1K': '1152x864', '2K': '2304x1728', '4K': '4096x3072' } },
+  { key: '3:4', name: '竖版 3:4', dims: { '1K': '864x1152', '2K': '1728x2304', '4K': '3072x4096' } },
+  { key: '16:9', name: '宽屏 16:9', dims: { '1K': '1280x720', '2K': '2560x1440', '4K': '4096x2304' } },
+  { key: '9:16', name: '竖屏 9:16', dims: { '1K': '720x1280', '2K': '1440x2560', '4K': '2304x4096' } },
+  { key: '3:2', name: '横版 3:2', dims: { '1K': '1248x832', '2K': '2496x1664', '4K': '3936x2624' } },
+  { key: '2:3', name: '竖版 2:3', dims: { '1K': '832x1248', '2K': '1664x2496', '4K': '2624x3936' } },
+  { key: '21:9', name: '超宽 21:9', dims: { '1K': '1512x648', '2K': '3024x1296', '4K': '4096x1760' } },
+];
+
+export const AI_BACKGROUNDS = [
+  { key: 'white', name: '纯白背景' },
+  { key: 'light', name: '浅灰底' },
+  { key: 'gradient', name: '淡渐变' },
+  { key: 'dark', name: '深色底' },
+  { key: 'transparent', name: '近似透明（白底）' },
+];
+
+export const AI_TEXT_DENSITY = [
+  { key: 'low', name: '文字精简' },
+  { key: 'medium', name: '文字适中' },
+  { key: 'high', name: '文字详尽' },
+];
+
+export const AI_LANGUAGES = [
+  { key: 'zh', name: '中文标注' },
+  { key: 'en', name: '英文标注' },
+  { key: 'bilingual', name: '中英双语' },
+];
+
+export function resolveSize(ratio: string, resolution: string): string {
+  const r = AI_RATIOS.find(x => x.key === ratio) ?? AI_RATIOS[0];
+  return r.dims[resolution] ?? r.dims['2K'];
+}
 
 export interface AIImageParams {
   chartType: string;
@@ -63,7 +112,15 @@ export interface AIImageParams {
   palette: string;
   font: string;
   style: string;
-  size: string;
+  model: string;
+  ratio: string;
+  resolution: string;
+  background: string;
+  textDensity: string;
+  language: string;
+  watermark: boolean;
+  seed: number | null;
+  negativePrompt: string;
   docText: string;
 }
 
@@ -73,7 +130,15 @@ export const DEFAULT_AI_IMAGE_PARAMS: AIImageParams = {
   palette: 'blue',
   font: 'sans',
   style: 'professional',
-  size: '2304x1728',
+  model: 'doubao-seedream-4-0-250828',
+  ratio: '4:3',
+  resolution: '2K',
+  background: 'white',
+  textDensity: 'low',
+  language: 'zh',
+  watermark: false,
+  seed: null,
+  negativePrompt: '',
   docText: '',
 };
 
@@ -82,13 +147,24 @@ export function buildPrompt(p: AIImageParams): string {
   const palette = AI_PALETTES.find(c => c.key === p.palette);
   const font = AI_FONTS.find(f => f.key === p.font)?.name ?? '思源黑体';
   const style = AI_STYLES.find(s => s.key === p.style)?.name ?? '专业商务';
+  const bg = AI_BACKGROUNDS.find(b => b.key === p.background)?.name ?? '纯白背景';
+  const density = AI_TEXT_DENSITY.find(d => d.key === p.textDensity)?.name ?? '文字精简';
+  const lang = AI_LANGUAGES.find(l => l.key === p.language)?.name ?? '中文标注';
+  const ratio = AI_RATIOS.find(r => r.key === p.ratio)?.key ?? '4:3';
 
-  return [
-    `请根据以下内容生成一张高质量的中文${type?.name ?? '信息图'}，二级风格为「${p.subStyle}」。`,
-    `整体设计风格：${style}；中文字体风格接近${font}，文字排版清晰、无错别字、无乱码。`,
+  const lines = [
+    `请生成一张高质量的${type?.name ?? '信息图'}，二级风格为「${p.subStyle}」，画面比例 ${ratio}。`,
+    `整体设计风格：${style}；${bg}；${lang}；${density}。`,
+    `字体风格接近${font}，文字排版清晰、字形完整、无错别字、无乱码、不截断。`,
     `配色方案：主色 ${palette?.colors[0]}，辅助色 ${palette?.colors[1]}，浅底色 ${palette?.colors[2]}，深色文字 ${palette?.colors[3]}。`,
-    '要求：矢量扁平化设计，白色或浅色背景，层级分明，图形与标注对应准确，适合课堂教学与学术汇报展示，不要出现水印或无意义装饰文字。',
-    '内容如下：',
-    p.docText.slice(0, 1200),
-  ].join('\n');
+    '要求：矢量扁平化设计，层级分明，图形与标注一一对应，数据与文字准确，适合课堂教学与学术汇报展示，不要出现水印或无意义装饰文字。',
+  ];
+
+  if (p.negativePrompt.trim()) {
+    lines.push(`避免出现：${p.negativePrompt.trim().slice(0, 200)}。`);
+  }
+
+  lines.push('内容如下：', p.docText.slice(0, 1200));
+  return lines.join('\n');
 }
+
