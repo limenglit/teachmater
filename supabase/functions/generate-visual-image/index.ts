@@ -18,7 +18,23 @@ const ALLOWED_MODELS = new Set([
   "doubao-seedream-4-0-250828",
   "doubao-seedream-3-0-t2i-250415",
 ]);
-const ALLOWED_SIZES = new Set(["1024x1024", "2048x2048", "2304x1728", "1728x2304", "2560x1440"]);
+// 方舟 Seedream 尺寸范围：边长 512–4096，总像素不超过 ~4096*4096
+const MAX_PIXELS = { "doubao-seedream-4-0-250828": 4096, "doubao-seedream-3-0-t2i-250415": 2048 } as Record<string, number>;
+
+function normalizeSize(raw: unknown, model: string): string {
+  const fallback = "2048x2048";
+  if (typeof raw !== "string") return fallback;
+  const m = /^(\d{3,4})x(\d{3,4})$/.exec(raw.trim());
+  if (!m) return fallback;
+  let w = Number(m[1]);
+  let h = Number(m[2]);
+  const cap = MAX_PIXELS[model] ?? 4096;
+  const scale = Math.min(1, cap / Math.max(w, h));
+  w = Math.max(512, Math.round((w * scale) / 8) * 8);
+  h = Math.max(512, Math.round((h * scale) / 8) * 8);
+  return `${w}x${h}`;
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
