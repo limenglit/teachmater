@@ -181,7 +181,7 @@ export default function AIImageStudio() {
 
         {/* 字体与风格 */}
         <section className="bg-card border border-border rounded-xl p-3 space-y-2">
-          <h3 className="text-xs font-bold text-muted-foreground tracking-wide">✍️ 字体 · 风格 · 尺寸</h3>
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide">✍️ 字体 · 风格 · 标注</h3>
           <div className="grid grid-cols-2 gap-2">
             <select
               value={params.font}
@@ -198,14 +198,94 @@ export default function AIImageStudio() {
               {AI_STYLES.map(s => <option key={s.key} value={s.key}>{s.name}</option>)}
             </select>
             <select
-              value={params.size}
-              onChange={e => update({ size: e.target.value })}
+              value={params.background}
+              onChange={e => update({ background: e.target.value })}
+              className="text-xs bg-background border border-border rounded-lg px-2 py-2"
+            >
+              {AI_BACKGROUNDS.map(b => <option key={b.key} value={b.key}>{b.name}</option>)}
+            </select>
+            <select
+              value={params.language}
+              onChange={e => update({ language: e.target.value })}
+              className="text-xs bg-background border border-border rounded-lg px-2 py-2"
+            >
+              {AI_LANGUAGES.map(l => <option key={l.key} value={l.key}>{l.name}</option>)}
+            </select>
+            <select
+              value={params.textDensity}
+              onChange={e => update({ textDensity: e.target.value })}
               className="text-xs bg-background border border-border rounded-lg px-2 py-2 col-span-2"
             >
-              {AI_SIZES.map(s => <option key={s.key} value={s.key}>{s.name}</option>)}
+              {AI_TEXT_DENSITY.map(d => <option key={d.key} value={d.key}>{d.name}</option>)}
             </select>
           </div>
         </section>
+
+        {/* 比例与画质 */}
+        <section className="bg-card border border-border rounded-xl p-3 space-y-2">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide">📐 画面比例 · 画质</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {AI_RATIOS.map(r => (
+              <button
+                key={r.key}
+                onClick={() => update({ ratio: r.key })}
+                className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
+                  params.ratio === r.key
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:border-primary/50'
+                }`}
+              >
+                {r.name}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <select
+              value={params.resolution}
+              onChange={e => update({ resolution: e.target.value })}
+              className="text-xs bg-background border border-border rounded-lg px-2 py-2"
+            >
+              {AI_RESOLUTIONS.map(r => <option key={r.key} value={r.key}>{r.name}</option>)}
+            </select>
+            <select
+              value={params.model}
+              onChange={e => update({ model: e.target.value })}
+              className="text-xs bg-background border border-border rounded-lg px-2 py-2"
+            >
+              {AI_MODELS.map(m => <option key={m.key} value={m.key}>{m.name}</option>)}
+            </select>
+          </div>
+          <p className="text-[11px] text-muted-foreground">输出尺寸：{resolveSize(params.ratio, params.resolution)} px</p>
+        </section>
+
+        {/* 高级选项 */}
+        <section className="bg-card border border-border rounded-xl p-3 space-y-2">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide">⚙️ 高级选项</h3>
+          <Textarea
+            value={params.negativePrompt}
+            onChange={e => update({ negativePrompt: e.target.value })}
+            placeholder="不希望出现的元素，如：乱码、英文水印、人物照片…"
+            className="h-14 text-xs"
+          />
+          <div className="grid grid-cols-2 gap-2 items-center">
+            <input
+              type="number"
+              value={params.seed ?? ''}
+              onChange={e => update({ seed: e.target.value === '' ? null : Number(e.target.value) })}
+              placeholder="随机种子（可选）"
+              className="text-xs bg-background border border-border rounded-lg px-2 py-2"
+            />
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={params.watermark}
+                onChange={e => update({ watermark: e.target.checked })}
+              />
+              添加水印
+            </label>
+          </div>
+        </section>
+
 
         <Button onClick={handleGenerate} disabled={loading} className="w-full gap-2">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
