@@ -233,12 +233,69 @@ export default function AIImageStudio() {
 
 
 
+  const regDone = regSteps.length > 0 && !regRunning;
+  const regPassed = regDone && regSteps.every(s => s.status === 'pass' || s.status === 'warn');
+  const regProgress = regSteps.length
+    ? Math.round((regSteps.filter(s => s.status !== 'pending' && s.status !== 'running').length / regSteps.length) * 100)
+    : 0;
+
   return (
     <div className="flex flex-col xl:flex-row gap-4">
       {/* 左侧配置 */}
       <div className="w-full xl:w-[380px] shrink-0 space-y-3">
+        {/* 一键端到端回归测试 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-bold text-muted-foreground tracking-wide">🧪 端到端回归测试</h3>
+            <Button size="sm" variant="outline" onClick={runRegression} disabled={regRunning}>
+              {regRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
+              <span className="ml-1 text-xs">{regRunning ? '测试中…' : '一键测试'}</span>
+            </Button>
+          </div>
+
+          {regSteps.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${regProgress}%` }}
+                />
+              </div>
+              <ul className="space-y-1.5">
+                {regSteps.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-[11px]">
+                    <span className="mt-0.5 w-3.5 shrink-0 text-center">
+                      {s.status === 'running' ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                      ) : s.status === 'pass' ? (
+                        <CheckCircle2 className="w-3 h-3 text-primary" />
+                      ) : s.status === 'warn' ? (
+                        <AlertTriangle className="w-3 h-3 text-amber-500" />
+                      ) : s.status === 'fail' ? (
+                        <XCircle className="w-3 h-3 text-destructive" />
+                      ) : (
+                        <Circle className="w-3 h-3 text-muted-foreground/50" />
+                      )}
+                    </span>
+                    <span className={s.status === 'pending' ? 'text-muted-foreground/60' : 'text-foreground'}>
+                      {s.label}
+                      {s.detail && <span className="ml-1 text-muted-foreground">— {s.detail}</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {regDone && (
+                <p className={`text-[11px] font-semibold ${regPassed ? 'text-primary' : 'text-destructive'}`}>
+                  {regPassed ? '回归测试通过 ✅' : '回归测试未通过 ❌'}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* 文档内容 */}
         <section className="bg-card border border-border rounded-xl p-3">
+
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">📄 文档内容</h3>
           <Textarea
             value={params.docText}
