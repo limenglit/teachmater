@@ -62,6 +62,54 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_image_history: {
+        Row: {
+          chart_type: string
+          created_at: string
+          doc_text: string
+          id: string
+          model: string
+          params: Json
+          prompt: string
+          provider: string
+          size: string
+          storage_path: string
+          sub_style: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          chart_type?: string
+          created_at?: string
+          doc_text?: string
+          id?: string
+          model?: string
+          params?: Json
+          prompt?: string
+          provider?: string
+          size?: string
+          storage_path: string
+          sub_style?: string
+          title?: string
+          user_id: string
+        }
+        Update: {
+          chart_type?: string
+          created_at?: string
+          doc_text?: string
+          id?: string
+          model?: string
+          params?: Json
+          prompt?: string
+          provider?: string
+          size?: string
+          storage_path?: string
+          sub_style?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_usage_log: {
         Row: {
           count: number

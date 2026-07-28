@@ -5,7 +5,7 @@ import { useAIQuota } from '@/hooks/useAIQuota';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History } from 'lucide-react';
 import {
   AIImageParams,
   AI_BACKGROUNDS,
@@ -22,6 +22,8 @@ import {
   buildPrompt,
   resolveSize,
 } from './aiImageTypes';
+import AIImageHistoryPanel from './AIImageHistoryPanel';
+import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
 import { decodeTextBytes } from '@/lib/text-file';
 
@@ -32,11 +34,14 @@ export default function AIImageStudio() {
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyKey, setHistoryKey] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
 
   const update = (patch: Partial<AIImageParams>) => setParams(prev => ({ ...prev, ...patch }));
+
 
   const handleFile = async (file?: File) => {
     if (!file) return;
@@ -81,6 +86,27 @@ export default function AIImageStudio() {
       setImageUrl(data.imageUrl);
       aiQuota.consume();
       toast({ title: '生成成功' });
+
+      // 保存到系统历史记录（存储桶 + 数据库）
+      try {
+        await saveAIImageToHistory({
+          imageUrl: data.imageUrl,
+          title: `${activeType.name} · ${params.subStyle}`,
+          prompt: buildPrompt(params),
+          docText: params.docText,
+          chartType: params.chartType,
+          subStyle: params.subStyle,
+          params: params as unknown as Record<string, unknown>,
+          model: data.model || params.model,
+          provider: data.provider || '',
+          size: data.size || resolveSize(params.ratio, params.resolution),
+        });
+        setHistoryKey(k => k + 1);
+      } catch (e) {
+        console.error('save ai image history failed', e);
+        toast({ title: '图片已生成，但历史记录保存失败', variant: 'destructive' });
+      }
+
     } catch {
       toast({ title: '生成失败，请稍后重试', variant: 'destructive' });
     } finally {
@@ -304,7 +330,10 @@ export default function AIImageStudio() {
       <div className="flex-1 min-w-0 bg-card border border-border rounded-xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
           <span className="text-sm font-medium">🖼️ 实时预览</span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant={showHistory ? 'default' : 'outline'} onClick={() => setShowHistory(v => !v)} className="gap-1.5">
+              <History className="w-3.5 h-3.5" /> 历史记录
+            </Button>
             <Button size="sm" variant="outline" onClick={handleDownload} disabled={!imageUrl} className="gap-1.5">
               <Download className="w-3.5 h-3.5" /> 下载
             </Button>
@@ -313,22 +342,33 @@ export default function AIImageStudio() {
             </Button>
           </div>
         </div>
-        <div className="flex-1 min-h-[320px] flex items-center justify-center p-4 bg-muted/30">
-          {loading ? (
-            <div className="flex flex-col items-center gap-3 text-muted-foreground">
-              <Loader2 className="w-7 h-7 animate-spin" />
-              <p className="text-xs">正在调用火山引擎生成图像，约需 10-30 秒…</p>
-            </div>
-          ) : imageUrl ? (
-            <img src={imageUrl} alt={`${activeType.name} ${params.subStyle}`} className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <ImageIcon className="w-8 h-8" />
-              <p className="text-xs">填写内容并选择图表类型后点击「生成信息图」</p>
-            </div>
-          )}
-        </div>
+        {showHistory ? (
+          <div className="p-3">
+            <AIImageHistoryPanel
+              refreshKey={historyKey}
+              onClose={() => setShowHistory(false)}
+              onReuse={(_r, url) => { setImageUrl(url); setShowHistory(false); }}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-[320px] flex items-center justify-center p-4 bg-muted/30">
+            {loading ? (
+              <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                <Loader2 className="w-7 h-7 animate-spin" />
+                <p className="text-xs">正在调用火山引擎生成图像，约需 10-30 秒…</p>
+              </div>
+            ) : imageUrl ? (
+              <img src={imageUrl} alt={`${activeType.name} ${params.subStyle}`} className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <ImageIcon className="w-8 h-8" />
+                <p className="text-xs">填写内容并选择图表类型后点击「生成信息图」</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
     </div>
   );
 }
