@@ -65,8 +65,15 @@ export default function AIImageStudio() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-visual-image', {
-        body: { prompt: buildPrompt(params), size: params.size },
+        body: {
+          prompt: buildPrompt(params),
+          size: resolveSize(params.ratio, params.resolution),
+          model: params.model,
+          watermark: params.watermark,
+          seed: params.seed,
+        },
       });
+
       if (error || data?.error) {
         toast({ title: data?.error || '生成失败，请稍后重试', variant: 'destructive' });
         return;
