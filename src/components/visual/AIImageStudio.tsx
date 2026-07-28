@@ -330,7 +330,10 @@ export default function AIImageStudio() {
       <div className="flex-1 min-w-0 bg-card border border-border rounded-xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
           <span className="text-sm font-medium">🖼️ 实时预览</span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant={showHistory ? 'default' : 'outline'} onClick={() => setShowHistory(v => !v)} className="gap-1.5">
+              <History className="w-3.5 h-3.5" /> 历史记录
+            </Button>
             <Button size="sm" variant="outline" onClick={handleDownload} disabled={!imageUrl} className="gap-1.5">
               <Download className="w-3.5 h-3.5" /> 下载
             </Button>
@@ -339,22 +342,33 @@ export default function AIImageStudio() {
             </Button>
           </div>
         </div>
-        <div className="flex-1 min-h-[320px] flex items-center justify-center p-4 bg-muted/30">
-          {loading ? (
-            <div className="flex flex-col items-center gap-3 text-muted-foreground">
-              <Loader2 className="w-7 h-7 animate-spin" />
-              <p className="text-xs">正在调用火山引擎生成图像，约需 10-30 秒…</p>
-            </div>
-          ) : imageUrl ? (
-            <img src={imageUrl} alt={`${activeType.name} ${params.subStyle}`} className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
-          ) : (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <ImageIcon className="w-8 h-8" />
-              <p className="text-xs">填写内容并选择图表类型后点击「生成信息图」</p>
-            </div>
-          )}
-        </div>
+        {showHistory ? (
+          <div className="p-3">
+            <AIImageHistoryPanel
+              refreshKey={historyKey}
+              onClose={() => setShowHistory(false)}
+              onReuse={(_r, url) => { setImageUrl(url); setShowHistory(false); }}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-[320px] flex items-center justify-center p-4 bg-muted/30">
+            {loading ? (
+              <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                <Loader2 className="w-7 h-7 animate-spin" />
+                <p className="text-xs">正在调用火山引擎生成图像，约需 10-30 秒…</p>
+              </div>
+            ) : imageUrl ? (
+              <img src={imageUrl} alt={`${activeType.name} ${params.subStyle}`} className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <ImageIcon className="w-8 h-8" />
+                <p className="text-xs">填写内容并选择图表类型后点击「生成信息图」</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
     </div>
   );
 }
