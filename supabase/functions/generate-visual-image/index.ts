@@ -214,7 +214,7 @@ serve(async (req) => {
     const fbUrl = fbItem?.url || (fbItem?.b64_json ? `data:image/png;base64,${fbItem.b64_json}` : null);
     if (!fbUrl) return json({ error: '未返回图片' }, 502);
 
-    return json({ imageUrl: fbUrl, model: 'google/gemini-3.1-flash-image', size, provider: 'lovable' });
+    return json({ imageUrl: fbUrl, model: 'google/gemini-3.1-flash-image', size, provider: 'lovable', volcError });
 
   } catch (e) {
     console.error('generate-visual-image error:', e);
