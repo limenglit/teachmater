@@ -200,7 +200,7 @@ export default function AIImageStudio() {
         detail:
           provider === 'volc-visual'
             ? '火山引擎 Visual（cn-north-1 / cv）'
-            : `已降级：${provider}（${data.model || ''}）`,
+            : `已降级：${provider}（${data.model || ''}）${data.volcError ? ` · 火山引擎失败原因：${data.volcError}` : ''}`,
       });
 
       // 5
