@@ -78,6 +78,7 @@ serve(async (req) => {
     const [wStr, hStr] = size.split('x');
 
     // 1) 优先走火山引擎 Visual (即梦/Seedream) —— 地域 cn-north-1，服务 cv
+    let volcError: string | null = null;
     if (VOLC_AK && VOLC_SK) {
       try {
         const submit = await callVolcVisual({
@@ -97,7 +98,8 @@ serve(async (req) => {
         const submitData = await submit.json().catch(() => null);
         const taskId = submitData?.data?.task_id;
         if (!taskId) {
-          console.error('Visual submit failed:', submit.status, JSON.stringify(submitData));
+          volcError = `submit ${submit.status}: ${submitData?.code ?? ''} ${submitData?.message ?? JSON.stringify(submitData)?.slice(0, 300)}`;
+          console.error('Visual submit failed:', volcError);
         } else {
           for (let i = 0; i < 30; i++) {
             await new Promise((r) => setTimeout(r, 2000));
@@ -125,15 +127,21 @@ serve(async (req) => {
               });
             }
             if (status === 'done' || status === 'not_found' || status === 'expired') {
+              volcError = `poll status=${status}: ${pollData?.message ?? ''}`;
               console.error('Visual task ended without image:', JSON.stringify(pollData));
               break;
             }
           }
+          if (!volcError) volcError = 'poll timeout';
         }
       } catch (visualErr) {
+        volcError = `exception: ${visualErr instanceof Error ? visualErr.message : String(visualErr)}`;
         console.error('Visual request failed:', visualErr);
       }
+    } else {
+      volcError = 'VOLC_ACCESS_KEY_ID / VOLC_SECRET_ACCESS_KEY 未配置';
     }
+
 
     // 2) 兼容旧的方舟 Ark 链路
     if (ARK_API_KEY) {
