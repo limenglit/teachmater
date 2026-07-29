@@ -35,6 +35,7 @@ export async function callVolcVisual(opts: VolcVisualOptions): Promise<Response>
   const host = opts.host ?? "visual.volcengineapi.com";
   const version = opts.version ?? "2022-08-31";
 
+
   const now = new Date();
   const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, ""); // YYYYMMDDTHHMMSSZ
   const dateStamp = amzDate.slice(0, 8);
@@ -67,7 +68,7 @@ export async function callVolcVisual(opts: VolcVisualOptions): Promise<Response>
     await sha256Hex(canonicalRequest),
   ].join("\n");
 
-  let key = await hmac(enc.encode(opts.secretAccessKey), dateStamp);
+  let key = await hmac(enc.encode(opts.secretAccessKey.trim()), dateStamp);
   key = await hmac(key, region);
   key = await hmac(key, service);
   key = await hmac(key, "request");
