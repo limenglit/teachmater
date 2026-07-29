@@ -87,7 +87,7 @@ export async function callVolcVisual(opts: VolcVisualOptions): Promise<Response>
     await sha256Hex(canonicalRequest),
   ].join("\n");
 
-  let key = await hmac(enc.encode(opts.secretAccessKey), dateStamp);
+  let key = await hmac(enc.encode(normalizeSecretKey(opts.secretAccessKey)), dateStamp);
   key = await hmac(key, region);
   key = await hmac(key, service);
   key = await hmac(key, "request");
