@@ -18,25 +18,6 @@ async function sha256Hex(text: string): Promise<string> {
   return hex(new Uint8Array(digest));
 }
 
-// 火山引擎控制台复制出的 SecretAccessKey 常常是 Base64 编码（有时被复制两次）。
-// V4 签名必须使用解码后的原始密钥（一般为 32 位十六进制字符串）。
-export function normalizeSecretKey(raw: string): string {
-  let key = raw.trim();
-  for (let i = 0; i < 3; i++) {
-    if (/^[0-9a-f]{32,64}$/i.test(key)) return key;
-    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(key)) return key;
-    try {
-      const padded = key + "=".repeat((4 - (key.length % 4)) % 4);
-      const decoded = atob(padded);
-      if (!decoded || /[^\x20-\x7e]/.test(decoded)) return key;
-      key = decoded.trim();
-    } catch {
-      return key;
-    }
-  }
-  return key;
-}
-
 export interface VolcVisualOptions {
   accessKeyId: string;
   secretAccessKey: string;
@@ -87,7 +68,7 @@ export async function callVolcVisual(opts: VolcVisualOptions): Promise<Response>
     await sha256Hex(canonicalRequest),
   ].join("\n");
 
-  let key = await hmac(enc.encode(normalizeSecretKey(opts.secretAccessKey)), dateStamp);
+  let key = await hmac(enc.encode(opts.secretAccessKey.trim()), dateStamp);
   key = await hmac(key, region);
   key = await hmac(key, service);
   key = await hmac(key, "request");
