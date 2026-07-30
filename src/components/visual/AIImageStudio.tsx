@@ -138,7 +138,7 @@ export default function AIImageStudio() {
     } finally {
       setLoading(false);
     }
-  }, [params, user, aiQuota]);
+  }, [params, user, aiQuota, finalPrompt, activeType]);
 
   const handleDownload = async () => {
     if (!imageUrl) return;
