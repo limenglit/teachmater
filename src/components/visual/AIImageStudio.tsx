@@ -47,12 +47,26 @@ export default function AIImageStudio() {
   const [historyKey, setHistoryKey] = useState(0);
   const [regSteps, setRegSteps] = useState<RegStep[]>([]);
   const [regRunning, setRegRunning] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [promptOverride, setPromptOverride] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
+  const autoPrompt = buildPrompt(params);
+  const finalPrompt = promptOverride ?? autoPrompt;
 
   const update = (patch: Partial<AIImageParams>) => setParams(prev => ({ ...prev, ...patch }));
+
+  const applyPreset = (key: string) => {
+    const preset = AI_PRESETS.find(p => p.key === key);
+    if (!preset) return;
+    setActivePreset(key);
+    setPromptOverride(null);
+    update(preset.patch);
+  };
+
 
 
   const handleFile = async (file?: File) => {
