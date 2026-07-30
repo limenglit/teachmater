@@ -117,8 +117,8 @@ export default function AIImageStudio() {
       try {
         await saveAIImageToHistory({
           imageUrl: data.imageUrl,
-          title: `${activeType.name} · ${params.subStyle}`,
-          prompt: buildPrompt(params),
+          title: params.title?.trim() || `${activeType.name} · ${params.subStyle}`,
+          prompt: finalPrompt,
           docText: params.docText,
           chartType: params.chartType,
           subStyle: params.subStyle,
