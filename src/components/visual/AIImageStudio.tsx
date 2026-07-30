@@ -536,10 +536,51 @@ export default function AIImageStudio() {
         </section>
 
 
+        {/* 提示词预览 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <button
+            type="button"
+            onClick={() => setShowPrompt(v => !v)}
+            className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wide"
+          >
+            <span className="flex items-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> 提示词预览{promptOverride !== null && '（已手动编辑）'}</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showPrompt ? 'rotate-180' : ''}`} />
+          </button>
+          {showPrompt && (
+            <div className="mt-2 space-y-2">
+              <Textarea
+                value={finalPrompt}
+                onChange={e => setPromptOverride(e.target.value)}
+                className="h-40 text-[11px] leading-relaxed font-mono"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1.5"
+                  onClick={() => { navigator.clipboard?.writeText(finalPrompt); toast({ title: '提示词已复制' }); }}
+                >
+                  <Copy className="w-3.5 h-3.5" /> 复制
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1.5"
+                  disabled={promptOverride === null}
+                  onClick={() => setPromptOverride(null)}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> 恢复自动生成
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+
         <Button onClick={handleGenerate} disabled={loading} className="w-full gap-2">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {loading ? '火山引擎生成中…' : '生成信息图'}
         </Button>
+
       </div>
 
       {/* 右侧预览 */}
