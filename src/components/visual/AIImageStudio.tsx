@@ -376,7 +376,8 @@ export default function AIImageStudio() {
             {CHART_TYPES.map(type => (
               <button
                 key={type.key}
-                onClick={() => update({ chartType: type.key, subStyle: type.subs[0] })}
+                title={type.desc}
+                onClick={() => { setActivePreset(null); update({ chartType: type.key, subStyle: type.subs[0] }); }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   params.chartType === type.key
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -387,6 +388,7 @@ export default function AIImageStudio() {
               </button>
             ))}
           </div>
+          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">{activeType.desc}</p>
           <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border">
             {activeType.subs.map(sub => (
               <button
@@ -402,6 +404,10 @@ export default function AIImageStudio() {
               </button>
             ))}
           </div>
+          <p className="mt-2 text-[11px] text-muted-foreground/80 leading-relaxed">
+            构图规则：{CHART_TYPE_GUIDES[params.chartType]}
+          </p>
+
         </section>
 
         {/* 配色 */}
