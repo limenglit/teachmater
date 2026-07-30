@@ -5,7 +5,7 @@ import { useAIQuota } from '@/hooks/useAIQuota';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History, FlaskConical, CheckCircle2, AlertTriangle, XCircle, Circle } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History, FlaskConical, CheckCircle2, AlertTriangle, XCircle, Circle, Wand2, Copy, ChevronDown } from 'lucide-react';
 import {
   AIImageParams,
   AI_BACKGROUNDS,
@@ -13,11 +13,13 @@ import {
   AI_LANGUAGES,
   AI_MODELS,
   AI_PALETTES,
+  AI_PRESETS,
   AI_RATIOS,
   AI_RESOLUTIONS,
   AI_STYLES,
   AI_TEXT_DENSITY,
   CHART_TYPES,
+  CHART_TYPE_GUIDES,
   DEFAULT_AI_IMAGE_PARAMS,
   buildPrompt,
   resolveSize,
@@ -26,6 +28,7 @@ import AIImageHistoryPanel from './AIImageHistoryPanel';
 import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
 import { decodeTextBytes } from '@/lib/text-file';
+
 
 interface RegStep {
   label: string;
@@ -44,12 +47,26 @@ export default function AIImageStudio() {
   const [historyKey, setHistoryKey] = useState(0);
   const [regSteps, setRegSteps] = useState<RegStep[]>([]);
   const [regRunning, setRegRunning] = useState(false);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [promptOverride, setPromptOverride] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
+  const autoPrompt = buildPrompt(params);
+  const finalPrompt = promptOverride ?? autoPrompt;
 
   const update = (patch: Partial<AIImageParams>) => setParams(prev => ({ ...prev, ...patch }));
+
+  const applyPreset = (key: string) => {
+    const preset = AI_PRESETS.find(p => p.key === key);
+    if (!preset) return;
+    setActivePreset(key);
+    setPromptOverride(null);
+    update(preset.patch);
+  };
+
 
 
   const handleFile = async (file?: File) => {
@@ -80,7 +97,7 @@ export default function AIImageStudio() {
     try {
       const { data, error } = await supabase.functions.invoke('generate-visual-image', {
         body: {
-          prompt: buildPrompt(params),
+          prompt: finalPrompt,
           size: resolveSize(params.ratio, params.resolution),
           model: params.model,
           watermark: params.watermark,
@@ -100,8 +117,8 @@ export default function AIImageStudio() {
       try {
         await saveAIImageToHistory({
           imageUrl: data.imageUrl,
-          title: `${activeType.name} · ${params.subStyle}`,
-          prompt: buildPrompt(params),
+          title: params.title?.trim() || `${activeType.name} · ${params.subStyle}`,
+          prompt: finalPrompt,
           docText: params.docText,
           chartType: params.chartType,
           subStyle: params.subStyle,
@@ -121,7 +138,7 @@ export default function AIImageStudio() {
     } finally {
       setLoading(false);
     }
-  }, [params, user, aiQuota]);
+  }, [params, user, aiQuota, finalPrompt, activeType]);
 
   const handleDownload = async () => {
     if (!imageUrl) return;
@@ -293,16 +310,47 @@ export default function AIImageStudio() {
           )}
         </section>
 
+        {/* 场景预设 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">⚡ 一键场景预设</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {AI_PRESETS.map(p => (
+              <button
+                key={p.key}
+                onClick={() => applyPreset(p.key)}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors ${
+                  activePreset === p.key
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:border-primary/50'
+                }`}
+              >
+                {p.icon} {p.name}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">选中后仍可在下方微调任意参数。</p>
+        </section>
+
         {/* 文档内容 */}
         <section className="bg-card border border-border rounded-xl p-3">
 
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">📄 文档内容</h3>
+          <input
+            value={params.title}
+            onChange={e => update({ title: e.target.value })}
+            placeholder="图表主标题（留空则自动从内容首行提取）"
+            className="w-full mb-2 text-xs bg-background border border-border rounded-lg px-2 py-2"
+          />
           <Textarea
             value={params.docText}
             onChange={e => update({ docText: e.target.value })}
-            placeholder="粘贴教学要点、研究摘要、实验数据或项目描述..."
-            className="h-24 text-sm"
+            placeholder="粘贴教学要点、研究摘要、实验数据或项目描述…&#10;建议每行一条要点，模型会逐条对应生成图形模块。"
+            className="h-28 text-sm"
           />
+          <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>建议 40–600 字，分行列出要点效果最佳</span>
+            <span className={params.docText.length > 1200 ? 'text-destructive' : ''}>{params.docText.length}/1200</span>
+          </div>
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -320,6 +368,7 @@ export default function AIImageStudio() {
           />
         </section>
 
+
         {/* 图表类型 */}
         <section className="bg-card border border-border rounded-xl p-3">
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">📊 图表类型</h3>
@@ -327,7 +376,8 @@ export default function AIImageStudio() {
             {CHART_TYPES.map(type => (
               <button
                 key={type.key}
-                onClick={() => update({ chartType: type.key, subStyle: type.subs[0] })}
+                title={type.desc}
+                onClick={() => { setActivePreset(null); update({ chartType: type.key, subStyle: type.subs[0] }); }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   params.chartType === type.key
                     ? 'bg-primary text-primary-foreground border-primary'
@@ -338,6 +388,7 @@ export default function AIImageStudio() {
               </button>
             ))}
           </div>
+          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">{activeType.desc}</p>
           <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border">
             {activeType.subs.map(sub => (
               <button
@@ -353,6 +404,10 @@ export default function AIImageStudio() {
               </button>
             ))}
           </div>
+          <p className="mt-2 text-[11px] text-muted-foreground/80 leading-relaxed">
+            构图规则：{CHART_TYPE_GUIDES[params.chartType]}
+          </p>
+
         </section>
 
         {/* 配色 */}
@@ -481,10 +536,51 @@ export default function AIImageStudio() {
         </section>
 
 
+        {/* 提示词预览 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <button
+            type="button"
+            onClick={() => setShowPrompt(v => !v)}
+            className="w-full flex items-center justify-between text-xs font-bold text-muted-foreground tracking-wide"
+          >
+            <span className="flex items-center gap-1.5"><Wand2 className="w-3.5 h-3.5" /> 提示词预览{promptOverride !== null && '（已手动编辑）'}</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showPrompt ? 'rotate-180' : ''}`} />
+          </button>
+          {showPrompt && (
+            <div className="mt-2 space-y-2">
+              <Textarea
+                value={finalPrompt}
+                onChange={e => setPromptOverride(e.target.value)}
+                className="h-40 text-[11px] leading-relaxed font-mono"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1.5"
+                  onClick={() => { navigator.clipboard?.writeText(finalPrompt); toast({ title: '提示词已复制' }); }}
+                >
+                  <Copy className="w-3.5 h-3.5" /> 复制
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs gap-1.5"
+                  disabled={promptOverride === null}
+                  onClick={() => setPromptOverride(null)}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> 恢复自动生成
+                </Button>
+              </div>
+            </div>
+          )}
+        </section>
+
         <Button onClick={handleGenerate} disabled={loading} className="w-full gap-2">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {loading ? '火山引擎生成中…' : '生成信息图'}
         </Button>
+
       </div>
 
       {/* 右侧预览 */}
