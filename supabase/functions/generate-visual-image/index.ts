@@ -119,13 +119,33 @@ serve(async (req) => {
             const url = pollData?.data?.image_urls?.[0];
             const b64 = pollData?.data?.binary_data_base64?.[0];
             if (url || b64) {
+              // 火山返回的是带签名/有时效且不带 CORS 头的 TOS 链接，
+              // 浏览器既无法稳定显示也无法 fetch 存档，这里统一转成 data URL 返回。
+              let imageUrl = b64 ? `data:image/jpeg;base64,${b64}` : '';
+              if (!imageUrl && url) {
+                try {
+                  const imgResp = await fetch(url);
+                  if (!imgResp.ok) throw new Error(`download ${imgResp.status}`);
+                  const buf = new Uint8Array(await imgResp.arrayBuffer());
+                  let bin = '';
+                  for (let k = 0; k < buf.length; k += 0x8000) {
+                    bin += String.fromCharCode(...buf.subarray(k, k + 0x8000));
+                  }
+                  const mime = imgResp.headers.get('content-type') || 'image/jpeg';
+                  imageUrl = `data:${mime};base64,${btoa(bin)}`;
+                } catch (dlErr) {
+                  console.error('Visual image download failed:', dlErr);
+                  imageUrl = url; // 兜底仍返回原始链接
+                }
+              }
               return json({
-                imageUrl: url ?? `data:image/jpeg;base64,${b64}`,
+                imageUrl,
                 model: VISUAL_REQ_KEY,
                 size,
                 provider: 'volc-visual',
               });
             }
+
             if (status === 'done' || status === 'not_found' || status === 'expired') {
               volcError = `poll status=${status}: ${pollData?.message ?? ''}`;
               console.error('Visual task ended without image:', JSON.stringify(pollData));
