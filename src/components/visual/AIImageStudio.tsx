@@ -310,16 +310,47 @@ export default function AIImageStudio() {
           )}
         </section>
 
+        {/* 场景预设 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">⚡ 一键场景预设</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {AI_PRESETS.map(p => (
+              <button
+                key={p.key}
+                onClick={() => applyPreset(p.key)}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors ${
+                  activePreset === p.key
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background border-border hover:border-primary/50'
+                }`}
+              >
+                {p.icon} {p.name}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">选中后仍可在下方微调任意参数。</p>
+        </section>
+
         {/* 文档内容 */}
         <section className="bg-card border border-border rounded-xl p-3">
 
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">📄 文档内容</h3>
+          <input
+            value={params.title}
+            onChange={e => update({ title: e.target.value })}
+            placeholder="图表主标题（留空则自动从内容首行提取）"
+            className="w-full mb-2 text-xs bg-background border border-border rounded-lg px-2 py-2"
+          />
           <Textarea
             value={params.docText}
             onChange={e => update({ docText: e.target.value })}
-            placeholder="粘贴教学要点、研究摘要、实验数据或项目描述..."
-            className="h-24 text-sm"
+            placeholder="粘贴教学要点、研究摘要、实验数据或项目描述…&#10;建议每行一条要点，模型会逐条对应生成图形模块。"
+            className="h-28 text-sm"
           />
+          <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>建议 40–600 字，分行列出要点效果最佳</span>
+            <span className={params.docText.length > 1200 ? 'text-destructive' : ''}>{params.docText.length}/1200</span>
+          </div>
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -336,6 +367,7 @@ export default function AIImageStudio() {
             onChange={e => handleFile(e.target.files?.[0])}
           />
         </section>
+
 
         {/* 图表类型 */}
         <section className="bg-card border border-border rounded-xl p-3">
