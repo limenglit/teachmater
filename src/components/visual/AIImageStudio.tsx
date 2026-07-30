@@ -5,7 +5,7 @@ import { useAIQuota } from '@/hooks/useAIQuota';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History, FlaskConical, CheckCircle2, AlertTriangle, XCircle, Circle } from 'lucide-react';
+import { Loader2, Sparkles, Download, RefreshCw, Upload, ImageIcon, History, FlaskConical, CheckCircle2, AlertTriangle, XCircle, Circle, Wand2, Copy, ChevronDown } from 'lucide-react';
 import {
   AIImageParams,
   AI_BACKGROUNDS,
@@ -13,11 +13,13 @@ import {
   AI_LANGUAGES,
   AI_MODELS,
   AI_PALETTES,
+  AI_PRESETS,
   AI_RATIOS,
   AI_RESOLUTIONS,
   AI_STYLES,
   AI_TEXT_DENSITY,
   CHART_TYPES,
+  CHART_TYPE_GUIDES,
   DEFAULT_AI_IMAGE_PARAMS,
   buildPrompt,
   resolveSize,
@@ -26,6 +28,7 @@ import AIImageHistoryPanel from './AIImageHistoryPanel';
 import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
 import { decodeTextBytes } from '@/lib/text-file';
+
 
 interface RegStep {
   label: string;
