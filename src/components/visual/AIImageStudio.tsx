@@ -97,7 +97,7 @@ export default function AIImageStudio() {
     try {
       const { data, error } = await supabase.functions.invoke('generate-visual-image', {
         body: {
-          prompt: buildPrompt(params),
+          prompt: finalPrompt,
           size: resolveSize(params.ratio, params.resolution),
           model: params.model,
           watermark: params.watermark,
