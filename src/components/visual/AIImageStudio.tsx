@@ -380,8 +380,24 @@ export default function AIImageStudio() {
         {/* 图表类型 */}
         <section className="bg-card border border-border rounded-xl p-3">
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">📊 图表类型</h3>
+          <div className="flex flex-wrap gap-1 mb-2">
+            {STRUCTURE_CATEGORIES.map(s => (
+              <button
+                key={s.key}
+                title={s.desc}
+                onClick={() => setStructure(s.key)}
+                className={`px-2 py-1 rounded-md text-[11px] border transition-colors ${
+                  structure === s.key
+                    ? 'bg-primary/10 text-primary border-primary font-semibold'
+                    : 'bg-background border-border hover:border-primary/40'
+                }`}
+              >
+                {s.icon} {s.name}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
-            {CHART_TYPES.map(type => (
+            {visibleTypes.map(type => (
               <button
                 key={type.key}
                 title={type.desc}
@@ -415,8 +431,13 @@ export default function AIImageStudio() {
           <p className="mt-2 text-[11px] text-muted-foreground/80 leading-relaxed">
             构图规则：{CHART_TYPE_GUIDES[params.chartType]}
           </p>
-
+          {subGuide && (
+            <p className="mt-1 text-[11px] text-primary/80 leading-relaxed">
+              画法模板：{subGuide}
+            </p>
+          )}
         </section>
+
 
         {/* 配色 */}
         <section className="bg-card border border-border rounded-xl p-3">
