@@ -54,12 +54,16 @@ export default function AIImageStudio() {
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [promptOverride, setPromptOverride] = useState<string | null>(null);
+  const [structure, setStructure] = useState<string>('all');
   const fileRef = useRef<HTMLInputElement>(null);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
+  const visibleTypes = structure === 'all' ? CHART_TYPES : CHART_TYPES.filter(t => t.structure === structure);
+  const subGuide = getSubStyleGuide(params.chartType, params.subStyle);
   const autoPrompt = buildPrompt(params);
   const finalPrompt = promptOverride ?? autoPrompt;
+
 
   const update = (patch: Partial<AIImageParams>) => setParams(prev => ({ ...prev, ...patch }));
 
