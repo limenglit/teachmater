@@ -20,10 +20,14 @@ import {
   AI_TEXT_DENSITY,
   CHART_TYPES,
   CHART_TYPE_GUIDES,
+  PRESET_GROUPS,
+  STRUCTURE_CATEGORIES,
   DEFAULT_AI_IMAGE_PARAMS,
   buildPrompt,
+  getSubStyleGuide,
   resolveSize,
 } from './aiImageTypes';
+
 import AIImageHistoryPanel from './AIImageHistoryPanel';
 import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
@@ -50,12 +54,16 @@ export default function AIImageStudio() {
   const [activePreset, setActivePreset] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [promptOverride, setPromptOverride] = useState<string | null>(null);
+  const [structure, setStructure] = useState<string>('all');
   const fileRef = useRef<HTMLInputElement>(null);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
+  const visibleTypes = structure === 'all' ? CHART_TYPES : CHART_TYPES.filter(t => t.structure === structure);
+  const subGuide = getSubStyleGuide(params.chartType, params.subStyle);
   const autoPrompt = buildPrompt(params);
   const finalPrompt = promptOverride ?? autoPrompt;
+
 
   const update = (patch: Partial<AIImageParams>) => setParams(prev => ({ ...prev, ...patch }));
 
@@ -64,7 +72,9 @@ export default function AIImageStudio() {
     if (!preset) return;
     setActivePreset(key);
     setPromptOverride(null);
+    setStructure(CHART_TYPES.find(t => t.key === preset.patch.chartType)?.structure ?? 'all');
     update(preset.patch);
+
   };
 
 
@@ -313,23 +323,31 @@ export default function AIImageStudio() {
         {/* 场景预设 */}
         <section className="bg-card border border-border rounded-xl p-3">
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">⚡ 一键场景预设</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {AI_PRESETS.map(p => (
-              <button
-                key={p.key}
-                onClick={() => applyPreset(p.key)}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors ${
-                  activePreset === p.key
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-border hover:border-primary/50'
-                }`}
-              >
-                {p.icon} {p.name}
-              </button>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {PRESET_GROUPS.map(group => (
+              <div key={group}>
+                <p className="text-[10px] font-semibold text-muted-foreground/70 mb-1">{group}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {AI_PRESETS.filter(p => p.group === group).map(p => (
+                    <button
+                      key={p.key}
+                      onClick={() => applyPreset(p.key)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors ${
+                        activePreset === p.key
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {p.icon} {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">选中后仍可在下方微调任意参数。</p>
         </section>
+
 
         {/* 文档内容 */}
         <section className="bg-card border border-border rounded-xl p-3">
@@ -372,8 +390,24 @@ export default function AIImageStudio() {
         {/* 图表类型 */}
         <section className="bg-card border border-border rounded-xl p-3">
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">📊 图表类型</h3>
+          <div className="flex flex-wrap gap-1 mb-2">
+            {STRUCTURE_CATEGORIES.map(s => (
+              <button
+                key={s.key}
+                title={s.desc}
+                onClick={() => setStructure(s.key)}
+                className={`px-2 py-1 rounded-md text-[11px] border transition-colors ${
+                  structure === s.key
+                    ? 'bg-primary/10 text-primary border-primary font-semibold'
+                    : 'bg-background border-border hover:border-primary/40'
+                }`}
+              >
+                {s.icon} {s.name}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
-            {CHART_TYPES.map(type => (
+            {visibleTypes.map(type => (
               <button
                 key={type.key}
                 title={type.desc}
@@ -407,8 +441,13 @@ export default function AIImageStudio() {
           <p className="mt-2 text-[11px] text-muted-foreground/80 leading-relaxed">
             构图规则：{CHART_TYPE_GUIDES[params.chartType]}
           </p>
-
+          {subGuide && (
+            <p className="mt-1 text-[11px] text-primary/80 leading-relaxed">
+              画法模板：{subGuide}
+            </p>
+          )}
         </section>
+
 
         {/* 配色 */}
         <section className="bg-card border border-border rounded-xl p-3">
