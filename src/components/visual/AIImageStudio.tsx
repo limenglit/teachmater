@@ -313,23 +313,31 @@ export default function AIImageStudio() {
         {/* 场景预设 */}
         <section className="bg-card border border-border rounded-xl p-3">
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">⚡ 一键场景预设</h3>
-          <div className="flex flex-wrap gap-1.5">
-            {AI_PRESETS.map(p => (
-              <button
-                key={p.key}
-                onClick={() => applyPreset(p.key)}
-                className={`px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors ${
-                  activePreset === p.key
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background border-border hover:border-primary/50'
-                }`}
-              >
-                {p.icon} {p.name}
-              </button>
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {PRESET_GROUPS.map(group => (
+              <div key={group}>
+                <p className="text-[10px] font-semibold text-muted-foreground/70 mb-1">{group}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {AI_PRESETS.filter(p => p.group === group).map(p => (
+                    <button
+                      key={p.key}
+                      onClick={() => applyPreset(p.key)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] border transition-colors ${
+                        activePreset === p.key
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {p.icon} {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">选中后仍可在下方微调任意参数。</p>
         </section>
+
 
         {/* 文档内容 */}
         <section className="bg-card border border-border rounded-xl p-3">
