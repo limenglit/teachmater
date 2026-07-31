@@ -20,10 +20,14 @@ import {
   AI_TEXT_DENSITY,
   CHART_TYPES,
   CHART_TYPE_GUIDES,
+  PRESET_GROUPS,
+  STRUCTURE_CATEGORIES,
   DEFAULT_AI_IMAGE_PARAMS,
   buildPrompt,
+  getSubStyleGuide,
   resolveSize,
 } from './aiImageTypes';
+
 import AIImageHistoryPanel from './AIImageHistoryPanel';
 import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
