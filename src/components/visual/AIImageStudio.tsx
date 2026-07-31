@@ -72,7 +72,9 @@ export default function AIImageStudio() {
     if (!preset) return;
     setActivePreset(key);
     setPromptOverride(null);
+    setStructure(CHART_TYPES.find(t => t.key === preset.patch.chartType)?.structure ?? 'all');
     update(preset.patch);
+
   };
 
 
