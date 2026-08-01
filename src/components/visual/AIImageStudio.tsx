@@ -755,7 +755,52 @@ export default function AIImageStudio() {
           )}
         </section>
 
+        {/* 生成前参考图确认 */}
+        {refImages.length > 0 && (() => {
+          const weight = refStrength === 'strong' ? 90 : refStrength === 'light' ? 30 : 60;
+          const dims = ([
+            ['style', '风格', refAspects.style],
+            ['layout', '布局', refAspects.layout],
+            ['palette', '配色', refAspects.palette],
+          ] as const);
+          const active = dims.filter(d => d[2]);
+          return (
+            <section className="bg-card border border-border rounded-xl p-3">
+              <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">
+                ✅ 生成前确认 · 将参考 {refImages.length} 张图
+              </h3>
+              <div className="flex gap-2 mb-2">
+                {refImages.map(r => (
+                  <div key={r.id} className="relative rounded-lg overflow-hidden border border-border w-20">
+                    <img src={r.dataUrl} alt={`参考图 ${r.name}`} className="w-full h-14 object-cover" />
+                    <div className="absolute inset-x-0 bottom-0 bg-background/85 px-1 py-0.5 flex flex-wrap gap-0.5 justify-center">
+                      {active.length > 0 ? active.map(d => (
+                        <span key={d[0]} className="text-[9px] leading-none text-primary font-semibold">{d[1]}</span>
+                      )) : <span className="text-[9px] leading-none text-muted-foreground">整体风格</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-1.5">
+                {(active.length > 0 ? active : ([['style', '整体风格', true]] as const)).map(d => (
+                  <div key={d[0]} className="flex items-center gap-2">
+                    <span className="text-[11px] text-muted-foreground w-10 shrink-0">{d[1]}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${weight}%` }} />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground tabular-nums w-9 text-right">{weight}%</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                当前强度：{REF_STRENGTHS.find(s => s.key === refStrength)?.name} · 未勾选的维度不会被参考。
+              </p>
+            </section>
+          );
+        })()}
+
         <Button onClick={handleGenerate} disabled={loading} className="w-full gap-2">
+
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {loading ? '火山引擎生成中…' : '生成信息图'}
         </Button>
