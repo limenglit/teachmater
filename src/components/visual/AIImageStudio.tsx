@@ -32,6 +32,16 @@ import AIImageHistoryPanel from './AIImageHistoryPanel';
 import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
 import { decodeTextBytes } from '@/lib/text-file';
+import {
+  RefImage,
+  RefAspects,
+  DEFAULT_REF_ASPECTS,
+  MAX_REF_IMAGES,
+  REF_STRENGTHS,
+  buildRefPrompt,
+  compressImageFile,
+} from '@/lib/ref-image';
+
 
 
 interface RegStep {
@@ -55,7 +65,13 @@ export default function AIImageStudio() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [promptOverride, setPromptOverride] = useState<string | null>(null);
   const [structure, setStructure] = useState<string>('all');
+  const [refImages, setRefImages] = useState<RefImage[]>([]);
+  const [refAspects, setRefAspects] = useState<RefAspects>(DEFAULT_REF_ASPECTS);
+  const [refStrength, setRefStrength] = useState<string>('medium');
+  const [refUploading, setRefUploading] = useState(false);
+  const [refDragOver, setRefDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const refInputRef = useRef<HTMLInputElement>(null);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
@@ -63,6 +79,39 @@ export default function AIImageStudio() {
   const subGuide = getSubStyleGuide(params.chartType, params.subStyle);
   const autoPrompt = buildPrompt(params);
   const finalPrompt = promptOverride ?? autoPrompt;
+  const refSuffix = buildRefPrompt(refImages.length, refAspects, refStrength);
+  const promptToSend = finalPrompt + refSuffix;
+
+  const addRefFiles = async (files: FileList | File[] | null) => {
+    const list = Array.from(files ?? []).filter(f => f.type.startsWith('image/'));
+    if (list.length === 0) return;
+    setRefUploading(true);
+    try {
+      const room = MAX_REF_IMAGES - refImages.length;
+      if (room <= 0) {
+        toast({ title: `最多上传 ${MAX_REF_IMAGES} 张参考图`, variant: 'destructive' });
+        return;
+      }
+      const picked = list.slice(0, room);
+      const added: RefImage[] = [];
+      for (const file of picked) {
+        try {
+          const dataUrl = await compressImageFile(file);
+          added.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: file.name, dataUrl });
+        } catch {
+          toast({ title: `参考图读取失败：${file.name}`, variant: 'destructive' });
+        }
+      }
+      if (added.length) setRefImages(prev => [...prev, ...added].slice(0, MAX_REF_IMAGES));
+      if (list.length > picked.length) toast({ title: `已达上限，仅添加前 ${picked.length} 张` });
+    } finally {
+      setRefUploading(false);
+    }
+  };
+
+  const removeRef = (id: string) => setRefImages(prev => prev.filter(r => r.id !== id));
+
+
 
 
   const update = (patch: Partial<AIImageParams>) => setParams(prev => ({ ...prev, ...patch }));
@@ -107,13 +156,15 @@ export default function AIImageStudio() {
     try {
       const { data, error } = await supabase.functions.invoke('generate-visual-image', {
         body: {
-          prompt: finalPrompt,
+          prompt: promptToSend,
           size: resolveSize(params.ratio, params.resolution),
           model: params.model,
           watermark: params.watermark,
           seed: params.seed,
+          refImages: refImages.map(r => r.dataUrl),
         },
       });
+
 
       if (error || data?.error) {
         toast({ title: data?.error || '生成失败，请稍后重试', variant: 'destructive' });
@@ -128,7 +179,7 @@ export default function AIImageStudio() {
         await saveAIImageToHistory({
           imageUrl: data.imageUrl,
           title: params.title?.trim() || `${activeType.name} · ${params.subStyle}`,
-          prompt: finalPrompt,
+          prompt: promptToSend,
           docText: params.docText,
           chartType: params.chartType,
           subStyle: params.subStyle,
@@ -148,7 +199,7 @@ export default function AIImageStudio() {
     } finally {
       setLoading(false);
     }
-  }, [params, user, aiQuota, finalPrompt, activeType]);
+  }, [params, user, aiQuota, promptToSend, activeType, refImages]);
 
   const handleDownload = async () => {
     if (!imageUrl) return;
@@ -385,6 +436,95 @@ export default function AIImageStudio() {
             onChange={e => handleFile(e.target.files?.[0])}
           />
         </section>
+
+        {/* 参考图 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">
+            🖼️ 参考图（风格一致）<span className="ml-1 font-normal">{refImages.length}/{MAX_REF_IMAGES}</span>
+          </h3>
+
+          <div
+            onDragOver={e => { e.preventDefault(); setRefDragOver(true); }}
+            onDragLeave={() => setRefDragOver(false)}
+            onDrop={e => { e.preventDefault(); setRefDragOver(false); addRefFiles(e.dataTransfer.files); }}
+            onClick={() => refInputRef.current?.click()}
+            className={`w-full flex items-center justify-center gap-2 border border-dashed rounded-lg py-3 text-xs cursor-pointer transition-colors ${
+              refDragOver ? 'border-primary text-primary bg-primary/5' : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+            }`}
+          >
+            {refUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            {refUploading ? '正在处理…' : '点击或拖拽上传参考图（可多选）'}
+          </div>
+          <input
+            ref={refInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={e => { addRefFiles(e.target.files); e.currentTarget.value = ''; }}
+          />
+
+          {refImages.length > 0 && (
+            <>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {refImages.map(r => (
+                  <div key={r.id} className="relative group rounded-lg overflow-hidden border border-border">
+                    <img src={r.dataUrl} alt={r.name} className="w-full h-16 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeRef(r.id)}
+                      className="absolute top-0.5 right-0.5 rounded-full bg-background/90 border border-border p-0.5 text-muted-foreground hover:text-destructive"
+                      aria-label="移除参考图"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] font-semibold text-muted-foreground">参考维度</p>
+                <div className="flex flex-wrap gap-3 text-[11px]">
+                  {([
+                    ['style', '风格'],
+                    ['layout', '布局'],
+                    ['palette', '配色'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-1.5 text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={refAspects[key]}
+                        onChange={e => setRefAspects(prev => ({ ...prev, [key]: e.target.checked }))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {REF_STRENGTHS.map(s => (
+                    <button
+                      key={s.key}
+                      title={s.hint}
+                      onClick={() => setRefStrength(s.key)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
+                        refStrength === s.key
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  参考图仅用于迁移风格 / 布局 / 配色，画面内容仍以上方文档为准，适合生成同一系列的多张配图。
+                </p>
+              </div>
+            </>
+          )}
+        </section>
+
+
 
 
         {/* 图表类型 */}

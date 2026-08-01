@@ -70,6 +70,19 @@ serve(async (req) => {
     const watermark = body?.watermark === true;
     const seed = Number.isFinite(body?.seed) ? Math.trunc(body.seed) : undefined;
 
+    // 参考图（最多 3 张，data URL 或 https 链接）
+    const rawRefs: unknown = body?.refImages;
+    const refImages: string[] = Array.isArray(rawRefs)
+      ? rawRefs
+          .filter((v): v is string => typeof v === 'string' && (v.startsWith('data:image/') || v.startsWith('https://')))
+          .slice(0, 3)
+      : [];
+    const refBase64 = refImages
+      .filter((v) => v.startsWith('data:image/'))
+      .map((v) => v.slice(v.indexOf(',') + 1))
+      .filter((v) => v.length > 0 && v.length < 8_000_000);
+    const refUrls = refImages.filter((v) => v.startsWith('https://'));
+
     const ARK_API_KEY = Deno.env.get('ARK_API_KEY');
     const VOLC_AK = Deno.env.get('VOLC_ACCESS_KEY_ID');
     const VOLC_SK = Deno.env.get('VOLC_SECRET_ACCESS_KEY');
@@ -92,9 +105,12 @@ serve(async (req) => {
             width: Number(wStr),
             height: Number(hStr),
             ...(seed !== undefined ? { seed } : {}),
+            ...(refBase64.length ? { binary_data_base64: refBase64 } : {}),
+            ...(refUrls.length ? { image_urls: refUrls } : {}),
             use_pre_llm: true,
           },
         });
+
         const submitData = await submit.json().catch(() => null);
         const taskId = submitData?.data?.task_id;
         if (!taskId) {
@@ -184,6 +200,8 @@ serve(async (req) => {
               response_format: 'url',
               watermark,
               ...(seed !== undefined ? { seed } : {}),
+              ...(refImages.length ? { image: refImages.length === 1 ? refImages[0] : refImages } : {}),
+
             }),
           });
 
@@ -217,7 +235,16 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'google/gemini-3.1-flash-image',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{
+          role: 'user',
+          content: refImages.length
+            ? [
+                { type: 'text', text: prompt },
+                ...refImages.map((url) => ({ type: 'image_url', image_url: { url } })),
+              ]
+            : prompt,
+        }],
+
         modalities: ['image', 'text'],
       }),
     });
