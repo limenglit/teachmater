@@ -179,7 +179,7 @@ export default function AIImageStudio() {
         await saveAIImageToHistory({
           imageUrl: data.imageUrl,
           title: params.title?.trim() || `${activeType.name} · ${params.subStyle}`,
-          prompt: finalPrompt,
+          prompt: promptToSend,
           docText: params.docText,
           chartType: params.chartType,
           subStyle: params.subStyle,
