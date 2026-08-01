@@ -200,6 +200,8 @@ serve(async (req) => {
               response_format: 'url',
               watermark,
               ...(seed !== undefined ? { seed } : {}),
+              ...(refImages.length ? { image: refImages.length === 1 ? refImages[0] : refImages } : {}),
+
             }),
           });
 
