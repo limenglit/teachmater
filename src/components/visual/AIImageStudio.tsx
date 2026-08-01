@@ -32,6 +32,16 @@ import AIImageHistoryPanel from './AIImageHistoryPanel';
 import { saveAIImageToHistory } from '@/lib/ai-image-history';
 
 import { decodeTextBytes } from '@/lib/text-file';
+import {
+  RefImage,
+  RefAspects,
+  DEFAULT_REF_ASPECTS,
+  MAX_REF_IMAGES,
+  REF_STRENGTHS,
+  buildRefPrompt,
+  compressImageFile,
+} from '@/lib/ref-image';
+
 
 
 interface RegStep {
