@@ -235,7 +235,16 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'google/gemini-3.1-flash-image',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{
+          role: 'user',
+          content: refImages.length
+            ? [
+                { type: 'text', text: prompt },
+                ...refImages.map((url) => ({ type: 'image_url', image_url: { url } })),
+              ]
+            : prompt,
+        }],
+
         modalities: ['image', 'text'],
       }),
     });
