@@ -65,7 +65,13 @@ export default function AIImageStudio() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [promptOverride, setPromptOverride] = useState<string | null>(null);
   const [structure, setStructure] = useState<string>('all');
+  const [refImages, setRefImages] = useState<RefImage[]>([]);
+  const [refAspects, setRefAspects] = useState<RefAspects>(DEFAULT_REF_ASPECTS);
+  const [refStrength, setRefStrength] = useState<string>('medium');
+  const [refUploading, setRefUploading] = useState(false);
+  const [refDragOver, setRefDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const refInputRef = useRef<HTMLInputElement>(null);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
@@ -73,6 +79,39 @@ export default function AIImageStudio() {
   const subGuide = getSubStyleGuide(params.chartType, params.subStyle);
   const autoPrompt = buildPrompt(params);
   const finalPrompt = promptOverride ?? autoPrompt;
+  const refSuffix = buildRefPrompt(refImages.length, refAspects, refStrength);
+  const promptToSend = finalPrompt + refSuffix;
+
+  const addRefFiles = async (files: FileList | File[] | null) => {
+    const list = Array.from(files ?? []).filter(f => f.type.startsWith('image/'));
+    if (list.length === 0) return;
+    setRefUploading(true);
+    try {
+      const room = MAX_REF_IMAGES - refImages.length;
+      if (room <= 0) {
+        toast({ title: `最多上传 ${MAX_REF_IMAGES} 张参考图`, variant: 'destructive' });
+        return;
+      }
+      const picked = list.slice(0, room);
+      const added: RefImage[] = [];
+      for (const file of picked) {
+        try {
+          const dataUrl = await compressImageFile(file);
+          added.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: file.name, dataUrl });
+        } catch {
+          toast({ title: `参考图读取失败：${file.name}`, variant: 'destructive' });
+        }
+      }
+      if (added.length) setRefImages(prev => [...prev, ...added].slice(0, MAX_REF_IMAGES));
+      if (list.length > picked.length) toast({ title: `已达上限，仅添加前 ${picked.length} 张` });
+    } finally {
+      setRefUploading(false);
+    }
+  };
+
+  const removeRef = (id: string) => setRefImages(prev => prev.filter(r => r.id !== id));
+
+
 
 
   const update = (patch: Partial<AIImageParams>) => setParams(prev => ({ ...prev, ...patch }));
