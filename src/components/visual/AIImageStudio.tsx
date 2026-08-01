@@ -437,6 +437,95 @@ export default function AIImageStudio() {
           />
         </section>
 
+        {/* 参考图 */}
+        <section className="bg-card border border-border rounded-xl p-3">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide mb-2">
+            🖼️ 参考图（风格一致）<span className="ml-1 font-normal">{refImages.length}/{MAX_REF_IMAGES}</span>
+          </h3>
+
+          <div
+            onDragOver={e => { e.preventDefault(); setRefDragOver(true); }}
+            onDragLeave={() => setRefDragOver(false)}
+            onDrop={e => { e.preventDefault(); setRefDragOver(false); addRefFiles(e.dataTransfer.files); }}
+            onClick={() => refInputRef.current?.click()}
+            className={`w-full flex items-center justify-center gap-2 border border-dashed rounded-lg py-3 text-xs cursor-pointer transition-colors ${
+              refDragOver ? 'border-primary text-primary bg-primary/5' : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
+            }`}
+          >
+            {refUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            {refUploading ? '正在处理…' : '点击或拖拽上传参考图（可多选）'}
+          </div>
+          <input
+            ref={refInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            hidden
+            onChange={e => { addRefFiles(e.target.files); e.currentTarget.value = ''; }}
+          />
+
+          {refImages.length > 0 && (
+            <>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {refImages.map(r => (
+                  <div key={r.id} className="relative group rounded-lg overflow-hidden border border-border">
+                    <img src={r.dataUrl} alt={r.name} className="w-full h-16 object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeRef(r.id)}
+                      className="absolute top-0.5 right-0.5 rounded-full bg-background/90 border border-border p-0.5 text-muted-foreground hover:text-destructive"
+                      aria-label="移除参考图"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] font-semibold text-muted-foreground">参考维度</p>
+                <div className="flex flex-wrap gap-3 text-[11px]">
+                  {([
+                    ['style', '风格'],
+                    ['layout', '布局'],
+                    ['palette', '配色'],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-1.5 text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={refAspects[key]}
+                        onChange={e => setRefAspects(prev => ({ ...prev, [key]: e.target.checked }))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {REF_STRENGTHS.map(s => (
+                    <button
+                      key={s.key}
+                      title={s.hint}
+                      onClick={() => setRefStrength(s.key)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
+                        refStrength === s.key
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  参考图仅用于迁移风格 / 布局 / 配色，画面内容仍以上方文档为准，适合生成同一系列的多张配图。
+                </p>
+              </div>
+            </>
+          )}
+        </section>
+
+
+
 
         {/* 图表类型 */}
         <section className="bg-card border border-border rounded-xl p-3">
