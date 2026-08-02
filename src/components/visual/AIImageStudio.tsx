@@ -72,6 +72,11 @@ export default function AIImageStudio() {
   const [refAspects, setRefAspects] = useState<RefAspects>(DEFAULT_REF_ASPECTS);
   const [refStrength, setRefStrength] = useState<string>('medium');
   const [refUploading, setRefUploading] = useState(false);
+  const [mode, setMode] = useState<'image' | 'video'>('image');
+  const [videoModel, setVideoModel] = useState<string>(AI_VIDEO_MODELS[0].key);
+  const [videoRatio, setVideoRatio] = useState<string>('16:9');
+  const [videoFrames, setVideoFrames] = useState<number>(121);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [refDragOver, setRefDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const refInputRef = useRef<HTMLInputElement>(null);
