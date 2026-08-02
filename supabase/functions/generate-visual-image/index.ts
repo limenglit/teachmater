@@ -72,6 +72,8 @@ serve(async (req) => {
     const prompt = typeof body?.prompt === 'string' ? body.prompt.trim().slice(0, 2000) : '';
     if (prompt.length < 4) return json({ error: 'Prompt too short' }, 400);
 
+    // 用户可在前端选择即梦（Visual req_key）或方舟 Seedream 模型
+    const visualReqKey = VISUAL_REQ_KEYS.has(body?.model) ? body.model : DEFAULT_VISUAL_REQ_KEY;
     const model = ALLOWED_MODELS.has(body?.model) ? body.model : 'doubao-seedream-4-0-250828';
     const watermark = body?.watermark === true;
     const seed = Number.isFinite(body?.seed) ? Math.trunc(body.seed) : undefined;
