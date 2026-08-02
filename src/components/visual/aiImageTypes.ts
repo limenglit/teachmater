@@ -396,7 +396,7 @@ export const DEFAULT_AI_IMAGE_PARAMS: AIImageParams = {
   palette: 'blue',
   font: 'sans',
   style: 'professional',
-  model: 'doubao-seedream-4-0-250828',
+  model: 'jimeng_seedream46_cvtob',
   ratio: '4:3',
   resolution: '2K',
   background: 'white',
