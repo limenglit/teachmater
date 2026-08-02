@@ -2,8 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callVolcVisual } from "../_shared/volc-sign.ts";
 
-// 即梦 Seedream 4.0 文生图 req_key
-const VISUAL_REQ_KEY = "jimeng_t2i_v40";
+// 即梦 图片生成 req_key 白名单（默认 4.6）
+const VISUAL_REQ_KEYS = new Set([
+  "jimeng_seedream46_cvtob",
+  "jimeng_t2i_v40",
+  "jimeng_high_aes_general_v30l_zt2i",
+]);
+const DEFAULT_VISUAL_REQ_KEY = "jimeng_seedream46_cvtob";
+
 
 
 const corsHeaders = {
