@@ -649,7 +649,61 @@ export default function AIImageStudio() {
           </div>
         </section>
 
-        {/* 比例与画质 */}
+        {/* 生成模式 */}
+        <section className="bg-card border border-border rounded-xl p-3 space-y-2">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide">🎬 生成模式</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setMode('image')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${mode === 'image' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+            >
+              🖼️ 文生图
+            </button>
+            <button
+              onClick={() => setMode('video')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${mode === 'video' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+            >
+              🎞️ 文生视频
+            </button>
+          </div>
+        </section>
+
+        {mode === 'video' ? (
+          <section className="bg-card border border-border rounded-xl p-3 space-y-2">
+            <h3 className="text-xs font-bold text-muted-foreground tracking-wide">🎞️ 视频参数</h3>
+            <select
+              value={videoModel}
+              onChange={e => setVideoModel(e.target.value)}
+              className="w-full text-xs bg-background border border-border rounded-lg px-2 py-2"
+            >
+              {AI_VIDEO_MODELS.map(m => <option key={m.key} value={m.key}>{m.name}</option>)}
+            </select>
+            <div className="flex flex-wrap gap-1.5">
+              {AI_VIDEO_RATIOS.map(r => (
+                <button
+                  key={r}
+                  onClick={() => setVideoRatio(r)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${videoRatio === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {AI_VIDEO_DURATIONS.map(d => (
+                <button
+                  key={d.key}
+                  onClick={() => setVideoFrames(d.frames)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${videoFrames === d.frames ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+                >
+                  {d.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">首帧图可使用上方参考图的第一张；视频生成约需 1-4 分钟。</p>
+          </section>
+        ) : (
+        /* 比例与画质 */
         <section className="bg-card border border-border rounded-xl p-3 space-y-2">
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide">📐 画面比例 · 画质</h3>
           <div className="flex flex-wrap gap-1.5">
@@ -685,6 +739,8 @@ export default function AIImageStudio() {
           </div>
           <p className="text-[11px] text-muted-foreground">输出尺寸：{resolveSize(params.ratio, params.resolution)} px</p>
         </section>
+        )}
+
 
         {/* 高级选项 */}
         <section className="bg-card border border-border rounded-xl p-3 space-y-2">
