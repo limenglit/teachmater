@@ -908,10 +908,10 @@ export default function AIImageStudio() {
           );
         })()}
 
-        <Button onClick={handleGenerate} disabled={loading} className="w-full gap-2">
+        <Button onClick={mode === 'video' ? handleGenerateVideo : handleGenerate} disabled={loading} className="w-full gap-2">
 
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {loading ? '火山引擎生成中…' : '生成信息图'}
+          {loading ? '火山引擎生成中…' : mode === 'video' ? '生成视频' : '生成信息图'}
         </Button>
 
       </div>
@@ -919,15 +919,15 @@ export default function AIImageStudio() {
       {/* 右侧预览 */}
       <div className="flex-1 min-w-0 bg-card border border-border rounded-xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-          <span className="text-sm font-medium">🖼️ 实时预览</span>
+          <span className="text-sm font-medium">{mode === 'video' ? '🎞️ 视频预览' : '🖼️ 实时预览'}</span>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant={showHistory ? 'default' : 'outline'} onClick={() => setShowHistory(v => !v)} className="gap-1.5">
               <History className="w-3.5 h-3.5" /> 历史记录
             </Button>
-            <Button size="sm" variant="outline" onClick={handleDownload} disabled={!imageUrl} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={handleDownload} disabled={mode === 'video' ? !videoUrl : !imageUrl} className="gap-1.5">
               <Download className="w-3.5 h-3.5" /> 下载
             </Button>
-            <Button size="sm" variant="outline" onClick={handleGenerate} disabled={loading} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={mode === 'video' ? handleGenerateVideo : handleGenerate} disabled={loading} className="gap-1.5">
               <RefreshCw className="w-3.5 h-3.5" /> 重新生成
             </Button>
           </div>
@@ -945,8 +945,17 @@ export default function AIImageStudio() {
             {loading ? (
               <div className="flex flex-col items-center gap-3 text-muted-foreground">
                 <Loader2 className="w-7 h-7 animate-spin" />
-                <p className="text-xs">正在调用火山引擎生成图像，约需 10-30 秒…</p>
+                <p className="text-xs">{mode === 'video' ? '正在调用火山引擎生成视频，约需 1-4 分钟…' : '正在调用火山引擎生成图像，约需 10-30 秒…'}</p>
               </div>
+            ) : mode === 'video' ? (
+              videoUrl ? (
+                <video src={videoUrl} controls autoPlay loop className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <ImageIcon className="w-8 h-8" />
+                  <p className="text-xs">填写内容并选择视频模型后点击「生成视频」</p>
+                </div>
+              )
             ) : imageUrl ? (
               <img src={imageUrl} alt={`${activeType.name} ${params.subStyle}`} className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
             ) : (
@@ -957,6 +966,7 @@ export default function AIImageStudio() {
             )}
           </div>
         )}
+
       </div>
 
     </div>
