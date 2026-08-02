@@ -108,7 +108,7 @@ serve(async (req) => {
           action: 'CVSync2AsyncSubmitTask',
           version: '2022-08-31',
           body: {
-            req_key: VISUAL_REQ_KEY,
+            req_key: visualReqKey,
             prompt,
             width: Number(wStr),
             height: Number(hStr),
@@ -133,7 +133,7 @@ serve(async (req) => {
               action: 'CVSync2AsyncGetResult',
               version: '2022-08-31',
               body: {
-                req_key: VISUAL_REQ_KEY,
+                req_key: visualReqKey,
                 task_id: taskId,
                 req_json: JSON.stringify({ return_url: true, logo_info: { add_logo: watermark } }),
               },
@@ -164,7 +164,7 @@ serve(async (req) => {
               }
               return json({
                 imageUrl,
-                model: VISUAL_REQ_KEY,
+                model: visualReqKey,
                 size,
                 provider: 'volc-visual',
               });
