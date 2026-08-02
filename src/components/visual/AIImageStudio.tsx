@@ -252,19 +252,22 @@ export default function AIImageStudio() {
 
 
   const handleDownload = async () => {
-    if (!imageUrl) return;
+    const url = mode === 'video' ? videoUrl : imageUrl;
+    if (!url) return;
+    const ext = mode === 'video' ? 'mp4' : 'png';
     try {
-      const res = await fetch(imageUrl);
+      const res = await fetch(url);
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `${activeType.name}_${params.subStyle}.png`;
+      a.download = `${activeType.name}_${params.subStyle}.${ext}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch {
-      window.open(imageUrl, '_blank');
+      window.open(url, '_blank');
     }
   };
+
 
   // ===== 一键端到端回归测试 =====
   const REG_PROMPT =
