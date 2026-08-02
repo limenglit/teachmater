@@ -240,10 +240,31 @@ export const AI_STYLE_GUIDES: Record<string, string> = {
 };
 
 // 火山方舟 Seedream 支持的生图模型
+// 生图模型：即梦（火山引擎 Visual，req_key）+ 方舟 Seedream
 export const AI_MODELS = [
-  { key: 'doubao-seedream-4-0-250828', name: 'Seedream 4.0（推荐）', maxTier: '4K' },
-  { key: 'doubao-seedream-3-0-t2i-250415', name: 'Seedream 3.0 文生图', maxTier: '2K' },
+  { key: 'jimeng_seedream46_cvtob', name: '即梦 4.6 图片生成（最新·推荐）', maxTier: '4K' },
+  { key: 'jimeng_t2i_v40', name: '即梦 4.0 图片生成', maxTier: '4K' },
+  { key: 'jimeng_high_aes_general_v30l_zt2i', name: '即梦 3.0 文生图', maxTier: '2K' },
+  { key: 'doubao-seedream-4-0-250828', name: '方舟 Seedream 4.0', maxTier: '4K' },
+  { key: 'doubao-seedream-3-0-t2i-250415', name: '方舟 Seedream 3.0', maxTier: '2K' },
 ];
+
+// 文生视频模型（即梦 AI-视频生成，火山引擎 Visual req_key）
+export const AI_VIDEO_MODELS = [
+  { key: 'jimeng_ti2v_v30_pro', name: '即梦 视频生成 3.0 Pro · 1080P（推荐）' },
+  { key: 'jimeng_t2v_v30_1080p', name: '即梦 视频生成 3.0 · 1080P' },
+  { key: 'jimeng_t2v_v30', name: '即梦 视频生成 3.0 · 720P' },
+];
+
+// 视频比例（接口可选取值）
+export const AI_VIDEO_RATIOS = ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9'];
+
+// 时长 → 帧数（帧数 = 24 * n + 1）
+export const AI_VIDEO_DURATIONS = [
+  { key: 5, name: '5 秒', frames: 121 },
+  { key: 10, name: '10 秒', frames: 241 },
+];
+
 
 // 分辨率档位
 export const AI_RESOLUTIONS = [
@@ -375,7 +396,7 @@ export const DEFAULT_AI_IMAGE_PARAMS: AIImageParams = {
   palette: 'blue',
   font: 'sans',
   style: 'professional',
-  model: 'doubao-seedream-4-0-250828',
+  model: 'jimeng_seedream46_cvtob',
   ratio: '4:3',
   resolution: '2K',
   background: 'white',

@@ -12,6 +12,9 @@ import {
   AI_FONTS,
   AI_LANGUAGES,
   AI_MODELS,
+  AI_VIDEO_MODELS,
+  AI_VIDEO_RATIOS,
+  AI_VIDEO_DURATIONS,
   AI_PALETTES,
   AI_PRESETS,
   AI_RATIOS,
@@ -69,6 +72,11 @@ export default function AIImageStudio() {
   const [refAspects, setRefAspects] = useState<RefAspects>(DEFAULT_REF_ASPECTS);
   const [refStrength, setRefStrength] = useState<string>('medium');
   const [refUploading, setRefUploading] = useState(false);
+  const [mode, setMode] = useState<'image' | 'video'>('image');
+  const [videoModel, setVideoModel] = useState<string>(AI_VIDEO_MODELS[0].key);
+  const [videoRatio, setVideoRatio] = useState<string>('16:9');
+  const [videoFrames, setVideoFrames] = useState<number>(121);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [refDragOver, setRefDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const refInputRef = useRef<HTMLInputElement>(null);
@@ -201,20 +209,65 @@ export default function AIImageStudio() {
     }
   }, [params, user, aiQuota, promptToSend, activeType, refImages]);
 
-  const handleDownload = async () => {
-    if (!imageUrl) return;
+  const handleGenerateVideo = useCallback(async () => {
+    if (!params.docText.trim()) {
+      toast({ title: '请先粘贴文档内容或上传文件', variant: 'destructive' });
+      return;
+    }
+    if (!user) {
+      toast({ title: '请先登录后使用 AI 生视频', variant: 'destructive' });
+      return;
+    }
+    if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+      toast({ title: '今日 AI 次数已用完', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    setVideoUrl(null);
     try {
-      const res = await fetch(imageUrl);
+      const { data, error } = await supabase.functions.invoke('generate-visual-video', {
+        body: {
+          prompt: promptToSend.slice(0, 800),
+          model: videoModel,
+          aspectRatio: videoRatio,
+          frames: videoFrames,
+          seed: params.seed,
+          firstFrame: refImages[0]?.dataUrl ?? '',
+        },
+      });
+      if (error || data?.error) {
+        toast({ title: data?.error || '视频生成失败，请稍后重试', variant: 'destructive' });
+        return;
+      }
+      setVideoUrl(data.videoUrl);
+      aiQuota.consume();
+      toast({ title: '视频生成成功（链接 1 小时内有效，请及时下载）' });
+    } catch {
+      toast({ title: '视频生成失败，请稍后重试', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [params, user, aiQuota, promptToSend, videoModel, videoRatio, videoFrames, refImages]);
+
+
+
+  const handleDownload = async () => {
+    const url = mode === 'video' ? videoUrl : imageUrl;
+    if (!url) return;
+    const ext = mode === 'video' ? 'mp4' : 'png';
+    try {
+      const res = await fetch(url);
       const blob = await res.blob();
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `${activeType.name}_${params.subStyle}.png`;
+      a.download = `${activeType.name}_${params.subStyle}.${ext}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch {
-      window.open(imageUrl, '_blank');
+      window.open(url, '_blank');
     }
   };
+
 
   // ===== 一键端到端回归测试 =====
   const REG_PROMPT =
@@ -649,7 +702,61 @@ export default function AIImageStudio() {
           </div>
         </section>
 
-        {/* 比例与画质 */}
+        {/* 生成模式 */}
+        <section className="bg-card border border-border rounded-xl p-3 space-y-2">
+          <h3 className="text-xs font-bold text-muted-foreground tracking-wide">🎬 生成模式</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setMode('image')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${mode === 'image' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+            >
+              🖼️ 文生图
+            </button>
+            <button
+              onClick={() => setMode('video')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${mode === 'video' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+            >
+              🎞️ 文生视频
+            </button>
+          </div>
+        </section>
+
+        {mode === 'video' ? (
+          <section className="bg-card border border-border rounded-xl p-3 space-y-2">
+            <h3 className="text-xs font-bold text-muted-foreground tracking-wide">🎞️ 视频参数</h3>
+            <select
+              value={videoModel}
+              onChange={e => setVideoModel(e.target.value)}
+              className="w-full text-xs bg-background border border-border rounded-lg px-2 py-2"
+            >
+              {AI_VIDEO_MODELS.map(m => <option key={m.key} value={m.key}>{m.name}</option>)}
+            </select>
+            <div className="flex flex-wrap gap-1.5">
+              {AI_VIDEO_RATIOS.map(r => (
+                <button
+                  key={r}
+                  onClick={() => setVideoRatio(r)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] border transition-colors ${videoRatio === r ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {AI_VIDEO_DURATIONS.map(d => (
+                <button
+                  key={d.key}
+                  onClick={() => setVideoFrames(d.frames)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs border transition-colors ${videoFrames === d.frames ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border hover:border-primary/50'}`}
+                >
+                  {d.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">首帧图可使用上方参考图的第一张；视频生成约需 1-4 分钟。</p>
+          </section>
+        ) : (
+        /* 比例与画质 */
         <section className="bg-card border border-border rounded-xl p-3 space-y-2">
           <h3 className="text-xs font-bold text-muted-foreground tracking-wide">📐 画面比例 · 画质</h3>
           <div className="flex flex-wrap gap-1.5">
@@ -685,6 +792,8 @@ export default function AIImageStudio() {
           </div>
           <p className="text-[11px] text-muted-foreground">输出尺寸：{resolveSize(params.ratio, params.resolution)} px</p>
         </section>
+        )}
+
 
         {/* 高级选项 */}
         <section className="bg-card border border-border rounded-xl p-3 space-y-2">
@@ -799,10 +908,10 @@ export default function AIImageStudio() {
           );
         })()}
 
-        <Button onClick={handleGenerate} disabled={loading} className="w-full gap-2">
+        <Button onClick={mode === 'video' ? handleGenerateVideo : handleGenerate} disabled={loading} className="w-full gap-2">
 
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {loading ? '火山引擎生成中…' : '生成信息图'}
+          {loading ? '火山引擎生成中…' : mode === 'video' ? '生成视频' : '生成信息图'}
         </Button>
 
       </div>
@@ -810,15 +919,15 @@ export default function AIImageStudio() {
       {/* 右侧预览 */}
       <div className="flex-1 min-w-0 bg-card border border-border rounded-xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-          <span className="text-sm font-medium">🖼️ 实时预览</span>
+          <span className="text-sm font-medium">{mode === 'video' ? '🎞️ 视频预览' : '🖼️ 实时预览'}</span>
           <div className="flex gap-2 flex-wrap">
             <Button size="sm" variant={showHistory ? 'default' : 'outline'} onClick={() => setShowHistory(v => !v)} className="gap-1.5">
               <History className="w-3.5 h-3.5" /> 历史记录
             </Button>
-            <Button size="sm" variant="outline" onClick={handleDownload} disabled={!imageUrl} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={handleDownload} disabled={mode === 'video' ? !videoUrl : !imageUrl} className="gap-1.5">
               <Download className="w-3.5 h-3.5" /> 下载
             </Button>
-            <Button size="sm" variant="outline" onClick={handleGenerate} disabled={loading} className="gap-1.5">
+            <Button size="sm" variant="outline" onClick={mode === 'video' ? handleGenerateVideo : handleGenerate} disabled={loading} className="gap-1.5">
               <RefreshCw className="w-3.5 h-3.5" /> 重新生成
             </Button>
           </div>
@@ -836,8 +945,17 @@ export default function AIImageStudio() {
             {loading ? (
               <div className="flex flex-col items-center gap-3 text-muted-foreground">
                 <Loader2 className="w-7 h-7 animate-spin" />
-                <p className="text-xs">正在调用火山引擎生成图像，约需 10-30 秒…</p>
+                <p className="text-xs">{mode === 'video' ? '正在调用火山引擎生成视频，约需 1-4 分钟…' : '正在调用火山引擎生成图像，约需 10-30 秒…'}</p>
               </div>
+            ) : mode === 'video' ? (
+              videoUrl ? (
+                <video src={videoUrl} controls autoPlay loop className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <ImageIcon className="w-8 h-8" />
+                  <p className="text-xs">填写内容并选择视频模型后点击「生成视频」</p>
+                </div>
+              )
             ) : imageUrl ? (
               <img src={imageUrl} alt={`${activeType.name} ${params.subStyle}`} className="max-w-full max-h-[70vh] rounded-lg shadow-lg" />
             ) : (
@@ -848,6 +966,7 @@ export default function AIImageStudio() {
             )}
           </div>
         )}
+
       </div>
 
     </div>

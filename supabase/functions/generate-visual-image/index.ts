@@ -2,8 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callVolcVisual } from "../_shared/volc-sign.ts";
 
-// 即梦 Seedream 4.0 文生图 req_key
-const VISUAL_REQ_KEY = "jimeng_t2i_v40";
+// 即梦 图片生成 req_key 白名单（默认 4.6）
+const VISUAL_REQ_KEYS = new Set([
+  "jimeng_seedream46_cvtob",
+  "jimeng_t2i_v40",
+  "jimeng_high_aes_general_v30l_zt2i",
+]);
+const DEFAULT_VISUAL_REQ_KEY = "jimeng_seedream46_cvtob";
+
 
 
 const corsHeaders = {
@@ -66,6 +72,8 @@ serve(async (req) => {
     const prompt = typeof body?.prompt === 'string' ? body.prompt.trim().slice(0, 2000) : '';
     if (prompt.length < 4) return json({ error: 'Prompt too short' }, 400);
 
+    // 用户可在前端选择即梦（Visual req_key）或方舟 Seedream 模型
+    const visualReqKey = VISUAL_REQ_KEYS.has(body?.model) ? body.model : DEFAULT_VISUAL_REQ_KEY;
     const model = ALLOWED_MODELS.has(body?.model) ? body.model : 'doubao-seedream-4-0-250828';
     const watermark = body?.watermark === true;
     const seed = Number.isFinite(body?.seed) ? Math.trunc(body.seed) : undefined;
@@ -100,7 +108,7 @@ serve(async (req) => {
           action: 'CVSync2AsyncSubmitTask',
           version: '2022-08-31',
           body: {
-            req_key: VISUAL_REQ_KEY,
+            req_key: visualReqKey,
             prompt,
             width: Number(wStr),
             height: Number(hStr),
@@ -125,7 +133,7 @@ serve(async (req) => {
               action: 'CVSync2AsyncGetResult',
               version: '2022-08-31',
               body: {
-                req_key: VISUAL_REQ_KEY,
+                req_key: visualReqKey,
                 task_id: taskId,
                 req_json: JSON.stringify({ return_url: true, logo_info: { add_logo: watermark } }),
               },
@@ -156,7 +164,7 @@ serve(async (req) => {
               }
               return json({
                 imageUrl,
-                model: VISUAL_REQ_KEY,
+                model: visualReqKey,
                 size,
                 provider: 'volc-visual',
               });
