@@ -209,6 +209,48 @@ export default function AIImageStudio() {
     }
   }, [params, user, aiQuota, promptToSend, activeType, refImages]);
 
+  const handleGenerateVideo = useCallback(async () => {
+    if (!params.docText.trim()) {
+      toast({ title: '请先粘贴文档内容或上传文件', variant: 'destructive' });
+      return;
+    }
+    if (!user) {
+      toast({ title: '请先登录后使用 AI 生视频', variant: 'destructive' });
+      return;
+    }
+    if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+      toast({ title: '今日 AI 次数已用完', variant: 'destructive' });
+      return;
+    }
+    setLoading(true);
+    setVideoUrl(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-visual-video', {
+        body: {
+          prompt: promptToSend.slice(0, 800),
+          model: videoModel,
+          aspectRatio: videoRatio,
+          frames: videoFrames,
+          seed: params.seed,
+          firstFrame: refImages[0]?.dataUrl ?? '',
+        },
+      });
+      if (error || data?.error) {
+        toast({ title: data?.error || '视频生成失败，请稍后重试', variant: 'destructive' });
+        return;
+      }
+      setVideoUrl(data.videoUrl);
+      aiQuota.consume();
+      toast({ title: '视频生成成功（链接 1 小时内有效，请及时下载）' });
+    } catch {
+      toast({ title: '视频生成失败，请稍后重试', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, [params, user, aiQuota, promptToSend, videoModel, videoRatio, videoFrames, refImages]);
+
+
+
   const handleDownload = async () => {
     if (!imageUrl) return;
     try {
