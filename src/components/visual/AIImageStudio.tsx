@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAIQuota } from '@/hooks/useAIQuota';
@@ -44,6 +44,17 @@ import {
   buildRefPrompt,
   compressImageFile,
 } from '@/lib/ref-image';
+import {
+  GenError,
+  GenPhase,
+  IMAGE_PHASES,
+  VIDEO_PHASES,
+  IMAGE_ETA,
+  VIDEO_ETA,
+  explainGenError,
+  phaseAt,
+  percentAt,
+} from './generationProgress';
 
 
 
@@ -78,8 +89,30 @@ export default function AIImageStudio() {
   const [videoFrames, setVideoFrames] = useState<number>(121);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [refDragOver, setRefDragOver] = useState(false);
+  const [genElapsed, setGenElapsed] = useState(0);
+  const [genPhase, setGenPhase] = useState<GenPhase>('queued');
+  const [genError, setGenError] = useState<GenError | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const refInputRef = useRef<HTMLInputElement>(null);
+  const startedAtRef = useRef<number>(0);
+
+  const phaseSteps = mode === 'video' ? VIDEO_PHASES : IMAGE_PHASES;
+  const genEta = mode === 'video' ? VIDEO_ETA : IMAGE_ETA;
+  const genPercent = loading ? percentAt(genElapsed, genEta) : 0;
+
+  // 生成过程中按耗时推进阶段（排队 → 生成 → 合成 → 转码/写入）
+  useEffect(() => {
+    if (!loading) return;
+    startedAtRef.current = Date.now();
+    setGenElapsed(0);
+    setGenPhase('queued');
+    const timer = setInterval(() => {
+      const secs = Math.floor((Date.now() - startedAtRef.current) / 1000);
+      setGenElapsed(secs);
+      setGenPhase(p => (p === 'saving' ? p : phaseAt(phaseSteps, secs).key));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [loading, phaseSteps]);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
@@ -153,13 +186,16 @@ export default function AIImageStudio() {
       return;
     }
     if (!user) {
+      setGenError({ message: '尚未登录', hint: '请先登录后再使用 AI 生图。', retryable: false });
       toast({ title: '请先登录后使用 AI 生图', variant: 'destructive' });
       return;
     }
     if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+      setGenError({ message: '今日 AI 次数已用完', hint: '可等待次日重置，或在「我的充值订单」中补充算力次数。', retryable: false });
       toast({ title: '今日 AI 次数已用完', variant: 'destructive' });
       return;
     }
+    setGenError(null);
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-visual-image', {
@@ -175,7 +211,9 @@ export default function AIImageStudio() {
 
 
       if (error || data?.error) {
-        toast({ title: data?.error || '生成失败，请稍后重试', variant: 'destructive' });
+        const g = explainGenError(data?.error || error, 'image');
+        setGenError(g);
+        toast({ title: g.message, description: g.hint, variant: 'destructive' });
         return;
       }
       setImageUrl(data.imageUrl);
@@ -183,6 +221,7 @@ export default function AIImageStudio() {
       toast({ title: '生成成功' });
 
       // 保存到系统历史记录（存储桶 + 数据库）
+      setGenPhase('saving');
       try {
         await saveAIImageToHistory({
           imageUrl: data.imageUrl,
@@ -202,8 +241,10 @@ export default function AIImageStudio() {
         toast({ title: '图片已生成，但历史记录保存失败', variant: 'destructive' });
       }
 
-    } catch {
-      toast({ title: '生成失败，请稍后重试', variant: 'destructive' });
+    } catch (e) {
+      const g = explainGenError(e, 'image');
+      setGenError(g);
+      toast({ title: g.message, description: g.hint, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -215,13 +256,16 @@ export default function AIImageStudio() {
       return;
     }
     if (!user) {
+      setGenError({ message: '尚未登录', hint: '请先登录后再使用 AI 生视频。', retryable: false });
       toast({ title: '请先登录后使用 AI 生视频', variant: 'destructive' });
       return;
     }
     if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+      setGenError({ message: '今日 AI 次数已用完', hint: '可等待次日重置，或在「我的充值订单」中补充算力次数。', retryable: false });
       toast({ title: '今日 AI 次数已用完', variant: 'destructive' });
       return;
     }
+    setGenError(null);
     setLoading(true);
     setVideoUrl(null);
     try {
@@ -236,14 +280,18 @@ export default function AIImageStudio() {
         },
       });
       if (error || data?.error) {
-        toast({ title: data?.error || '视频生成失败，请稍后重试', variant: 'destructive' });
+        const g = explainGenError(data?.error || error, 'video');
+        setGenError(g);
+        toast({ title: g.message, description: g.hint, variant: 'destructive' });
         return;
       }
       setVideoUrl(data.videoUrl);
       aiQuota.consume();
       toast({ title: '视频生成成功（链接 1 小时内有效，请及时下载）' });
-    } catch {
-      toast({ title: '视频生成失败，请稍后重试', variant: 'destructive' });
+    } catch (e) {
+      const g = explainGenError(e, 'video');
+      setGenError(g);
+      toast({ title: g.message, description: g.hint, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -911,8 +959,32 @@ export default function AIImageStudio() {
         <Button onClick={mode === 'video' ? handleGenerateVideo : handleGenerate} disabled={loading} className="w-full gap-2">
 
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {loading ? '火山引擎生成中…' : mode === 'video' ? '生成视频' : '生成信息图'}
+          {loading
+            ? `${phaseSteps.find(s => s.key === genPhase)?.name ?? (genPhase === 'saving' ? '写入历史' : '生成中')}…${genPercent}%`
+            : mode === 'video' ? '生成视频' : '生成信息图'}
         </Button>
+
+        {genError && !loading && (
+          <section className="mt-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-destructive break-words">{genError.message}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground break-words">{genError.hint}</p>
+                <div className="mt-2 flex gap-2">
+                  {genError.retryable && (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs"
+                      onClick={mode === 'video' ? handleGenerateVideo : handleGenerate}>
+                      <RefreshCw className="w-3 h-3" /> 重试
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setGenError(null)}>忽略</Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
 
       </div>
 
@@ -943,9 +1015,31 @@ export default function AIImageStudio() {
         ) : (
           <div className="flex-1 min-h-[320px] flex items-center justify-center p-4 bg-muted/30">
             {loading ? (
-              <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                <Loader2 className="w-7 h-7 animate-spin" />
-                <p className="text-xs">{mode === 'video' ? '正在调用火山引擎生成视频，约需 1-4 分钟…' : '正在调用火山引擎生成图像，约需 10-30 秒…'}</p>
+              <div className="w-full max-w-sm flex flex-col items-center gap-3">
+                <Loader2 className="w-7 h-7 animate-spin text-muted-foreground" />
+                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all duration-700" style={{ width: `${genPercent}%` }} />
+                </div>
+                <div className="w-full space-y-1.5">
+                  {phaseSteps.map(s => {
+                    const order = phaseSteps.findIndex(x => x.key === s.key);
+                    const curOrder = genPhase === 'saving' ? phaseSteps.length : phaseSteps.findIndex(x => x.key === genPhase);
+                    const done = order < curOrder;
+                    const active = order === curOrder;
+                    return (
+                      <div key={s.key} className="flex items-center gap-2 text-xs">
+                        {done ? <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                          : active ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          : <Circle className="w-3.5 h-3.5 text-muted-foreground/40" />}
+                        <span className={active ? 'font-medium text-foreground' : done ? 'text-muted-foreground' : 'text-muted-foreground/60'}>{s.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[11px] text-muted-foreground tabular-nums">
+                  已用时 {genElapsed}s · 预计 {mode === 'video' ? '1-4 分钟' : '10-30 秒'}
+                </p>
               </div>
             ) : mode === 'video' ? (
               videoUrl ? (
