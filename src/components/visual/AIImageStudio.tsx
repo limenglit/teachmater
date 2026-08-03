@@ -1035,15 +1035,8 @@ export default function AIImageStudio() {
                       </div>
                     );
                   })}
-                  {mode === 'image' && (
-                    <div className="flex items-center gap-2 text-xs">
-                      {genPhase === 'saving'
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                        : <Circle className="w-3.5 h-3.5 text-muted-foreground/40" />}
-                      <span className={genPhase === 'saving' ? 'font-medium text-foreground' : 'text-muted-foreground/60'}>写入历史</span>
-                    </div>
-                  )}
                 </div>
+
                 <p className="text-[11px] text-muted-foreground tabular-nums">
                   已用时 {genElapsed}s · 预计 {mode === 'video' ? '1-4 分钟' : '10-30 秒'}
                 </p>
