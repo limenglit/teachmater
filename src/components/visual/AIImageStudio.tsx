@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAIQuota } from '@/hooks/useAIQuota';
@@ -44,6 +44,17 @@ import {
   buildRefPrompt,
   compressImageFile,
 } from '@/lib/ref-image';
+import {
+  GenError,
+  GenPhase,
+  IMAGE_PHASES,
+  VIDEO_PHASES,
+  IMAGE_ETA,
+  VIDEO_ETA,
+  explainGenError,
+  phaseAt,
+  percentAt,
+} from './generationProgress';
 
 
 
