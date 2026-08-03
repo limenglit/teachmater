@@ -1015,9 +1015,38 @@ export default function AIImageStudio() {
         ) : (
           <div className="flex-1 min-h-[320px] flex items-center justify-center p-4 bg-muted/30">
             {loading ? (
-              <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                <Loader2 className="w-7 h-7 animate-spin" />
-                <p className="text-xs">{mode === 'video' ? '正在调用火山引擎生成视频，约需 1-4 分钟…' : '正在调用火山引擎生成图像，约需 10-30 秒…'}</p>
+              <div className="w-full max-w-sm flex flex-col items-center gap-3">
+                <Loader2 className="w-7 h-7 animate-spin text-muted-foreground" />
+                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full bg-primary transition-all duration-700" style={{ width: `${genPercent}%` }} />
+                </div>
+                <div className="w-full space-y-1.5">
+                  {phaseSteps.map(s => {
+                    const order = phaseSteps.findIndex(x => x.key === s.key);
+                    const curOrder = genPhase === 'saving' ? phaseSteps.length : phaseSteps.findIndex(x => x.key === genPhase);
+                    const done = order < curOrder;
+                    const active = order === curOrder;
+                    return (
+                      <div key={s.key} className="flex items-center gap-2 text-xs">
+                        {done ? <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
+                          : active ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                          : <Circle className="w-3.5 h-3.5 text-muted-foreground/40" />}
+                        <span className={active ? 'font-medium text-foreground' : done ? 'text-muted-foreground' : 'text-muted-foreground/60'}>{s.name}</span>
+                      </div>
+                    );
+                  })}
+                  {mode === 'image' && (
+                    <div className="flex items-center gap-2 text-xs">
+                      {genPhase === 'saving'
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                        : <Circle className="w-3.5 h-3.5 text-muted-foreground/40" />}
+                      <span className={genPhase === 'saving' ? 'font-medium text-foreground' : 'text-muted-foreground/60'}>写入历史</span>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground tabular-nums">
+                  已用时 {genElapsed}s · 预计 {mode === 'video' ? '1-4 分钟' : '10-30 秒'}
+                </p>
               </div>
             ) : mode === 'video' ? (
               videoUrl ? (
