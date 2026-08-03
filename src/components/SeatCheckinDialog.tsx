@@ -37,6 +37,7 @@ interface Props {
   seatAssignmentReady?: boolean;
   /** Unified human-readable reason (ready or not) surfaced from evaluateSeatCheckinReadiness. */
   seatReadinessReason?: string;
+  seatAssignedCount?: number;
 
   sceneConfig: Record<string, unknown>;
   sceneType: string;
@@ -262,6 +263,7 @@ export default function SeatCheckinDialog({
   studentNames,
   seatAssignmentReady,
   seatReadinessReason,
+  seatAssignedCount,
 
   sceneConfig,
   sceneType,
@@ -415,7 +417,7 @@ export default function SeatCheckinDialog({
 
   const createSession = async () => {
     if (requireSeatAssignment && !seatAssignmentComplete) {
-      toast({ title: seatReadinessReason || t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
+      toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
       return;
     }
 
@@ -724,10 +726,12 @@ export default function SeatCheckinDialog({
                 {t('seatCheckinDialog.requireDesc')}
               </p>
               {requireSeatAssignment && !seatAssignmentComplete && (
-                <p className="text-xs text-destructive">{seatReadinessReason || t('seatCheckinDialog.seatNotReady')}</p>
+                <p className="text-xs text-destructive">{t('seatCheckinDialog.seatNotReady')}</p>
               )}
-              {requireSeatAssignment && seatAssignmentComplete && seatReadinessReason && (
-                <p className="text-xs text-primary">{seatReadinessReason}</p>
+              {requireSeatAssignment && seatAssignmentComplete && typeof seatAssignedCount === 'number' && seatAssignedCount > 0 && (
+                <p className="text-xs text-primary">
+                  {t('seatCheckinDialog.seatReadyCount').replace('{count}', String(seatAssignedCount))}
+                </p>
               )}
 
             </div>

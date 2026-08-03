@@ -1530,7 +1530,7 @@ export default function SmartClassroom({
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         seatAssignmentReady={seatAssignmentReady}
-        seatReadinessReason={seatReadiness.reason}
+        seatAssignedCount={seatReadiness.assignedCount}
 
         sceneType="smartClassroom"
         sceneConfig={exportSceneConfig}

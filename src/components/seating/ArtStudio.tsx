@@ -730,7 +730,7 @@ export default function ArtStudio({ students }: Props) {
         seatData={seatData}
         studentNames={students.map(s => s.name)}
         seatAssignmentReady={seatAssignmentReady}
-        seatReadinessReason={seatReadiness.reason}
+        seatAssignedCount={seatReadiness.assignedCount}
 
         sceneConfig={{ layoutMode, ringCount, innerRingSeats, ringGrowth }}
         sceneType="artStudio"
