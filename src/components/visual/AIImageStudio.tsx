@@ -89,8 +89,30 @@ export default function AIImageStudio() {
   const [videoFrames, setVideoFrames] = useState<number>(121);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [refDragOver, setRefDragOver] = useState(false);
+  const [genElapsed, setGenElapsed] = useState(0);
+  const [genPhase, setGenPhase] = useState<GenPhase>('queued');
+  const [genError, setGenError] = useState<GenError | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const refInputRef = useRef<HTMLInputElement>(null);
+  const startedAtRef = useRef<number>(0);
+
+  const phaseSteps = mode === 'video' ? VIDEO_PHASES : IMAGE_PHASES;
+  const genEta = mode === 'video' ? VIDEO_ETA : IMAGE_ETA;
+  const genPercent = loading ? percentAt(genElapsed, genEta) : 0;
+
+  // 生成过程中按耗时推进阶段（排队 → 生成 → 合成 → 转码/写入）
+  useEffect(() => {
+    if (!loading) return;
+    startedAtRef.current = Date.now();
+    setGenElapsed(0);
+    setGenPhase('queued');
+    const timer = setInterval(() => {
+      const secs = Math.floor((Date.now() - startedAtRef.current) / 1000);
+      setGenElapsed(secs);
+      setGenPhase(p => (p === 'saving' ? p : phaseAt(phaseSteps, secs).key));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [loading, phaseSteps]);
 
 
   const activeType = CHART_TYPES.find(t => t.key === params.chartType) ?? CHART_TYPES[0];
