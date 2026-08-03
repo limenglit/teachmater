@@ -186,13 +186,16 @@ export default function AIImageStudio() {
       return;
     }
     if (!user) {
+      setGenError({ message: '尚未登录', hint: '请先登录后再使用 AI 生图。', retryable: false });
       toast({ title: '请先登录后使用 AI 生图', variant: 'destructive' });
       return;
     }
     if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+      setGenError({ message: '今日 AI 次数已用完', hint: '可等待次日重置，或在「我的充值订单」中补充算力次数。', retryable: false });
       toast({ title: '今日 AI 次数已用完', variant: 'destructive' });
       return;
     }
+    setGenError(null);
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-visual-image', {
@@ -208,7 +211,9 @@ export default function AIImageStudio() {
 
 
       if (error || data?.error) {
-        toast({ title: data?.error || '生成失败，请稍后重试', variant: 'destructive' });
+        const g = explainGenError(data?.error || error, 'image');
+        setGenError(g);
+        toast({ title: g.message, description: g.hint, variant: 'destructive' });
         return;
       }
       setImageUrl(data.imageUrl);
@@ -216,6 +221,7 @@ export default function AIImageStudio() {
       toast({ title: '生成成功' });
 
       // 保存到系统历史记录（存储桶 + 数据库）
+      setGenPhase('saving');
       try {
         await saveAIImageToHistory({
           imageUrl: data.imageUrl,
@@ -235,8 +241,10 @@ export default function AIImageStudio() {
         toast({ title: '图片已生成，但历史记录保存失败', variant: 'destructive' });
       }
 
-    } catch {
-      toast({ title: '生成失败，请稍后重试', variant: 'destructive' });
+    } catch (e) {
+      const g = explainGenError(e, 'image');
+      setGenError(g);
+      toast({ title: g.message, description: g.hint, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -248,13 +256,16 @@ export default function AIImageStudio() {
       return;
     }
     if (!user) {
+      setGenError({ message: '尚未登录', hint: '请先登录后再使用 AI 生视频。', retryable: false });
       toast({ title: '请先登录后使用 AI 生视频', variant: 'destructive' });
       return;
     }
     if (aiQuota.remaining === 0 && aiQuota.purchasedRemaining <= 0) {
+      setGenError({ message: '今日 AI 次数已用完', hint: '可等待次日重置，或在「我的充值订单」中补充算力次数。', retryable: false });
       toast({ title: '今日 AI 次数已用完', variant: 'destructive' });
       return;
     }
+    setGenError(null);
     setLoading(true);
     setVideoUrl(null);
     try {
@@ -269,14 +280,18 @@ export default function AIImageStudio() {
         },
       });
       if (error || data?.error) {
-        toast({ title: data?.error || '视频生成失败，请稍后重试', variant: 'destructive' });
+        const g = explainGenError(data?.error || error, 'video');
+        setGenError(g);
+        toast({ title: g.message, description: g.hint, variant: 'destructive' });
         return;
       }
       setVideoUrl(data.videoUrl);
       aiQuota.consume();
       toast({ title: '视频生成成功（链接 1 小时内有效，请及时下载）' });
-    } catch {
-      toast({ title: '视频生成失败，请稍后重试', variant: 'destructive' });
+    } catch (e) {
+      const g = explainGenError(e, 'video');
+      setGenError(g);
+      toast({ title: g.message, description: g.hint, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
