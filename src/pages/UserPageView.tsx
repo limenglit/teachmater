@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useDocumentHead } from '@/hooks/useDocumentHead';
-import { decodePageRouteParam, getPublicPageUrl, injectAssetBase } from '@/lib/page-slug';
+import { decodePageRouteParam, getPublicPageUrl, rewriteRelativeAssetUrls } from '@/lib/page-slug';
 
 export default function UserPageView() {
   const { username, slug } = useParams<{ username: string; slug: string }>();
