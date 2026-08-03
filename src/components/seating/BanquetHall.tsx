@@ -1200,7 +1200,7 @@ export default function BanquetHall({ students }: Props) {
         seatData={assignment}
         studentNames={students.map(s => s.name)}
         seatAssignmentReady={seatAssignmentReady}
-        seatReadinessReason={seatReadiness.reason}
+        seatAssignedCount={seatReadiness.assignedCount}
 
         sceneType="banquet"
         sceneConfig={exportSceneConfig}
