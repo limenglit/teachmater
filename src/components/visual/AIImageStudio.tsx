@@ -959,8 +959,32 @@ export default function AIImageStudio() {
         <Button onClick={mode === 'video' ? handleGenerateVideo : handleGenerate} disabled={loading} className="w-full gap-2">
 
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {loading ? '火山引擎生成中…' : mode === 'video' ? '生成视频' : '生成信息图'}
+          {loading
+            ? `${phaseSteps.find(s => s.key === genPhase)?.name ?? (genPhase === 'saving' ? '写入历史' : '生成中')}…${genPercent}%`
+            : mode === 'video' ? '生成视频' : '生成信息图'}
         </Button>
+
+        {genError && !loading && (
+          <section className="mt-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-destructive break-words">{genError.message}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground break-words">{genError.hint}</p>
+                <div className="mt-2 flex gap-2">
+                  {genError.retryable && (
+                    <Button size="sm" variant="outline" className="h-7 gap-1.5 text-xs"
+                      onClick={mode === 'video' ? handleGenerateVideo : handleGenerate}>
+                      <RefreshCw className="w-3 h-3" /> 重试
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setGenError(null)}>忽略</Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
 
       </div>
 
