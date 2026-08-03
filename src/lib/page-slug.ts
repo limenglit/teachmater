@@ -83,6 +83,9 @@ export function getPageImagesFolder(userId: string): string {
 /**
  * 在 HTML 中注入 <base href="...">，让页面里的相对路径（如 images/a.png）
  * 指向该用户在存储中的资源目录。已有 <base> 时不覆盖。
+ *
+ * 注意：<base> 会改变锚点（#id）等所有相对 URL 的解析基准，渲染公开页面时
+ * 请改用 rewriteRelativeAssetUrls。
  */
 export function injectAssetBase(html: string, baseUrl: string): string {
   if (!baseUrl) return html;
@@ -95,4 +98,36 @@ export function injectAssetBase(html: string, baseUrl: string): string {
     return html.replace(/<html[^>]*>/i, (m) => `${m}\n<head>${tag}</head>`);
   }
   return `${tag}\n${html}`;
+}
+
+const ABSOLUTE_URL_RE = /^(?:[a-z][a-z0-9+.-]*:|\/\/|\/|#|\?)/i;
+
+function joinAssetUrl(baseUrl: string, relative: string): string {
+  const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return `${base}${relative.replace(/^\.\//, '')}`;
+}
+
+/**
+ * 只把资源类相对路径（img/script/link/source/video/audio 等）改写为存储绝对地址，
+ * 不影响页面内锚点（#toc）与普通 <a> 链接。
+ */
+export function rewriteRelativeAssetUrls(html: string, baseUrl: string): string {
+  if (!baseUrl || !html) return html;
+
+  const rewriteAttr = (tagRe: RegExp, attr: string, input: string) =>
+    input.replace(tagRe, (tag) => {
+      const attrRe = new RegExp(`(\\s${attr}\\s*=\\s*)(["'])(.*?)\\2`, 'i');
+      return tag.replace(attrRe, (full, prefix, quote, value: string) => {
+        const trimmed = value.trim();
+        if (!trimmed || ABSOLUTE_URL_RE.test(trimmed)) return full;
+        return `${prefix}${quote}${joinAssetUrl(baseUrl, trimmed)}${quote}`;
+      });
+    });
+
+  let out = html;
+  const mediaTagRe = /<(?:img|script|source|video|audio|embed|track|input)\b[^>]*>/gi;
+  out = rewriteAttr(mediaTagRe, 'src', out);
+  out = rewriteAttr(/<(?:video|img)\b[^>]*>/gi, 'poster', out);
+  out = rewriteAttr(/<link\b[^>]*>/gi, 'href', out);
+  return out;
 }

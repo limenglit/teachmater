@@ -40,11 +40,12 @@ export default function UserPageView() {
 
       // 移动端浏览器（特别是 iOS Safari / 微信内置）对 blob: URL 在 iframe 中渲染支持不稳定，
       // 经常只解析 <title> 而不渲染 body。改用 srcDoc 在所有平台上都能稳定渲染独立 HTML。
-      // 注入 <base>，让页面内的相对资源路径（images/xxx.png）指向作者的图片资源目录。
+      // 只改写相对资源路径（images/xxx.png）指向作者的图片资源目录，
+      // 不使用 <base>，以免页面内锚点 (#toc) 跳转到存储地址。
       const ownerId: string | undefined = row.user_id || (row.storage_path ? String(row.storage_path).split('/')[0] : undefined);
       if (ownerId) {
         const { data: pub } = supabase.storage.from('user-pages').getPublicUrl(`${ownerId}/`);
-        htmlText = injectAssetBase(htmlText, pub?.publicUrl || '');
+        htmlText = rewriteRelativeAssetUrls(htmlText, pub?.publicUrl || '');
       }
       setHtml(htmlText);
     })();
