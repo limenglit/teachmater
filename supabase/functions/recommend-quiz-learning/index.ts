@@ -30,9 +30,48 @@ interface Recommendation {
   relatedQuestionIndexes: number[];
 }
 
+interface ProblemItem {
+  problem: string;
+  evidence: string;
+  severity: 'high' | 'medium' | 'low';
+  relatedQuestionIndexes: number[];
+}
+
+interface KnowledgePoint {
+  name: string;
+  description: string;
+  mastery: 'weak' | 'partial' | 'ok';
+  relatedProblems: string[];
+}
+
+interface LearningStep {
+  step: number;
+  title: string;
+  goal: string;
+  action: string;
+  minutes: number;
+  searchQuery: string;
+  bilibiliUrl?: string;
+  youtubeUrl?: string;
+}
+
+interface PracticeQuestion {
+  question: string;
+  type: 'single' | 'multi' | 'tf' | 'short';
+  options: string[];
+  answer: string;
+  explanation: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  knowledgePoint: string;
+}
+
 interface AIResponse {
   summary: string;
   weakAreas: string[];
+  problems: ProblemItem[];
+  knowledgePoints: KnowledgePoint[];
+  learningPath: LearningStep[];
+  practiceQuestions: PracticeQuestion[];
   recommendations: Recommendation[];
 }
 
@@ -108,18 +147,26 @@ Deno.serve(async (req) => {
       return `${i + 1}. 【${w.type}】${w.question}${opts}\n   正确答案：${w.correctAnswer || '未提供'}\n   学生作答：${w.studentAnswer || '未作答'}`;
     }).join('\n\n');
 
-    const systemPrompt = `你是一名资深教师，擅长根据学生答题错误定位薄弱知识点并给出个性化学习建议。
+    const systemPrompt = `你是一名资深教师，擅长根据学生答题错误定位薄弱知识点并给出结构化的个性化学习方案。
 
-要求：
-1. 先用 2-3 句话总结学生答错这些题时暴露的整体薄弱点。
-2. 归纳 2-5 个学习主题（可跨题合并），每个主题要指出错误根源（rootCause）——是概念理解、审题失误、记忆混淆还是方法不当。
-3. 每个主题给出：通俗易懂的讲解、2-3 个例句或情境、1 条记忆/学习技巧、一个适合在哔哩哔哩搜索的中文关键词，以及该主题覆盖的题号数组（relatedQuestionIndexes，使用输入清单里的序号，从 1 开始）。
-4. 严格输出 JSON，禁止 markdown 代码块。
+请输出四大结构化板块：
+A. 存在问题（problems）：2-5 条，说明学生具体暴露了什么问题（概念理解、审题失误、记忆混淆、方法不当等），给出题目证据（evidence）、严重程度 severity（high/medium/low）与覆盖题号 relatedQuestionIndexes（输入清单序号，从 1 开始）。
+B. 对应知识点（knowledgePoints）：2-6 条，每条给出知识点名称、一句话说明、掌握程度 mastery（weak/partial/ok）、以及它对应的问题描述数组 relatedProblems。
+C. 建议学习路径（learningPath）：3-5 个有先后顺序的步骤，每步含 step 序号、标题、目标 goal、具体行动 action、预计时长 minutes（整数分钟）、一个适合搜索的中文关键词 searchQuery。
+D. 可直接练习的题目（practiceQuestions）：4-8 道新题（不要照抄错题），字段：question、type（single/multi/tf/short）、options（选择题给 2-4 项，非选择题给空数组）、answer（标准答案）、explanation（简明解析）、difficulty（easy/medium/hard）、knowledgePoint（对应上面的知识点名称）。
+
+另外保留：summary（2-3 句整体总结）、weakAreas（薄弱点短标签数组）、recommendations（2-5 个学习主题，含 topic/rootCause/explanation/examples/memoryTip/bilibiliQuery/relatedQuestionIndexes）。
+
+严格输出 JSON，禁止 markdown 代码块。
 
 JSON 结构：
 {
   "summary": "整体薄弱点总结",
-  "weakAreas": ["薄弱点1", "薄弱点2"],
+  "weakAreas": ["薄弱点1"],
+  "problems": [{"problem":"问题描述","evidence":"题目证据","severity":"high","relatedQuestionIndexes":[1]}],
+  "knowledgePoints": [{"name":"知识点","description":"一句话说明","mastery":"weak","relatedProblems":["问题描述"]}],
+  "learningPath": [{"step":1,"title":"步骤标题","goal":"目标","action":"具体行动","minutes":15,"searchQuery":"搜索关键词"}],
+  "practiceQuestions": [{"question":"题干","type":"single","options":["A项","B项"],"answer":"正确答案","explanation":"解析","difficulty":"easy","knowledgePoint":"知识点"}],
   "recommendations": [
     {
       "topic": "学习主题",
@@ -169,16 +216,27 @@ ${wrongList}
     const data = await resp.json();
     const content: string = data?.choices?.[0]?.message?.content ?? '{}';
 
+    const empty: AIResponse = {
+      summary: '', weakAreas: [], problems: [], knowledgePoints: [],
+      learningPath: [], practiceQuestions: [], recommendations: [],
+    };
     let parsed: AIResponse;
     try { parsed = JSON.parse(content); }
     catch {
       const m = content.match(/\{[\s\S]*\}/);
-      parsed = m ? JSON.parse(m[0]) : { summary: '', weakAreas: [], recommendations: [] };
+      parsed = m ? JSON.parse(m[0]) : empty;
     }
+
+    const searchUrls = (raw: string) => {
+      const encoded = encodeURIComponent((raw || '').trim());
+      return {
+        bilibiliUrl: `https://search.bilibili.com/all?keyword=${encoded}`,
+        youtubeUrl: `https://www.youtube.com/results?search_query=${encoded}`,
+      };
+    };
 
     const recommendations: Recommendation[] = (parsed.recommendations || []).map((r) => {
       const q = (r.bilibiliQuery || r.topic || '').trim();
-      const encoded = encodeURIComponent(q);
       return {
         topic: r.topic || '',
         rootCause: r.rootCause || '',
@@ -186,16 +244,56 @@ ${wrongList}
         examples: Array.isArray(r.examples) ? r.examples : [],
         memoryTip: r.memoryTip || '',
         bilibiliQuery: q,
-        bilibiliUrl: `https://search.bilibili.com/all?keyword=${encoded}`,
-        youtubeUrl: `https://www.youtube.com/results?search_query=${encoded}`,
+        ...searchUrls(q),
         relatedQuestionIndexes: Array.isArray(r.relatedQuestionIndexes) ? r.relatedQuestionIndexes : [],
       };
     });
+
+    const problems: ProblemItem[] = (parsed.problems || []).map((p) => ({
+      problem: p.problem || '',
+      evidence: p.evidence || '',
+      severity: (['high', 'medium', 'low'].includes(p.severity) ? p.severity : 'medium') as ProblemItem['severity'],
+      relatedQuestionIndexes: Array.isArray(p.relatedQuestionIndexes) ? p.relatedQuestionIndexes : [],
+    })).filter(p => p.problem);
+
+    const knowledgePoints: KnowledgePoint[] = (parsed.knowledgePoints || []).map((k) => ({
+      name: k.name || '',
+      description: k.description || '',
+      mastery: (['weak', 'partial', 'ok'].includes(k.mastery) ? k.mastery : 'partial') as KnowledgePoint['mastery'],
+      relatedProblems: Array.isArray(k.relatedProblems) ? k.relatedProblems : [],
+    })).filter(k => k.name);
+
+    const learningPath: LearningStep[] = (parsed.learningPath || []).map((s, i) => {
+      const q = (s.searchQuery || s.title || '').trim();
+      return {
+        step: typeof s.step === 'number' ? s.step : i + 1,
+        title: s.title || '',
+        goal: s.goal || '',
+        action: s.action || '',
+        minutes: typeof s.minutes === 'number' ? s.minutes : 15,
+        searchQuery: q,
+        ...searchUrls(q),
+      };
+    }).filter(s => s.title).sort((a, b) => a.step - b.step);
+
+    const practiceQuestions: PracticeQuestion[] = (parsed.practiceQuestions || []).map((p) => ({
+      question: p.question || '',
+      type: (['single', 'multi', 'tf', 'short'].includes(p.type) ? p.type : 'short') as PracticeQuestion['type'],
+      options: Array.isArray(p.options) ? p.options : [],
+      answer: p.answer || '',
+      explanation: p.explanation || '',
+      difficulty: (['easy', 'medium', 'hard'].includes(p.difficulty) ? p.difficulty : 'medium') as PracticeQuestion['difficulty'],
+      knowledgePoint: p.knowledgePoint || '',
+    })).filter(p => p.question);
 
     return new Response(
       JSON.stringify({
         summary: parsed.summary || '',
         weakAreas: parsed.weakAreas || [],
+        problems,
+        knowledgePoints,
+        learningPath,
+        practiceQuestions,
         recommendations,
         wrongCount: wrongs.length,
       }),
