@@ -216,16 +216,27 @@ ${wrongList}
     const data = await resp.json();
     const content: string = data?.choices?.[0]?.message?.content ?? '{}';
 
+    const empty: AIResponse = {
+      summary: '', weakAreas: [], problems: [], knowledgePoints: [],
+      learningPath: [], practiceQuestions: [], recommendations: [],
+    };
     let parsed: AIResponse;
     try { parsed = JSON.parse(content); }
     catch {
       const m = content.match(/\{[\s\S]*\}/);
-      parsed = m ? JSON.parse(m[0]) : { summary: '', weakAreas: [], recommendations: [] };
+      parsed = m ? JSON.parse(m[0]) : empty;
     }
+
+    const searchUrls = (raw: string) => {
+      const encoded = encodeURIComponent((raw || '').trim());
+      return {
+        bilibiliUrl: `https://search.bilibili.com/all?keyword=${encoded}`,
+        youtubeUrl: `https://www.youtube.com/results?search_query=${encoded}`,
+      };
+    };
 
     const recommendations: Recommendation[] = (parsed.recommendations || []).map((r) => {
       const q = (r.bilibiliQuery || r.topic || '').trim();
-      const encoded = encodeURIComponent(q);
       return {
         topic: r.topic || '',
         rootCause: r.rootCause || '',
@@ -233,16 +244,56 @@ ${wrongList}
         examples: Array.isArray(r.examples) ? r.examples : [],
         memoryTip: r.memoryTip || '',
         bilibiliQuery: q,
-        bilibiliUrl: `https://search.bilibili.com/all?keyword=${encoded}`,
-        youtubeUrl: `https://www.youtube.com/results?search_query=${encoded}`,
+        ...searchUrls(q),
         relatedQuestionIndexes: Array.isArray(r.relatedQuestionIndexes) ? r.relatedQuestionIndexes : [],
       };
     });
+
+    const problems: ProblemItem[] = (parsed.problems || []).map((p) => ({
+      problem: p.problem || '',
+      evidence: p.evidence || '',
+      severity: (['high', 'medium', 'low'].includes(p.severity) ? p.severity : 'medium') as ProblemItem['severity'],
+      relatedQuestionIndexes: Array.isArray(p.relatedQuestionIndexes) ? p.relatedQuestionIndexes : [],
+    })).filter(p => p.problem);
+
+    const knowledgePoints: KnowledgePoint[] = (parsed.knowledgePoints || []).map((k) => ({
+      name: k.name || '',
+      description: k.description || '',
+      mastery: (['weak', 'partial', 'ok'].includes(k.mastery) ? k.mastery : 'partial') as KnowledgePoint['mastery'],
+      relatedProblems: Array.isArray(k.relatedProblems) ? k.relatedProblems : [],
+    })).filter(k => k.name);
+
+    const learningPath: LearningStep[] = (parsed.learningPath || []).map((s, i) => {
+      const q = (s.searchQuery || s.title || '').trim();
+      return {
+        step: typeof s.step === 'number' ? s.step : i + 1,
+        title: s.title || '',
+        goal: s.goal || '',
+        action: s.action || '',
+        minutes: typeof s.minutes === 'number' ? s.minutes : 15,
+        searchQuery: q,
+        ...searchUrls(q),
+      };
+    }).filter(s => s.title).sort((a, b) => a.step - b.step);
+
+    const practiceQuestions: PracticeQuestion[] = (parsed.practiceQuestions || []).map((p) => ({
+      question: p.question || '',
+      type: (['single', 'multi', 'tf', 'short'].includes(p.type) ? p.type : 'short') as PracticeQuestion['type'],
+      options: Array.isArray(p.options) ? p.options : [],
+      answer: p.answer || '',
+      explanation: p.explanation || '',
+      difficulty: (['easy', 'medium', 'hard'].includes(p.difficulty) ? p.difficulty : 'medium') as PracticeQuestion['difficulty'],
+      knowledgePoint: p.knowledgePoint || '',
+    })).filter(p => p.question);
 
     return new Response(
       JSON.stringify({
         summary: parsed.summary || '',
         weakAreas: parsed.weakAreas || [],
+        problems,
+        knowledgePoints,
+        learningPath,
+        practiceQuestions,
         recommendations,
         wrongCount: wrongs.length,
       }),
