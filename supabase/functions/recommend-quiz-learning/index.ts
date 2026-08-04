@@ -36,17 +36,58 @@ interface AIResponse {
   recommendations: Recommendation[];
 }
 
+/** Lovable AI 优先；额度耗尽/限流/异常时自动降级 DeepSeek */
+async function callAIWithFallback(body: Record<string, unknown>): Promise<Response> {
+  const lovableKey = Deno.env.get('LOVABLE_API_KEY');
+  const deepseekKey = Deno.env.get('DEEPSEEK_API_KEY');
+
+  const callDeepSeek = () => {
+    if (!deepseekKey) return null;
+    console.log('falling back to DeepSeek');
+    return fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${deepseekKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...body, model: 'deepseek-chat' }),
+    });
+  };
+
+  if (!lovableKey) {
+    const ds = callDeepSeek();
+    if (ds) return ds;
+    throw new Error('LOVABLE_API_KEY 未配置');
+  }
+
+  let primary: Response;
+  try {
+    primary = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${lovableKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    const ds = callDeepSeek();
+    if (ds) return ds;
+    throw e;
+  }
+
+  if (primary.ok || (primary.status !== 402 && primary.status !== 429 && primary.status < 500)) {
+    return primary;
+  }
+  const ds = callDeepSeek();
+  return ds ?? primary;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get('LOVABLE_API_KEY');
-    if (!apiKey) {
-      return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY 未配置' }), {
+    if (!Deno.env.get('LOVABLE_API_KEY') && !Deno.env.get('DEEPSEEK_API_KEY')) {
+      return new Response(JSON.stringify({ error: 'AI 服务未配置' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     const body = (await req.json()) as RequestBody;
     const wrongs = Array.isArray(body.wrongs)
@@ -98,18 +139,15 @@ ${wrongList}
 
 请生成 JSON 格式的个性化学习推荐。`;
 
-    const resp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        response_format: { type: 'json_object' },
-      }),
+    const resp = await callAIWithFallback({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      response_format: { type: 'json_object' },
     });
+
 
     if (resp.status === 429) {
       return new Response(JSON.stringify({ error: 'AI 请求过于频繁，请稍后再试' }), {
