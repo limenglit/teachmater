@@ -30,9 +30,48 @@ interface Recommendation {
   relatedQuestionIndexes: number[];
 }
 
+interface ProblemItem {
+  problem: string;
+  evidence: string;
+  severity: 'high' | 'medium' | 'low';
+  relatedQuestionIndexes: number[];
+}
+
+interface KnowledgePoint {
+  name: string;
+  description: string;
+  mastery: 'weak' | 'partial' | 'ok';
+  relatedProblems: string[];
+}
+
+interface LearningStep {
+  step: number;
+  title: string;
+  goal: string;
+  action: string;
+  minutes: number;
+  searchQuery: string;
+  bilibiliUrl?: string;
+  youtubeUrl?: string;
+}
+
+interface PracticeQuestion {
+  question: string;
+  type: 'single' | 'multi' | 'tf' | 'short';
+  options: string[];
+  answer: string;
+  explanation: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  knowledgePoint: string;
+}
+
 interface AIResponse {
   summary: string;
   weakAreas: string[];
+  problems: ProblemItem[];
+  knowledgePoints: KnowledgePoint[];
+  learningPath: LearningStep[];
+  practiceQuestions: PracticeQuestion[];
   recommendations: Recommendation[];
 }
 
