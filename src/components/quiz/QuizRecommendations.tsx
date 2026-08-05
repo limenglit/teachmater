@@ -157,6 +157,28 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
   const knowledgePoints = result?.knowledgePoints ?? [];
   const learningPath = result?.learningPath ?? [];
   const practice = result?.practiceQuestions ?? [];
+  const selectedCount = practice.filter((_, i) => selected[i]).length;
+
+  const addSelected = () => {
+    const items = practice
+      .filter((_, i) => selected[i])
+      .map(p => ({
+        question: p.question,
+        type: p.type,
+        options: p.options || [],
+        answer: p.answer || '',
+        explanation: p.explanation || '',
+        difficulty: p.difficulty,
+        knowledgePoint: p.knowledgePoint || '',
+        source: sessionTitle,
+      }));
+    const r = addToPracticeList(items);
+    toast({
+      title: '已加入我的练习清单',
+      description: `新增 ${r.added} 题${r.skipped ? `，跳过重复 ${r.skipped} 题` : ''}，清单共 ${r.total} 题`,
+    });
+    setSelected({});
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
