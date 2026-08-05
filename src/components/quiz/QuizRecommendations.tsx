@@ -127,7 +127,7 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    setError(''); setResult(null); setRevealed({}); setLoading(true);
+    setError(''); setResult(null); setRevealed({}); setSelected({}); setLoading(true);
 
     (async () => {
       if (wrongs.length === 0) {
