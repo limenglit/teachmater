@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle2, XCircle, Trash2, RotateCcw, ArrowRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Trash2, RotateCcw, ArrowRight, ArrowUp, ArrowDown, Eraser } from 'lucide-react';
 import {
   PracticeItem, getPracticeList, removeFromPracticeList, clearPracticeList,
-  isPracticeAnswerCorrect,
+  movePracticeItem, isPracticeAnswerCorrect,
 } from '@/lib/practice-list';
 
 interface Props {
