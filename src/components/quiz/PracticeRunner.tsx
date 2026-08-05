@@ -31,7 +31,7 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (!open) return;
     setList(getPracticeList());
-    setStarted(false); setIdx(0); setResponse(''); setChecked(false); setResults({});
+    setStarted(false); setIdx(0); setResponse(''); setChecked(false); setResults({}); setConfirmClear(false);
   }, [open]);
 
   useEffect(() => {
