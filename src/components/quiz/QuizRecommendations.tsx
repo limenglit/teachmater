@@ -392,10 +392,42 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
                 {practice.length === 0 && (
                   <p className="text-xs text-muted-foreground">AI 未生成练习题。</p>
                 )}
+
+                {practice.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 p-2 rounded-md border border-border bg-muted/30">
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                      <Checkbox
+                        checked={practice.every((_, i) => selected[i])}
+                        onCheckedChange={(v) => {
+                          const all: Record<number, boolean> = {};
+                          if (v) practice.forEach((_, i) => { all[i] = true; });
+                          setSelected(all);
+                        }}
+                      />
+                      全选（已选 {selectedCount}）
+                    </label>
+                    <div className="flex-1" />
+                    <Button size="sm" className="h-7 text-xs gap-1" disabled={selectedCount === 0} onClick={addSelected}>
+                      <Plus className="w-3 h-3" /> 一键加入我的练习清单
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setRunnerOpen(true)}>
+                      <Play className="w-3 h-3" /> 开始练习{listCount > 0 ? `（${listCount}）` : ''}
+                    </Button>
+                  </div>
+                )}
+
                 {practice.map((p, i) => (
                   <div key={i} className="p-3 rounded-md border border-border bg-card space-y-2">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
-                      <h5 className="text-sm font-medium text-foreground flex-1 min-w-0">{i + 1}. {p.question}</h5>
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={!!selected[i]}
+                          onCheckedChange={(v) => setSelected(prev => ({ ...prev, [i]: !!v }))}
+                          aria-label="选择该题加入练习清单"
+                        />
+                        <h5 className="text-sm font-medium text-foreground flex-1 min-w-0">{i + 1}. {p.question}</h5>
+                      </div>
                       <div className="flex gap-1 shrink-0">
                         <Badge variant="secondary" className="text-[10px]">{TYPE_LABEL[p.type]}</Badge>
                         <Badge variant="outline" className="text-[10px]">{DIFFICULTY_LABEL[p.difficulty]}</Badge>
@@ -404,7 +436,7 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
                     {p.options?.length > 0 && (
                       <ul className="text-xs text-foreground/85 space-y-1">
                         {p.options.map((o, j) => (
-                          <li key={j}>{String.fromCharCode(65 + j)}. {o}</li>
+                          <li key={j}>{String.fromCharCode(65 + j)}. {stripOptionPrefix(o)}</li>
                         ))}
                       </ul>
                     )}
@@ -430,6 +462,7 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
                 ))}
               </TabsContent>
             </Tabs>
+
 
             <div className="flex justify-end pt-2 border-t border-border">
               <Button size="sm" onClick={() => onOpenChange(false)}>关闭</Button>
