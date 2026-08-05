@@ -494,5 +494,7 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
         )}
       </DialogContent>
     </Dialog>
+    <PracticeRunner open={runnerOpen} onOpenChange={setRunnerOpen} />
+    </>
   );
 }
