@@ -26,6 +26,7 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
   const [response, setResponse] = useState('');
   const [checked, setChecked] = useState(false);
   const [results, setResults] = useState<Record<string, boolean>>({});
+  const [confirmClear, setConfirmClear] = useState(false);
 
   useEffect(() => {
     if (!open) return;
