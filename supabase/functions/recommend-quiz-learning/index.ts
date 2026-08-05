@@ -279,7 +279,9 @@ ${wrongList}
     const practiceQuestions: PracticeQuestion[] = (parsed.practiceQuestions || []).map((p) => ({
       question: p.question || '',
       type: (['single', 'multi', 'tf', 'short'].includes(p.type) ? p.type : 'short') as PracticeQuestion['type'],
-      options: Array.isArray(p.options) ? p.options : [],
+      options: Array.isArray(p.options)
+        ? p.options.map((o) => String(o ?? '').replace(/^\s*[A-Za-zＡ-Ｚa-z]\s*[.、．:：)）]\s*/, '').trim()).filter(Boolean)
+        : [],
       answer: p.answer || '',
       explanation: p.explanation || '',
       difficulty: (['easy', 'medium', 'hard'].includes(p.difficulty) ? p.difficulty : 'medium') as PracticeQuestion['difficulty'],
