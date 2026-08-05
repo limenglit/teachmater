@@ -113,6 +113,16 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
   const [result, setResult] = useState<ApiResult | null>(null);
   const [error, setError] = useState('');
   const [revealed, setRevealed] = useState<Record<number, boolean>>({});
+  const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [runnerOpen, setRunnerOpen] = useState(false);
+  const [listCount, setListCount] = useState(0);
+
+  useEffect(() => {
+    const sync = () => setListCount(getPracticeList().length);
+    sync();
+    window.addEventListener('practice-list-changed', sync);
+    return () => window.removeEventListener('practice-list-changed', sync);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
