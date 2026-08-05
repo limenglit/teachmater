@@ -78,9 +78,12 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
           </p>
         )}
 
-        {/* 清单模式 */}
+        {/* 清单模式：可编辑（删除 / 调整顺序 / 一键清空） */}
         {!started && list.length > 0 && (
           <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              开始前可调整顺序或删除不需要的题目，练习将按当前顺序进行。
+            </p>
             {list.map((it, i) => (
               <div key={it.id} className="p-3 rounded-md border border-border bg-card flex items-start gap-2">
                 <div className="flex-1 min-w-0 space-y-1">
@@ -90,14 +93,39 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
                     {it.knowledgePoint && <Badge variant="outline" className="text-[10px]">{it.knowledgePoint}</Badge>}
                   </div>
                 </div>
-                <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0"
-                  onClick={() => removeFromPracticeList(it.id)} aria-label="移除题目">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={i === 0}
+                    onClick={() => movePracticeItem(it.id, -1)} aria-label="上移">
+                    <ArrowUp className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" disabled={i === list.length - 1}
+                    onClick={() => movePracticeItem(it.id, 1)} aria-label="下移">
+                    <ArrowDown className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7"
+                    onClick={() => removeFromPracticeList(it.id)} aria-label="移除题目">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
               </div>
             ))}
-            <div className="flex justify-between pt-2 border-t border-border">
-              <Button size="sm" variant="ghost" onClick={() => clearPracticeList()}>清空清单</Button>
+            <div className="flex justify-between items-center gap-2 pt-2 border-t border-border">
+              {confirmClear ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">确认清空全部 {list.length} 题？</span>
+                  <Button size="sm" variant="destructive" className="h-7 text-xs"
+                    onClick={() => { clearPracticeList(); setConfirmClear(false); }}>
+                    确认清空
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setConfirmClear(false)}>
+                    取消
+                  </Button>
+                </div>
+              ) : (
+                <Button size="sm" variant="ghost" className="gap-1" onClick={() => setConfirmClear(true)}>
+                  <Eraser className="w-3.5 h-3.5" /> 一键清空
+                </Button>
+              )}
               <Button size="sm" onClick={() => { setStarted(true); setIdx(0); setResponse(''); setChecked(false); setResults({}); }}>
                 开始练习
               </Button>
