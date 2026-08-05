@@ -3,11 +3,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Sparkles, BookOpen, Lightbulb, ExternalLink, Loader2, AlertCircle,
-  Target, Route, ListChecks, Brain, Clock, Eye, EyeOff,
+  Target, Route, ListChecks, Brain, Clock, Eye, EyeOff, Plus, Play,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { addToPracticeList, getPracticeList, stripOptionPrefix } from '@/lib/practice-list';
+import PracticeRunner from './PracticeRunner';
 
 export interface QuizWrongItem {
   index: number; // 0-based question index in the paper
