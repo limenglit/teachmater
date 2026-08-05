@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
 A. 存在问题（problems）：2-5 条，说明学生具体暴露了什么问题（概念理解、审题失误、记忆混淆、方法不当等），给出题目证据（evidence）、严重程度 severity（high/medium/low）与覆盖题号 relatedQuestionIndexes（输入清单序号，从 1 开始）。
 B. 对应知识点（knowledgePoints）：2-6 条，每条给出知识点名称、一句话说明、掌握程度 mastery（weak/partial/ok）、以及它对应的问题描述数组 relatedProblems。
 C. 建议学习路径（learningPath）：3-5 个有先后顺序的步骤，每步含 step 序号、标题、目标 goal、具体行动 action、预计时长 minutes（整数分钟）、一个适合搜索的中文关键词 searchQuery。
-D. 可直接练习的题目（practiceQuestions）：4-8 道新题（不要照抄错题），字段：question、type（single/multi/tf/short）、options（选择题给 2-4 项，非选择题给空数组）、answer（标准答案）、explanation（简明解析）、difficulty（easy/medium/hard）、knowledgePoint（对应上面的知识点名称）。
+D. 可直接练习的题目（practiceQuestions）：4-8 道新题（不要照抄错题），字段：question、type（single/multi/tf/short）、options（选择题给 2-4 项，非选择题给空数组；选项文本中不要带 "A." "B." 等字母序号前缀，只写选项内容）、answer（标准答案，选择题写选项字母如 A 或 AB）、explanation（简明解析）、difficulty（easy/medium/hard）、knowledgePoint（对应上面的知识点名称）。
 
 另外保留：summary（2-3 句整体总结）、weakAreas（薄弱点短标签数组）、recommendations（2-5 个学习主题，含 topic/rootCause/explanation/examples/memoryTip/bilibiliQuery/relatedQuestionIndexes）。
 
@@ -279,7 +279,9 @@ ${wrongList}
     const practiceQuestions: PracticeQuestion[] = (parsed.practiceQuestions || []).map((p) => ({
       question: p.question || '',
       type: (['single', 'multi', 'tf', 'short'].includes(p.type) ? p.type : 'short') as PracticeQuestion['type'],
-      options: Array.isArray(p.options) ? p.options : [],
+      options: Array.isArray(p.options)
+        ? p.options.map((o) => String(o ?? '').replace(/^\s*[A-Za-zＡ-Ｚa-z]\s*[.、．:：)）]\s*/, '').trim()).filter(Boolean)
+        : [],
       answer: p.answer || '',
       explanation: p.explanation || '',
       difficulty: (['easy', 'medium', 'hard'].includes(p.difficulty) ? p.difficulty : 'medium') as PracticeQuestion['difficulty'],
