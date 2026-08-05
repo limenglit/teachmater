@@ -71,6 +71,31 @@ export function clearPracticeList() {
   save([]);
 }
 
+/** 将某题在清单中上移/下移一位；越界则不变 */
+export function movePracticeItem(id: string, direction: -1 | 1) {
+  const list = getPracticeList();
+  const from = list.findIndex(i => i.id === id);
+  if (from < 0) return;
+  const to = from + direction;
+  if (to < 0 || to >= list.length) return;
+  const [item] = list.splice(from, 1);
+  list.splice(to, 0, item);
+  save(list);
+}
+
+/** 按给定 id 顺序重排清单（忽略未知 id，缺失项保持原相对顺序追加在后） */
+export function reorderPracticeList(ids: string[]) {
+  const list = getPracticeList();
+  const byId = new Map(list.map(i => [i.id, i]));
+  const next: PracticeItem[] = [];
+  for (const id of ids) {
+    const it = byId.get(id);
+    if (it) { next.push(it); byId.delete(id); }
+  }
+  for (const it of list) if (byId.has(it.id)) next.push(it);
+  save(next);
+}
+
 /** 判定作答是否正确：选择题比较字母集合，其余做宽松文本比较 */
 export function isPracticeAnswerCorrect(item: PracticeItem, response: string): boolean {
   const norm = (s: string) => s.replace(/[\s,，、]/g, '').toUpperCase();
