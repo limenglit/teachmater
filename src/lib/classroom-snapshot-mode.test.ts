@@ -63,7 +63,7 @@ describe('ClassroomSnapshot mode mapping', () => {
       const rules = collectActiveRules(baseRuleState(mode));
       const modeRule = rules.find(rule => rule.kind === 'mode');
       expect(modeRule, `missing mode rule for ${mode}`).toBeTruthy();
-      expect(modeRule!.id).toBe(mode);
+      expect(modeRule!.id).toBe(`mode:${mode}`);
       expect(modeRule!.label.trim().length).toBeGreaterThan(0);
     }
   });
