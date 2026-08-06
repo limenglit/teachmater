@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
+import { LayoutGrid, ListOrdered, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
 import { snapSeatState, pushSeatUndo, popSeatUndo, popSeatRedo, type SeatSnap } from '@/lib/seat-undo';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
