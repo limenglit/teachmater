@@ -16,7 +16,7 @@
  */
 
 export type SeatModeId =
-  | 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow'
+  | 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow'
   | 'smartCluster' | 'random' | 'exam';
 
 export type GenderPolicyId = 'none' | 'alternate' | 'cluster' | 'alternateRows';
@@ -60,6 +60,7 @@ export interface RuleConflict {
 
 const MODE_LABEL: Record<SeatModeId, string> = {
   verticalS: 'S 形纵向',
+  studentNo: '学号顺序',
   horizontalS: 'S 形横向',
   groupCol: '按列分组',
   groupRow: '按行分组',
