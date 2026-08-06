@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractStudentNo, sortNamesByStudentNo } from './seat-student-no';
-import { autoSeat, getColOrder } from './seat-utils';
+import { autoSeat } from './seat-utils';
 
 describe('extractStudentNo', () => {
   it('parses leading numbers', () => {
@@ -30,7 +30,7 @@ describe('autoSeat studentNo mode', () => {
     const grid = autoSeat({
       names: ['3 C', '1 A', '2 B', '4 D'],
       rows: 2, cols: 2, mode: 'studentNo',
-      disabledSeats: new Set(), colOrder: getColOrder(2, true, 'door'),
+      disabledSeats: new Set(), colOrder: [0, 1],
     });
     expect(grid.flat()).toEqual(['1 A', '2 B', '3 C', '4 D']);
   });
