@@ -3,7 +3,9 @@
  * Extracted for testability.
  */
 
-export type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
+import { sortNamesByStudentNo } from './seat-student-no';
+
+export type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 
 /** Split names into `count` balanced groups round-robin */
 export function splitIntoGroups(names: string[], count: number): string[][] {
@@ -65,6 +67,17 @@ export function autoSeat(opts: {
         for (let r = 0; r < rows && idx < names.length; r++) {
           const row = ci % 2 === 0 ? r : rows - 1 - r;
           if (isAvailable(row, c)) grid[row][c] = names[idx++];
+        }
+      }
+      break;
+    }
+    case 'studentNo': {
+      let idx = 0;
+      const ordered = sortNamesByStudentNo(names);
+      for (let r = 0; r < rows && idx < ordered.length; r++) {
+        for (let ci = 0; ci < cols && idx < ordered.length; ci++) {
+          const c = colOrder[ci];
+          if (isAvailable(r, c)) grid[r][c] = ordered[idx++];
         }
       }
       break;

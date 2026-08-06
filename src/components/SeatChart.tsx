@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
+import { LayoutGrid, ListOrdered, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
 import { snapSeatState, pushSeatUndo, popSeatUndo, popSeatRedo, type SeatSnap } from '@/lib/seat-undo';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
@@ -20,6 +20,7 @@ import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
+import { sortNamesByStudentNo } from '@/lib/seat-student-no';
 import { toast } from 'sonner';
 import {
   loadClassroomSnapshot,
@@ -35,7 +36,7 @@ import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } fro
 import { deleteSeatHistoryLocal, renameSeatHistoryLocal } from '@/lib/teamwork-local';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
-type SeatMode = 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
+type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
 type EntryDoorMode = 'front' | 'back' | 'both';
 type StartFrom = 'door' | 'window' | 'center';
 type GenderSeatPolicy = 'none' | 'alternate' | 'cluster' | 'alternateRows';
@@ -76,6 +77,7 @@ export default function SeatChart() {
 
   const MODES: { id: SeatMode; label: string; icon: React.ReactNode; desc: string }[] = [
     { id: 'verticalS', label: t('seatMode.verticalS'), icon: <ArrowDownUp className="w-3.5 h-3.5" />, desc: t('seatMode.verticalSDesc') },
+    { id: 'studentNo', label: t('seatMode.studentNo'), icon: <ListOrdered className="w-3.5 h-3.5" />, desc: t('seatMode.studentNoDesc') },
     { id: 'horizontalS', label: t('seatMode.horizontalS'), icon: <ArrowLeftRight className="w-3.5 h-3.5" />, desc: t('seatMode.horizontalSDesc') },
     { id: 'groupCol', label: t('seatMode.groupCol'), icon: <Columns className="w-3.5 h-3.5" />, desc: t('seatMode.groupColDesc') },
     { id: 'groupRow', label: t('seatMode.groupRow'), icon: <Rows className="w-3.5 h-3.5" />, desc: t('seatMode.groupRowDesc') },
@@ -483,6 +485,7 @@ export default function SeatChart() {
 
     switch (mode) {
       case 'verticalS': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
+      case 'studentNo': { let idx = 0; const ordered = sortNamesByStudentNo(names); for (let r = 0; r < rows && idx < ordered.length; r++) { for (let ci = 0; ci < cols && idx < ordered.length; ci++) { const c = colOrder[ci]; if (isAvailable(r, c)) grid[r][c] = ordered[idx++]; } } break; }
       case 'horizontalS': { let idx = 0; for (let r = 0; r < rows && idx < names.length; r++) { for (let ci = 0; ci < cols && idx < names.length; ci++) { const rawCol = r % 2 === 0 ? ci : cols - 1 - ci; const c = colOrder[rawCol]; if (isAvailable(r, c)) grid[r][c] = names[idx++]; } } break; }
       case 'exam': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; if (examSkipCol && ci % 2 !== 0) continue; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (examSkipRow && row % 2 !== 0) continue; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
       case 'groupCol': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const colIdx = gi % cols; const c = colOrder[colIdx]; const baseRow = Math.floor(gi / cols) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let r = 0; r < rows && placed < group.length; r++) { const row = r + baseRow; if (row < rows && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
