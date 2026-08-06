@@ -108,7 +108,7 @@ export interface ConferenceRoomHistoryItem {
 export interface ClassroomSnapshot {
   rows: number;
   cols: number;
-  mode: 'verticalS' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
+  mode: 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
   groupCount: number;
   groupSource?: 'auto' | 'groups' | 'teams' | 'count';
   disabledSeats: string[];
