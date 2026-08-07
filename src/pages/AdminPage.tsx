@@ -333,7 +333,7 @@ export default function AdminPage() {
             <Input
               placeholder={t('admin.searchPlaceholder')}
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); resetPages(); }}
               className="pl-8 h-9"
             />
           </div>
@@ -344,7 +344,8 @@ export default function AdminPage() {
                 size="sm"
                 variant={filter === key ? 'default' : 'outline'}
                 className="h-9 text-xs"
-                onClick={() => setFilter(key)}
+                onClick={() => { setFilter(key); resetPages(); }}
+
               >
                 {filterLabels[key]}
               </Button>
@@ -377,9 +378,16 @@ export default function AdminPage() {
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-warning" /> {t('admin.pending')} ({pendingUsers.length})
-                  <span className="ml-auto">{renderSectionHeader(pendingUsers)}</span>
+                  <span className="ml-auto">{renderSectionHeader(pagedPending)}</span>
                 </h2>
-                <div className="space-y-2">{pendingUsers.map(renderUserRow)}</div>
+                <div className="space-y-2">{pagedPending.map(renderUserRow)}</div>
+                <AdminPagination
+                  total={pendingUsers.length}
+                  page={pendingPage}
+                  pageSize={pageSize}
+                  onPageChange={setPendingPage}
+                  onPageSizeChange={size => { setPageSize(size); resetPages(); }}
+                />
               </section>
             )}
 
@@ -393,9 +401,16 @@ export default function AdminPage() {
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-success" /> {t('admin.approved')} ({approvedUsers.length})
-                  <span className="ml-auto">{renderSectionHeader(approvedUsers)}</span>
+                  <span className="ml-auto">{renderSectionHeader(pagedApproved)}</span>
                 </h2>
-                <div className="space-y-2">{approvedUsers.map(renderUserRow)}</div>
+                <div className="space-y-2">{pagedApproved.map(renderUserRow)}</div>
+                <AdminPagination
+                  total={approvedUsers.length}
+                  page={approvedPage}
+                  pageSize={pageSize}
+                  onPageChange={setApprovedPage}
+                  onPageSizeChange={size => { setPageSize(size); resetPages(); }}
+                />
               </section>
             )}
 
@@ -403,11 +418,19 @@ export default function AdminPage() {
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
                   <XCircle className="w-4 h-4 text-destructive" /> {t('admin.rejected')} ({rejectedUsers.length})
-                  <span className="ml-auto">{renderSectionHeader(rejectedUsers)}</span>
+                  <span className="ml-auto">{renderSectionHeader(pagedRejected)}</span>
                 </h2>
-                <div className="space-y-2">{rejectedUsers.map(renderUserRow)}</div>
+                <div className="space-y-2">{pagedRejected.map(renderUserRow)}</div>
+                <AdminPagination
+                  total={rejectedUsers.length}
+                  page={rejectedPage}
+                  pageSize={pageSize}
+                  onPageChange={setRejectedPage}
+                  onPageSizeChange={size => { setPageSize(size); resetPages(); }}
+                />
               </section>
             )}
+
           </>
         )}
         </>
