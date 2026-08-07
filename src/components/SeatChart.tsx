@@ -397,7 +397,10 @@ export default function SeatChart() {
     }
     const isAvailable = (r: number, c: number) =>
       !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c));
-    const names = getGenderOrderedNames().filter(n => !lockedNamesSet.has(n));
+    // Student-number order must follow the roster's numbers, not gender buckets.
+    const names = (mode === 'studentNo' ? students.map(s => s.name) : getGenderOrderedNames())
+      .filter(n => !lockedNamesSet.has(n));
+
     const colOrder = getColOrder();
 
     const normalizeBuckets = (buckets: string[][]) => {
