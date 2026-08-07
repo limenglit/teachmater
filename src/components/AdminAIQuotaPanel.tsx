@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Save, Search, Cpu } from 'lucide-react';
+import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
 
 interface UserWithLimit {
   user_id: string;
@@ -25,6 +26,8 @@ export default function AdminAIQuotaPanel() {
   const [saving, setSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editLimit, setEditLimit] = useState<string>('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => { void loadUsers(); }, []);
 
@@ -43,6 +46,8 @@ export default function AdminAIQuotaPanel() {
     return users.filter(u => u.email.toLowerCase().includes(q) || (u.nickname && u.nickname.toLowerCase().includes(q)));
   }, [users, search]);
 
+  const paged = useMemo(() => paginate(filtered, page, pageSize), [filtered, page, pageSize]);
+
   const toggleSelect = useCallback((uid: string) => {
     setSelected(prev => {
       const next = new Set(prev);
@@ -53,11 +58,11 @@ export default function AdminAIQuotaPanel() {
 
   const toggleAll = useCallback(() => {
     setSelected(prev => {
-      const ids = filtered.map(u => u.user_id);
+      const ids = paged.map(u => u.user_id);
       const allSelected = ids.every(id => prev.has(id));
       return allSelected ? new Set() : new Set(ids);
     });
-  }, [filtered]);
+  }, [paged]);
 
   const handleBatchSet = async () => {
     const ids = Array.from(selected);
@@ -117,7 +122,7 @@ export default function AdminAIQuotaPanel() {
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
-        <Input placeholder={t('admin.searchPlaceholder')} value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9" />
+        <Input placeholder={t('admin.searchPlaceholder')} value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} className="pl-8 h-9" />
       </div>
 
       {/* Batch actions */}
@@ -142,10 +147,10 @@ export default function AdminAIQuotaPanel() {
       {/* User list */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 mb-2">
-          <Checkbox checked={filtered.length > 0 && filtered.every(u => selected.has(u.user_id))} onCheckedChange={toggleAll} />
+          <Checkbox checked={paged.length > 0 && paged.every(u => selected.has(u.user_id))} onCheckedChange={toggleAll} />
           <span className="text-xs text-muted-foreground">{t('admin.selectAll')}</span>
         </div>
-        {filtered.map(u => (
+        {paged.map(u => (
           <div key={u.user_id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-card">
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <Checkbox checked={selected.has(u.user_id)} onCheckedChange={() => toggleSelect(u.user_id)} />
@@ -186,6 +191,13 @@ export default function AdminAIQuotaPanel() {
             </div>
           </div>
         ))}
+        <AdminPagination
+          total={filtered.length}
+          page={page}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={size => { setPageSize(size); setPage(1); }}
+        />
       </div>
     </div>
   );
