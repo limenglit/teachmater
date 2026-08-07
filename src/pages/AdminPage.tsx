@@ -14,6 +14,8 @@ import AdminPagesQuotaPanel from '@/components/AdminPagesQuotaPanel';
 import AdminVocabReview from '@/components/AdminVocabReview';
 import AdminAIOrdersPanel from '@/components/AdminAIOrdersPanel';
 import { useDocumentHead } from '@/hooks/useDocumentHead';
+import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
+
 
 interface PendingUser {
   user_id: string;
@@ -39,6 +41,17 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchActing, setBatchActing] = useState(false);
   const [adminTab, setAdminTab] = useState<'users' | 'config' | 'ai' | 'pages' | 'vocab' | 'orders'>('users');
+  const [pageSize, setPageSize] = useState(10);
+  const [pendingPage, setPendingPage] = useState(1);
+  const [approvedPage, setApprovedPage] = useState(1);
+  const [rejectedPage, setRejectedPage] = useState(1);
+
+  const resetPages = useCallback(() => {
+    setPendingPage(1);
+    setApprovedPage(1);
+    setRejectedPage(1);
+  }, []);
+
 
   useEffect(() => {
     if (!user) {
