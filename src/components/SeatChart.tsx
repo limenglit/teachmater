@@ -21,6 +21,8 @@ import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { sortNamesByStudentNo } from '@/lib/seat-student-no';
+import StudentNoPreview from '@/components/seating/StudentNoPreview';
+
 import { toast } from 'sonner';
 import {
   loadClassroomSnapshot,
@@ -397,7 +399,10 @@ export default function SeatChart() {
     }
     const isAvailable = (r: number, c: number) =>
       !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c));
-    const names = getGenderOrderedNames().filter(n => !lockedNamesSet.has(n));
+    // Student-number order must follow the roster's numbers, not gender buckets.
+    const names = (mode === 'studentNo' ? students.map(s => s.name) : getGenderOrderedNames())
+      .filter(n => !lockedNamesSet.has(n));
+
     const colOrder = getColOrder();
 
     const normalizeBuckets = (buckets: string[][]) => {
@@ -434,7 +439,7 @@ export default function SeatChart() {
       return sorted.slice(start, start + count);
     };
 
-    if (genderSeatPolicy === 'alternateRows') {
+    if (genderSeatPolicy === 'alternateRows' && mode !== 'studentNo') {
       const maleQueue = students.filter(s => (s.gender ?? 'unknown') === 'male').map(s => s.name);
       const femaleQueue = students.filter(s => (s.gender ?? 'unknown') === 'female').map(s => s.name);
       const unknownQueue = students.filter(s => (s.gender ?? 'unknown') === 'unknown').map(s => s.name);
@@ -1296,7 +1301,9 @@ export default function SeatChart() {
                       </div>
                     )}
                   </div>
+                  {mode === 'studentNo' && <StudentNoPreview names={students.map(s => s.name)} />}
                   <SeatRuleComposer
+
                     state={{
                       mode,
                       genderPolicy: genderSeatPolicy,

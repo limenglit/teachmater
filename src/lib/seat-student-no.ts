@@ -13,23 +13,50 @@ const FULLWIDTH_DIGITS = /[\uFF10-\uFF19]/g;
 const toHalfWidth = (value: string) =>
   value.replace(FULLWIDTH_DIGITS, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
 
-/** Extract the student number from a display name, or null when absent. */
-export function extractStudentNo(name: string): number | null {
-  const text = toHalfWidth(String(name ?? '')).trim();
-  if (!text) return null;
+export type StudentNoSource = 'leading' | 'trailing' | 'whole' | 'none';
 
-  // Leading number: "01 张三", "2026001-张三", "12.张三"
-  const leading = text.match(/^(\d{1,12})\s*[\s.、,，\-_:：()（）]/);
-  if (leading) return Number(leading[1]);
+export interface StudentNoParse {
+  name: string;
+  no: number | null;
+  source: StudentNoSource;
+  /** The digits matched inside the name, for preview display. */
+  matched: string | null;
+}
+
+/** Parse the student number out of a display name with provenance info. */
+export function parseStudentNo(name: string): StudentNoParse {
+  const raw = String(name ?? '');
+  const text = toHalfWidth(raw).trim();
+  if (!text) return { name: raw, no: null, source: 'none', matched: null };
 
   // Whole token is a number
-  if (/^\d{1,12}$/.test(text)) return Number(text);
+  if (/^\d{1,12}$/.test(text)) return { name: raw, no: Number(text), source: 'whole', matched: text };
 
-  // Trailing / bracketed number: "张三(2026001)", "张三 12", "张三-07"
-  const trailing = text.match(/[\s\-_()（）[\]#:：]\s*(\d{1,12})\s*[)）\]]?$/);
-  if (trailing) return Number(trailing[1]);
+  // Leading number: "01 张三", "2026001-张三", "12.张三", "3张三"
+  const leading = text.match(/^(\d{1,12})\s*[\s.、,，\-_:：()（）]?\s*\S/);
+  if (leading) return { name: raw, no: Number(leading[1]), source: 'leading', matched: leading[1] };
 
-  return null;
+  // Trailing / bracketed number: "张三(2026001)", "张三 12", "张三-07", "张三12"
+  const trailing = text.match(/(\d{1,12})\s*[)）\]]?$/);
+  if (trailing) return { name: raw, no: Number(trailing[1]), source: 'trailing', matched: trailing[1] };
+
+  return { name: raw, no: null, source: 'none', matched: null };
+}
+
+/** Extract the student number from a display name, or null when absent. */
+export function extractStudentNo(name: string): number | null {
+  return parseStudentNo(name).no;
+}
+
+/**
+ * Build a preview of how each name is parsed and where it lands in the seating
+ * order (1-based). Names without a number keep roster order and go last.
+ */
+export function describeStudentNoOrder(names: string[]): Array<StudentNoParse & { order: number }> {
+  const ordered = sortNamesByStudentNo(names);
+  const rank = new Map<string, number>();
+  ordered.forEach((n, i) => { if (!rank.has(n)) rank.set(n, i + 1); });
+  return names.map(name => ({ ...parseStudentNo(name), order: rank.get(name) ?? 0 }));
 }
 
 /**
@@ -47,3 +74,4 @@ export function sortNamesByStudentNo(names: string[]): string[] {
   numbered.sort((a, b) => (a.no - b.no) || (a.idx - b.idx));
   return [...numbered.map(n => n.name), ...rest];
 }
+
