@@ -170,6 +170,11 @@ export default function AdminPage() {
   const approvedUsers = filtered.filter(u => u.status === 'approved');
   const rejectedUsers = filtered.filter(u => u.status === 'rejected');
 
+  const pagedPending = paginate(pendingUsers, pendingPage, pageSize);
+  const pagedApproved = paginate(approvedUsers, approvedPage, pageSize);
+  const pagedRejected = paginate(rejectedUsers, rejectedPage, pageSize);
+
+
   const statusBadge = (status: string) => {
     switch (status) {
       case 'pending': return <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning"><Clock className="w-3 h-3" />{t('admin.pending')}</span>;
