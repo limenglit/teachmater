@@ -1299,7 +1299,9 @@ export default function SeatChart() {
                       </div>
                     )}
                   </div>
+                  {mode === 'studentNo' && <StudentNoPreview names={students.map(s => s.name)} />}
                   <SeatRuleComposer
+
                     state={{
                       mode,
                       genderPolicy: genderSeatPolicy,
