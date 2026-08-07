@@ -21,6 +21,8 @@ import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { sortNamesByStudentNo } from '@/lib/seat-student-no';
+import StudentNoPreview from '@/components/seating/StudentNoPreview';
+
 import { toast } from 'sonner';
 import {
   loadClassroomSnapshot,
