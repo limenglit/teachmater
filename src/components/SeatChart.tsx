@@ -437,7 +437,7 @@ export default function SeatChart() {
       return sorted.slice(start, start + count);
     };
 
-    if (genderSeatPolicy === 'alternateRows') {
+    if (genderSeatPolicy === 'alternateRows' && mode !== 'studentNo') {
       const maleQueue = students.filter(s => (s.gender ?? 'unknown') === 'male').map(s => s.name);
       const femaleQueue = students.filter(s => (s.gender ?? 'unknown') === 'female').map(s => s.name);
       const unknownQueue = students.filter(s => (s.gender ?? 'unknown') === 'unknown').map(s => s.name);
