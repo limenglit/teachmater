@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ListOrdered, ChevronDown, ChevronUp } from 'lucide-react';
-import { describeStudentNoOrder, type StudentNoSource } from '@/lib/seat-student-no';
+import { describeStudentEntryOrder, type StudentNoInput, type StudentNoSource } from '@/lib/seat-student-no';
 
 const SOURCE_LABEL: Record<StudentNoSource, string> = {
+  column: '名单中的学号列',
   leading: '姓名前的数字',
   trailing: '姓名后的数字',
   whole: '整条即学号',
@@ -10,13 +11,13 @@ const SOURCE_LABEL: Record<StudentNoSource, string> = {
 };
 
 interface StudentNoPreviewProps {
-  names: string[];
+  students: StudentNoInput[];
 }
 
 /** Shows how each roster name is parsed into a student number for studentNo mode. */
-export default function StudentNoPreview({ names }: StudentNoPreviewProps) {
+export default function StudentNoPreview({ students }: StudentNoPreviewProps) {
   const [open, setOpen] = useState(true);
-  const rows = useMemo(() => describeStudentNoOrder(names), [names]);
+  const rows = useMemo(() => describeStudentEntryOrder(students), [students]);
   const parsed = rows.filter(r => r.no !== null).length;
   const missing = rows.length - parsed;
   const sorted = useMemo(() => [...rows].sort((a, b) => a.order - b.order), [rows]);

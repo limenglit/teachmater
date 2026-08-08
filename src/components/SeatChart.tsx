@@ -20,7 +20,7 @@ import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
-import { sortNamesByStudentNo } from '@/lib/seat-student-no';
+import { sortStudentsByStudentNo } from '@/lib/seat-student-no';
 import StudentNoPreview from '@/components/seating/StudentNoPreview';
 
 import { toast } from 'sonner';
@@ -400,7 +400,9 @@ export default function SeatChart() {
     const isAvailable = (r: number, c: number) =>
       !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c));
     // Student-number order must follow the roster's numbers, not gender buckets.
-    const names = (mode === 'studentNo' ? students.map(s => s.name) : getGenderOrderedNames())
+    const names = (mode === 'studentNo'
+      ? sortStudentsByStudentNo(students).map(s => s.name)
+      : getGenderOrderedNames())
       .filter(n => !lockedNamesSet.has(n));
 
     const colOrder = getColOrder();
@@ -490,7 +492,7 @@ export default function SeatChart() {
 
     switch (mode) {
       case 'verticalS': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
-      case 'studentNo': { let idx = 0; const ordered = sortNamesByStudentNo(names); for (let r = 0; r < rows && idx < ordered.length; r++) { for (let ci = 0; ci < cols && idx < ordered.length; ci++) { const c = colOrder[ci]; if (isAvailable(r, c)) grid[r][c] = ordered[idx++]; } } break; }
+      case 'studentNo': { let idx = 0; const ordered = names; for (let r = 0; r < rows && idx < ordered.length; r++) { for (let ci = 0; ci < cols && idx < ordered.length; ci++) { const c = colOrder[ci]; if (isAvailable(r, c)) grid[r][c] = ordered[idx++]; } } break; }
       case 'horizontalS': { let idx = 0; for (let r = 0; r < rows && idx < names.length; r++) { for (let ci = 0; ci < cols && idx < names.length; ci++) { const rawCol = r % 2 === 0 ? ci : cols - 1 - ci; const c = colOrder[rawCol]; if (isAvailable(r, c)) grid[r][c] = names[idx++]; } } break; }
       case 'exam': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; if (examSkipCol && ci % 2 !== 0) continue; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (examSkipRow && row % 2 !== 0) continue; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
       case 'groupCol': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const colIdx = gi % cols; const c = colOrder[colIdx]; const baseRow = Math.floor(gi / cols) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let r = 0; r < rows && placed < group.length; r++) { const row = r + baseRow; if (row < rows && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
@@ -1301,7 +1303,7 @@ export default function SeatChart() {
                       </div>
                     )}
                   </div>
-                  {mode === 'studentNo' && <StudentNoPreview names={students.map(s => s.name)} />}
+                  {mode === 'studentNo' && <StudentNoPreview students={students} />}
                   <SeatRuleComposer
 
                     state={{
