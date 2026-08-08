@@ -153,7 +153,10 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
 
   const handleDownload = () => {
     if (students.length === 0) return;
-    const text = students.map(s => s.name).join('\n');
+    const hasNumbers = students.some(s => s.studentNumber);
+    const text = students
+      .map(s => (hasNumbers ? `${s.studentNumber || ''}\t${s.name}` : s.name))
+      .join('\n');
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -168,10 +171,10 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
     // UTF-8 BOM so Excel renders Chinese headers correctly
     const BOM = '\uFEFF';
     const rows = [
-      ['姓名', '性别', '单位', '职务'],
-      ['张三', '男', '物理学院', '组长'],
-      ['李四', '女', '化学学院', '组员'],
-      ['王五', '男', '生物学院', '副组长'],
+      ['学号', '姓名', '性别', '单位', '职务'],
+      ['2026001', '张三', '男', '物理学院', '组长'],
+      ['2026002', '李四', '女', '化学学院', '组员'],
+      ['2026003', '王五', '男', '生物学院', '副组长'],
     ];
     const csv = BOM + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });

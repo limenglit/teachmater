@@ -33,7 +33,7 @@ interface ClassLibraryProps {
 
 export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const { user } = useAuth();
-  const { importFromText } = useStudents();
+  const { replaceStudents } = useStudents();
   const { t } = useLanguage();
 
   const [colleges, setColleges] = useState<College[]>([]);
@@ -253,7 +253,13 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       toast({ title: t('library.noStudentsInClass'), variant: 'destructive' });
       return;
     }
-    importFromText(classStudents.map(s => s.name).join('\n'));
+    // Keep 学号 so the seating "学号顺序" rule can sort by it.
+    replaceStudents(classStudents.map(s => ({
+      id: s.id,
+      name: s.name,
+      gender: 'unknown' as const,
+      studentNumber: s.student_number || undefined,
+    })));
     setActiveClassName(selectedClassItem?.name || '');
     toast({ title: t('library.loadedToList'), description: `${classStudents.length} ${t('library.students')}` });
   };

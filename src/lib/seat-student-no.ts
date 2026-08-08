@@ -13,7 +13,7 @@ const FULLWIDTH_DIGITS = /[\uFF10-\uFF19]/g;
 const toHalfWidth = (value: string) =>
   value.replace(FULLWIDTH_DIGITS, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
 
-export type StudentNoSource = 'leading' | 'trailing' | 'whole' | 'none';
+export type StudentNoSource = 'column' | 'leading' | 'trailing' | 'whole' | 'none';
 
 export interface StudentNoParse {
   name: string;
@@ -75,3 +75,48 @@ export function sortNamesByStudentNo(names: string[]): string[] {
   return [...numbered.map(n => n.name), ...rest];
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Roster-aware helpers                                                *
+ * The roster now stores an explicit `studentNumber` column when the    *
+ * imported file provides one. That value always wins over digits       *
+ * parsed out of the display name.                                      *
+ * ------------------------------------------------------------------ */
+
+export interface StudentNoInput {
+  name: string;
+  studentNumber?: string;
+}
+
+/** Parse a roster entry, preferring its explicit 学号 column. */
+export function parseStudentEntryNo(entry: StudentNoInput): StudentNoParse {
+  const explicit = toHalfWidth(String(entry.studentNumber ?? '')).trim();
+  const digits = explicit.match(/\d{1,12}/);
+  if (digits) {
+    return { name: entry.name, no: Number(digits[0]), source: 'column', matched: digits[0] };
+  }
+  return parseStudentNo(entry.name);
+}
+
+/** Sort roster entries ascending by student number (stable, unnumbered last). */
+export function sortStudentsByStudentNo<T extends StudentNoInput>(entries: T[]): T[] {
+  const numbered: { entry: T; no: number; idx: number }[] = [];
+  const rest: T[] = [];
+  entries.forEach((entry, idx) => {
+    const no = parseStudentEntryNo(entry).no;
+    if (no === null) rest.push(entry);
+    else numbered.push({ entry, no, idx });
+  });
+  numbered.sort((a, b) => (a.no - b.no) || (a.idx - b.idx));
+  return [...numbered.map(n => n.entry), ...rest];
+}
+
+/** Preview rows for the studentNo panel, based on roster entries. */
+export function describeStudentEntryOrder(
+  entries: StudentNoInput[],
+): Array<StudentNoParse & { order: number }> {
+  const ordered = sortStudentsByStudentNo(entries);
+  const rank = new Map<StudentNoInput, number>();
+  ordered.forEach((e, i) => rank.set(e, i + 1));
+  return entries.map(entry => ({ ...parseStudentEntryNo(entry), order: rank.get(entry) ?? 0 }));
+}
