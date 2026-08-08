@@ -8,6 +8,8 @@ export interface Student {
   gender?: StudentGender;
   organization?: string;
   title?: string;
+  /** Student number from the roster's 学号/编号 column, kept verbatim. */
+  studentNumber?: string;
 }
 
 const STORAGE_KEY_PREFIX = 'teachmate_students';
@@ -25,7 +27,8 @@ const loadStudents = (storageKey: string): Student[] => {
       const genderValid = item?.gender === undefined || item?.gender === 'male' || item?.gender === 'female' || item?.gender === 'unknown';
       const organizationValid = item?.organization === undefined || typeof item.organization === 'string';
       const titleValid = item?.title === undefined || typeof item.title === 'string';
-      return !!item && typeof item.id === 'string' && typeof item.name === 'string' && genderValid && organizationValid && titleValid;
+      const numberValid = item?.studentNumber === undefined || typeof item.studentNumber === 'string';
+      return !!item && typeof item.id === 'string' && typeof item.name === 'string' && genderValid && organizationValid && titleValid && numberValid;
     });
   } catch {
     return [];
@@ -151,6 +154,9 @@ export const parseStudentsFromText = (text: string): Student[] => {
   const genderIdx = hasHeader ? getHeaderIndex(/性别|gender|sex/) : -1;
   const orgIdx = hasHeader ? getHeaderIndex(/单位|组织|部门|company|org|organization|unit/) : -1;
   const titleIdx = hasHeader ? getHeaderIndex(/职务|职位|title|position|role/) : -1;
+  const numberIdx = hasHeader
+    ? headerParts.findIndex(part => /学号|学籍号|考号|工号|编号|studentid|student_no|studentno|sid|number|^no$/.test(part))
+    : -1;
 
   const rows = hasHeader ? lines.slice(1) : lines;
 
@@ -168,7 +174,19 @@ export const parseStudentsFromText = (text: string): Student[] => {
         }));
       }
 
-      const name = (hasHeader && nameIdx >= 0 ? parts[nameIdx] : parts[0]) ?? '';
+      // Headerless rows may still carry a standalone student-number column
+      // ("2026001<TAB>张三" / "01 张三"). Pull it out so it never becomes the name.
+      let numberFromParts: string | undefined;
+      let valueParts = parts;
+      if (!hasHeader) {
+        const numericAt = parts.findIndex(part => /^\d{1,12}$/.test(part));
+        if (numericAt >= 0 && parts.length > 1) {
+          numberFromParts = parts[numericAt];
+          valueParts = parts.filter((_, idx) => idx !== numericAt);
+        }
+      }
+
+      const name = (hasHeader && nameIdx >= 0 ? parts[nameIdx] : valueParts[0]) ?? '';
       if (!name) return [];
 
       let genderRaw: string | undefined;
@@ -184,25 +202,25 @@ export const parseStudentsFromText = (text: string): Student[] => {
         // - 4+ columns: 姓名, 性别, 单位, 职务
         // - 3 columns: 姓名, 单位, 职务 (unless second column is clearly a gender)
         // - 2 columns: 姓名 + 性别 or 姓名 + 单位
-        if (parts.length >= 4) {
-          genderRaw = parts[1];
-          organizationRaw = parts[2];
-          titleRaw = parts[3];
-        } else if (parts.length === 3) {
-          const secondAsGender = normalizeGender(parts[1]);
+        if (valueParts.length >= 4) {
+          genderRaw = valueParts[1];
+          organizationRaw = valueParts[2];
+          titleRaw = valueParts[3];
+        } else if (valueParts.length === 3) {
+          const secondAsGender = normalizeGender(valueParts[1]);
           if (secondAsGender !== 'unknown') {
-            genderRaw = parts[1];
-            organizationRaw = parts[2];
+            genderRaw = valueParts[1];
+            organizationRaw = valueParts[2];
           } else {
-            organizationRaw = parts[1];
-            titleRaw = parts[2];
+            organizationRaw = valueParts[1];
+            titleRaw = valueParts[2];
           }
-        } else if (parts.length === 2) {
-          const secondAsGender = normalizeGender(parts[1]);
+        } else if (valueParts.length === 2) {
+          const secondAsGender = normalizeGender(valueParts[1]);
           if (secondAsGender !== 'unknown') {
-            genderRaw = parts[1];
+            genderRaw = valueParts[1];
           } else {
-            organizationRaw = parts[1];
+            organizationRaw = valueParts[1];
           }
         }
       }
@@ -211,12 +229,15 @@ export const parseStudentsFromText = (text: string): Student[] => {
       const organization = organizationRaw?.trim() || undefined;
       const title = titleRaw?.trim() || undefined;
 
+      const studentNumber = (hasHeader && numberIdx >= 0 ? parts[numberIdx] : numberFromParts)?.trim() || undefined;
+
       return [{
         id: makeId(),
         name,
         gender,
         organization,
         title,
+        studentNumber,
       } as Student];
 
     })
