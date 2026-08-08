@@ -175,16 +175,19 @@ export const parseStudentsFromText = (text: string): Student[] => {
       }
 
       // Headerless rows may still carry a standalone student-number column
-      // ("2026001<TAB>张三" / "01 张三"). Pull it out so it never becomes the name.
+      // ("2026001<TAB>张三" / "01 张三" / 全角 "０３ 赵六"). Pull it out so it never becomes the name.
       let numberFromParts: string | undefined;
       let valueParts = parts;
       if (!hasHeader) {
-        const numericAt = parts.findIndex(part => /^\d{1,12}$/.test(part));
+        const toHalfWidthDigits = (value: string) =>
+          value.replace(/[\uFF10-\uFF19]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
+        const numericAt = parts.findIndex(part => /^\d{1,12}$/.test(toHalfWidthDigits(part)));
         if (numericAt >= 0 && parts.length > 1) {
-          numberFromParts = parts[numericAt];
+          numberFromParts = toHalfWidthDigits(parts[numericAt]);
           valueParts = parts.filter((_, idx) => idx !== numericAt);
         }
       }
+
 
       const name = (hasHeader && nameIdx >= 0 ? parts[nameIdx] : valueParts[0]) ?? '';
       if (!name) return [];
