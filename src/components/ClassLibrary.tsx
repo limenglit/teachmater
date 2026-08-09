@@ -466,7 +466,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       setTextImportOpen(false);
 
       const desc = [
-        `成功导入 ${effectiveNames.length} 名学生`,
+        `成功导入 ${effectiveEntries.length} 名学生`,
         textDedupe && dedupeSkipped > 0 ? `去重跳过 ${dedupeSkipped} 名` : '',
         ...warnings,
       ].filter(Boolean).join('；');
