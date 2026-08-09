@@ -876,7 +876,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
             </div>
             <div className="border-t border-border pt-4">
               <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importFile')}</p>
-              <input ref={textFileRef} type="file" accept=".txt" onChange={handleTextFileUpload} className="text-sm" />
+              <input ref={textFileRef} type="file" accept=".txt,.tsv,.csv" onChange={handleTextFileUpload} className="text-sm" />
             </div>
           </div>
         </DialogContent>
