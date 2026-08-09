@@ -416,12 +416,15 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
   const confirmTextImport = async () => {
     if (!textImportContent.trim() || !selectedClass || !userId) return;
-    const rawNames = parseStudentsFromText(textImportContent).map(student => student.name.trim()).filter(Boolean);
-    if (rawNames.length === 0) return;
+    // 与「学校/导入」一致：保留解析出的学号列，供按学号排座使用。
+    const rawEntries = parseStudentsFromText(textImportContent)
+      .map(student => ({ name: student.name.trim(), studentNumber: (student.studentNumber || '').trim() }))
+      .filter(s => s.name);
+    if (rawEntries.length === 0) return;
 
     // Build warning messages
     const warnings: string[] = [];
-    const emptyLineCount = textImportContent.split(/\r\n|[\n\r\u2028\u2029]/).length - rawNames.length;
+    const emptyLineCount = textImportContent.split(/\r\n|[\n\r\u2028\u2029]/).length - rawEntries.length;
     if (emptyLineCount > 0) {
       warnings.push(`已跳过 ${emptyLineCount} 个空行`);
     }
@@ -433,26 +436,28 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
         if (error) throw error;
       }
 
-      let effectiveNames = rawNames;
+      let effectiveEntries = rawEntries;
       let dedupeSkipped = 0;
       if (textDedupe) {
+        const keyOf = (name: string, no: string) => `${name}|${no}`;
         const existing = textImportMode === 'overwrite'
           ? new Set<string>()
-          : new Set(students.filter(s => s.class_id === selectedClass).map(s => s.name));
+          : new Set(students.filter(s => s.class_id === selectedClass).map(s => keyOf(s.name, s.student_number || '')));
         const seen = new Set<string>();
-        effectiveNames = [];
-        for (const name of rawNames) {
-          if (existing.has(name) || seen.has(name)) { dedupeSkipped++; continue; }
-          seen.add(name);
-          effectiveNames.push(name);
+        effectiveEntries = [];
+        for (const entry of rawEntries) {
+          const key = keyOf(entry.name, entry.studentNumber);
+          if (existing.has(key) || seen.has(key)) { dedupeSkipped++; continue; }
+          seen.add(key);
+          effectiveEntries.push(entry);
         }
       }
 
-      const inserts = effectiveNames.map(name => ({
+      const inserts = effectiveEntries.map(entry => ({
         class_id: selectedClass,
         user_id: userId,
-        name,
-        student_number: ''
+        name: entry.name,
+        student_number: entry.studentNumber,
       }));
 
       await insertClassStudentRows(inserts);
@@ -461,7 +466,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       setTextImportOpen(false);
 
       const desc = [
-        `成功导入 ${effectiveNames.length} 名学生`,
+        `成功导入 ${effectiveEntries.length} 名学生`,
         textDedupe && dedupeSkipped > 0 ? `去重跳过 ${dedupeSkipped} 名` : '',
         ...warnings,
       ].filter(Boolean).join('；');
@@ -871,7 +876,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
             </div>
             <div className="border-t border-border pt-4">
               <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importFile')}</p>
-              <input ref={textFileRef} type="file" accept=".txt" onChange={handleTextFileUpload} className="text-sm" />
+              <input ref={textFileRef} type="file" accept=".txt,.tsv,.csv" onChange={handleTextFileUpload} className="text-sm" />
             </div>
           </div>
         </DialogContent>
