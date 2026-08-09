@@ -7,12 +7,13 @@ import { sortStudentsByStudentNo } from './seat-student-no';
 
 const FIXTURE = resolve(process.cwd(), 'docs/test-rosters/13-班级库-学院班级学号姓名-UTF16.txt');
 
-function makeFile(name: string, bytes: Uint8Array, type = 'text/plain'): File {
+function makeFile(name: string, bytes: ArrayBuffer, type = 'text/plain'): File {
   return new File([bytes], name, { type });
 }
 
 describe('注册用户班级库：TXT 名单导入 → 学号排座', () => {
-  const bytes = new Uint8Array(readFileSync(FIXTURE));
+  const raw = readFileSync(FIXTURE);
+  const bytes = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength) as ArrayBuffer;
 
   it('UTF-16LE 制表符 TXT 可被表格读取器解析', async () => {
     const rows = await readSpreadsheetFile(makeFile('2026国培中职8.3-2.txt', bytes));
