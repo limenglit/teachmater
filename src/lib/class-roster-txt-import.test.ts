@@ -7,8 +7,9 @@ import { sortStudentsByStudentNo } from './seat-student-no';
 
 const FIXTURE = resolve(process.cwd(), 'docs/test-rosters/13-班级库-学院班级学号姓名-UTF16.txt');
 
+// jsdom 的 File 没有实现 arrayBuffer()，这里构造最小可用的 File 形状。
 function makeFile(name: string, bytes: ArrayBuffer, type = 'text/plain'): File {
-  return new File([bytes], name, { type });
+  return { name, type, arrayBuffer: async () => bytes } as unknown as File;
 }
 
 describe('注册用户班级库：TXT 名单导入 → 学号排座', () => {
