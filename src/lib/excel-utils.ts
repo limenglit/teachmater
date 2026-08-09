@@ -64,12 +64,38 @@ export function parseCsv(text: string): string[][] {
  * encoding detection automatically so Chinese characters survive Excel's
  * default GB18030 "Save As CSV" output.
  */
+export function parseDelimitedText(text: string): string[][] {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r\n|[\n\r\u2028\u2029]/);
+  const sample = lines.slice(0, 20).join('\n');
+  // Pick the delimiter that actually structures the file (Tab > ；/、 > ，/,).
+  const tabs = (sample.match(/\t/g) || []).length;
+  const commas = (sample.match(/[,，]/g) || []).length;
+  const semis = (sample.match(/[;；]/g) || []).length;
+  if (tabs === 0 && commas > 0 && semis === 0) {
+    return parseCsv(text.replace(/，/g, ','));
+  }
+  const delimiter = tabs >= Math.max(commas, semis) && tabs > 0
+    ? /\t/
+    : semis > commas
+      ? /[;；]/
+      : /[,，]/;
+  return lines
+    .map(line => line.split(delimiter).map(cell => cell.trim()))
+    .filter(cells => cells.some(c => c !== ''));
+}
+
 export async function readSpreadsheetFile(file: File): Promise<any[][]> {
   const name = (file.name || '').toLowerCase();
   const buffer = await file.arrayBuffer();
   if (name.endsWith('.csv') || file.type === 'text/csv') {
     const text = decodeCsvBytes(buffer);
     return parseCsv(text).filter(r => r.length > 0 && r.some(c => String(c).trim() !== ''));
+  }
+  // Plain-text rosters (Tab / comma / semicolon separated) exported from
+  // school systems, often UTF-16LE with CRLF.
+  if (name.endsWith('.txt') || name.endsWith('.tsv') || file.type === 'text/plain') {
+    const text = decodeTextBytes(buffer);
+    return parseDelimitedText(text).filter(r => r.length > 0 && r.some(c => String(c).trim() !== ''));
   }
   return readExcelFile(buffer);
 }

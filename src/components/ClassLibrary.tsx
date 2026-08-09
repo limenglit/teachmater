@@ -575,7 +575,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
               <Building2 className="w-4 h-4" /> {t('library.title')}
             </h3>
             <div className="flex flex-wrap justify-end gap-1 shrink-0">
-              <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv" onChange={handleFileSelect} className="hidden" />
+              <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv,.txt,.tsv" onChange={handleFileSelect} className="hidden" />
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={downloadTemplate} title={t('library.downloadTemplate')}>
                 <Download className="w-3 h-3 mr-0 sm:mr-1" />
                 <span className="hidden sm:inline">{t('library.downloadTemplate')}</span>
