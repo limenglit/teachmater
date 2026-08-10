@@ -303,3 +303,16 @@ div[data-student-drop-hover="swap"] {
   outline-offset: 1px;
   border-radius: 6px;
 }
+
+/* --- Touch drag ergonomics (phone / iPad) --- */
+@media (pointer: coarse) {
+  [draggable="true"] {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Bigger hit areas for seats and aisle handles on touch devices */
+  .seat-grid [draggable="true"] {
+    min-height: 44px;
+  }
+}
