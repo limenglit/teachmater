@@ -316,3 +316,76 @@ div[data-student-drop-hover="swap"] {
     min-height: 44px;
   }
 }
+
+/* ===================================================================
+   Mobile / iPad touch UX layer
+   Applies only to coarse pointers so desktop density stays unchanged.
+   =================================================================== */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (pointer: coarse) {
+  /* No grey flash on tap, no accidental double-tap page zoom */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  [role="button"],
+  a,
+  summary,
+  label,
+  select {
+    touch-action: manipulation;
+  }
+
+  /* Comfortable minimum hit areas without changing layout structure */
+  button:not(.no-touch-target),
+  [role="button"]:not(.no-touch-target),
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"] {
+    min-height: 36px;
+  }
+  /* Icon-only square buttons get a proper thumb target */
+  button.h-6.w-6,
+  button.h-7.w-7,
+  button.h-8.w-8 {
+    min-height: 40px;
+    min-width: 40px;
+  }
+
+  /* iOS zooms the page when focusing inputs under 16px — prevent it */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 20px;
+    min-height: 20px;
+  }
+
+  /* Momentum scrolling + contained overscroll for inner scroll areas */
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  [data-radix-scroll-area-viewport] {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Horizontal scrollers hint at more content and snap softly */
+  .overflow-x-auto {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Respect notches / home indicator for fixed bars */
+.safe-area-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+.safe-area-top {
+  padding-top: max(env(safe-area-inset-top), 0rem);
+}
