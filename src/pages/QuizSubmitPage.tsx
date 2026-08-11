@@ -25,6 +25,7 @@ interface Session {
   status: string;
   reveal_answers?: boolean;
   student_names: string[];
+  guest_names?: string[];
 }
 
 interface StudentResult {
@@ -240,6 +241,21 @@ export default function QuizSubmitPage() {
     if (!normalized) return nameSuggestions.slice(0, 8);
     return nameSuggestions.filter(n => normalizeStudentName(n).toLowerCase().includes(normalized)).slice(0, 8);
   }, [name, nameSuggestions]);
+
+  // A participant whose name is not in the teacher's class roster joins as a
+  // temporary guest: they can still answer, submit and get AI guidance.
+  const isGuest = useMemo(() => {
+    const normalized = normalizeStudentName(name);
+    if (!session || !normalized) return false;
+    const roster = Array.isArray(session.student_names) ? session.student_names : [];
+    if (roster.length === 0) return false;
+    const guests = Array.isArray(session.guest_names) ? session.guest_names : [];
+    const inRoster = roster.some(n => normalizeStudentName(n) === normalized);
+    const inGuests = guests.some(n => normalizeStudentName(n) === normalized);
+    return !inRoster || inGuests;
+  }, [session, name]);
+
+
 
   // Persist current question index to draft. Debounced 400ms to avoid hammering
   // localStorage on every keystroke in short-answer questions.
@@ -607,9 +623,15 @@ export default function QuizSubmitPage() {
             </div>
           )}
         </div>
+        {isGuest && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            你不在本次班级名单中，将以「临时嘉宾」身份参加答题，成绩与 AI 学习推荐同样可用。
+          </div>
+        )}
         <Button onClick={enterQuiz} disabled={!name.trim()} className="w-full h-12 text-base">
           {t('quiz.startAnswer')}
         </Button>
+
       </div>
     </div>
   );
@@ -628,7 +650,12 @@ export default function QuizSubmitPage() {
       <div className="bg-card border-b border-border px-4 py-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-foreground truncate">{session.title}</span>
-          <span className="text-xs text-muted-foreground truncate ml-2">{name}</span>
+          <span className="text-xs text-muted-foreground truncate ml-2 flex items-center gap-1">
+            {name}
+            {isGuest && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium shrink-0">临时嘉宾</span>
+            )}
+          </span>
         </div>
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-medium text-primary" aria-live="polite">

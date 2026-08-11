@@ -989,6 +989,7 @@ export type Database = {
           created_at: string
           creator_token: string
           ended_at: string | null
+          guest_names: Json
           id: string
           questions: Json
           reveal_answers: boolean
@@ -1001,6 +1002,7 @@ export type Database = {
           created_at?: string
           creator_token?: string
           ended_at?: string | null
+          guest_names?: Json
           id?: string
           questions?: Json
           reveal_answers?: boolean
@@ -1013,6 +1015,7 @@ export type Database = {
           created_at?: string
           creator_token?: string
           ended_at?: string | null
+          guest_names?: Json
           id?: string
           questions?: Json
           reveal_answers?: boolean
