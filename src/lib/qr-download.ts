@@ -1,10 +1,33 @@
 import type { RefObject } from 'react';
 
 export function downloadQrPng(containerRef: RefObject<HTMLDivElement | null>, filename: string) {
-  const svg = containerRef.current?.querySelector('svg');
+  const root = containerRef.current;
+  if (!root) return;
+
+  // 优先使用 canvas / img（QRActionPanel 现在渲染 PNG 位图），回退到 SVG。
+  const canvas = root.querySelector('canvas');
+  if (canvas) {
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = `${filename}.png`;
+    link.click();
+    return;
+  }
+
+  const img = root.querySelector('img');
+  if (img && img.src.startsWith('data:image/png')) {
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = `${filename}.png`;
+    link.click();
+    return;
+  }
+
+  const svg = root.querySelector('svg');
   if (!svg) return;
   downloadSvgAsPng(svg, `${filename}.png`);
 }
+
 
 export async function downloadSvgAsPng(svgElement: SVGSVGElement, filename: string) {
   const widthAttr = Number(svgElement.getAttribute('width'));

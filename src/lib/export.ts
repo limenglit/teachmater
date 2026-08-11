@@ -3,6 +3,8 @@ import { jsPDF } from 'jspdf';
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QRCodeSVG } from 'qrcode.react';
+import { qrRenderProps } from '@/lib/qr-config';
+
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -35,7 +37,7 @@ async function renderQrBadge(container: HTMLElement, qrCode: ExportQrCodeOptions
     createElement(
       'div',
       { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' } },
-      createElement(QRCodeSVG, { value: qrCode.value, size: 92, level: 'M' }),
+      createElement(QRCodeSVG, { value: qrCode.value, ...qrRenderProps(112) }),
       createElement(
         'div',
         {
