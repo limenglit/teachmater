@@ -23,12 +23,13 @@ export function normalizeQrSize(size?: number): number {
 }
 
 /** 统一的 qrcode.react 渲染参数。 */
-export function qrRenderProps(size?: number) {
+export function qrRenderProps(size?: number, opts?: { allowSmall?: boolean }) {
   return {
-    size: normalizeQrSize(size),
+    size: opts?.allowSmall ? Math.round(size ?? QR_MIN_SIZE) : normalizeQrSize(size),
     level: QR_LEVEL,
     marginSize: QR_MARGIN_MODULES,
     fgColor: QR_FG_COLOR,
     bgColor: QR_BG_COLOR,
   };
 }
+
