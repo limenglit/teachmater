@@ -187,9 +187,11 @@ export default function QuizStatsView({ session }: Props) {
             {studentNames.map(name => {
               const s = stats.byStudent.get(name) || { total: 0, correct: 0 };
               const totalQ = questions.length;
+              const guest = guestNames.has(name.trim());
               return (
-                <span key={name} className="text-xs bg-muted px-2 py-1 rounded-md">
+                <span key={name} className={`text-xs px-2 py-1 rounded-md ${guest ? 'bg-amber-50 border border-amber-200' : 'bg-muted'}`}>
                   {name} <span className="text-muted-foreground">({s.correct}/{totalQ})</span>
+                  {guest && <span className="ml-1 text-[10px] text-amber-700 font-medium">临时嘉宾</span>}
                 </span>
               );
             })}
