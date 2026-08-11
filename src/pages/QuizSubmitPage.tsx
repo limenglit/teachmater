@@ -242,6 +242,21 @@ export default function QuizSubmitPage() {
     return nameSuggestions.filter(n => normalizeStudentName(n).toLowerCase().includes(normalized)).slice(0, 8);
   }, [name, nameSuggestions]);
 
+  // A participant whose name is not in the teacher's class roster joins as a
+  // temporary guest: they can still answer, submit and get AI guidance.
+  const isGuest = useMemo(() => {
+    const normalized = normalizeStudentName(name);
+    if (!session || !normalized) return false;
+    const roster = Array.isArray(session.student_names) ? session.student_names : [];
+    if (roster.length === 0) return false;
+    const guests = Array.isArray(session.guest_names) ? session.guest_names : [];
+    const inRoster = roster.some(n => normalizeStudentName(n) === normalized);
+    const inGuests = guests.some(n => normalizeStudentName(n) === normalized);
+    return !inRoster || inGuests;
+  }, [session, name]);
+
+
+
   // Persist current question index to draft. Debounced 400ms to avoid hammering
   // localStorage on every keystroke in short-answer questions.
   useEffect(() => {
