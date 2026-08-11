@@ -650,7 +650,12 @@ export default function QuizSubmitPage() {
       <div className="bg-card border-b border-border px-4 py-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-foreground truncate">{session.title}</span>
-          <span className="text-xs text-muted-foreground truncate ml-2">{name}</span>
+          <span className="text-xs text-muted-foreground truncate ml-2 flex items-center gap-1">
+            {name}
+            {isGuest && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium shrink-0">临时嘉宾</span>
+            )}
+          </span>
         </div>
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-medium text-primary" aria-live="polite">
