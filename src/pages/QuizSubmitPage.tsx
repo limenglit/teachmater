@@ -623,9 +623,15 @@ export default function QuizSubmitPage() {
             </div>
           )}
         </div>
+        {isGuest && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            你不在本次班级名单中，将以「临时嘉宾」身份参加答题，成绩与 AI 学习推荐同样可用。
+          </div>
+        )}
         <Button onClick={enterQuiz} disabled={!name.trim()} className="w-full h-12 text-base">
           {t('quiz.startAnswer')}
         </Button>
+
       </div>
     </div>
   );
