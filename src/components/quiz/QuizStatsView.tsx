@@ -78,6 +78,11 @@ export default function QuizStatsView({ session }: Props) {
 
   const studentNames = useMemo(() => Array.from(stats.byStudent.keys()), [stats]);
   const submittedCount = studentNames.length;
+  // Names added on the fly by non-roster participants are flagged as guests.
+  const guestNames = useMemo(() => {
+    const raw = (session as any).guest_names;
+    return new Set<string>(Array.isArray(raw) ? raw.map((n: string) => String(n).trim()) : []);
+  }, [session]);
 
   return (
     <div className="flex-1 overflow-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-6">
