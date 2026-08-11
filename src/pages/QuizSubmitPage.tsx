@@ -25,6 +25,7 @@ interface Session {
   status: string;
   reveal_answers?: boolean;
   student_names: string[];
+  guest_names?: string[];
 }
 
 interface StudentResult {
