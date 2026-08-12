@@ -13,8 +13,35 @@ export interface UploadItem {
   options: UploadBoardMediaOptions;
   status: 'compressing' | 'uploading' | 'success' | 'failed';
   progress: number;
+  /** Bytes transferred so far. */
+  loaded?: number;
+  /** Total bytes to transfer. */
+  total?: number;
+  /** Transfer speed in bytes per second. */
+  speed?: number;
+  /** Estimated seconds remaining. */
+  eta?: number;
   result?: UploadBoardMediaResult;
   error?: string;
+}
+
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const value = bytes / Math.pow(1024, i);
+  return `${value >= 100 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`;
+}
+
+export function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '--';
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rest = s % 60;
+  if (m < 60) return `${m}m${rest.toString().padStart(2, '0')}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h${(m % 60).toString().padStart(2, '0')}m`;
 }
 
 // ─── Hook: useUploadProgress ─────────────────────────────────
@@ -38,35 +65,59 @@ export function useUploadProgress() {
         fileToUpload = await compressImage(file);
       }
 
-      // Stage 2: Upload
-      updateItem(id, { status: 'uploading', progress: 40 });
+      // Stage 2: Upload with real byte-level progress
+      const totalBytes = fileToUpload.size;
+      updateItem(id, { status: 'uploading', progress: 0, loaded: 0, total: totalBytes, speed: 0, eta: undefined });
 
-      // Simulate incremental progress during upload
-      const progressInterval = setInterval(() => {
-        setItems(prev => prev.map(it => {
-          if (it.id === id && it.status === 'uploading' && it.progress < 85) {
-            return { ...it, progress: it.progress + 5 };
-          }
-          return it;
-        }));
-      }, 500);
+      const startedAt = Date.now();
+      let lastAt = startedAt;
+      let lastLoaded = 0;
+      let smoothedSpeed = 0;
 
       try {
         const result = await uploadBoardMediaFile(fileToUpload, {
           ...options,
           fileName: file.name,
+          onProgress: (loaded, total) => {
+            const now = Date.now();
+            const dt = (now - lastAt) / 1000;
+            if (dt >= 0.2) {
+              const instant = (loaded - lastLoaded) / dt;
+              smoothedSpeed = smoothedSpeed ? smoothedSpeed * 0.7 + instant * 0.3 : instant;
+              lastAt = now;
+              lastLoaded = loaded;
+            }
+            const denom = total || totalBytes || 1;
+            const remaining = Math.max(0, denom - loaded);
+            updateItem(id, {
+              progress: Math.min(99, Math.round((loaded / denom) * 100)),
+              loaded,
+              total: denom,
+              speed: smoothedSpeed,
+              eta: smoothedSpeed > 0 ? remaining / smoothedSpeed : undefined,
+            });
+          },
         });
-        clearInterval(progressInterval);
-        updateItem(id, { status: 'success', progress: 100, result });
+        const elapsed = Math.max(0.001, (Date.now() - startedAt) / 1000);
+        updateItem(id, {
+          status: 'success',
+          progress: 100,
+          loaded: totalBytes,
+          total: totalBytes,
+          speed: totalBytes / elapsed,
+          eta: 0,
+          result,
+        });
         return result;
       } catch (err) {
-        clearInterval(progressInterval);
         throw err;
       }
     } catch (err: any) {
       updateItem(id, {
         status: 'failed',
         progress: 0,
+        speed: 0,
+        eta: undefined,
         error: err?.message || 'Upload failed',
       });
       return null;
@@ -88,7 +139,7 @@ export function useUploadProgress() {
   const retryUpload = useCallback((id: string) => {
     const item = itemsRef.current.find(it => it.id === id);
     if (!item || item.status !== 'failed') return null;
-    updateItem(id, { status: 'compressing', progress: 5, error: undefined });
+    updateItem(id, { status: 'compressing', progress: 5, error: undefined, loaded: 0, speed: 0, eta: undefined });
     return processUpload({ ...item, status: 'compressing', progress: 5, error: undefined });
   }, [processUpload, updateItem]);
 
@@ -149,8 +200,15 @@ export function UploadProgressPanel({ items, onRetry, onRemove, onClearCompleted
             <span className="text-xs truncate flex-1" title={item.file.name}>{item.file.name}</span>
             <span className="text-[10px] text-muted-foreground shrink-0">{statusLabel(item.status)}</span>
             {item.status === 'failed' && (
-              <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => onRetry(item.id)} title={t('board.uploadRetry')}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 px-1.5 text-[10px] gap-1 shrink-0"
+                onClick={() => onRetry(item.id)}
+                title={t('board.uploadRetry')}
+              >
                 <RotateCcw className="w-3 h-3" />
+                {t('board.uploadRetry')}
               </Button>
             )}
             {(item.status === 'success' || item.status === 'failed') && (
@@ -160,7 +218,28 @@ export function UploadProgressPanel({ items, onRetry, onRemove, onClearCompleted
             )}
           </div>
           {(item.status === 'compressing' || item.status === 'uploading') && (
-            <Progress value={item.progress} className="h-1.5" />
+            <>
+              <Progress value={item.progress} className="h-1.5" />
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+                <span>
+                  {item.status === 'uploading' && item.total
+                    ? `${formatBytes(item.loaded || 0)} / ${formatBytes(item.total)} · ${item.progress}%`
+                    : formatBytes(item.file.size)}
+                </span>
+                {item.status === 'uploading' && (
+                  <span>
+                    {item.speed ? `${formatBytes(item.speed)}/s` : '--'}
+                    {item.eta !== undefined ? ` · ${formatDuration(item.eta)}` : ''}
+                  </span>
+                )}
+              </div>
+            </>
+          )}
+          {item.status === 'success' && (
+            <div className="text-[10px] text-muted-foreground tabular-nums">
+              {formatBytes(item.total || item.file.size)}
+              {item.speed ? ` · ${formatBytes(item.speed)}/s` : ''}
+            </div>
           )}
           {item.status === 'failed' && item.error && (
             <p className="text-[10px] text-destructive truncate">{item.error}</p>
