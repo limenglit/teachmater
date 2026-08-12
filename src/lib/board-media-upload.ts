@@ -93,7 +93,12 @@ export interface UploadBoardMediaOptions {
   boardId: string;
   fileName?: string;
   scope?: string;
+  /** Called with real byte-level progress while the file is being transferred. */
+  onProgress?: (loaded: number, total: number) => void;
+  /** Receives an abort handle so callers can cancel the transfer. */
+  onAbortHandle?: (abort: () => void) => void;
 }
+
 
 export interface UploadBoardMediaResult {
   contentType: string;
@@ -160,9 +165,54 @@ async function normalizeHtmlToUtf8(file: Blob): Promise<Blob> {
   return new Blob([new TextEncoder().encode(text)], { type: 'text/html; charset=utf-8' });
 }
 
+/** Upload via XHR so we can report real byte-level progress (Supabase JS has no progress callback). */
+function xhrUpload(
+  path: string,
+  body: Blob,
+  contentType: string,
+  accessToken: string,
+  onProgress?: (loaded: number, total: number) => void,
+  onAbortHandle?: (abort: () => void) => void,
+): Promise<void> {
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+  const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${baseUrl}/storage/v1/object/board-media/${path}`);
+    xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+    xhr.setRequestHeader('apikey', apiKey);
+    xhr.setRequestHeader('x-upsert', 'false');
+    xhr.setRequestHeader('cache-control', 'max-age=3600');
+    if (contentType) xhr.setRequestHeader('content-type', contentType);
+
+    onAbortHandle?.(() => xhr.abort());
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded, e.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(body.size, body.size);
+        resolve();
+      } else {
+        let message = `Upload failed (${xhr.status})`;
+        try {
+          const parsed = JSON.parse(xhr.responseText);
+          if (parsed?.message || parsed?.error) message = parsed.message || parsed.error;
+        } catch { /* keep default */ }
+        reject(new Error(message));
+      }
+    };
+    xhr.onerror = () => reject(new Error('Network error during upload'));
+    xhr.onabort = () => reject(new Error('Upload cancelled'));
+    xhr.send(body);
+  });
+}
+
 export async function uploadBoardMediaFile(
   file: Blob | File,
-  { boardId, fileName, scope = 'boards' }: UploadBoardMediaOptions,
+  { boardId, fileName, scope = 'boards', onProgress, onAbortHandle }: UploadBoardMediaOptions,
 ): Promise<UploadBoardMediaResult> {
   let contentType = getContentType(file, fileName);
   const ext = getUploadExtension(file, fileName);
@@ -174,22 +224,25 @@ export async function uploadBoardMediaFile(
     body = await normalizeHtmlToUtf8(file);
     contentType = 'text/html; charset=utf-8';
   } else {
-    const buffer = await file.arrayBuffer();
-    body = new Blob([buffer], { type: contentType });
+    body = file;
   }
 
   const path = `${scope}/${boardId}/${crypto.randomUUID()}.${ext}`;
-  const { data, error } = await supabase.storage
-    .from('board-media')
-    .upload(path, body, {
-      upsert: false,
-      contentType,
-      cacheControl: '3600',
-    });
 
-  if (error) throw error;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token || (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string);
 
-  const uploadedPath = data?.path || path;
+  if (onProgress || onAbortHandle) {
+    await xhrUpload(path, body, contentType, accessToken, onProgress, onAbortHandle);
+  } else {
+    const { error } = await supabase.storage
+      .from('board-media')
+      .upload(path, body, { upsert: false, contentType, cacheControl: '3600' });
+    if (error) throw error;
+  }
+
+  const uploadedPath = path;
+
   const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(uploadedPath);
 
   return {
