@@ -243,8 +243,6 @@ export async function uploadBoardMediaFile(
 
   const uploadedPath = path;
 
-
-  const uploadedPath = data?.path || path;
   const { data: urlData } = supabase.storage.from('board-media').getPublicUrl(uploadedPath);
 
   return {
