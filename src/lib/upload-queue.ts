@@ -11,7 +11,7 @@ const uploadLimiter = new TokenBucketLimiter(10, 5);
 
 // ─── Configuration ───────────────────────────────────────────────
 export const UPLOAD_CONFIG = {
-  MAX_FILE_SIZE_MB: 10,           // Max file size in MB
+  MAX_FILE_SIZE_MB: 2048,         // Max file size in MB (2 GB)
   MAX_IMAGE_DIMENSION: 1920,      // Max width/height for compressed images
   IMAGE_QUALITY: 0.8,             // JPEG compression quality (0-1)
   CONCURRENCY: 3,                 // Max simultaneous uploads
@@ -88,7 +88,10 @@ export async function compressImage(file: File): Promise<File> {
 export function validateFile(file: File): string | null {
   const maxBytes = UPLOAD_CONFIG.MAX_FILE_SIZE_MB * 1024 * 1024;
   if (file.size > maxBytes) {
-    return `文件大小超过 ${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB 限制`;
+    const limitLabel = UPLOAD_CONFIG.MAX_FILE_SIZE_MB >= 1024
+      ? `${(UPLOAD_CONFIG.MAX_FILE_SIZE_MB / 1024).toFixed(0)}GB`
+      : `${UPLOAD_CONFIG.MAX_FILE_SIZE_MB}MB`;
+    return `文件大小超过 ${limitLabel} 限制`;
   }
   return null;
 }
