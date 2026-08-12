@@ -93,7 +93,12 @@ export interface UploadBoardMediaOptions {
   boardId: string;
   fileName?: string;
   scope?: string;
+  /** Called with real byte-level progress while the file is being transferred. */
+  onProgress?: (loaded: number, total: number) => void;
+  /** Receives an abort handle so callers can cancel the transfer. */
+  onAbortHandle?: (abort: () => void) => void;
 }
+
 
 export interface UploadBoardMediaResult {
   contentType: string;
