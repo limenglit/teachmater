@@ -609,7 +609,7 @@ export default function CollaborativeCanvas({ boardId, nickname, isCreator, isLo
 
   // Upload file (image or document/media)
   async function handleFileUpload(file: File) {
-    const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+    const MAX_SIZE = 2 * 1024 * 1024 * 1024; // 2GB
     if (file.size > MAX_SIZE) {
       toast({ title: t('bcoll.fileTooLarge'), variant: 'destructive' });
       return;
