@@ -53,6 +53,7 @@ export default function BoardSubmitPage() {
   const [color, setColor] = useState('#ffffff');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [hasSubmittedBefore, setHasSubmittedBefore] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
@@ -117,6 +118,23 @@ export default function BoardSubmitPage() {
     if (data) setCards(data as BoardCard[]);
     setCardsLoading(false);
   }, [boardId]);
+
+  /* ── One-submission-per-student check ── */
+  const allowMultiple = !!(board as any)?.allow_multiple_submissions;
+  const checkAlreadySubmitted = useCallback(async () => {
+    if (!boardId || !nickname.trim()) return false;
+    const { count } = await supabase
+      .from('board_cards')
+      .select('id', { count: 'exact', head: true })
+      .eq('board_id', boardId)
+      .eq('author_nickname', nickname.trim());
+    return (count || 0) > 0;
+  }, [boardId, nickname]);
+
+  useEffect(() => {
+    if (!nicknameConfirmed || allowMultiple) { setHasSubmittedBefore(false); return; }
+    checkAlreadySubmitted().then(setHasSubmittedBefore);
+  }, [nicknameConfirmed, allowMultiple, checkAlreadySubmitted]);
 
   /* ── Pull-to-refresh ── */
   const feedRef = useRef<HTMLDivElement>(null);
@@ -199,6 +217,10 @@ export default function BoardSubmitPage() {
 
   /* ── FAB tap ── */
   const openSubmit = () => {
+    if (!allowMultiple && hasSubmittedBefore) {
+      toast({ title: t('board.alreadySubmitted'), variant: 'destructive' });
+      return;
+    }
     if (isStoryboard) {
       setColumnStep(true);
       setShowSubmit(false);
@@ -571,6 +593,13 @@ export default function BoardSubmitPage() {
   const handleSubmit = async () => {
     if ((!content.trim() && !mediaUrl) || !boardId || !board) return;
     setSubmitting(true);
+    if (!allowMultiple && await checkAlreadySubmitted()) {
+      setSubmitting(false);
+      setHasSubmittedBefore(true);
+      setShowSubmit(false);
+      toast({ title: t('board.alreadySubmitted'), variant: 'destructive' });
+      return;
+    }
     let isApproved = !board.moderation_enabled;
     if (board.banned_words) {
       const words = board.banned_words.split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
@@ -595,6 +624,7 @@ export default function BoardSubmitPage() {
       toast({ title: error.message, variant: 'destructive' });
     } else {
       setSubmitted(true);
+      if (!allowMultiple) setHasSubmittedBefore(true);
       setContent(''); setUrl(''); clearMedia(); setColor('#ffffff');
       toast({ title: !isApproved ? t('board.blockedWord') : t('board.submitSuccess') });
       setTimeout(() => { setSubmitted(false); setShowSubmit(false); }, 1500);
