@@ -371,6 +371,7 @@ export type Database = {
       }
       boards: {
         Row: {
+          allow_multiple_submissions: boolean
           background_color: string
           banned_words: string
           columns: Json
@@ -387,6 +388,7 @@ export type Database = {
           view_mode: string
         }
         Insert: {
+          allow_multiple_submissions?: boolean
           background_color?: string
           banned_words?: string
           columns?: Json
@@ -403,6 +405,7 @@ export type Database = {
           view_mode?: string
         }
         Update: {
+          allow_multiple_submissions?: boolean
           background_color?: string
           banned_words?: string
           columns?: Json
@@ -1854,6 +1857,7 @@ export type Database = {
       get_boards_by_tokens: {
         Args: { p_tokens: string[] }
         Returns: {
+          allow_multiple_submissions: boolean
           background_color: string
           banned_words: string
           columns: Json
@@ -2204,6 +2208,7 @@ export type Database = {
               p_description?: string
               p_is_locked?: boolean
               p_moderation_enabled?: boolean
+              p_student_names?: Json
               p_title?: string
               p_token: string
               p_view_mode?: string
@@ -2212,6 +2217,7 @@ export type Database = {
           }
         | {
             Args: {
+              p_allow_multiple_submissions?: boolean
               p_background_color?: string
               p_banned_words?: string
               p_board_id: string
