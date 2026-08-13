@@ -1809,6 +1809,10 @@ export type Database = {
         Args: { p_board_id: string; p_stroke_id: string; p_token: string }
         Returns: undefined
       }
+      delete_own_board_card: {
+        Args: { p_board_id: string; p_card_id: string; p_nickname: string }
+        Returns: boolean
+      }
       delete_poll: {
         Args: { p_poll_id: string; p_token: string }
         Returns: undefined
@@ -1953,6 +1957,19 @@ export type Database = {
         Returns: {
           balance: number
           expires_at: string
+        }[]
+      }
+      get_my_board_cards: {
+        Args: { p_board_id: string; p_nickname: string }
+        Returns: {
+          card_type: string
+          column_id: string
+          content: string
+          created_at: string
+          id: string
+          is_approved: boolean
+          media_url: string
+          url: string
         }[]
       }
       get_my_status: { Args: never; Returns: string }
