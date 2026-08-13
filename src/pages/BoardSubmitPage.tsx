@@ -54,6 +54,8 @@ export default function BoardSubmitPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [hasSubmittedBefore, setHasSubmittedBefore] = useState(false);
+  const [myCards, setMyCards] = useState<any[]>([]);
+  const [myOpen, setMyOpen] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [fileCategory, setFileCategory] = useState<'image' | 'video' | 'audio' | 'code' | 'document'>('image');
@@ -121,20 +123,42 @@ export default function BoardSubmitPage() {
 
   /* ── One-submission-per-student check ── */
   const allowMultiple = !!(board as any)?.allow_multiple_submissions;
-  const checkAlreadySubmitted = useCallback(async () => {
-    if (!boardId || !nickname.trim()) return false;
-    const { count } = await supabase
-      .from('board_cards')
-      .select('id', { count: 'exact', head: true })
-      .eq('board_id', boardId)
-      .eq('author_nickname', nickname.trim());
-    return (count || 0) > 0;
+  const loadMyCards = useCallback(async () => {
+    if (!boardId || !nickname.trim()) { setMyCards([]); return []; }
+    const { data } = await supabase.rpc('get_my_board_cards' as any, {
+      p_board_id: boardId,
+      p_nickname: nickname.trim(),
+    });
+    const list = (data as any[]) || [];
+    setMyCards(list);
+    setHasSubmittedBefore(list.length > 0);
+    return list;
   }, [boardId, nickname]);
 
+  const checkAlreadySubmitted = useCallback(async () => {
+    const list = await loadMyCards();
+    return list.length > 0;
+  }, [loadMyCards]);
+
   useEffect(() => {
-    if (!nicknameConfirmed || allowMultiple) { setHasSubmittedBefore(false); return; }
-    checkAlreadySubmitted().then(setHasSubmittedBefore);
-  }, [nicknameConfirmed, allowMultiple, checkAlreadySubmitted]);
+    if (!nicknameConfirmed) return;
+    loadMyCards();
+  }, [nicknameConfirmed, loadMyCards]);
+
+  const cancelMyCard = useCallback(async (cardId: string, reupload = false) => {
+    if (!boardId || !window.confirm(t('board.cancelConfirm'))) return;
+    const { error } = await supabase.rpc('delete_own_board_card' as any, {
+      p_board_id: boardId,
+      p_card_id: cardId,
+      p_nickname: nickname.trim(),
+    });
+    if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+    toast({ title: t('board.cancelled') });
+    setCards(prev => prev.filter(c => c.id !== cardId));
+    await loadMyCards();
+    await loadCards();
+    if (reupload) setShowSubmit(true);
+  }, [boardId, nickname, t, loadMyCards, loadCards]);
 
   /* ── Pull-to-refresh ── */
   const feedRef = useRef<HTMLDivElement>(null);
@@ -625,6 +649,7 @@ export default function BoardSubmitPage() {
     } else {
       setSubmitted(true);
       if (!allowMultiple) setHasSubmittedBefore(true);
+      loadMyCards();
       setContent(''); setUrl(''); clearMedia(); setColor('#ffffff');
       toast({ title: !isApproved ? t('board.blockedWord') : t('board.submitSuccess') });
       setTimeout(() => { setSubmitted(false); setShowSubmit(false); }, 1500);
@@ -761,6 +786,71 @@ export default function BoardSubmitPage() {
             {refreshing ? t('common.loading') : pullDistance >= PULL_THRESHOLD ? (t('board.releaseToRefresh') || '松开刷新') : (t('board.pullToRefresh') || '下拉刷新')}
           </span>
         </div>
+        {/* ── My uploads ── */}
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <button
+            onClick={() => setMyOpen(o => !o)}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground"
+          >
+            <span className="flex items-center gap-2">
+              <User className="w-4 h-4 text-primary" />
+              {t('board.myUploads')}
+              <span className="text-xs text-muted-foreground">({myCards.length})</span>
+            </span>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${myOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {myOpen && (
+            <div className="border-t border-border divide-y divide-border">
+              {myCards.length === 0 && (
+                <div className="px-3 py-4 text-xs text-muted-foreground text-center">{t('board.myUploadsEmpty')}</div>
+              )}
+              {myCards.map(mc => (
+                <div key={mc.id} className="px-3 py-2.5 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-foreground line-clamp-2 break-words">
+                        {mc.content?.trim() || (mc.media_url ? '📎' : '—')}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                        <span>{new Date(mc.created_at).toLocaleString()}</span>
+                        {mc.column_id && <span>· {mc.column_id}</span>}
+                        {!mc.is_approved && <span className="text-warning">· {t('board.pendingReview')}</span>}
+                      </div>
+                    </div>
+                    {mc.media_url && mc.card_type === 'image' && (
+                      <img src={mc.media_url} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(mc.media_url || mc.url) && (
+                      <a
+                        href={mc.media_url || mc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs"
+                      >
+                        {t('board.viewContent')}
+                      </a>
+                    )}
+                    <button
+                      onClick={() => cancelMyCard(mc.id)}
+                      className="h-8 px-3 inline-flex items-center rounded-md border border-destructive/40 text-destructive text-xs"
+                    >
+                      {t('board.cancelUpload')}
+                    </button>
+                    <button
+                      onClick={() => cancelMyCard(mc.id, true)}
+                      className="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs"
+                    >
+                      {t('board.reupload')}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {cardsLoading && cards.length === 0 && (
           <div className="text-center text-muted-foreground text-sm py-12">{t('common.loading')}</div>
         )}
