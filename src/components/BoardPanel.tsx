@@ -33,6 +33,7 @@ export interface Board {
   view_mode: string;
   is_locked: boolean;
   moderation_enabled: boolean;
+  allow_multiple_submissions?: boolean;
   columns: string[];
   background_color: string;
   banned_words: string;
@@ -211,6 +212,7 @@ export default function BoardPanel() {
         view_mode: 'wall',
         is_locked: false,
         moderation_enabled: false,
+        allow_multiple_submissions: false,
         columns: ['待办', '进行中', '已完成'],
         background_color: '#ffffff',
         banned_words: '',
@@ -296,6 +298,7 @@ export default function BoardPanel() {
         p_columns: patch.columns,
         p_background_color: patch.background_color,
         p_banned_words: patch.banned_words,
+        p_allow_multiple_submissions: patch.allow_multiple_submissions,
         p_student_names: patch.student_names ?? activeBoard.student_names ?? [],
       } as any);
 
@@ -941,6 +944,15 @@ export default function BoardPanel() {
                   <Eye className="w-3 h-3" />
                   {activeBoard.moderation_enabled ? t('board.moderationOn') : t('board.moderationOff')}
                 </Button>
+                <label className="h-7 px-2 text-xs flex items-center gap-1.5 rounded-md border border-border cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 accent-primary"
+                    checked={!activeBoard.allow_multiple_submissions}
+                    onChange={e => updateBoardSetting('allow_multiple_submissions', !e.target.checked)}
+                  />
+                  {activeBoard.allow_multiple_submissions ? t('board.multipleAllowed') : t('board.onceOnly')}
+                </label>
               </>
             )}
           </div>
