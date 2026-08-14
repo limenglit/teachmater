@@ -49,9 +49,16 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     try {
       await navigator.clipboard.writeText(card.content);
       setContentCopied(true);
-      setTimeout(() => setContentCopied(false), 1500);
+      setContentCopyStatus('success');
+      toast.success(t('board.copySuccess'));
+      setTimeout(() => {
+        setContentCopied(false);
+        setContentCopyStatus('idle');
+      }, 2000);
     } catch {
-      /* ignore */
+      setContentCopyStatus('error');
+      toast.error(t('board.copyFailed'));
+      setTimeout(() => setContentCopyStatus('idle'), 2000);
     }
   };
 
