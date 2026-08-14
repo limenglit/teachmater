@@ -361,6 +361,11 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                 ? <Check className="w-3.5 h-3.5 text-emerald-600" />
                 : <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />}
             </button>
+            {htmlLinkCopyStatus !== 'idle' && (
+              <span className={`text-xs ${htmlLinkCopyStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                {htmlLinkCopyStatus === 'success' ? t('board.copySuccess') : t('board.copyFailed')}
+              </span>
+            )}
             <a
               href={card.media_url}
               target="_blank"
