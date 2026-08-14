@@ -139,8 +139,10 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [codeExpanded, setCodeExpanded] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [codeCopyStatus, setCodeCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false);
   const [htmlLinkCopied, setHtmlLinkCopied] = useState(false);
+  const [htmlLinkCopyStatus, setHtmlLinkCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const htmlExt = card.media_url ? getFileExtFromUrl(card.media_url).toLowerCase() : '';
   const isHtmlPage = card.media_url && (htmlExt === 'html' || htmlExt === 'htm');
