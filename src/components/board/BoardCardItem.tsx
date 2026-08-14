@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp, Maximize2, Minimize2, Globe, Copy, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
@@ -39,6 +40,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
   const [contentExpanded, setContentExpanded] = useState(false);
   const [contentCopied, setContentCopied] = useState(false);
+  const [contentCopyStatus, setContentCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const isLongContent = !!card.content && (card.content.length > 220 || card.content.split('\n').length > 6);
 
@@ -47,9 +49,16 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     try {
       await navigator.clipboard.writeText(card.content);
       setContentCopied(true);
-      setTimeout(() => setContentCopied(false), 1500);
+      setContentCopyStatus('success');
+      toast.success(t('board.copySuccess'));
+      setTimeout(() => {
+        setContentCopied(false);
+        setContentCopyStatus('idle');
+      }, 2000);
     } catch {
-      /* ignore */
+      setContentCopyStatus('error');
+      toast.error(t('board.copyFailed'));
+      setTimeout(() => setContentCopyStatus('idle'), 2000);
     }
   };
 
@@ -130,8 +139,10 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [codeExpanded, setCodeExpanded] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [codeCopyStatus, setCodeCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false);
   const [htmlLinkCopied, setHtmlLinkCopied] = useState(false);
+  const [htmlLinkCopyStatus, setHtmlLinkCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const htmlExt = card.media_url ? getFileExtFromUrl(card.media_url).toLowerCase() : '';
   const isHtmlPage = card.media_url && (htmlExt === 'html' || htmlExt === 'htm');
@@ -141,9 +152,16 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     try {
       await navigator.clipboard.writeText(card.media_url);
       setHtmlLinkCopied(true);
-      setTimeout(() => setHtmlLinkCopied(false), 1500);
+      setHtmlLinkCopyStatus('success');
+      toast.success(t('board.copySuccess'));
+      setTimeout(() => {
+        setHtmlLinkCopied(false);
+        setHtmlLinkCopyStatus('idle');
+      }, 2000);
     } catch {
-      /* ignore */
+      setHtmlLinkCopyStatus('error');
+      toast.error(t('board.copyFailed'));
+      setTimeout(() => setHtmlLinkCopyStatus('idle'), 2000);
     }
   };
 
@@ -157,6 +175,27 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
       setCodeContent('// Failed to load file');
     }
     setCodeLoading(false);
+  };
+
+  const copyCodeContent = async () => {
+    if (!card.media_url) return;
+    const text = codeContent ?? (await fetchCodePreviewText(card.media_url).catch(() => ''));
+    if (codeContent === null) setCodeContent(text);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCodeCopied(true);
+      setCodeCopyStatus('success');
+      toast.success(t('board.copySuccess'));
+      setTimeout(() => {
+        setCodeCopied(false);
+        setCodeCopyStatus('idle');
+      }, 2000);
+    } catch {
+      setCodeCopyStatus('error');
+      toast.error(t('board.copyFailed'));
+      setTimeout(() => setCodeCopyStatus('idle'), 2000);
+    }
   };
 
   return (
@@ -207,6 +246,11 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                   ? <><Check className="w-3 h-3 text-emerald-600" /> {t('board.copied')}</>
                   : <><Copy className="w-3 h-3" /> {t('board.copyContent')}</>}
               </button>
+              {contentCopyStatus !== 'idle' && (
+                <span className={`text-xs ${contentCopyStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {contentCopyStatus === 'success' ? t('board.copySuccess') : t('board.copyFailed')}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -338,6 +382,11 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                 ? <Check className="w-3.5 h-3.5 text-emerald-600" />
                 : <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />}
             </button>
+            {htmlLinkCopyStatus !== 'idle' && (
+              <span className={`text-xs ${htmlLinkCopyStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                {htmlLinkCopyStatus === 'success' ? t('board.copySuccess') : t('board.copyFailed')}
+              </span>
+            )}
             <a
               href={card.media_url}
               target="_blank"
@@ -393,16 +442,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                 {codeExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
               </button>
               <button
-                onClick={async () => {
-                  const text = codeContent ?? (await fetchCodePreviewText(card.media_url!).catch(() => ''));
-                  if (codeContent === null) setCodeContent(text);
-                  if (!text) return;
-                  try {
-                    await navigator.clipboard.writeText(text);
-                    setCodeCopied(true);
-                    setTimeout(() => setCodeCopied(false), 1500);
-                  } catch { /* ignore */ }
-                }}
+                onClick={copyCodeContent}
                 className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
                 title={codeCopied ? t('board.copied') : t('board.copyContent')}
                 aria-label={t('board.copyContent')}
@@ -411,6 +451,11 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                   ? <Check className="w-3.5 h-3.5 text-emerald-600" />
                   : <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />}
               </button>
+              {codeCopyStatus !== 'idle' && (
+                <span className={`text-xs ${codeCopyStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {codeCopyStatus === 'success' ? t('board.copySuccess') : t('board.copyFailed')}
+                </span>
+              )}
               <a
                 href={card.media_url}
                 download
