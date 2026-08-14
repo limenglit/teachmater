@@ -37,6 +37,22 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const audioContainerRef = useRef<HTMLDivElement>(null);
   const [isVideoFullscreen, setIsVideoFullscreen] = useState(false);
   const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
+  const [contentExpanded, setContentExpanded] = useState(false);
+  const [contentCopied, setContentCopied] = useState(false);
+
+  const isLongContent = !!card.content && (card.content.length > 220 || card.content.split('\n').length > 6);
+
+  const copyContent = async () => {
+    if (!card.content) return;
+    try {
+      await navigator.clipboard.writeText(card.content);
+      setContentCopied(true);
+      setTimeout(() => setContentCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
 
   useEffect(() => {
     const handler = () => {
@@ -113,6 +129,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [codeContent, setCodeContent] = useState<string | null>(null);
   const [codeExpanded, setCodeExpanded] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false);
   const [htmlLinkCopied, setHtmlLinkCopied] = useState(false);
 
@@ -153,7 +170,47 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         </div>
       )}
 
-      <p className="text-sm text-foreground whitespace-pre-wrap break-words mb-2">{card.content}</p>
+      {card.content && (
+        <div className="mb-2">
+          <div className="relative">
+            <p
+              className={`text-sm text-foreground whitespace-pre-wrap break-words ${
+                isLongContent && !contentExpanded ? 'max-h-40 overflow-hidden' : ''
+              }`}
+            >
+              {card.content}
+            </p>
+            {isLongContent && !contentExpanded && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background/90 to-transparent" />
+            )}
+          </div>
+          {(isLongContent || card.content.length > 40) && (
+            <div className="flex items-center gap-2 mt-1">
+              {isLongContent && (
+                <button
+                  type="button"
+                  onClick={() => setContentExpanded(v => !v)}
+                  className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                >
+                  {contentExpanded
+                    ? <><ChevronUp className="w-3 h-3" /> {t('board.collapse')}</>
+                    : <><ChevronDown className="w-3 h-3" /> {t('board.expand')}</>}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={copyContent}
+                className="text-xs text-muted-foreground hover:text-primary flex items-center gap-0.5"
+                title={t('board.copyContent')}
+              >
+                {contentCopied
+                  ? <><Check className="w-3 h-3 text-emerald-600" /> {t('board.copied')}</>
+                  : <><Copy className="w-3 h-3" /> {t('board.copyContent')}</>}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {card.url && (
         <a href={card.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mb-2">
@@ -334,6 +391,25 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                 className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
               >
                 {codeExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+              </button>
+              <button
+                onClick={async () => {
+                  const text = codeContent ?? (await fetchCodePreviewText(card.media_url!).catch(() => ''));
+                  if (codeContent === null) setCodeContent(text);
+                  if (!text) return;
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    setCodeCopied(true);
+                    setTimeout(() => setCodeCopied(false), 1500);
+                  } catch { /* ignore */ }
+                }}
+                className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+                title={codeCopied ? t('board.copied') : t('board.copyContent')}
+                aria-label={t('board.copyContent')}
+              >
+                {codeCopied
+                  ? <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  : <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />}
               </button>
               <a
                 href={card.media_url}
