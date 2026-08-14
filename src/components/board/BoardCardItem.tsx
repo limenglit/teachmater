@@ -177,6 +177,27 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     setCodeLoading(false);
   };
 
+  const copyCodeContent = async () => {
+    if (!card.media_url) return;
+    const text = codeContent ?? (await fetchCodePreviewText(card.media_url).catch(() => ''));
+    if (codeContent === null) setCodeContent(text);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCodeCopied(true);
+      setCodeCopyStatus('success');
+      toast.success(t('board.copySuccess'));
+      setTimeout(() => {
+        setCodeCopied(false);
+        setCodeCopyStatus('idle');
+      }, 2000);
+    } catch {
+      setCodeCopyStatus('error');
+      toast.error(t('board.copyFailed'));
+      setTimeout(() => setCodeCopyStatus('idle'), 2000);
+    }
+  };
+
   return (
     <div
       className="rounded-xl border border-border shadow-sm p-4 transition-all hover:shadow-md group relative"
