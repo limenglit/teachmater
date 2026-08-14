@@ -129,6 +129,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [codeContent, setCodeContent] = useState<string | null>(null);
   const [codeExpanded, setCodeExpanded] = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [htmlPreviewOpen, setHtmlPreviewOpen] = useState(false);
   const [htmlLinkCopied, setHtmlLinkCopied] = useState(false);
 
