@@ -152,9 +152,16 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     try {
       await navigator.clipboard.writeText(card.media_url);
       setHtmlLinkCopied(true);
-      setTimeout(() => setHtmlLinkCopied(false), 1500);
+      setHtmlLinkCopyStatus('success');
+      toast.success(t('board.copySuccess'));
+      setTimeout(() => {
+        setHtmlLinkCopied(false);
+        setHtmlLinkCopyStatus('idle');
+      }, 2000);
     } catch {
-      /* ignore */
+      setHtmlLinkCopyStatus('error');
+      toast.error(t('board.copyFailed'));
+      setTimeout(() => setHtmlLinkCopyStatus('idle'), 2000);
     }
   };
 
