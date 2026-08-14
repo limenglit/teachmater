@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Heart, Pin, Trash2, ExternalLink, MessageCircle, Send, Download, ChevronDown, ChevronUp, Maximize2, Minimize2, Globe, Copy, Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import type { BoardCard } from '@/components/BoardPanel';
@@ -39,6 +40,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
   const [contentExpanded, setContentExpanded] = useState(false);
   const [contentCopied, setContentCopied] = useState(false);
+  const [contentCopyStatus, setContentCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const isLongContent = !!card.content && (card.content.length > 220 || card.content.split('\n').length > 6);
 
