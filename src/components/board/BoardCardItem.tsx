@@ -153,7 +153,47 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         </div>
       )}
 
-      <p className="text-sm text-foreground whitespace-pre-wrap break-words mb-2">{card.content}</p>
+      {card.content && (
+        <div className="mb-2">
+          <div className="relative">
+            <p
+              className={`text-sm text-foreground whitespace-pre-wrap break-words ${
+                isLongContent && !contentExpanded ? 'max-h-40 overflow-hidden' : ''
+              }`}
+            >
+              {card.content}
+            </p>
+            {isLongContent && !contentExpanded && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-background/90 to-transparent" />
+            )}
+          </div>
+          {(isLongContent || card.content.length > 40) && (
+            <div className="flex items-center gap-2 mt-1">
+              {isLongContent && (
+                <button
+                  type="button"
+                  onClick={() => setContentExpanded(v => !v)}
+                  className="text-xs text-primary hover:underline flex items-center gap-0.5"
+                >
+                  {contentExpanded
+                    ? <><ChevronUp className="w-3 h-3" /> {t('board.collapse')}</>
+                    : <><ChevronDown className="w-3 h-3" /> {t('board.expand')}</>}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={copyContent}
+                className="text-xs text-muted-foreground hover:text-primary flex items-center gap-0.5"
+                title={t('board.copyContent')}
+              >
+                {contentCopied
+                  ? <><Check className="w-3 h-3 text-emerald-600" /> {t('board.copied')}</>
+                  : <><Copy className="w-3 h-3" /> {t('board.copyContent')}</>}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {card.url && (
         <a href={card.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1 mb-2">
