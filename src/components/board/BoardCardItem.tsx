@@ -216,6 +216,11 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
                   ? <><Check className="w-3 h-3 text-emerald-600" /> {t('board.copied')}</>
                   : <><Copy className="w-3 h-3" /> {t('board.copyContent')}</>}
               </button>
+              {contentCopyStatus !== 'idle' && (
+                <span className={`text-xs ${contentCopyStatus === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {contentCopyStatus === 'success' ? t('board.copySuccess') : t('board.copyFailed')}
+                </span>
+              )}
             </div>
           )}
         </div>
