@@ -37,6 +37,22 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
   const audioContainerRef = useRef<HTMLDivElement>(null);
   const [isVideoFullscreen, setIsVideoFullscreen] = useState(false);
   const [isAudioFullscreen, setIsAudioFullscreen] = useState(false);
+  const [contentExpanded, setContentExpanded] = useState(false);
+  const [contentCopied, setContentCopied] = useState(false);
+
+  const isLongContent = !!card.content && (card.content.length > 220 || card.content.split('\n').length > 6);
+
+  const copyContent = async () => {
+    if (!card.content) return;
+    try {
+      await navigator.clipboard.writeText(card.content);
+      setContentCopied(true);
+      setTimeout(() => setContentCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
+
 
   useEffect(() => {
     const handler = () => {
