@@ -391,6 +391,25 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
               >
                 {codeExpanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
               </button>
+              <button
+                onClick={async () => {
+                  const text = codeContent ?? (await fetchCodePreviewText(card.media_url!).catch(() => ''));
+                  if (codeContent === null) setCodeContent(text);
+                  if (!text) return;
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    setCodeCopied(true);
+                    setTimeout(() => setCodeCopied(false), 1500);
+                  } catch { /* ignore */ }
+                }}
+                className="p-0.5 rounded hover:bg-muted-foreground/10 transition-colors"
+                title={codeCopied ? t('board.copied') : t('board.copyContent')}
+                aria-label={t('board.copyContent')}
+              >
+                {codeCopied
+                  ? <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  : <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-primary transition-colors" />}
+              </button>
               <a
                 href={card.media_url}
                 download
