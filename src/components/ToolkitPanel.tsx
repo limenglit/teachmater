@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
+import type { ToolkitToolId } from '@/components/AdminToolkitConfigPanel';
 import { toast } from '@/hooks/use-toast';
 import { downloadSvgAsPng } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
@@ -100,7 +101,7 @@ export default function ToolkitPanel() {
   const { t } = useLanguage();
   const { isToolkitToolVisible } = useFeatureConfig();
 
-  const tools: Array<[string, JSX.Element]> = [
+  const tools: Array<[ToolkitToolId, JSX.Element]> = [
     ['coderMate', <CoderMateTool />],
     ['barrage', <BarrageDiscussion />],
     ['countdown', <CountdownTimer />],
