@@ -51,6 +51,10 @@ function makeCard(overrides: Partial<BoardCard> = {}): BoardCard {
   } as BoardCard;
 }
 
+function getContentParagraph(snippet: string) {
+  return screen.getByText((_, el) => el?.tagName === 'P' && (el.textContent ?? '').includes(snippet));
+}
+
 function renderCard(card: BoardCard) {
   return render(
     <BoardCardItem card={card} onManage={() => {}} onLike={() => {}} isCreator={false} />,
@@ -73,7 +77,7 @@ describe('BoardCardItem long content folding', () => {
 
   it('collapses long content and shows expand toggle', () => {
     renderCard(makeCard());
-    const paragraph = screen.getByText(LONG_TEXT);
+    const paragraph = getContentParagraph('line 0');
     expect(paragraph.className).toContain('max-h-40');
     expect(screen.getByText('board.expand')).toBeInTheDocument();
   });
@@ -81,17 +85,17 @@ describe('BoardCardItem long content folding', () => {
   it('expands and collapses on toggle click', () => {
     renderCard(makeCard());
     fireEvent.click(screen.getByText('board.expand'));
-    expect(screen.getByText(LONG_TEXT).className).not.toContain('max-h-40');
+    expect(getContentParagraph('line 0').className).not.toContain('max-h-40');
     expect(screen.getByText('board.collapse')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('board.collapse'));
-    expect(screen.getByText(LONG_TEXT).className).toContain('max-h-40');
+    expect(getContentParagraph('line 0').className).toContain('max-h-40');
   });
 
   it('keeps original line breaks and indentation via whitespace-pre-wrap', () => {
     const indented = `function a() {\n    const b = 1;\n\treturn b;\n}`;
     renderCard(makeCard({ content: indented + '\n'.repeat(8) }));
-    const paragraph = screen.getByText((_, el) => el?.tagName === 'P' && el.textContent?.includes('const b = 1;') === true);
+    const paragraph = getContentParagraph('const b = 1;');
     expect(paragraph.className).toContain('whitespace-pre-wrap');
     expect(paragraph.textContent).toContain('    const b = 1;');
     expect(paragraph.textContent).toContain('\treturn b;');
