@@ -83,39 +83,61 @@ function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: 
   );
 }
 
+// Uniform shell so every tool entry card has the same height (based on the
+// shortest tool card) with internal scrolling for longer content.
+function ToolCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="group relative h-[320px] overflow-y-auto overscroll-contain rounded-2xl border border-border bg-card shadow-card transition-all duration-200 hover:shadow-md hover:border-primary/30 focus-within:border-primary/40
+        [&>div:first-child]:!rounded-none [&>div:first-child]:!border-0 [&>div:first-child]:!bg-transparent [&>div:first-child]:!shadow-none [&>div:first-child]:min-h-full"
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function ToolkitPanel() {
   const { t } = useLanguage();
   const { isToolkitToolVisible } = useFeatureConfig();
+
+  const tools: Array<[string, JSX.Element]> = [
+    ['coderMate', <CoderMateTool />],
+    ['barrage', <BarrageDiscussion />],
+    ['countdown', <CountdownTimer />],
+    ['noise', <NoiseDetector />],
+    ['scoreboard', <Scoreboard />],
+    ['randomAssigner', <RandomAssigner />],
+    ['lottery', <LotteryDrawer />],
+    ['poll', <PollManager />],
+    ['stopwatch', <Stopwatch />],
+    ['trafficLight', <TrafficLight />],
+    ['breathing', <BreathingExercise />],
+    ['textMagnifier', <TextMagnifier />],
+    ['screenCapture', <ScreenCaptureTool />],
+    ['taskChecklist', <TaskChecklist />],
+    ['codeVisualizer', <CodeVisualizerTool />],
+    ['imageEditor', <ImageEditorTool />],
+    ['commandCards', <CommandCards />],
+    ['qrCode', <QRCodeGenerator />],
+    ['memoryAid', <MemoryAidTool />],
+  ];
 
   return (
     <div data-testid="toolkit-panel" className="h-full min-h-0 overflow-y-auto overflow-x-hidden p-4 pr-2 sm:p-8 sm:pr-4">
       <div className="max-w-5xl mx-auto pb-[max(1rem,env(safe-area-inset-bottom))]">
         <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-6">{t('toolkit.title')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {isToolkitToolVisible('coderMate') && <CoderMateTool />}
-          {isToolkitToolVisible('barrage') && <BarrageDiscussion />}
-          {isToolkitToolVisible('countdown') && <CountdownTimer />}
-          {isToolkitToolVisible('noise') && <NoiseDetector />}
-          {isToolkitToolVisible('scoreboard') && <Scoreboard />}
-          {isToolkitToolVisible('randomAssigner') && <RandomAssigner />}
-          {isToolkitToolVisible('lottery') && <LotteryDrawer />}
-          {isToolkitToolVisible('poll') && <PollManager />}
-          {isToolkitToolVisible('stopwatch') && <Stopwatch />}
-          {isToolkitToolVisible('trafficLight') && <TrafficLight />}
-          {isToolkitToolVisible('breathing') && <BreathingExercise />}
-          {isToolkitToolVisible('textMagnifier') && <TextMagnifier />}
-          {isToolkitToolVisible('screenCapture') && <ScreenCaptureTool />}
-          {isToolkitToolVisible('taskChecklist') && <TaskChecklist />}
-          {isToolkitToolVisible('codeVisualizer') && <CodeVisualizerTool />}
-          {isToolkitToolVisible('imageEditor') && <ImageEditorTool />}
-          {isToolkitToolVisible('commandCards') && <CommandCards />}
-          {isToolkitToolVisible('qrCode') && <QRCodeGenerator />}
-          {isToolkitToolVisible('memoryAid') && <MemoryAidTool />}
+          {tools
+            .filter(([key]) => isToolkitToolVisible(key))
+            .map(([key, node]) => (
+              <ToolCard key={key}>{node}</ToolCard>
+            ))}
         </div>
       </div>
     </div>
   );
 }
+
 
 
 function CommandCards() {
