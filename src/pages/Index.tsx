@@ -243,7 +243,7 @@ const Index = () => {
             {/* Sidebar area */}
             {true ? (
               <div className={`
-                fixed lg:relative z-50 lg:z-auto h-full min-h-0
+                fixed lg:relative z-50 lg:z-auto h-[100dvh] lg:h-full min-h-0
                 transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
               `}>
