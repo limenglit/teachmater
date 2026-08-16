@@ -382,6 +382,24 @@ html {
   }
 }
 
+/* Mobile / tablet: let the document scroll naturally instead of trapping
+   content inside a 100dvh shell that cannot be swiped. */
+@media (max-width: 1023px) {
+  html,
+  body {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #root {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+}
+
 /* Respect notches / home indicator for fixed bars */
 .safe-area-bottom {
   padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
