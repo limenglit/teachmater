@@ -167,7 +167,7 @@ const Index = () => {
           <WeChatBanner />
 
           {/* Header */}
-          <header className="flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
+          <header className="sticky top-0 z-30 lg:static flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
             <h1 className="sr-only">教创搭子 TeacherMate — 教师智能教学辅助平台：随机点名、座位编排、小组管理、互动签到、白板协作、AI 测验生成</h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <picture>
