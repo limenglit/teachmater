@@ -276,7 +276,7 @@ const Index = () => {
               </div>
             ) : null}
 
-            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
+            <div className="flex-1 min-w-0 lg:min-h-0 lg:overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
               {/* 积分面板后，工具箱前插入社区 */}
               <Suspense fallback={<PanelFallback />}>{renderContent()}</Suspense>
             </div>
