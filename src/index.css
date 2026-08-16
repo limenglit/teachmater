@@ -407,3 +407,26 @@ html {
 .safe-area-top {
   padding-top: max(env(safe-area-inset-top), 0rem);
 }
+/* Horizontal notch insets (landscape iPhone) */
+.safe-area-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* App shell: keep content clear of status bar / home indicator on touch devices */
+@media (pointer: coarse) {
+  .app-shell-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .app-header-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .app-content-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+  .app-sidebar-safe {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
