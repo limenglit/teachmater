@@ -163,11 +163,11 @@ const Index = () => {
   return (
     <ThemeProvider>
       <StudentProvider>
-        <div className="flex flex-col h-[100dvh] bg-surface overflow-hidden">
+        <div className="flex flex-col min-h-[100dvh] lg:h-[100dvh] bg-surface lg:overflow-hidden">
           <WeChatBanner />
 
           {/* Header */}
-          <header className="flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
+          <header className="sticky top-0 z-30 lg:static flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
             <h1 className="sr-only">教创搭子 TeacherMate — 教师智能教学辅助平台：随机点名、座位编排、小组管理、互动签到、白板协作、AI 测验生成</h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <picture>
@@ -234,7 +234,7 @@ const Index = () => {
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!isApproved} userEmail={user?.email} />
 
           {/* Main Content */}
-          <div className="flex flex-1 min-h-0 overflow-hidden relative">
+          <div className="flex flex-1 min-h-0 lg:overflow-hidden relative">
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
               <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -243,7 +243,7 @@ const Index = () => {
             {/* Sidebar area */}
             {true ? (
               <div className={`
-                fixed lg:relative z-50 lg:z-auto h-full min-h-0
+                fixed lg:relative z-50 lg:z-auto h-[100dvh] lg:h-full min-h-0
                 transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
               `}>
@@ -276,7 +276,7 @@ const Index = () => {
               </div>
             ) : null}
 
-            <div className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
+            <div className="flex-1 min-w-0 lg:min-h-0 lg:overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
               {/* 积分面板后，工具箱前插入社区 */}
               <Suspense fallback={<PanelFallback />}>{renderContent()}</Suspense>
             </div>
