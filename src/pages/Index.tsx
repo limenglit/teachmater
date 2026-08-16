@@ -234,7 +234,7 @@ const Index = () => {
           <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} isLoggedIn={!!isApproved} userEmail={user?.email} />
 
           {/* Main Content */}
-          <div className="flex flex-1 min-h-0 overflow-hidden relative">
+          <div className="flex flex-1 min-h-0 lg:overflow-hidden relative">
             {/* Mobile sidebar overlay */}
             {sidebarOpen && (
               <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
