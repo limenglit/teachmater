@@ -163,7 +163,7 @@ const Index = () => {
   return (
     <ThemeProvider>
       <StudentProvider>
-        <div className="flex flex-col h-[100dvh] bg-surface overflow-hidden">
+        <div className="flex flex-col min-h-[100dvh] lg:h-[100dvh] bg-surface lg:overflow-hidden">
           <WeChatBanner />
 
           {/* Header */}
