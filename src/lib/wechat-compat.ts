@@ -60,7 +60,7 @@ function lockFontSize() {
   const apply = () => {
     try {
       window.WeixinJSBridge?.invoke("setFontSizeCallback", { fontSize: 0 });
-（      );
+      window.WeixinJSBridge?.invoke("setPageFontSize", { fontSize: 0 });
     } catch {
       /* bridge unavailable — harmless */
     }
