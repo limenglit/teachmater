@@ -467,10 +467,43 @@ html.is-wechat-android .h-\[100dvh\] {
   height: var(--app-vh, 100vh);
 }
 
-/* Fixed overlays must not eat the whole gesture surface in WeChat. */
-html.is-wechat [data-radix-scroll-area-viewport],
+/* --- Pinch vs scroll arbitration in WeChat ---
+   Scroll containers explicitly allow panning AND pinch-zoom, so a
+   two-finger gesture is never swallowed by the scroller. */
+html.is-wechat .overflow-auto,
 html.is-wechat .overflow-y-auto,
-html.is-wechat .overflow-auto {
-  overscroll-behavior: auto;
+html.is-wechat .overflow-x-auto,
+html.is-wechat [data-radix-scroll-area-viewport] {
+  touch-action: pan-x pan-y pinch-zoom;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+/* `manipulation` blocks pinch on the X5 kernel — keep zoom on controls. */
+html.is-wechat button,
+html.is-wechat [role="button"],
+html.is-wechat a,
+html.is-wechat summary,
+html.is-wechat label,
+html.is-wechat select {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+/* While a pinch is in flight, freeze scrolling everywhere so the gesture
+   resolves to a clean zoom instead of a scroll+zoom fight. */
+html[data-pinching].is-wechat,
+html[data-pinching].is-wechat body,
+html[data-pinching].is-wechat .overflow-auto,
+html[data-pinching].is-wechat .overflow-y-auto,
+html[data-pinching].is-wechat .overflow-x-auto,
+html[data-pinching].is-wechat [data-radix-scroll-area-viewport] {
+  touch-action: pinch-zoom;
+  scroll-behavior: auto;
+  overscroll-behavior: none;
+}
+
+/* Surfaces implementing their own pinch (seat map, image canvas) keep
+   full control of the gesture. */
+html.is-wechat [data-own-pinch] {
+  touch-action: none;
 }

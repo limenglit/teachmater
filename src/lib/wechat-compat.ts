@@ -87,6 +87,69 @@ function onViewportChange() {
   [80, 250, 500].forEach((d) => window.setTimeout(forceReflow, d));
 }
 
+/* ------------------------------------------------------------------
+   Pinch vs scroll arbitration
+   ------------------------------------------------------------------
+   WeChat's kernels hand a two-finger gesture to whichever scroll
+   container is under the fingers, which makes the page scroll jitter
+   instead of zooming. We flag the pinch on <html data-pinching> so CSS
+   can freeze inner scroll containers (`touch-action: pinch-zoom`) for
+   the duration of the gesture, then release them on the last touch up.
+   Components with their own pinch implementation (`[data-own-pinch]`,
+   e.g. the seat check-in canvas) are left untouched.
+   ------------------------------------------------------------------ */
+
+let pinchReleaseTimer = 0;
+
+function setPinching(on: boolean) {
+  const root = document.documentElement;
+  if (on) {
+    window.clearTimeout(pinchReleaseTimer);
+    root.setAttribute("data-pinching", "");
+  } else {
+    // Small delay: WeChat fires touchend per finger and briefly re-enters
+    // the gesture, so releasing instantly causes a scroll flicker.
+    window.clearTimeout(pinchReleaseTimer);
+    pinchReleaseTimer = window.setTimeout(() => {
+      root.removeAttribute("data-pinching");
+      syncSafeArea();
+    }, 180);
+  }
+}
+
+function installPinchArbitration() {
+  const ownPinch = (t: EventTarget | null) =>
+    t instanceof Element && !!t.closest("[data-own-pinch]");
+
+  document.addEventListener(
+    "touchstart",
+    (e) => {
+      if (e.touches.length >= 2 && !ownPinch(e.target)) setPinching(true);
+    },
+    { passive: true, capture: true },
+  );
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      if (e.touches.length >= 2 && !ownPinch(e.target)) setPinching(true);
+    },
+    { passive: true, capture: true },
+  );
+  const end = (e: TouchEvent) => {
+    if (e.touches.length < 2) setPinching(false);
+  };
+  document.addEventListener("touchend", end, { passive: true, capture: true });
+  document.addEventListener("touchcancel", end, { passive: true, capture: true });
+
+  // iOS WKWebView native zoom gestures (fired outside the touch sequence).
+  window.addEventListener("gesturestart", () => setPinching(true), true);
+  window.addEventListener("gestureend", () => setPinching(false), true);
+
+  // After a zoom, the visual viewport is offset/scaled: re-measure so
+  // safe-area paddings and --app-vh stay correct.
+  window.visualViewport?.addEventListener("resize", () => syncSafeArea());
+}
+
 let installed = false;
 
 /** Install once at boot. No-op outside the WeChat in-app browser. */
@@ -99,6 +162,7 @@ export function installWeChatCompat(): void {
     restorePinchZoom();
     lockFontSize();
     onViewportChange();
+    installPinchArbitration();
     window.addEventListener("orientationchange", onViewportChange);
     window.addEventListener("pageshow", onViewportChange);
     window.addEventListener("resize", forceReflow);
@@ -114,3 +178,4 @@ export function installWeChatCompat(): void {
   if (document.body) start();
   else document.addEventListener("DOMContentLoaded", start, { once: true });
 }
+
