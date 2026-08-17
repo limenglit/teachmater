@@ -178,6 +178,10 @@ export function usePinchZoom(minScale = 0.5, maxScale = 4, resetDeps: Dependency
     const el = containerRef.current;
     if (!el) return;
 
+    // Opt this surface out of the WeChat pinch arbitration layer: it runs
+    // its own pinch/pan implementation.
+    el.setAttribute('data-own-pinch', '');
+
     const onStart = (e: TouchEvent) => {
       handleDoubleTapReset(e);
       handleTouchStart(e);
