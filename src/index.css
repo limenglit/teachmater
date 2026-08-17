@@ -432,3 +432,45 @@ html {
   }
 }
 
+
+/* ===================================================================
+   WeChat in-app browser (WKWebView on iOS, X5 / XWeb on Android).
+   `.is-wechat*` is set by installWeChatCompat() at boot.
+   =================================================================== */
+html.is-wechat,
+html.is-wechat body {
+  /* X5 breaks document scrolling when both html and body are scroll
+     containers — let the document scroll natively instead. */
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  /* Keep pinch-zoom available: WeChat otherwise swallows the gesture. */
+  touch-action: pan-x pan-y pinch-zoom;
+  /* WeChat iOS "字体大小" setting must not rescale our layout. */
+  -webkit-text-size-adjust: 100% !important;
+  text-size-adjust: 100% !important;
+}
+
+html.is-wechat #root {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+/* X5 has no reliable dvh: fall back to the measured viewport height. */
+html.is-wechat-android .min-h-\[100dvh\] {
+  min-height: var(--app-vh, 100vh);
+}
+html.is-wechat-android .h-\[100dvh\] {
+  height: var(--app-vh, 100vh);
+}
+
+/* Fixed overlays must not eat the whole gesture surface in WeChat. */
+html.is-wechat [data-radix-scroll-area-viewport],
+html.is-wechat .overflow-y-auto,
+html.is-wechat .overflow-auto {
+  overscroll-behavior: auto;
+  -webkit-overflow-scrolling: touch;
+}
