@@ -396,7 +396,6 @@ html {
        breaks viewport scroll propagation on iOS/X5 webviews. */
     overflow-x: clip;
     overflow-y: visible;
-    -webkit-overflow-scrolling: touch;
   }
   #root {
     height: auto;
@@ -450,7 +449,6 @@ html.is-wechat body {
   min-height: 100%;
   overflow-x: clip;
   overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
   /* Keep pinch-zoom available: WeChat otherwise swallows the gesture. */
   touch-action: pan-x pan-y pinch-zoom;
   /* WeChat iOS "字体大小" setting must not rescale our layout. */
