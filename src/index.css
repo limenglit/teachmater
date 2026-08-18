@@ -373,7 +373,9 @@ html {
   .overflow-x-auto,
   [data-radix-scroll-area-viewport] {
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    /* `contain` swallows the gesture when the inner box has nothing to
+       scroll, which freezes the page in WeChat / iOS. Let it chain. */
+    overscroll-behavior: auto;
   }
 
   /* Horizontal scrollers hint at more content and snap softly */
@@ -478,7 +480,7 @@ html.is-wechat .overflow-y-auto,
 html.is-wechat .overflow-x-auto,
 html.is-wechat [data-radix-scroll-area-viewport] {
   touch-action: pan-x pan-y pinch-zoom;
-  overscroll-behavior: contain;
+  overscroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -509,4 +511,13 @@ html[data-pinching].is-wechat [data-radix-scroll-area-viewport] {
    full control of the gesture. */
 html.is-wechat [data-own-pinch] {
   touch-action: none;
+}
+
+/* Mobile: `overflow-x: hidden` silently turns a box into a scroll container
+   (the Y axis is computed to `auto`), which traps vertical swipes. `clip`
+   contains the same horizontal overflow without creating a scroller. */
+@media (max-width: 1023px) {
+  .overflow-x-hidden {
+    overflow-x: clip;
+  }
 }
