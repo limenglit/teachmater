@@ -389,8 +389,11 @@ html {
   body {
     height: auto;
     min-height: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
+    /* `clip` contains horizontal overflow WITHOUT turning html/body into a
+       scroll container — `hidden` forces the other axis to `auto`, which
+       breaks viewport scroll propagation on iOS/X5 webviews. */
+    overflow-x: clip;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
   }
   #root {
