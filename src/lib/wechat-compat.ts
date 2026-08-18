@@ -100,13 +100,19 @@ function onViewportChange() {
    ------------------------------------------------------------------ */
 
 let pinchReleaseTimer = 0;
+let pinchWatchdog = 0;
 
 function setPinching(on: boolean) {
   const root = document.documentElement;
   if (on) {
     window.clearTimeout(pinchReleaseTimer);
     root.setAttribute("data-pinching", "");
+    // Safety net: WeChat sometimes drops the final touchend, which would
+    // otherwise leave scrolling frozen for good.
+    window.clearTimeout(pinchWatchdog);
+    pinchWatchdog = window.setTimeout(() => root.removeAttribute("data-pinching"), 2000);
   } else {
+    window.clearTimeout(pinchWatchdog);
     // Small delay: WeChat fires touchend per finger and briefly re-enters
     // the gesture, so releasing instantly causes a scroll flicker.
     window.clearTimeout(pinchReleaseTimer);

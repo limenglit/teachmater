@@ -373,7 +373,9 @@ html {
   .overflow-x-auto,
   [data-radix-scroll-area-viewport] {
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    /* `contain` swallows the gesture when the inner box has nothing to
+       scroll, which freezes the page in WeChat / iOS. Let it chain. */
+    overscroll-behavior: auto;
   }
 
   /* Horizontal scrollers hint at more content and snap softly */
@@ -389,9 +391,11 @@ html {
   body {
     height: auto;
     min-height: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    /* `clip` contains horizontal overflow WITHOUT turning html/body into a
+       scroll container — `hidden` forces the other axis to `auto`, which
+       breaks viewport scroll propagation on iOS/X5 webviews. */
+    overflow-x: clip;
+    overflow-y: visible;
   }
   #root {
     height: auto;
@@ -443,9 +447,8 @@ html.is-wechat body {
      containers — let the document scroll natively instead. */
   height: auto;
   min-height: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
   /* Keep pinch-zoom available: WeChat otherwise swallows the gesture. */
   touch-action: pan-x pan-y pinch-zoom;
   /* WeChat iOS "字体大小" setting must not rescale our layout. */
@@ -475,7 +478,7 @@ html.is-wechat .overflow-y-auto,
 html.is-wechat .overflow-x-auto,
 html.is-wechat [data-radix-scroll-area-viewport] {
   touch-action: pan-x pan-y pinch-zoom;
-  overscroll-behavior: contain;
+  overscroll-behavior: auto;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -506,4 +509,13 @@ html[data-pinching].is-wechat [data-radix-scroll-area-viewport] {
    full control of the gesture. */
 html.is-wechat [data-own-pinch] {
   touch-action: none;
+}
+
+/* Mobile: `overflow-x: hidden` silently turns a box into a scroll container
+   (the Y axis is computed to `auto`), which traps vertical swipes. `clip`
+   contains the same horizontal overflow without creating a scroller. */
+@media (max-width: 1023px) {
+  .overflow-x-hidden {
+    overflow-x: clip;
+  }
 }
