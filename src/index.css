@@ -446,7 +446,7 @@ html.is-wechat body {
      containers — let the document scroll natively instead. */
   height: auto;
   min-height: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   /* Keep pinch-zoom available: WeChat otherwise swallows the gesture. */
