@@ -43,7 +43,7 @@ import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 
 interface TaskDraftItem {
   id: string;
@@ -571,9 +571,7 @@ export default function TaskChecklist() {
                       className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                       onClick={async () => {
                         try {
-                          const svg = detailQrRef.current?.querySelector('svg');
-                          if (!svg) throw new Error('QR not ready');
-                          await downloadSvgAsPng(svg as SVGSVGElement, `task-${activeSession?.id || 'qrcode'}.png`);
+                          await downloadQrFromContainer(detailQrRef.current, `task-${activeSession?.id || 'qrcode'}.png`);
                           toast({ title: t('board.downloadPng') });
                         } catch {
                           toast({ title: '下载PNG失败', variant: 'destructive' });

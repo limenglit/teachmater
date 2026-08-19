@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
 import { toast } from '@/hooks/use-toast';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 // import Community from './Community';
 import {
@@ -298,9 +298,7 @@ function QRCodeGenerator() {
                 className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                 onClick={async () => {
                   try {
-                    const svg = qrPreviewRef.current?.querySelector('svg');
-                    if (!svg) throw new Error('QR not ready');
-                    await downloadSvgAsPng(svg as SVGSVGElement, 'qrcode.png');
+                    await downloadQrFromContainer(qrPreviewRef.current, 'qrcode.png');
                     toast({ title: t('board.downloadPng') });
                   } catch {
                     toast({ title: '下载PNG失败', variant: 'destructive' });

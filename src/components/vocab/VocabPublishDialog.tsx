@@ -16,7 +16,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 import {
   createVocabSession,
   normalizeStudentNames,
@@ -190,9 +190,7 @@ export default function VocabPublishDialog({ open, onOpenChange, set }: Props) {
                           className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                           onClick={async () => {
                             try {
-                              const svg = qrPreviewRef.current?.querySelector('svg');
-                              if (!svg) throw new Error('QR not ready');
-                              await downloadSvgAsPng(svg as SVGSVGElement, `vocab-${session.id}.png`);
+                              await downloadQrFromContainer(qrPreviewRef.current, `vocab-${session.id}.png`);
                               toast.success('二维码 PNG 已下载');
                             } catch {
                               toast.error('下载 PNG 失败');

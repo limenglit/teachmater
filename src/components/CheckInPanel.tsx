@@ -10,7 +10,7 @@ import { Clock, QrCode, StopCircle, Download, CheckCircle2, XCircle, UserX } fro
 import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
 import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 
 const HISTORY_KEY = 'teachmate_checkin_history';
 
@@ -442,9 +442,7 @@ export default function CheckInPanel() {
                     className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                     onClick={async () => {
                       try {
-                        const svg = qrPreviewRef.current?.querySelector('svg');
-                        if (!svg) throw new Error('QR not ready');
-                        await downloadSvgAsPng(svg as SVGSVGElement, `checkin-${session?.id || 'qrcode'}.png`);
+                        await downloadQrFromContainer(qrPreviewRef.current, `checkin-${session?.id || 'qrcode'}.png`);
                         toast({ title: t('board.downloadPng') });
                       } catch {
                         toast({ title: '下载PNG失败', variant: 'destructive' });

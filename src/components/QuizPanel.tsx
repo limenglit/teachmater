@@ -32,7 +32,7 @@ import {
   getLocalQuestions, saveLocalQuestions,
   getLocalCategories, getLocalPapers, saveLocalPapers,
 } from '@/components/quiz/quizTypes';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { runQuizCall } from '@/lib/quiz-error';
 
@@ -430,9 +430,7 @@ export default function QuizPanel() {
                     className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                     onClick={async () => {
                       try {
-                        const svg = qrPreviewRef.current?.querySelector('svg');
-                        if (!svg) throw new Error('QR not ready');
-                        await downloadSvgAsPng(svg as SVGSVGElement, `quiz-${activeSession?.id || 'qrcode'}.png`);
+                        await downloadQrFromContainer(qrPreviewRef.current, `quiz-${activeSession?.id || 'qrcode'}.png`);
                         toast({ title: t('board.downloadPng') });
                       } catch {
                         toast({ title: '下载PNG失败', variant: 'destructive' });

@@ -28,6 +28,40 @@ export function downloadQrPng(containerRef: RefObject<HTMLDivElement | null>, fi
   downloadSvgAsPng(svg, `${filename}.png`);
 }
 
+/**
+ * 从二维码容器中导出 PNG。
+ * QRActionPanel 现在渲染的是 canvas + PNG <img>（微信长按识别需要），
+ * 不再有 inline <svg>，因此下载必须按 canvas → img(data:png) → svg 的顺序回退。
+ */
+export async function downloadQrFromContainer(root: HTMLElement | null | undefined, filename: string) {
+  if (!root) throw new Error('QR not ready');
+  const name = filename.toLowerCase().endsWith('.png') ? filename : `${filename}.png`;
+
+  const canvas = root.querySelector('canvas') as HTMLCanvasElement | null;
+  if (canvas) {
+    const link = document.createElement('a');
+    link.href = canvas.toDataURL('image/png');
+    link.download = name;
+    link.click();
+    return;
+  }
+
+  const img = root.querySelector('img') as HTMLImageElement | null;
+  if (img && img.src.startsWith('data:image/png')) {
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = name;
+    link.click();
+    return;
+  }
+
+  const svg = root.querySelector('svg') as SVGSVGElement | null;
+  if (!svg) throw new Error('QR not ready');
+  await downloadSvgAsPng(svg, name);
+}
+
+
+
 
 export async function downloadSvgAsPng(svgElement: SVGSVGElement, filename: string) {
   const widthAttr = Number(svgElement.getAttribute('width'));

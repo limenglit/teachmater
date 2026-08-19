@@ -12,7 +12,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useAIQuota } from '@/hooks/useAIQuota';
 import RosterQuickBind from '@/components/RosterQuickBind';
 import ClassRosterPicker from './ClassRosterPicker';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 
 interface BarrageMessage {
@@ -443,9 +443,7 @@ export default function BarrageDiscussion() {
                   className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                   onClick={async () => {
                     try {
-                      const svg = qrPreviewRef.current?.querySelector('svg');
-                      if (!svg) throw new Error('QR not ready');
-                      await downloadSvgAsPng(svg as SVGSVGElement, `barrage-${topicId || 'qrcode'}.png`);
+                      await downloadQrFromContainer(qrPreviewRef.current, `barrage-${topicId || 'qrcode'}.png`);
                       toast({ title: t('board.downloadPng') });
                     } catch {
                       toast({ title: '下载PNG失败', variant: 'destructive' });
