@@ -15,7 +15,7 @@ import {
   type SeatCheckinRecord,
   type SeatCheckinSessionSummary,
 } from '@/lib/seat-checkin-session';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import {
   getRequireSeatAssignmentBeforeCheckin,
@@ -820,9 +820,7 @@ export default function SeatCheckinDialog({
                     className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                     onClick={async () => {
                       try {
-                        const svg = qrPreviewRef.current?.querySelector('svg');
-                        if (!svg) throw new Error('QR not ready');
-                        await downloadSvgAsPng(svg as SVGSVGElement, resolvedPngFileName);
+                        await downloadQrFromContainer(qrPreviewRef.current, resolvedPngFileName);
                         toast({ title: t('seatCheckinDialog.pngSuccess') });
                       } catch {
                         toast({ title: t('seatCheckinDialog.pngFailed'), variant: 'destructive' });

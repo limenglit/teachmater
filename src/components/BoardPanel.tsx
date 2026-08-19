@@ -18,7 +18,7 @@ import BoardWordCloud from './board/BoardWordCloud';
 import BoardReport from './board/BoardReport';
 import CollaborativeCanvas from './board/CollaborativeCanvas';
 import { tFormat } from '@/contexts/LanguageContext';
-import { downloadSvgAsPng } from '@/lib/qr-download';
+import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { loadLastGroups } from '@/lib/teamwork-local';
 
@@ -1077,9 +1077,7 @@ export default function BoardPanel() {
                     className="h-8 px-2.5 gap-1 text-xs whitespace-nowrap"
                     onClick={async () => {
                       try {
-                        const svg = qrPreviewRef.current?.querySelector('svg');
-                        if (!svg) throw new Error('QR not ready');
-                        await downloadSvgAsPng(svg as SVGSVGElement, `board-${activeBoard?.id || 'qrcode'}.png`);
+                        await downloadQrFromContainer(qrPreviewRef.current, `board-${activeBoard?.id || 'qrcode'}.png`);
                         toast({ title: t('board.downloadPng') });
                       } catch {
                         toast({ title: '下载PNG失败', variant: 'destructive' });
