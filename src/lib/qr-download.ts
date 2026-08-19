@@ -1,57 +1,79 @@
 import type { RefObject } from 'react';
 
-export function downloadQrPng(containerRef: RefObject<HTMLDivElement | null>, filename: string) {
-  const root = containerRef.current;
-  if (!root) return;
+function triggerDownload(href: string, filename: string) {
+  const link = document.createElement('a');
+  link.href = href;
+  link.download = filename;
+  link.click();
+}
 
-  // 优先使用 canvas / img（QRActionPanel 现在渲染 PNG 位图），回退到 SVG。
-  const canvas = root.querySelector('canvas');
-  if (canvas) {
-    const link = document.createElement('a');
-    link.href = canvas.toDataURL('image/png');
-    link.download = `${filename}.png`;
-    link.click();
-    return;
+/** 二维码位图是否已经绘制完成（canvas 有尺寸 / img 已解码 / 存在 svg）。 */
+export function isQrReady(root: HTMLElement | null | undefined): boolean {
+  if (!root) return false;
+  if (root.getAttribute('data-qr-ready') === 'true') return true;
+
+  const img = root.querySelector('img') as HTMLImageElement | null;
+  if (img && img.src && (img.complete ? img.naturalWidth > 0 : false)) return true;
+
+  const canvas = root.querySelector('canvas') as HTMLCanvasElement | null;
+  if (canvas && canvas.width > 0 && canvas.height > 0) return true;
+
+  return !!root.querySelector('svg');
+}
+
+/** 在下载前等待二维码资源就绪，最长等待 timeoutMs。 */
+export async function waitForQrReady(root: HTMLElement | null | undefined, timeoutMs = 3000): Promise<boolean> {
+  if (isQrReady(root)) return true;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise<void>(resolve => {
+      requestAnimationFrame(() => resolve());
+    });
+    if (isQrReady(root)) return true;
   }
-
-  const img = root.querySelector('img');
-  if (img && img.src.startsWith('data:image/png')) {
-    const link = document.createElement('a');
-    link.href = img.src;
-    link.download = `${filename}.png`;
-    link.click();
-    return;
-  }
-
-  const svg = root.querySelector('svg');
-  if (!svg) return;
-  downloadSvgAsPng(svg, `${filename}.png`);
+  return false;
 }
 
 /**
  * 从二维码容器中导出 PNG。
- * QRActionPanel 现在渲染的是 canvas + PNG <img>（微信长按识别需要），
- * 不再有 inline <svg>，因此下载必须按 canvas → img(data:png) → svg 的顺序回退。
+ * QRActionPanel 渲染的是 canvas + PNG <img>（微信长按识别需要），
+ * 不再有 inline <svg>，因此下载按 canvas → img → svg 的顺序回退。
+ *
+ * 性能：优先 canvas.toBlob（异步，不阻塞主线程），避免大尺寸二维码
+ * 同步 toDataURL 造成的界面卡顿。
  */
 export async function downloadQrFromContainer(root: HTMLElement | null | undefined, filename: string) {
   if (!root) throw new Error('QR not ready');
   const name = filename.toLowerCase().endsWith('.png') ? filename : `${filename}.png`;
 
+  const ready = await waitForQrReady(root);
+  if (!ready) throw new Error('QR not ready');
+
   const canvas = root.querySelector('canvas') as HTMLCanvasElement | null;
-  if (canvas) {
-    const link = document.createElement('a');
-    link.href = canvas.toDataURL('image/png');
-    link.download = name;
-    link.click();
+  if (canvas && canvas.width > 0) {
+    const blob = await new Promise<Blob | null>(resolve => {
+      try {
+        canvas.toBlob(b => resolve(b), 'image/png');
+      } catch {
+        resolve(null);
+      }
+    });
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      try {
+        triggerDownload(url, name);
+      } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+      return;
+    }
+    triggerDownload(canvas.toDataURL('image/png'), name);
     return;
   }
 
   const img = root.querySelector('img') as HTMLImageElement | null;
-  if (img && img.src.startsWith('data:image/png')) {
-    const link = document.createElement('a');
-    link.href = img.src;
-    link.download = name;
-    link.click();
+  if (img && img.src && (img.src.startsWith('data:image/png') || img.src.startsWith('blob:'))) {
+    triggerDownload(img.src, name);
     return;
   }
 
@@ -59,6 +81,12 @@ export async function downloadQrFromContainer(root: HTMLElement | null | undefin
   if (!svg) throw new Error('QR not ready');
   await downloadSvgAsPng(svg, name);
 }
+
+/** @deprecated 使用 downloadQrFromContainer。 */
+export function downloadQrPng(containerRef: RefObject<HTMLDivElement | null>, filename: string) {
+  void downloadQrFromContainer(containerRef.current, filename);
+}
+
 
 
 
