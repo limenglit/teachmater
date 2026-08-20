@@ -126,17 +126,16 @@ describe('wechat-compat gesture regressions', () => {
     const changed = vi.fn();
     window.addEventListener('safe-area-change', changed);
 
-    // Force rAF to execute synchronously so fake timers don't need to flush it.
-    const originalRaf = window.requestAnimationFrame;
-    window.requestAnimationFrame = (cb: FrameRequestCallback) => {
+    // jsdom has no real rAF; the production code uses it to restore minHeight
+    // after a reflow. Make it synchronous in this test so fake timers can
+    // flush all the setTimeout-based re-measurements.
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
       cb(0);
       return 0;
-    };
+    });
 
     window.dispatchEvent(new Event('orientationchange'));
     vi.runAllTimers();
-
-    window.requestAnimationFrame = originalRaf;
 
     expect(changed).toHaveBeenCalled();
     expect(document.body.style.minHeight).toBe('');
