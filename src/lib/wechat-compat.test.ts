@@ -126,7 +126,7 @@ describe('wechat-compat gesture regressions', () => {
     window.addEventListener('safe-area-change', changed);
 
     window.dispatchEvent(new Event('orientationchange'));
-    vi.advanceTimersByTime(1000);
+    vi.runAllTimers();
 
     expect(changed).toHaveBeenCalled();
     expect(document.body.style.minHeight).toBe('');
