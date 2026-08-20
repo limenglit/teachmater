@@ -46,6 +46,7 @@ describe('wechat-compat gesture regressions', () => {
     document.documentElement.className = '';
     document.documentElement.removeAttribute('data-pinching');
     document.body.innerHTML = '';
+    document.body.style.minHeight = '';
     setWeChatUA(true);
   });
 
@@ -125,8 +126,16 @@ describe('wechat-compat gesture regressions', () => {
     const changed = vi.fn();
     window.addEventListener('safe-area-change', changed);
 
+    // jsdom has no real rAF; the production code uses it to restore minHeight
+    // after a reflow. Make it synchronous in this test so fake timers can
+    // flush all the setTimeout-based re-measurements.
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+
     window.dispatchEvent(new Event('orientationchange'));
-    vi.advanceTimersByTime(1000);
+    vi.runAllTimers();
 
     expect(changed).toHaveBeenCalled();
     expect(document.body.style.minHeight).toBe('');
