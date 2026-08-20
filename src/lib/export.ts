@@ -109,6 +109,13 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string, opti
       el.style.maxHeight = 'none';
       el.style.transform = 'none';
     });
+    // Zoom frames size themselves to scaled dimensions on screen; once the
+    // transform is neutralized they must grow back to natural size, otherwise
+    // the capture crops rotated/enlarged content.
+    root.querySelectorAll<HTMLElement>('[data-zoom-frame]').forEach(el => {
+      el.style.width = 'auto';
+      el.style.height = 'auto';
+    });
   };
   neutralize(clone);
 

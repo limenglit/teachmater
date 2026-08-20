@@ -77,6 +77,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const tableCols = (sceneConfig.tableCols as number) || 1;
   const seatSide = (sceneConfig.seatSide as string) || ((sceneConfig.dualSide as boolean) !== false ? 'both' : 'both');
   const doorPosition = (sceneConfig.doorPosition as DoorPosition) || 'bottom-right';
+  const rowTransforms = (sceneConfig.rowTransforms as { x: number; y: number; rotation: number }[] | undefined) || [];
   const showTop = seatSide === 'top' || seatSide === 'both';
   const showBottom = seatSide === 'bottom' || seatSide === 'both';
 
@@ -94,8 +95,21 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const allTableW = tableW * tableCols + colGap * (tableCols - 1);
   const rowH = seatH * 2 + 20 + 16;
   const svgPadLeft = 30;
-  const svgW = allTableW + 60;
-  const svgH = rowCount * rowH + 40;
+  // Editor coordinates are ~1.4x larger than the check-in view; scale the
+  // teacher-side table offsets so the phone layout matches the exported map.
+  const transformScale = (seatW + gap) / 60;
+  const getRowTransform = (ri: number) => {
+    const raw = rowTransforms[ri];
+    return {
+      x: (raw?.x ?? 0) * transformScale,
+      y: (raw?.y ?? 0) * transformScale,
+      rotation: raw?.rotation ?? 0,
+    };
+  };
+  const hasRotatedRow = rowTransforms.some(t => ((t?.rotation ?? 0) % 180) !== 0);
+  const rotationPad = hasRotatedRow ? Math.round(allTableW / 2) + 30 : 0;
+  const svgW = allTableW + 60 + rotationPad * 2;
+  const svgH = rowCount * rowH + 40 + rotationPad * 2;
   const tableColIdx = myPos ? Math.floor(myPos.col / seatsPerSide) : 0;
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.rowIndex, myPos?.side, myPos?.col, recenterSignal]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
@@ -109,7 +123,23 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
     );
   }, [doorPosition, myPos, rowCount, seatsPerSide, tableCols, seatW, seatH, gap, colGap, tableW, svgPadLeft, rowH]);
 
-  const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+  const rowCenter = (ri: number) => ({ cx: svgPadLeft + allTableW / 2, cy: 20 + ri * rowH + seatH + 10 });
+  const applyRowTransform = (p: { x: number; y: number }, ri: number) => {
+    const { x, y, rotation } = getRowTransform(ri);
+    if (!x && !y && !rotation) return p;
+    const { cx, cy } = rowCenter(ri);
+    const a = (rotation * Math.PI) / 180;
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    return {
+      x: cx + dx * Math.cos(a) - dy * Math.sin(a) + x,
+      y: cy + dx * Math.sin(a) + dy * Math.cos(a) + y,
+    };
+  };
+  const drawPath = myPos
+    ? navPath.map((p, i) => (i >= navPath.length - 2 ? applyRowTransform(p, myPos.rowIndex) : p))
+    : navPath;
+  const pathD = drawPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 
   if (!myPos) return <p className="text-center text-muted-foreground">{t('seat.nav.notFound')}</p>;
 
@@ -146,17 +176,18 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
       <div ref={seatContainerRef} className="seat-checkin-surface flex justify-center overflow-hidden pb-4">
         <div ref={pinchRef} style={transformStyle} className="touch-none">
         <svg viewBox={`0 0 ${svgW} ${svgH}`} className="font-sans w-full max-w-[600px]" style={{ minWidth: Math.min(svgW, 320) }}>
+          <g transform={`translate(${rotationPad} ${rotationPad})`}>
           <path d={pathD} fill="none" className="stroke-primary/50" strokeWidth={2.5}
             strokeDasharray="6 4" strokeLinecap="round" strokeLinejoin="round">
             <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite" />
           </path>
 
           <g>
-            <circle cx={navPath[0].x} cy={navPath[0].y} r={10} className="fill-accent stroke-accent-foreground/30" strokeWidth={1.5} />
-            <text x={navPath[0].x} y={navPath[0].y + 1} textAnchor="middle" dominantBaseline="middle" className="text-[8px] fill-accent-foreground">🚪</text>
+            <circle cx={drawPath[0].x} cy={drawPath[0].y} r={10} className="fill-accent stroke-accent-foreground/30" strokeWidth={1.5} />
+            <text x={drawPath[0].x} y={drawPath[0].y + 1} textAnchor="middle" dominantBaseline="middle" className="text-[8px] fill-accent-foreground">🚪</text>
           </g>
 
-          {navPath.slice(1, -1).map((p, i) => (
+          {drawPath.slice(1, -1).map((p, i) => (
             <circle key={i} cx={p.x} cy={p.y} r={3} className="fill-primary/40 stroke-primary/60" strokeWidth={1} />
           ))}
 
@@ -165,8 +196,10 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
             const topRow = labRows.find(r => r.rowIndex === ri && r.side === 'top');
             const bottomRow = labRows.find(r => r.rowIndex === ri && r.side === 'bottom');
 
+            const rowTf = getRowTransform(ri);
+            const rowC = rowCenter(ri);
             return (
-              <g key={ri}>
+              <g key={ri} transform={`translate(${rowTf.x} ${rowTf.y}) rotate(${rowTf.rotation} ${rowC.cx} ${rowC.cy})`}>
                 <text x={12} y={baseY + seatH + 10} textAnchor="middle" dominantBaseline="middle"
                   className="fill-muted-foreground text-[9px]">{ri + 1}{t('seat.nav.rowShort')}</text>
 
@@ -233,6 +266,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
               </g>
             );
           })}
+          </g>
         </svg>
         </div>
       </div>
