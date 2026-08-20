@@ -42,7 +42,7 @@ async function install() {
 
 describe('wechat-compat gesture regressions', () => {
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval', 'requestAnimationFrame'] });
     document.documentElement.className = '';
     document.documentElement.removeAttribute('data-pinching');
     document.body.innerHTML = '';
