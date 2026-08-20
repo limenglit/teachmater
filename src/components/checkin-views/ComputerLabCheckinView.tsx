@@ -77,6 +77,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const tableCols = (sceneConfig.tableCols as number) || 1;
   const seatSide = (sceneConfig.seatSide as string) || ((sceneConfig.dualSide as boolean) !== false ? 'both' : 'both');
   const doorPosition = (sceneConfig.doorPosition as DoorPosition) || 'bottom-right';
+  const rowTransforms = (sceneConfig.rowTransforms as { x: number; y: number; rotation: number }[] | undefined) || [];
   const showTop = seatSide === 'top' || seatSide === 'both';
   const showBottom = seatSide === 'bottom' || seatSide === 'both';
 
@@ -94,8 +95,21 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
   const allTableW = tableW * tableCols + colGap * (tableCols - 1);
   const rowH = seatH * 2 + 20 + 16;
   const svgPadLeft = 30;
-  const svgW = allTableW + 60;
-  const svgH = rowCount * rowH + 40;
+  // Editor coordinates are ~1.4x larger than the check-in view; scale the
+  // teacher-side table offsets so the phone layout matches the exported map.
+  const transformScale = (seatW + gap) / 60;
+  const getRowTransform = (ri: number) => {
+    const raw = rowTransforms[ri];
+    return {
+      x: (raw?.x ?? 0) * transformScale,
+      y: (raw?.y ?? 0) * transformScale,
+      rotation: raw?.rotation ?? 0,
+    };
+  };
+  const hasRotatedRow = rowTransforms.some(t => ((t?.rotation ?? 0) % 180) !== 0);
+  const rotationPad = hasRotatedRow ? Math.round(allTableW / 2) + 30 : 0;
+  const svgW = allTableW + 60 + rotationPad * 2;
+  const svgH = rowCount * rowH + 40 + rotationPad * 2;
   const tableColIdx = myPos ? Math.floor(myPos.col / seatsPerSide) : 0;
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.rowIndex, myPos?.side, myPos?.col, recenterSignal]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
