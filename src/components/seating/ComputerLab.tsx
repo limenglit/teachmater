@@ -77,6 +77,7 @@ export default function ComputerLab({ students }: Props) {
     door: true,
   });
   const [refLocked, setRefLocked] = useState(false);
+  const [sceneLocked, setSceneLocked] = useState(false);
 
   const printRef = useRef<HTMLDivElement>(null);
   const refDraggingRef = useRef<{ key: RefKey; startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -100,8 +101,10 @@ export default function ComputerLab({ students }: Props) {
   const rowGap = Math.max(tableGap, minRowGap);
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
 
-  const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220);
-  const roomHeight = Math.max(760, maxRows * rowGap + 220);
+  const hasRotatedRow = rowTransforms.some(t => (t?.rotation ?? 0) % 180 !== 0);
+  const rotationPad = hasRotatedRow ? Math.round(allTableW / 2) + 60 : 0;
+  const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220) + rotationPad;
+  const roomHeight = Math.max(760, maxRows * rowGap + 220) + rotationPad;
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
@@ -117,7 +120,13 @@ export default function ComputerLab({ students }: Props) {
     return `${vPos}-${hPos}`;
   }, [refPositions.door, roomWidth, roomHeight]);
 
-  const exportSceneConfig = { rowCount, seatsPerSide, dualSide, seatSide, tableCols, doorPosition: doorQuadrant };
+  const exportSceneConfig = {
+    rowCount, seatsPerSide, dualSide, seatSide, tableCols,
+    doorPosition: doorQuadrant,
+    rowTransforms: rowTransforms.map(t => ({ x: t?.x ?? 0, y: t?.y ?? 0, rotation: t?.rotation ?? 0 })),
+    rowGap,
+    sceneLocked,
+  };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
     studentNames: students.map(s => s.name),
@@ -487,7 +496,7 @@ export default function ComputerLab({ students }: Props) {
   };
 
   const startRefDrag = (e: ReactMouseEvent, key: RefKey) => {
-    if (refLocked) return;
+    if (refLocked || sceneLocked) return;
     e.preventDefault();
     e.stopPropagation();
     refDraggingRef.current = {
@@ -500,6 +509,7 @@ export default function ComputerLab({ students }: Props) {
   };
 
   const startRowDrag = (e: ReactMouseEvent, row: number) => {
+    if (sceneLocked) return;
     if (seatDraggingRef.current) return;
     if (!Number.isFinite(row) || row < 0) return;
     e.stopPropagation();
@@ -514,12 +524,14 @@ export default function ComputerLab({ students }: Props) {
   };
 
   const rotateRow = (row: number) => {
+    if (sceneLocked) return;
     setRowTransforms(prev => prev.map((t, i) =>
       i === row ? { ...t, rotation: ((t.rotation + 90) % 360 + 360) % 360 } : t
     ));
   };
 
   const resetRowTransforms = () => {
+    if (sceneLocked) return;
     setRowTransforms(Array.from({ length: rowCount }, () => ({ x: 0, y: 0, rotation: 0 })));
   };
 
@@ -796,6 +808,9 @@ export default function ComputerLab({ students }: Props) {
           <label className="flex items-center gap-1 cursor-pointer">
             <input type="checkbox" checked={refLocked} onChange={e => setRefLocked(e.target.checked)} className="accent-primary" /> {t('seat.editor.common.lockReferences')}
           </label>
+          <label className="flex items-center gap-1 cursor-pointer">
+            <input type="checkbox" checked={sceneLocked} onChange={e => setSceneLocked(e.target.checked)} className="accent-primary" data-testid="computerlab-scene-lock" /> {t('seat.editor.lab.lockScene')}
+          </label>
         </div>
         <span className="text-xs text-muted-foreground">{tFormat(t('seat.editor.lab.capacityHint'), rowCount * totalSeatsPerSide * (dualSide ? 2 : 1), students.length)}</span>
         {seated && (
@@ -847,7 +862,7 @@ export default function ComputerLab({ students }: Props) {
               <ZoomControls scale={zoom.scale} onZoomIn={zoom.zoomIn} onZoomOut={zoom.zoomOut} onFit={zoom.fitToScreen} onReset={zoom.reset} />
             </div>
             <div ref={zoom.containerRef} className="overflow-auto pb-[max(0.5rem,env(safe-area-inset-bottom))] max-h-[80vh]">
-              <div className="mx-auto" style={{ width: roomWidth * zoom.scale, height: roomHeight * zoom.scale }}>
+              <div className="mx-auto" data-zoom-frame="true" style={{ width: roomWidth * zoom.scale, height: roomHeight * zoom.scale }}>
                 <div className="relative rounded-xl border border-border bg-card/40" style={{ width: roomWidth, height: roomHeight, transform: `scale(${zoom.scale})`, transformOrigin: 'top left' }}>
               {refVisible.blackboard && (
                 <div className={refBadgeClass} style={{ left: refPositions.blackboard.x, top: refPositions.blackboard.y }} onMouseDown={e => startRefDrag(e, 'blackboard')}>
@@ -888,7 +903,7 @@ export default function ComputerLab({ students }: Props) {
                       data-row-rotation={transform.rotation}
                       transform={`translate(${transform.x} ${transform.y})`}
                       onMouseDown={e => startRowDrag(e, rowIdx)}
-                      style={{ cursor: 'move' }}
+                      style={{ cursor: sceneLocked ? 'default' : 'move' }}
                     >
                       <g transform={`rotate(${transform.rotation} ${centerX} ${rowCenterY})`}>
                       {Array.from({ length: tableCols }).map((_, tci) => {
@@ -928,10 +943,12 @@ export default function ComputerLab({ students }: Props) {
                         );
                       })}
 
+                      {!sceneLocked && (
                       <g onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); rotateRow(rowIdx); }} style={{ cursor: 'pointer' }}>
                         <rect x={allTableStartX + allTableW + 12} y={baseY + 2} width={30} height={20} rx={5} className="fill-card stroke-border hover:stroke-primary/60" strokeWidth={1.2} />
                         <text x={allTableStartX + allTableW + 27} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground text-[10px]">90°</text>
                       </g>
+                      )}
                       </g>
                     </g>
                   );
