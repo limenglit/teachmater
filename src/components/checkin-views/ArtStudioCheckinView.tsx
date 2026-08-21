@@ -76,13 +76,13 @@ export default function ArtStudioCheckinView({ seatData, sceneConfig, studentNam
             <text x={centerX} y={centerY + 14} textAnchor="middle" className="fill-muted-foreground text-[10px]">请围绕中心入座</text>
 
             {rings.map((ring, ringIndex) => {
-              const radius = baseRadius + ringIndex * radiusStep;
+              const radius = ringRadii[ringIndex] ?? 0;
               return (
                 <g key={`ring-${ringIndex}`}>
                   <circle cx={centerX} cy={centerY} r={radius} fill="none" className="stroke-border/70" strokeDasharray="5 5" />
                   <text x={centerX + radius + 12} y={centerY - 4} className="fill-muted-foreground text-[10px]">第{ringIndex + 1}圈</text>
                   {ring.map((name, seatIndex) => {
-                    const angle = (-Math.PI / 2) + (2 * Math.PI * seatIndex) / Math.max(1, ring.length);
+                    const angle = ringStartAngle(ringIndex) + (2 * Math.PI * seatIndex) / Math.max(1, ring.length);
                     const x = centerX + radius * Math.cos(angle);
                     const y = centerY + radius * Math.sin(angle);
                     const isMine = ringIndex === myPos.ring && seatIndex === myPos.seat;
