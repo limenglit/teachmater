@@ -5,6 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
+import { getTableGeometry, readTableShapeConfig, REFERENCE_ROUND_ORBIT } from '@/lib/table-shape';
 
 interface Props {
   seatData: unknown;
