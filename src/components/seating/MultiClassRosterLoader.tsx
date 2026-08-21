@@ -114,7 +114,7 @@ export default function MultiClassRosterLoader({ open, onOpenChange }: Props) {
               checked={importMode === 'append'}
               onChange={() => setImportMode('append')}
             />
-            <span>{t('seat.roster.append')} ({students.length})</span>
+            <span>{t('seat.roster.append')} {students.length})</span>
           </label>
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
