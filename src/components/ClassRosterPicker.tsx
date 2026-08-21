@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Users } from 'lucide-react';
@@ -30,23 +30,21 @@ export default function ClassRosterPicker({ open, onOpenChange, onSelect, curren
   const [classes, setClasses] = useState<ClassOption[]>([]);
 
   const loadClasses = useCallback(async () => {
-    if (!user) return;
-    const [{ data: colleges }, { data: cls }, { data: cs }] = await Promise.all([
-      supabase.from('colleges').select('id, name').eq('user_id', user.id),
-      supabase.from('classes').select('id, name, college_id').eq('user_id', user.id),
-      supabase.from('class_students').select('class_id, name').eq('user_id', user.id),
-    ]);
-    if (!cls) return;
-    setClasses(cls.map(c => ({
-      id: c.id,
-      name: c.name,
-      collegeName: colleges?.find(col => col.id === c.college_id)?.name || '',
-      students: (cs || []).filter(s => s.class_id === c.id).map(s => s.name),
-    })));
-  }, [user]);
+    try {
+      const { colleges, classes: cls, classStudents } = await fetchClassLibrary();
+      setClasses(cls.map(c => ({
+        id: c.id,
+        name: c.name,
+        collegeName: colleges.find(col => col.id === c.college_id)?.name || '',
+        students: classStudents.filter(s => s.class_id === c.id).map(s => s.name),
+      })));
+    } catch {
+      setClasses([]);
+    }
+  }, []);
 
   useEffect(() => {
-    if (open && user) void loadClasses();
+    if (open) void loadClasses();
   }, [open, user, loadClasses]);
 
   // Refresh while open so newly created / deleted classes show up immediately.

@@ -65,6 +65,8 @@ const ORGANIZATION_COLOR_CLASSES = [
 export default function SeatChart() {
   const { students, addStudent, appendStudents } = useStudents();
   const [rosterLoaderOpen, setRosterLoaderOpen] = useState(false);
+  // 跨班级接序排座：保留已就座学生，仅为新增名单安排剩余空位
+  const [crossClassSeating, setCrossClassSeating] = useState(false);
   const { t } = useLanguage();
   const [structureOpen, setStructureOpen] = useState(true);
   const [strategyOpen, setStrategyOpen] = useState(true);
@@ -400,8 +402,21 @@ export default function SeatChart() {
         if (lr < rows && lc < cols) grid[lr][lc] = name;
       }
     }
+    // 跨班级接序排座：把当前已就座的人视为“已固定”，其座位不再参与本次排座
+    const pinnedSeats = new Set<string>();
+    if (crossClassSeating) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const name = currentSeats[r]?.[c];
+          if (!name) continue;
+          grid[r][c] = name;
+          pinnedSeats.add(seatKey(r, c));
+          lockedNamesSet.add(name);
+        }
+      }
+    }
     const isAvailable = (r: number, c: number) =>
-      !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c));
+      !disabledSeats.has(seatKey(r, c)) && !lockedSeats.has(seatKey(r, c)) && !pinnedSeats.has(seatKey(r, c));
     // Student-number order must follow the roster's numbers, not gender buckets.
     const names = (mode === 'studentNo'
       ? sortStudentsByStudentNo(students).map(s => s.name)
@@ -634,7 +649,7 @@ export default function SeatChart() {
       case 'random': { const shuffled = [...names].sort(() => Math.random() - 0.5); let idx = 0; for (let r = 0; r < rows && idx < shuffled.length; r++) { for (let c = 0; c < cols && idx < shuffled.length; c++) { if (isAvailable(r, c)) grid[r][c] = shuffled[idx++]; } } break; }
     }
     setSeats(grid);
-  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, lockedSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender, pushHistory]);
+  }, [rows, cols, mode, groupCount, groupSource, smartClusterStrategy, disabledSeats, lockedSeats, examSkipRow, examSkipCol, getColOrder, getGenderOrderedNames, genderSeatPolicy, students, genderFirst, centerRowsByGender, pushHistory, crossClassSeating]);
 
   const handleDragStart = (r: number, c: number) => {
     if (!seats[r][c]) return;
@@ -1206,6 +1221,17 @@ export default function SeatChart() {
                         placeholder="输入名称（用于保存历史和导出文件名）"
                         className="h-8 w-full sm:w-72"
                       />
+                    </label>
+                    <label
+                      className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-border bg-card cursor-pointer"
+                      title="勾选后，再次排座会保留已就座学生，只把新加载的班级名单排入剩余空位（可反复加载新班级接序排座）"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={crossClassSeating}
+                        onChange={e => setCrossClassSeating(e.target.checked)}
+                      />
+                      <span className={crossClassSeating ? 'text-foreground font-medium' : 'text-muted-foreground'}>跨班级接序排座</span>
                     </label>
                     {MODES.map(m => (
                       <button key={m.id} onClick={() => setMode(m.id)}
