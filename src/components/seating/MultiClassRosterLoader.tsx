@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Users, Loader2 } from 'lucide-react';
+import { Users, Loader2, RefreshCw } from 'lucide-react';
+import { onClassLibraryChanged } from '@/lib/class-library-events';
+
 import {
   buildStudentsFromClasses,
   combinedClassLabel,
