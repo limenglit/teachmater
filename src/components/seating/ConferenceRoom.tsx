@@ -128,6 +128,7 @@ export default function ConferenceRoom({ students }: Props) {
     companionRows: showCompanionSeats ? companionRows : 0,
     roomWidth,
     roomHeight,
+    seatGap,
     frontDoor: refVisible.frontDoor ? refPositions.frontDoor : null,
     backDoor: refVisible.backDoor ? refPositions.backDoor : null,
   };
