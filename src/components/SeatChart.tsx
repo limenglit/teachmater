@@ -1525,6 +1525,7 @@ export default function SeatChart() {
                 <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。</span>
               </p>
             )}
+            <MultiClassRosterLoader open={rosterLoaderOpen} onOpenChange={setRosterLoaderOpen} />
             <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seatReadiness.ready} seatAssignedCount={seatReadiness.assignedCount} sceneType="classroom"
               sceneConfig={exportSceneConfig} className={recordName.trim()} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
               onMergeGuests={(guests) => {
