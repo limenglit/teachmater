@@ -135,6 +135,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     setColleges(prev => prev.filter(c => c.id !== id));
     setClasses(prev => prev.filter(c => c.college_id !== id));
     if (selectedCollege === id) { setSelectedCollege(null); setSelectedClass(null); }
+    notifyClassLibraryChanged();
   };
 
   const saveCollegeEdit = async (id: string) => {
@@ -233,12 +234,13 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
   const addStudent = async () => {
     if (!newStudentName.trim() || !selectedClass || !userId) return;
     const { data } = await supabase.from('class_students').insert({ name: newStudentName.trim(), student_number: newStudentNumber.trim(), class_id: selectedClass, user_id: userId }).select().single();
-    if (data) { setStudents(prev => [...prev, data as ClassStudent]); setNewStudentName(''); setNewStudentNumber(''); }
+    if (data) { setStudents(prev => [...prev, data as ClassStudent]); setNewStudentName(''); setNewStudentNumber(''); notifyClassLibraryChanged(); }
   };
 
   const deleteStudent = async (id: string) => {
     await supabase.from('class_students').delete().eq('id', id);
     setStudents(prev => prev.filter(s => s.id !== id));
+    notifyClassLibraryChanged();
   };
 
   const saveStudentEdit = async (id: string) => {
@@ -246,6 +248,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     await supabase.from('class_students').update({ name: editName.trim() }).eq('id', id);
     setStudents(prev => prev.map(s => s.id === id ? { ...s, name: editName.trim() } : s));
     setEditingStudent(null);
+    notifyClassLibraryChanged();
   };
 
   const loadToWorkspace = () => {
