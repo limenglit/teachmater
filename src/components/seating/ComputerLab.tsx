@@ -126,6 +126,20 @@ export default function ComputerLab({ students }: Props) {
     rowTransforms: rowTransforms.map(t => ({ x: t?.x ?? 0, y: t?.y ?? 0, rotation: t?.rotation ?? 0 })),
     rowGap,
     sceneLocked,
+    // Full teacher-side geometry so the mobile check-in view can reproduce the
+    // exported PNG 1:1 (same coordinate space, same seat slots).
+    maxRows,
+    roomWidth,
+    roomHeight,
+    seatW,
+    seatH,
+    seatGap: gap,
+    colGap,
+    tableW,
+    allTableW,
+    closedSeats: Array.from(closedSeats),
+    refPositions,
+    refVisible,
   };
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: assignment,
