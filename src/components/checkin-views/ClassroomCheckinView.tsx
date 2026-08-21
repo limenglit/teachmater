@@ -34,6 +34,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     frontDoorPosition?: DoorSide;
     backDoorPosition?: DoorSide;
     disabledSeats?: string[];
+    rowCols?: number[];
   };
   const disabledSeatSet = useMemo(
     () => new Set(Array.isArray(config.disabledSeats) ? config.disabledSeats : []),
