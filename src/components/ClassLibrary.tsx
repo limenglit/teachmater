@@ -377,6 +377,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       }
 
       await loadAll();
+      notifyClassLibraryChanged();
       setImportOpen(false);
       setPreviewData([]);
 
@@ -465,6 +466,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
       await insertClassStudentRows(inserts);
       await loadAll();
+      notifyClassLibraryChanged();
       setTextImportContent('');
       setTextImportOpen(false);
 
