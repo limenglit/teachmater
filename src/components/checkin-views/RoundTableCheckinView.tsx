@@ -274,19 +274,26 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
             {tables.map((people, ti) => {
               const center = tableCenter(ti);
               const isMyTable = ti === myPos.table;
+              const tableFill = isMyTable ? 'fill-primary/15 stroke-primary/60' : 'fill-primary/5 stroke-primary/25';
               return (
                 <g key={`tbl-${ti}`} data-my-seat={isMyTable ? 'true' : undefined}>
-                  <circle cx={center.x} cy={center.y} r={tableRadius}
-                    className={isMyTable ? 'fill-primary/15 stroke-primary/60' : 'fill-primary/5 stroke-primary/25'}
-                    strokeWidth={isMyTable ? 2.5 : 1.5} />
+                  {geometry.body.kind === 'circle' ? (
+                    <circle cx={center.x} cy={center.y} r={geometry.body.r}
+                      className={tableFill} strokeWidth={isMyTable ? 2.5 : 1.5} />
+                  ) : (
+                    <rect x={center.x + geometry.body.x} y={center.y + geometry.body.y}
+                      width={geometry.body.w} height={geometry.body.h} rx={5} ry={5}
+                      className={tableFill} strokeWidth={isMyTable ? 2.5 : 1.5} />
+                  )}
                   <text x={center.x} y={center.y + 1} textAnchor="middle" dominantBaseline="middle"
                     className={`text-[10px] font-medium ${isMyTable ? 'fill-primary' : 'fill-muted-foreground'}`}>
                     {ti + 1}{t('seat.nav.tableShort')}
                   </text>
-                  {Array.from({ length: seatsPerTable }).map((_, si) => {
-                    const angle = (2 * Math.PI * si) / seatsPerTable - Math.PI / 2;
-                    const sx = center.x + seatOrbitRadius * Math.cos(angle);
-                    const sy = center.y + seatOrbitRadius * Math.sin(angle);
+                  {Array.from({ length: Math.max(seatSlotCount, people.length) }).map((_, si) => {
+                    const offset = geometry.positions[si];
+                    if (!offset) return null;
+                    const sx = center.x + offset.x;
+                    const sy = center.y + offset.y;
                     const seatName = people[si] || '';
                     const isMine = ti === myPos.table && si === myPos.seat;
                     return (
