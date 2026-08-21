@@ -759,6 +759,26 @@ export default function SeatChart() {
     seats.forEach(row => row?.forEach(cell => push(cell as string | null)));
     return names;
   }, [students, seats]);
+  // Roster totals before name de-duplication so the check-in dialog can explain
+  // why "656 seated" can become 654 check-in entries (duplicate names collapse).
+  const checkinRosterStats = useMemo(() => {
+    const counts = new Map<string, number>();
+    const bump = (n?: string | null) => {
+      const name = (n || '').trim();
+      if (!name) return;
+      counts.set(name, (counts.get(name) || 0) + 1);
+    };
+    students.forEach(s => bump(s.name));
+    const duplicates = Array.from(counts.entries()).filter(([, c]) => c > 1).map(([n]) => n);
+    const seatedOnly = new Set<string>();
+    seats.forEach(row => row?.forEach(cell => {
+      const name = (cell || '').trim();
+      if (name && !counts.has(name)) seatedOnly.add(name);
+    }));
+    let total = 0;
+    counts.forEach(c => { total += c; });
+    return { total: total + seatedOnly.size, duplicates };
+  }, [students, seats]);
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
     studentNames: checkinStudentNames,
@@ -1567,7 +1587,7 @@ export default function SeatChart() {
               </p>
             )}
             <MultiClassRosterLoader open={rosterLoaderOpen} onOpenChange={setRosterLoaderOpen} />
-            <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={checkinStudentNames} seatAssignmentReady={seatReadiness.ready} seatAssignedCount={seatReadiness.assignedCount} sceneType="classroom"
+            <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={checkinStudentNames} rosterTotal={checkinRosterStats.total} duplicateRosterNames={checkinRosterStats.duplicates} seatAssignmentReady={seatReadiness.ready} seatAssignedCount={seatReadiness.assignedCount} sceneType="classroom"
               sceneConfig={exportSceneConfig} className={recordName.trim()} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
               onMergeGuests={(guests) => {
                 // Update local seat grid in-place
