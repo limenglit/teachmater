@@ -165,9 +165,9 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
             className="fill-primary text-base font-semibold">{t('seat.nav.stage')}</text>
 
           {rows.map((row, ri) => {
-            const r = startRadius + ri * radiusStep;
+            const r = rowRadii[ri] ?? 0;
             const seatCount = seatCaps[ri];
-            const totalAngle = Math.min(Math.PI * 0.85, Math.PI * (0.5 + ri * 0.05));
+            const totalAngle = rowArc(ri);
             const startAngle = Math.PI - (Math.PI - totalAngle) / 2;
             const endAngle = (Math.PI - totalAngle) / 2;
 
