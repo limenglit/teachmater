@@ -5,6 +5,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
+import { getTableGeometry, readTableShapeConfig, REFERENCE_ROUND_ORBIT } from '@/lib/table-shape';
 
 interface Props {
   seatData: unknown;
@@ -77,14 +78,51 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
 
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
-  const tableSvgSize = isMobile ? 110 : 150;
-  const aisleGap = isMobile ? 26 : 36;
-  const tableRadius = isMobile ? 22 : 32;
-  const seatOrbitRadius = isMobile ? 36 : 48;
-  const seatRadius = isMobile ? 10 : 14;
+  // Table geometry mirrors the teacher editor exactly (shared module), scaled
+  // down for the phone viewport. Without this the mobile view always drew a
+  // round table and placed names in the wrong slots for square/rect/custom.
+  const { shape, options } = useMemo(
+    () => readTableShapeConfig(sceneConfig, seatsPerTable),
+    [sceneConfig, seatsPerTable],
+  );
+  const geometryScale = (isMobile ? 36 : 48) / REFERENCE_ROUND_ORBIT;
+  const geometry = useMemo(() => {
+    const geo = getTableGeometry(shape, 0, 0, options);
+    return {
+      positions: geo.positions.map(p => ({ x: p.x * geometryScale, y: p.y * geometryScale })),
+      body: geo.body.kind === 'circle'
+        ? { kind: 'circle' as const, r: geo.body.r * geometryScale }
+        : {
+            kind: 'rect' as const,
+            x: geo.body.x * geometryScale,
+            y: geo.body.y * geometryScale,
+            w: geo.body.w * geometryScale,
+            h: geo.body.h * geometryScale,
+          },
+      extentX: geo.extentX * geometryScale,
+      extentY: geo.extentY * geometryScale,
+    };
+  }, [shape, options, geometryScale]);
 
-  const cellW = tableSvgSize + aisleGap;
-  const cellH = tableSvgSize + aisleGap;
+  const seatSlotCount = geometry.positions.length;
+  const seatRadius = useMemo(() => {
+    let minDist = Infinity;
+    for (let i = 0; i < geometry.positions.length; i++) {
+      for (let j = i + 1; j < geometry.positions.length; j++) {
+        const d = Math.hypot(
+          geometry.positions[i].x - geometry.positions[j].x,
+          geometry.positions[i].y - geometry.positions[j].y,
+        );
+        if (d < minDist) minDist = d;
+      }
+    }
+    if (!Number.isFinite(minDist)) minDist = 30;
+    return Math.max(7, Math.min(isMobile ? 11 : 15, Math.floor(minDist / 2 - 1)));
+  }, [geometry.positions, isMobile]);
+
+  const aisleGap = isMobile ? 26 : 36;
+  const cellW = geometry.extentX * 2 + seatRadius * 2 + aisleGap;
+  const cellH = geometry.extentY * 2 + seatRadius * 2 + aisleGap;
   const innerLeft = aisleGap;
   const innerTop = aisleGap;
   const innerRight = innerLeft + tableCols * cellW;
@@ -98,8 +136,8 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
     const r = Math.floor(tIdx / tableCols);
     const c = tIdx % tableCols;
     return {
-      x: outsideMargin + innerLeft + c * cellW + tableSvgSize / 2,
-      y: outsideMargin + innerTop + r * cellH + tableSvgSize / 2,
+      x: outsideMargin + innerLeft + c * cellW + cellW / 2,
+      y: outsideMargin + innerTop + r * cellH + cellH / 2,
     };
   };
 
@@ -237,19 +275,26 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
             {tables.map((people, ti) => {
               const center = tableCenter(ti);
               const isMyTable = ti === myPos.table;
+              const tableFill = isMyTable ? 'fill-primary/15 stroke-primary/60' : 'fill-primary/5 stroke-primary/25';
               return (
                 <g key={`tbl-${ti}`} data-my-seat={isMyTable ? 'true' : undefined}>
-                  <circle cx={center.x} cy={center.y} r={tableRadius}
-                    className={isMyTable ? 'fill-primary/15 stroke-primary/60' : 'fill-primary/5 stroke-primary/25'}
-                    strokeWidth={isMyTable ? 2.5 : 1.5} />
+                  {geometry.body.kind === 'circle' ? (
+                    <circle cx={center.x} cy={center.y} r={geometry.body.r}
+                      className={tableFill} strokeWidth={isMyTable ? 2.5 : 1.5} />
+                  ) : (
+                    <rect x={center.x + geometry.body.x} y={center.y + geometry.body.y}
+                      width={geometry.body.w} height={geometry.body.h} rx={5} ry={5}
+                      className={tableFill} strokeWidth={isMyTable ? 2.5 : 1.5} />
+                  )}
                   <text x={center.x} y={center.y + 1} textAnchor="middle" dominantBaseline="middle"
                     className={`text-[10px] font-medium ${isMyTable ? 'fill-primary' : 'fill-muted-foreground'}`}>
                     {ti + 1}{t('seat.nav.tableShort')}
                   </text>
-                  {Array.from({ length: seatsPerTable }).map((_, si) => {
-                    const angle = (2 * Math.PI * si) / seatsPerTable - Math.PI / 2;
-                    const sx = center.x + seatOrbitRadius * Math.cos(angle);
-                    const sy = center.y + seatOrbitRadius * Math.sin(angle);
+                  {Array.from({ length: Math.max(seatSlotCount, people.length) }).map((_, si) => {
+                    const offset = geometry.positions[si];
+                    if (!offset) return null;
+                    const sx = center.x + offset.x;
+                    const sy = center.y + offset.y;
                     const seatName = people[si] || '';
                     const isMine = ti === myPos.table && si === myPos.seat;
                     return (

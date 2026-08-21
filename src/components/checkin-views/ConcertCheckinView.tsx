@@ -54,14 +54,30 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
     return null;
   }, [rows, studentName]);
 
-  const seatCaps = Array.from({ length: rowCount }, (_, r) => seatsPerRow + r * 2);
+  // Teacher-side geometry (arc angle + collision-resolved row radii) is exported
+  // with the session; fall back to the legacy estimate for older sessions.
+  const cfgCaps = Array.isArray(sceneConfig.seatCaps) ? (sceneConfig.seatCaps as number[]) : null;
+  const seatCaps = Array.from({ length: rowCount }, (_, r) =>
+    Math.max(rows[r]?.length || 0, cfgCaps?.[r] ?? seatsPerRow + r * 2));
   const svgW = 540;
   const svgH = 400;
   const cx = svgW / 2;
   const stageY = 48;
-  const startRadius = 80;
-  const radiusStep = 44;
-  const seatR = 15;
+  const cfgRadii = Array.isArray(sceneConfig.rowRadii) ? (sceneConfig.rowRadii as number[]) : null;
+  const cfgSeatR = Number(sceneConfig.seatRadius) || 18;
+  const baseRadii = Array.from({ length: rowCount }, (_, r) =>
+    cfgRadii?.[r] ?? (Number(sceneConfig.startRadius) || 80) + r * 44);
+  const maxBaseRadius = Math.max(1, ...baseRadii);
+  const fit = Math.min(
+    1,
+    (svgW / 2 - 16) / (maxBaseRadius + cfgSeatR),
+    (svgH - stageY - 40) / (maxBaseRadius + cfgSeatR),
+  );
+  const rowRadii = baseRadii.map(r => r * fit);
+  const seatR = Math.max(8, cfgSeatR * fit);
+  const cfgArcAngle = Number(sceneConfig.arcAngle) || 0;
+  const rowArc = (ri: number) =>
+    cfgArcAngle > 0 ? cfgArcAngle : Math.min(Math.PI * 0.85, Math.PI * (0.5 + ri * 0.05));
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.row, myPos?.col, recenterSignal]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
@@ -76,9 +92,9 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
     : { x: svgW - 40, y: svgH / 2 + 30 };
 
   const mySeatPolar = (() => {
-    const r = startRadius + myPos.row * radiusStep;
+    const r = rowRadii[myPos.row] ?? 0;
     const seatCount = seatCaps[myPos.row];
-    const totalAngle = Math.min(Math.PI * 0.85, Math.PI * (0.5 + myPos.row * 0.05));
+    const totalAngle = rowArc(myPos.row);
     const startAngle = Math.PI - (Math.PI - totalAngle) / 2;
     const endAngle = (Math.PI - totalAngle) / 2;
     const frac = seatCount <= 1 ? 0.5 : myPos.col / (seatCount - 1);
@@ -149,9 +165,9 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
             className="fill-primary text-base font-semibold">{t('seat.nav.stage')}</text>
 
           {rows.map((row, ri) => {
-            const r = startRadius + ri * radiusStep;
+            const r = rowRadii[ri] ?? 0;
             const seatCount = seatCaps[ri];
-            const totalAngle = Math.min(Math.PI * 0.85, Math.PI * (0.5 + ri * 0.05));
+            const totalAngle = rowArc(ri);
             const startAngle = Math.PI - (Math.PI - totalAngle) / 2;
             const endAngle = (Math.PI - totalAngle) / 2;
 

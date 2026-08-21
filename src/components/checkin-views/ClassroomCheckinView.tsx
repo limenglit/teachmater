@@ -34,6 +34,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     frontDoorPosition?: DoorSide;
     backDoorPosition?: DoorSide;
     disabledSeats?: string[];
+    rowCols?: number[];
   };
   const disabledSeatSet = useMemo(
     () => new Set(Array.isArray(config.disabledSeats) ? config.disabledSeats : []),
@@ -50,7 +51,19 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   }, [seats, studentName]);
 
   const rows = config.rows || seats.length;
-  const cols = config.cols || (seats[0]?.length ?? 8);
+  // Rows can have different widths in the teacher editor (rowCols). Rendering a
+  // uniform grid drew phantom seats and shifted the columns/aisles, so use the
+  // per-row width whenever it is available.
+  const rowColsConfig = Array.isArray(config.rowCols)
+    ? config.rowCols.map(n => Math.max(0, Math.floor(Number(n) || 0)))
+    : [];
+  const rowWidth = (r: number) => rowColsConfig[r] ?? (seats[r]?.length ?? config.cols ?? 0);
+  const cols = Math.max(
+    1,
+    config.cols || 0,
+    ...rowColsConfig,
+    ...seats.map(row => row?.length ?? 0),
+  );
   const entryDoorMode = config.entryDoorMode || 'front';
   const frontDoorPos: DoorSide = config.frontDoorPosition || 'top';
   const backDoorPos: DoorSide = config.backDoorPosition || 'bottom';
@@ -293,7 +306,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
 
             {/* Seats — disabled seats are hidden entirely from check-in nav */}
             {Array.from({ length: rows }).flatMap((_, r) =>
-              Array.from({ length: cols }).map((_, c) => {
+              Array.from({ length: rowWidth(r) }).map((_, c) => {
                 const x = roomOx + seatX(c);
                 const y = roomOy + seatY(r);
                 const name = seats[r]?.[c] ?? null;
