@@ -1567,7 +1567,7 @@ export default function SeatChart() {
               </p>
             )}
             <MultiClassRosterLoader open={rosterLoaderOpen} onOpenChange={setRosterLoaderOpen} />
-            <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seatReadiness.ready} seatAssignedCount={seatReadiness.assignedCount} sceneType="classroom"
+            <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={checkinStudentNames} seatAssignmentReady={seatReadiness.ready} seatAssignedCount={seatReadiness.assignedCount} sceneType="classroom"
               sceneConfig={exportSceneConfig} className={recordName.trim()} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
               onMergeGuests={(guests) => {
                 // Update local seat grid in-place
