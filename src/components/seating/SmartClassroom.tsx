@@ -44,7 +44,8 @@ type RefPositions = Record<RefKey, { x: number; y: number }>;
 type RefVisible = Record<RefKey, boolean>;
 
 /** Compute seat centre positions around a table body (square/rect), starting
- *  top-left and going clockwise. Round tables keep the original polar layout. */
+ *  top-left and going clockwise. Delegates to the shared geometry module so the
+ *  student check-in view stays pixel-consistent with this editor. */
 function getSeatPositions(
   shape: Exclude<TableShape, 'round'>,
   cx: number,
@@ -53,50 +54,16 @@ function getSeatPositions(
   customLong = 3,
   customShort = 2,
 ): { positions: { x: number; y: number }[]; body: { x: number; y: number; w: number; h: number } } {
-  const seatOffset = 20;
-  const along = (from: [number, number], to: [number, number], n: number) =>
-    Array.from({ length: n }, (_, i) => {
-      const t = (i + 1) / (n + 1);
-      return { x: from[0] + (to[0] - from[0]) * t, y: from[1] + (to[1] - from[1]) * t };
-    });
-  if (shape === 'square') {
-    const half = 32;
-    const body = { x: cx - half, y: cy - half, w: half * 2, h: half * 2 };
-    const s = sidePeople;
-    const positions = [
-      ...along([cx - half, cy - half - seatOffset], [cx + half, cy - half - seatOffset], s),
-      ...along([cx + half + seatOffset, cy - half], [cx + half + seatOffset, cy + half], s),
-      ...along([cx + half, cy + half + seatOffset], [cx - half, cy + half + seatOffset], s),
-      ...along([cx - half - seatOffset, cy + half], [cx - half - seatOffset, cy - half], s),
-    ];
-    return { positions, body };
-  }
-  if (shape === 'custom') {
-    const L = Math.max(1, Math.floor(customLong));
-    const W = Math.max(1, Math.floor(customShort));
-    // Body dimensions scale with seat counts (min sizes for readability).
-    const hw = Math.max(28, L * 14);
-    const hh = Math.max(20, W * 14);
-    const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
-    const positions = [
-      ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], L),
-      ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], W),
-      ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], L),
-      ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], W),
-    ];
-    return { positions, body };
-  }
-  // rect: 2 on long (top/bottom), 1 on short (left/right)
-  const hw = 42;
-  const hh = 25;
-  const body = { x: cx - hw, y: cy - hh, w: hw * 2, h: hh * 2 };
-  const positions = [
-    ...along([cx - hw, cy - hh - seatOffset], [cx + hw, cy - hh - seatOffset], 2),
-    ...along([cx + hw + seatOffset, cy - hh], [cx + hw + seatOffset, cy + hh], 1),
-    ...along([cx + hw, cy + hh + seatOffset], [cx - hw, cy + hh + seatOffset], 2),
-    ...along([cx - hw - seatOffset, cy + hh], [cx - hw - seatOffset, cy - hh], 1),
-  ];
-  return { positions, body };
+  const geo = getTableGeometry(shape, cx, cy, {
+    seatsPerTable: 0,
+    squareSidePeople: sidePeople,
+    customLongPeople: customLong,
+    customShortPeople: customShort,
+  });
+  const body = geo.body.kind === 'rect'
+    ? { x: geo.body.x, y: geo.body.y, w: geo.body.w, h: geo.body.h }
+    : { x: cx - geo.body.r, y: cy - geo.body.r, w: geo.body.r * 2, h: geo.body.r * 2 };
+  return { positions: geo.positions, body };
 }
 
 /** Return the minimum horizontal/vertical gap (in px) between adjacent tables
