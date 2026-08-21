@@ -109,3 +109,78 @@ export const evaluateSeatCheckinReadiness = (seatData: unknown): SeatCheckinRead
   };
 };
 
+export interface SeatCheckinCoverage {
+  /** Number of occupied seats (may exceed unique names when names repeat). */
+  assignedCount: number;
+  /** Roster size used for the check-in session (before name de-duplication). */
+  rosterCount: number;
+  /** Unique names actually sent to the check-in session. */
+  uniqueCount: number;
+  /** Roster names that hold no seat — these break indoor navigation. */
+  unseatedNames: string[];
+  /** Names that appear more than once in the roster (check-in cannot tell them apart). */
+  duplicateNames: string[];
+}
+
+const collectSeatStrings = (seatData: unknown): string[] => {
+  const out: string[] = [];
+  const seen = new WeakSet<object>();
+  const NAME_KEYS = new Set(['name', 'student', 'studentName', 'occupant']);
+  type Frame = { value: unknown; fromArray: boolean; key?: string };
+  const stack: Frame[] = [{ value: seatData, fromArray: true }];
+  while (stack.length > 0) {
+    const { value, fromArray, key } = stack.pop()!;
+    if (typeof value === 'string') {
+      if (fromArray || (key && NAME_KEYS.has(key))) {
+        const n = normalize(value);
+        if (n) out.push(n);
+      }
+      continue;
+    }
+    if (value && typeof value === 'object') {
+      if (seen.has(value as object)) continue;
+      seen.add(value as object);
+      if (Array.isArray(value)) {
+        for (const item of value) stack.push({ value: item, fromArray: true });
+        continue;
+      }
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        stack.push({ value: v, fromArray: false, key: k });
+      }
+    }
+  }
+  return out;
+};
+
+/**
+ * Explains the gap teachers see between "roster size", "occupied seats" and the
+ * number of people a check-in session can track: unseated students break indoor
+ * navigation, duplicate names collapse into a single check-in entry.
+ */
+export const analyzeSeatCheckinCoverage = (
+  seatData: unknown,
+  studentNames: string[],
+): SeatCheckinCoverage => {
+  const roster = studentNames.map(normalize).filter(Boolean);
+  const seated = new Set(collectSeatStrings(seatData));
+
+  const counts = new Map<string, number>();
+  for (const name of roster) counts.set(name, (counts.get(name) || 0) + 1);
+
+  const unseatedNames: string[] = [];
+  const duplicateNames: string[] = [];
+  for (const [name, count] of counts) {
+    if (!seated.has(name)) unseatedNames.push(name);
+    if (count > 1) duplicateNames.push(name);
+  }
+
+  return {
+    assignedCount: collectSeatStrings(seatData).length,
+    rosterCount: roster.length,
+    uniqueCount: counts.size,
+    unseatedNames,
+    duplicateNames,
+  };
+};
+
+
