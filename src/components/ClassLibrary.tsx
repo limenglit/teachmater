@@ -4,6 +4,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { parseStudentsFromText } from '@/hooks/useStudentStore';
 import { supabase } from '@/integrations/supabase/client';
+import { notifyClassLibraryChanged } from '@/lib/class-library-events';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -147,7 +148,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     if (!newClassName.trim() || !selectedCollege || !userId) return;
     const siblingMax = classes.filter(c => c.college_id === selectedCollege).reduce((m, c) => Math.max(m, c.sort_order ?? 0), 0);
     const { data } = await supabase.from('classes').insert({ name: newClassName.trim(), college_id: selectedCollege, user_id: userId, sort_order: siblingMax + 1 } as never).select().single();
-    if (data) { setClasses(prev => [...prev, data as ClassItem]); setNewClassName(''); }
+    if (data) { setClasses(prev => [...prev, data as ClassItem]); setNewClassName(''); notifyClassLibraryChanged(); }
   };
 
   // ===== Reorder helpers (pin-to-top + drag) =====
@@ -218,6 +219,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     setClasses(prev => prev.filter(c => c.id !== id));
     setStudents(prev => prev.filter(s => s.class_id !== id));
     if (selectedClass === id) setSelectedClass(null);
+    notifyClassLibraryChanged();
   };
 
   const saveClassEdit = async (id: string) => {
@@ -225,6 +227,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     await supabase.from('classes').update({ name: editName.trim() }).eq('id', id);
     setClasses(prev => prev.map(c => c.id === id ? { ...c, name: editName.trim() } : c));
     setEditingClass(null);
+    notifyClassLibraryChanged();
   };
 
   const addStudent = async () => {
