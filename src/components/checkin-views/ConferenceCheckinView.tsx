@@ -97,7 +97,10 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const seatContainerRef = useAutoCenterMySeat([studentName, myPos?.side, myPos?.index, recenterSignal]);
   const { containerRef: pinchRef, transformStyle, scale, resetZoom } = usePinchZoom(0.5, 4, [recenterSignal]);
 
-  const seatW = 38, seatH = 26, gap = 3;
+  const seatW = 38, seatH = 26;
+  // Follow the teacher-side seat gap (scaled to this smaller canvas) so the
+  // phone layout lines up with the exported chart instead of a fixed guess.
+  const gap = Math.max(2, Math.min(12, Math.round((Number(sceneConfig.seatGap) || 6) / 2)));
   const tableW = seatsPerSide * (seatW + gap) + 20;
   const tableH = 16;
   const sideGap = 6;
