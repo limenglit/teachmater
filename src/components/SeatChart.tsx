@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { LayoutGrid, ListOrdered, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
+import { Users, LayoutGrid, ListOrdered, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
 import { snapSeatState, pushSeatUndo, popSeatUndo, popSeatRedo, type SeatSnap } from '@/lib/seat-undo';
 import ExportButtons from '@/components/ExportButtons';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
@@ -36,6 +36,8 @@ import {
 import { saveCloudSeatHistory, fetchCloudSeatHistory, migrateLocalToCloudOnce, deleteCloudSeatHistory, renameCloudSeatHistory } from '@/lib/seat-history-cloud';
 import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } from '@/lib/student-drop-hint';
 import { deleteSeatHistoryLocal, renameSeatHistoryLocal } from '@/lib/teamwork-local';
+import MultiClassRosterLoader from '@/components/seating/MultiClassRosterLoader';
+import { toSnapshotRoster, missingFromRoster, allowedSeatNames, type SnapshotStudent } from '@/lib/seat-roster-merge';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
 type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -61,7 +63,8 @@ const ORGANIZATION_COLOR_CLASSES = [
 ];
 
 export default function SeatChart() {
-  const { students, addStudent } = useStudents();
+  const { students, addStudent, appendStudents } = useStudents();
+  const [rosterLoaderOpen, setRosterLoaderOpen] = useState(false);
   const { t } = useLanguage();
   const [structureOpen, setStructureOpen] = useState(true);
   const [strategyOpen, setStrategyOpen] = useState(true);
@@ -737,8 +740,15 @@ export default function SeatChart() {
   const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-sm';
   const sideMarkerIconClass = 'inline-flex items-center justify-center w-6 h-6 rounded-md border border-primary/30 bg-primary/10 text-sm leading-none';
 
-  const sanitizeClassroomSeats = (rawSeats: (string | null)[][], nextRows: number, nextCols: number) => {
-    const validStudentNames = new Set(students.map(s => s.name));
+  const sanitizeClassroomSeats = (
+    rawSeats: (string | null)[][],
+    nextRows: number,
+    nextCols: number,
+    snapshotRoster?: SnapshotStudent[],
+  ) => {
+    // Cross-class scenes: names stored with the snapshot stay valid even when
+    // the workspace roster no longer contains them (they get merged back in).
+    const validStudentNames = allowedSeatNames(students, snapshotRoster);
     return Array.from({ length: nextRows }, (_, r) =>
       Array.from({ length: nextCols }, (_, c) => {
         const name = rawSeats?.[r]?.[c];
@@ -770,6 +780,7 @@ export default function SeatChart() {
     colAisles,
     rowAisles,
     seats,
+    roster: toSnapshotRoster(students),
     updatedAt: new Date().toISOString(),
   });
 
@@ -800,7 +811,13 @@ export default function SeatChart() {
     const snapshot = item.snapshot;
     const nextRows = normalizeClassroomDimension(snapshot.rows);
     const nextCols = normalizeClassroomDimension(snapshot.cols);
-    const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols);
+    // Bring back students (possibly from other classes/schools) that the
+    // current workspace roster no longer holds.
+    const missing = missingFromRoster(snapshot.roster, students);
+    if (missing.length > 0) {
+      appendStudents(missing.map(m => ({ id: '', ...m })));
+    }
+    const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols, snapshot.roster);
 
     setRows(nextRows);
     setCols(nextCols);
@@ -856,7 +873,7 @@ export default function SeatChart() {
 
     const nextRows = normalizeClassroomDimension(snapshot.rows);
     const nextCols = normalizeClassroomDimension(snapshot.cols);
-    const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols);
+    const nextSeats = sanitizeClassroomSeats(snapshot.seats || [], nextRows, nextCols, (snapshot as any).roster);
 
     setRows(nextRows);
     setCols(nextCols);
@@ -1363,6 +1380,9 @@ export default function SeatChart() {
               >
                 <X className="w-4 h-4" /> {t('seat.toolbar.clear')}
               </Button>
+              <Button variant="outline" onClick={() => setRosterLoaderOpen(true)} className="gap-2">
+                <Users className="w-4 h-4" /> {t('seat.roster.title')}
+              </Button>
               <Button variant="outline" onClick={saveClassroomToHistory} className="gap-2" disabled={seats.length === 0}>
                 <Save className="w-4 h-4" /> {t('seat.toolbar.saveHistory')}
               </Button>
@@ -1505,6 +1525,7 @@ export default function SeatChart() {
                 <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。</span>
               </p>
             )}
+            <MultiClassRosterLoader open={rosterLoaderOpen} onOpenChange={setRosterLoaderOpen} />
             <SeatCheckinDialog open={checkinOpen} onOpenChange={setCheckinOpen} seatData={seats} studentNames={students.map(s => s.name)} seatAssignmentReady={seatReadiness.ready} seatAssignedCount={seatReadiness.assignedCount} sceneType="classroom"
               sceneConfig={exportSceneConfig} className={recordName.trim()} pngFileName={recordName.trim() || t('seat.exportName')} onSessionCreated={({ checkinUrl }) => handleSessionCreated(checkinUrl)}
               onMergeGuests={(guests) => {
