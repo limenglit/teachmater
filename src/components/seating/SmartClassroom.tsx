@@ -10,6 +10,7 @@ import { useRoundTableDrag } from './useRoundTableDrag';
 import { useSeatExportQr } from './useSeatExportQr';
 import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
+import { getTableGeometry } from '@/lib/table-shape';
 
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import { toast } from 'sonner';
