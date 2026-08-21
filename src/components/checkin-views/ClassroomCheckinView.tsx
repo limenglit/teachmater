@@ -306,7 +306,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
 
             {/* Seats — disabled seats are hidden entirely from check-in nav */}
             {Array.from({ length: rows }).flatMap((_, r) =>
-              Array.from({ length: cols }).map((_, c) => {
+              Array.from({ length: rowWidth(r) }).map((_, c) => {
                 const x = roomOx + seatX(c);
                 const y = roomOy + seatY(r);
                 const name = seats[r]?.[c] ?? null;
