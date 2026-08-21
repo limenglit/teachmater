@@ -117,7 +117,20 @@ export default function MultiClassRosterLoader({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>{t('seat.roster.title')}</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">{t('seat.roster.desc')}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">{t('seat.roster.desc')}</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { void reload(); }}
+            disabled={loading}
+            className="shrink-0 gap-1"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {t('common.refresh')}
+          </Button>
+        </div>
+
 
         <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
           <label className="flex items-center gap-1.5 cursor-pointer">
