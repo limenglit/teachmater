@@ -202,7 +202,17 @@ export default function ConcertHall({ students }: Props) {
   const roomHeight = Math.max(700, Math.round(lowestSeatY + 100));
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
-  const exportSceneConfig = { seatsPerRow, rowCount };
+  // Ship the real arc geometry so the student check-in view reproduces the same
+  // fan angle and row radii instead of guessing with fixed constants.
+  const exportSceneConfig = {
+    seatsPerRow,
+    rowCount,
+    arcAngle,
+    startRadius,
+    seatRadius: seatR,
+    rowRadii,
+    seatCaps,
+  };
   const seatReadiness = useMemo(
     () => evaluateSeatCheckinReadiness(assignment),
     [assignment]
