@@ -1,3 +1,4 @@
+import type { SnapshotStudent } from '@/lib/seat-roster-merge';
 export interface PersistedGroupMember {
   id: string;
   name: string;
@@ -120,6 +121,11 @@ export interface ClassroomSnapshot {
   colAisles: number[];
   rowAisles: number[];
   seats: (string | null)[][];
+  /**
+   * Full roster captured with the snapshot so cross-class / cross-school seat
+   * charts can be restored even when the workspace list changed afterwards.
+   */
+  roster?: SnapshotStudent[];
   updatedAt: string;
 }
 
