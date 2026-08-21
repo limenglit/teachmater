@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSeatAssignmentComplete, evaluateSeatCheckinReadiness } from './seat-checkin-policy';
+import { isSeatAssignmentComplete, evaluateSeatCheckinReadiness, analyzeSeatCheckinCoverage } from './seat-checkin-policy';
 
 describe('evaluateSeatCheckinReadiness — boundary cases', () => {
   it('is not ready when seat data is empty / undefined / null', () => {
@@ -102,5 +102,19 @@ describe('isSeatAssignmentComplete', () => {
   it('supports nested ring / smart-classroom data', () => {
     const seatData = { tables: [{ seats: ['张三', '李四'] }, { seats: ['王五'] }] };
     expect(isSeatAssignmentComplete(seatData, ['张三', '李四', '王五'])).toBe(true);
+  });
+});
+
+describe('analyzeSeatCheckinCoverage', () => {
+  it('reports unseated students and duplicate names', () => {
+    const seats = [['张三', null], ['李四', '王五']];
+    const r = analyzeSeatCheckinCoverage(seats, ['张三', '李四', '王五', '赵六']);
+    expect(r.assignedCount).toBe(3);
+    expect(r.unseatedNames).toEqual(['赵六']);
+
+    const dup = analyzeSeatCheckinCoverage(seats, ['张三', '张三', '李四', '王五']);
+    expect(dup.rosterCount).toBe(4);
+    expect(dup.uniqueCount).toBe(3);
+    expect(dup.duplicateNames).toEqual(['张三']);
   });
 });

@@ -20,6 +20,7 @@ import QRActionPanel from '@/components/qr/QRActionPanel';
 import {
   getRequireSeatAssignmentBeforeCheckin,
   isSeatAssignmentComplete,
+  analyzeSeatCheckinCoverage,
 } from '@/lib/seat-checkin-policy';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -38,6 +39,10 @@ interface Props {
   /** Unified human-readable reason (ready or not) surfaced from evaluateSeatCheckinReadiness. */
   seatReadinessReason?: string;
   seatAssignedCount?: number;
+  /** Roster size before name de-duplication (used to explain missing people). */
+  rosterTotal?: number;
+  /** Roster names that repeat, so check-in cannot tell them apart. */
+  duplicateRosterNames?: string[];
 
   sceneConfig: Record<string, unknown>;
   sceneType: string;
@@ -264,6 +269,8 @@ export default function SeatCheckinDialog({
   seatAssignmentReady,
   seatReadinessReason,
   seatAssignedCount,
+  rosterTotal,
+  duplicateRosterNames,
 
   sceneConfig,
   sceneType,
@@ -290,6 +297,11 @@ export default function SeatCheckinDialog({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
   const qrPreviewRef = useRef<HTMLDivElement>(null);
+
+  const coverage = useMemo(
+    () => analyzeSeatCheckinCoverage(seatData, studentNames),
+    [seatData, studentNames],
+  );
 
   const seatAssignmentComplete = useMemo(
     () => (typeof seatAssignmentReady === 'boolean' ? seatAssignmentReady : isSeatAssignmentComplete(seatData, studentNames)),
@@ -734,6 +746,27 @@ export default function SeatCheckinDialog({
                 <p className="text-xs text-primary">
                   {t('seatCheckinDialog.seatReadyCount').replace('{count}', String(seatAssignedCount))}
                 </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                名单 {rosterTotal ?? coverage.rosterCount} 人 · 已就座 {coverage.assignedCount} 人 · 签到名单 {coverage.uniqueCount} 人
+              </p>
+              {coverage.unseatedNames.length > 0 && (
+                <details className="text-xs text-amber-600">
+                  <summary className="cursor-pointer">
+                    未安排座位 {coverage.unseatedNames.length} 人（会导致室内导航缺失，点击查看名单）
+                  </summary>
+                  <p className="mt-1 break-words text-muted-foreground">{coverage.unseatedNames.join('、')}</p>
+                </details>
+              )}
+              {((duplicateRosterNames && duplicateRosterNames.length > 0) || coverage.duplicateNames.length > 0) && (
+                <details className="text-xs text-amber-600">
+                  <summary className="cursor-pointer">
+                    重名 {(duplicateRosterNames && duplicateRosterNames.length > 0 ? duplicateRosterNames : coverage.duplicateNames).length} 人（签到时会合并为同一条记录，建议加学号区分）
+                  </summary>
+                  <p className="mt-1 break-words text-muted-foreground">
+                    {(duplicateRosterNames && duplicateRosterNames.length > 0 ? duplicateRosterNames : coverage.duplicateNames).join('、')}
+                  </p>
+                </details>
               )}
 
             </div>
