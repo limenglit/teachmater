@@ -427,15 +427,17 @@ export default function SeatCheckinDialog({
     try {
       const minutes = unlimited ? 99999 : durationMinutes;
       // 确保智能教室/宴会厅场景 sceneConfig 包含门口信息
-      let nextSceneConfig = { ...sceneConfig };
+      const nextSceneConfig: Record<string, unknown> = { ...sceneConfig };
       if (sceneType === 'smartClassroom' || sceneType === 'banquet') {
-        // 默认仅支持前门，后续可扩展
         if (!nextSceneConfig.entryDoorMode) {
           nextSceneConfig.entryDoorMode = 'front';
         }
         if (!nextSceneConfig.entryDoorPosition) {
-          // 默认前门在顶部中央
-          nextSceneConfig.entryDoorPosition = 'top';
+          // 跟随教师端当前的门位置（可被前后门互换影响），缺省顶部。
+          const mode = nextSceneConfig.entryDoorMode;
+          const front = nextSceneConfig.frontDoorPosition as string | undefined;
+          const back = nextSceneConfig.backDoorPosition as string | undefined;
+          nextSceneConfig.entryDoorPosition = (mode === 'back' ? back : front) || front || 'top';
         }
       }
       console.log('[SeatCheckin] Publishing session with sceneConfig:', nextSceneConfig);
