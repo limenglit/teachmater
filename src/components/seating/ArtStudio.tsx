@@ -732,7 +732,7 @@ export default function ArtStudio({ students }: Props) {
         seatAssignmentReady={seatAssignmentReady}
         seatAssignedCount={seatReadiness.assignedCount}
 
-        sceneConfig={{ layoutMode, ringCount, innerRingSeats, ringGrowth }}
+        sceneConfig={{ layoutMode, ringCount, innerRingSeats, ringGrowth, ringRadii, ringOffsets, seatsPerRing }}
         sceneType="artStudio"
         className={t('seat.editor.scene.art')}
         pngFileName={t('seat.editor.art.qrFile')}
