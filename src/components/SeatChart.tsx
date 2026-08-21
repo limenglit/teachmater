@@ -744,9 +744,24 @@ export default function SeatChart() {
   useZoomGestures({ setScale: setSeatScale, targetRef: seatScrollRef });
   const exportSceneConfig = { rows, cols, windowOnLeft, colAisles, rowAisles, entryDoorMode, frontDoorPosition, backDoorPosition, disabledSeats: Array.from(disabledSeats) };
   const seatReadiness = useMemo(() => evaluateSeatCheckinReadiness(seats), [seats]);
+  // 签到名单：跨班级接序排座时，已就座的其他班级学生也必须纳入签到统计，
+  // 否则签到码只覆盖当前左侧加载的班级名单。
+  const checkinStudentNames = useMemo(() => {
+    const names: string[] = [];
+    const seen = new Set<string>();
+    const push = (n?: string | null) => {
+      const name = (n || '').trim();
+      if (!name || seen.has(name)) return;
+      seen.add(name);
+      names.push(name);
+    };
+    students.forEach(s => push(s.name));
+    seats.forEach(row => row?.forEach(cell => push(cell as string | null)));
+    return names;
+  }, [students, seats]);
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
-    studentNames: students.map(s => s.name),
+    studentNames: checkinStudentNames,
     seatAssignmentReady: seatReadiness.ready,
     sceneConfig: exportSceneConfig,
     sceneType: 'classroom',
