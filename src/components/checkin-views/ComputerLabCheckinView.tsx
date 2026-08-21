@@ -212,7 +212,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                             const y = side === 'top' ? topSeatY(ri) : bottomSeatY(ri);
                             return Array.from({ length: seatsPerSide }).map((_, ci) => {
                               const globalCol = seatOffset + ci;
-                              const x = seatX(tci, ci) - tci * 0; // tci already applied inside seatX
+                              const x = seatX(tci, ci);
                               const name = group?.students?.[globalCol] || '';
                               const isClosed = closedSeats.has(`${ri}-${side}-${globalCol}`);
                               const isMine = myPos.rowIndex === ri && myPos.side === side && myPos.col === globalCol;
