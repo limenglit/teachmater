@@ -37,12 +37,19 @@ export default function ArtStudioCheckinView({ seatData, sceneConfig, studentNam
 
   const centerX = 320;
   const centerY = 240;
-  const baseRadius = 82;
-  const radiusStep = 56;
-  const seatRx = 28;
-  const seatRy = 16;
   const svgW = 640;
   const svgH = 500;
+  // Use the teacher-side ring radii/offsets when the session carries them so the
+  // phone view matches the exported chart; otherwise keep the legacy estimate.
+  const cfgRadii = Array.isArray(sceneConfig.ringRadii) ? (sceneConfig.ringRadii as number[]) : null;
+  const cfgOffsets = Array.isArray(sceneConfig.ringOffsets) ? (sceneConfig.ringOffsets as number[]) : null;
+  const baseRadii = rings.map((_, i) => cfgRadii?.[i] ?? 82 + i * 56);
+  const maxBaseRadius = Math.max(1, ...baseRadii);
+  const fit = Math.min(1, (Math.min(svgW, svgH) / 2 - 40) / maxBaseRadius);
+  const ringRadii = baseRadii.map(r => r * fit);
+  const seatRx = Math.max(14, 28 * fit);
+  const seatRy = Math.max(9, 16 * fit);
+  const ringStartAngle = (i: number) => cfgOffsets?.[i] ?? -Math.PI / 2;
 
   const myLabel = `第${myPos.ring + 1}圈 · 第${myPos.seat + 1}位`;
 
