@@ -4,6 +4,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { parseStudentsFromText } from '@/hooks/useStudentStore';
 import { supabase } from '@/integrations/supabase/client';
+import { notifyClassLibraryChanged } from '@/lib/class-library-events';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -134,6 +135,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     setColleges(prev => prev.filter(c => c.id !== id));
     setClasses(prev => prev.filter(c => c.college_id !== id));
     if (selectedCollege === id) { setSelectedCollege(null); setSelectedClass(null); }
+    notifyClassLibraryChanged();
   };
 
   const saveCollegeEdit = async (id: string) => {
@@ -147,7 +149,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     if (!newClassName.trim() || !selectedCollege || !userId) return;
     const siblingMax = classes.filter(c => c.college_id === selectedCollege).reduce((m, c) => Math.max(m, c.sort_order ?? 0), 0);
     const { data } = await supabase.from('classes').insert({ name: newClassName.trim(), college_id: selectedCollege, user_id: userId, sort_order: siblingMax + 1 } as never).select().single();
-    if (data) { setClasses(prev => [...prev, data as ClassItem]); setNewClassName(''); }
+    if (data) { setClasses(prev => [...prev, data as ClassItem]); setNewClassName(''); notifyClassLibraryChanged(); }
   };
 
   // ===== Reorder helpers (pin-to-top + drag) =====
@@ -218,6 +220,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     setClasses(prev => prev.filter(c => c.id !== id));
     setStudents(prev => prev.filter(s => s.class_id !== id));
     if (selectedClass === id) setSelectedClass(null);
+    notifyClassLibraryChanged();
   };
 
   const saveClassEdit = async (id: string) => {
@@ -225,17 +228,19 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     await supabase.from('classes').update({ name: editName.trim() }).eq('id', id);
     setClasses(prev => prev.map(c => c.id === id ? { ...c, name: editName.trim() } : c));
     setEditingClass(null);
+    notifyClassLibraryChanged();
   };
 
   const addStudent = async () => {
     if (!newStudentName.trim() || !selectedClass || !userId) return;
     const { data } = await supabase.from('class_students').insert({ name: newStudentName.trim(), student_number: newStudentNumber.trim(), class_id: selectedClass, user_id: userId }).select().single();
-    if (data) { setStudents(prev => [...prev, data as ClassStudent]); setNewStudentName(''); setNewStudentNumber(''); }
+    if (data) { setStudents(prev => [...prev, data as ClassStudent]); setNewStudentName(''); setNewStudentNumber(''); notifyClassLibraryChanged(); }
   };
 
   const deleteStudent = async (id: string) => {
     await supabase.from('class_students').delete().eq('id', id);
     setStudents(prev => prev.filter(s => s.id !== id));
+    notifyClassLibraryChanged();
   };
 
   const saveStudentEdit = async (id: string) => {
@@ -243,6 +248,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
     await supabase.from('class_students').update({ name: editName.trim() }).eq('id', id);
     setStudents(prev => prev.map(s => s.id === id ? { ...s, name: editName.trim() } : s));
     setEditingStudent(null);
+    notifyClassLibraryChanged();
   };
 
   const loadToWorkspace = () => {
@@ -374,6 +380,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       }
 
       await loadAll();
+      notifyClassLibraryChanged();
       setImportOpen(false);
       setPreviewData([]);
 
@@ -462,6 +469,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
       await insertClassStudentRows(inserts);
       await loadAll();
+      notifyClassLibraryChanged();
       setTextImportContent('');
       setTextImportOpen(false);
 

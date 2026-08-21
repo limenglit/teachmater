@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Users } from 'lucide-react';
+import { onClassLibraryChanged } from '@/lib/class-library-events';
 
 interface ClassOption {
   id: string;
@@ -28,11 +29,7 @@ export default function ClassRosterPicker({ open, onOpenChange, onSelect, curren
   const { students: sidebarStudents } = useStudents();
   const [classes, setClasses] = useState<ClassOption[]>([]);
 
-  useEffect(() => {
-    if (open && user) loadClasses();
-  }, [open, user]);
-
-  const loadClasses = async () => {
+  const loadClasses = useCallback(async () => {
     if (!user) return;
     const [{ data: colleges }, { data: cls }, { data: cs }] = await Promise.all([
       supabase.from('colleges').select('id, name').eq('user_id', user.id),
@@ -46,7 +43,17 @@ export default function ClassRosterPicker({ open, onOpenChange, onSelect, curren
       collegeName: colleges?.find(col => col.id === c.college_id)?.name || '',
       students: (cs || []).filter(s => s.class_id === c.id).map(s => s.name),
     })));
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (open && user) void loadClasses();
+  }, [open, user, loadClasses]);
+
+  // Refresh while open so newly created / deleted classes show up immediately.
+  useEffect(() => {
+    if (!open) return;
+    return onClassLibraryChanged(() => { void loadClasses(); });
+  }, [open, loadClasses]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

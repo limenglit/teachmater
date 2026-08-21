@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Users, Loader2 } from 'lucide-react';
+import { Users, Loader2, RefreshCw } from 'lucide-react';
+import { onClassLibraryChanged } from '@/lib/class-library-events';
+
 import {
   buildStudentsFromClasses,
   combinedClassLabel,
@@ -39,35 +41,45 @@ export default function MultiClassRosterLoader({ open, onOpenChange }: Props) {
   const [importMode, setImportMode] = useState<'append' | 'replace'>('append');
   const [dedupe, setDedupe] = useState(false);
 
+  const reload = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const [{ data: colleges }, { data: cls }, { data: cs }] = await Promise.all([
+      supabase.from('colleges').select('id, name').eq('user_id', user.id),
+      supabase.from('classes').select('id, name, college_id').eq('user_id', user.id),
+      supabase
+        .from('class_students')
+        .select('class_id, name, student_number')
+        .eq('user_id', user.id)
+        .limit(20000),
+    ]);
+    const next: ClassEntry[] = (cls || []).map(c => ({
+      id: c.id,
+      className: c.name,
+      collegeName: colleges?.find(col => col.id === c.college_id)?.name || '',
+      students: (cs || [])
+        .filter(s => s.class_id === c.id)
+        .map(s => ({ name: s.name, studentNumber: s.student_number })),
+    }));
+    setClasses(next);
+    // Drop selections pointing at classes that no longer exist.
+    const alive = new Set(next.map(c => c.id));
+    setSelectedIds(prev => prev.filter(id => alive.has(id)));
+    setLoading(false);
+  }, [user]);
+
   useEffect(() => {
     if (!open || !user) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const [{ data: colleges }, { data: cls }, { data: cs }] = await Promise.all([
-        supabase.from('colleges').select('id, name').eq('user_id', user.id),
-        supabase.from('classes').select('id, name, college_id').eq('user_id', user.id),
-        supabase
-          .from('class_students')
-          .select('class_id, name, student_number')
-          .eq('user_id', user.id)
-          .limit(20000),
-      ]);
-      if (cancelled) return;
-      setClasses(
-        (cls || []).map(c => ({
-          id: c.id,
-          className: c.name,
-          collegeName: colleges?.find(col => col.id === c.college_id)?.name || '',
-          students: (cs || [])
-            .filter(s => s.class_id === c.id)
-            .map(s => ({ name: s.name, studentNumber: s.student_number })),
-        })),
-      );
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [open, user]);
+    setClasses([]);
+    void reload();
+  }, [open, user, reload]);
+
+  // Keep the list in sync while the dialog is open (class library edits, tab focus).
+  useEffect(() => {
+    if (!open) return;
+    return onClassLibraryChanged(() => { void reload(); });
+  }, [open, reload]);
+
 
   const grouped = useMemo(() => {
     const map = new Map<string, ClassEntry[]>();
@@ -105,7 +117,20 @@ export default function MultiClassRosterLoader({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>{t('seat.roster.title')}</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground">{t('seat.roster.desc')}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">{t('seat.roster.desc')}</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { void reload(); }}
+            disabled={loading}
+            className="shrink-0 gap-1"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            {t('common.refresh')}
+          </Button>
+        </div>
+
 
         <div className="flex flex-wrap items-center gap-3 mt-2 text-sm">
           <label className="flex items-center gap-1.5 cursor-pointer">
