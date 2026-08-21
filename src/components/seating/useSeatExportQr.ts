@@ -42,7 +42,7 @@ export function useSeatExportQr({ seatData, studentNames, seatAssignmentReady, s
   // the cached check-in URL — students always see the freshest navigation route.
   const sceneConfigSig = (() => {
     try { return JSON.stringify(sceneConfig ?? {}); } catch { return ''; }
-  })();
+  })() + '|names:' + studentNames.join(',');
 
   // Invalidate cached check-in URL when class name or scene config changes so
   // QR label, indoor navigation route, and arrows stay in sync.
