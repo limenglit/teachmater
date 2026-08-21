@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
