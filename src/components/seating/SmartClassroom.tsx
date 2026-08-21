@@ -671,6 +671,16 @@ export default function SmartClassroom({
     frontDoorPosition: frontDoor,
     backDoorPosition: backDoor,
     entryDoorMode: entryDoor,
+    // Table geometry must travel with the session so the student check-in view
+    // renders the same shape / seat order as the teacher editor.
+    tableShape,
+    squareSidePeople,
+    customLongPeople,
+    customShortPeople,
+    tableGap,
+    tableGapRow,
+    closedSeats: Array.from(closedSeats),
+    reservedTables: Array.from(reservedTables),
   };
   const seatReadiness = useMemo(() => evaluateSeatCheckinReadiness(assignment), [assignment]);
   const seatAssignmentReady = seatReadiness.ready;
