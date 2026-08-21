@@ -58,7 +58,7 @@ export default function MultiClassRosterLoader({ open, onOpenChange }: Props) {
       const alive = new Set(next.map(c => c.id));
       setSelectedIds(prev => prev.filter(id => alive.has(id)));
     } catch {
-      toast.error(t('library.loadFailed') || '加载失败');
+      toast.error('班级库加载失败');
     } finally {
       setLoading(false);
     }
