@@ -92,9 +92,9 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
     : { x: svgW - 40, y: svgH / 2 + 30 };
 
   const mySeatPolar = (() => {
-    const r = startRadius + myPos.row * radiusStep;
+    const r = rowRadii[myPos.row] ?? 0;
     const seatCount = seatCaps[myPos.row];
-    const totalAngle = Math.min(Math.PI * 0.85, Math.PI * (0.5 + myPos.row * 0.05));
+    const totalAngle = rowArc(myPos.row);
     const startAngle = Math.PI - (Math.PI - totalAngle) / 2;
     const endAngle = (Math.PI - totalAngle) / 2;
     const frac = seatCount <= 1 ? 0.5 : myPos.col / (seatCount - 1);
