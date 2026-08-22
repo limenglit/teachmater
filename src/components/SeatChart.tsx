@@ -808,7 +808,7 @@ export default function SeatChart() {
     const counts = new Map<string, number>();
     const bump = (n?: string | null) => {
       const name = (n || '').trim();
-      if (!name) return;
+      if (!name || leaveNames.has(name)) return;
       counts.set(name, (counts.get(name) || 0) + 1);
     };
     students.forEach(s => bump(s.name));
@@ -816,12 +816,12 @@ export default function SeatChart() {
     const seatedOnly = new Set<string>();
     seats.forEach(row => row?.forEach(cell => {
       const name = (cell || '').trim();
-      if (name && !counts.has(name)) seatedOnly.add(name);
+      if (name && !leaveNames.has(name) && !counts.has(name)) seatedOnly.add(name);
     }));
     let total = 0;
     counts.forEach(c => { total += c; });
     return { total: total + seatedOnly.size, duplicates };
-  }, [students, seats]);
+  }, [students, seats, leaveNames]);
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
     studentNames: checkinStudentNames,
