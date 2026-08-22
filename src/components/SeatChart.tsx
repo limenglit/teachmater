@@ -135,6 +135,8 @@ export default function SeatChart() {
   const [pointerDraggingColAisle, setPointerDraggingColAisle] = useState<number | null>(null);
   const [pointerColDropTarget, setPointerColDropTarget] = useState<number | null>(null);
   const restoredClassroomRef = useRef(false);
+  // 请假池：双击座位把学生移入，座位空出且不计入签到名单
+  const [leavePool, setLeavePool] = useState<{ name: string; r: number; c: number }[]>([]);
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
