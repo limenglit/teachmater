@@ -153,6 +153,46 @@ export default function SeatChart() {
     setRedoStack([]);
   }, []);
 
+  /** 双击座位 → 移入请假池：清空座位并记录原位置 */
+  const moveToLeavePool = useCallback((r: number, c: number, name: string) => {
+    pushHistory();
+    setSeats(prev => {
+      const next = prev.map(row => [...row]);
+      if (next[r]) next[r][c] = null;
+      return next;
+    });
+    setLeavePool(prev => (prev.some(x => x.name === name) ? prev : [...prev, { name, r, c }]));
+    toast.success(`${name} 已请假，座位已空出`);
+  }, [pushHistory]);
+
+  /** 双击请假池条目 → 恢复原位（原位被占用则放到最近的空位） */
+  const restoreFromLeavePool = useCallback((entry: { name: string; r: number; c: number }) => {
+    const grid = seatsRef.current;
+    let target: { r: number; c: number } | null = null;
+    if (grid[entry.r] && grid[entry.r][entry.c] === null && !disabledRef.current.has(`${entry.r}-${entry.c}`)) {
+      target = { r: entry.r, c: entry.c };
+    } else {
+      outer: for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < (grid[r]?.length || 0); c++) {
+          if (grid[r][c] === null && !disabledRef.current.has(`${r}-${c}`)) { target = { r, c }; break outer; }
+        }
+      }
+    }
+    if (!target) { toast.error('没有空位可以恢复，请先增加座位'); return; }
+    pushHistory();
+    const dest = target;
+    setSeats(prev => {
+      const next = prev.map(row => [...row]);
+      if (next[dest.r]) next[dest.r][dest.c] = entry.name;
+      return next;
+    });
+    setLeavePool(prev => prev.filter(x => x.name !== entry.name));
+    const backToOrigin = dest.r === entry.r && dest.c === entry.c;
+    toast.success(backToOrigin ? `${entry.name} 已恢复原位` : `${entry.name} 原位已被占用，已安排到 ${dest.r + 1}排${dest.c + 1}列`);
+  }, [pushHistory]);
+
+
+
   const applySnap = useCallback((snap: SeatSnap) => {
     setSeats(snap.seats.map(row => [...row]));
     setDisabledSeats(new Set(snap.disabled));
