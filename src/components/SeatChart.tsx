@@ -135,6 +135,8 @@ export default function SeatChart() {
   const [pointerDraggingColAisle, setPointerDraggingColAisle] = useState<number | null>(null);
   const [pointerColDropTarget, setPointerColDropTarget] = useState<number | null>(null);
   const restoredClassroomRef = useRef(false);
+  // 请假池：双击座位把学生移入，座位空出且不计入签到名单
+  const [leavePool, setLeavePool] = useState<{ name: string; r: number; c: number }[]>([]);
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
@@ -150,6 +152,46 @@ export default function SeatChart() {
     setUndoStack(s => pushSeatUndo(s, snap));
     setRedoStack([]);
   }, []);
+
+  /** 双击座位 → 移入请假池：清空座位并记录原位置 */
+  const moveToLeavePool = useCallback((r: number, c: number, name: string) => {
+    pushHistory();
+    setSeats(prev => {
+      const next = prev.map(row => [...row]);
+      if (next[r]) next[r][c] = null;
+      return next;
+    });
+    setLeavePool(prev => (prev.some(x => x.name === name) ? prev : [...prev, { name, r, c }]));
+    toast.success(`${name} 已请假，座位已空出`);
+  }, [pushHistory]);
+
+  /** 双击请假池条目 → 恢复原位（原位被占用则放到最近的空位） */
+  const restoreFromLeavePool = useCallback((entry: { name: string; r: number; c: number }) => {
+    const grid = seatsRef.current;
+    let target: { r: number; c: number } | null = null;
+    if (grid[entry.r] && grid[entry.r][entry.c] === null && !disabledRef.current.has(`${entry.r}-${entry.c}`)) {
+      target = { r: entry.r, c: entry.c };
+    } else {
+      outer: for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < (grid[r]?.length || 0); c++) {
+          if (grid[r][c] === null && !disabledRef.current.has(`${r}-${c}`)) { target = { r, c }; break outer; }
+        }
+      }
+    }
+    if (!target) { toast.error('没有空位可以恢复，请先增加座位'); return; }
+    pushHistory();
+    const dest = target;
+    setSeats(prev => {
+      const next = prev.map(row => [...row]);
+      if (next[dest.r]) next[dest.r][dest.c] = entry.name;
+      return next;
+    });
+    setLeavePool(prev => prev.filter(x => x.name !== entry.name));
+    const backToOrigin = dest.r === entry.r && dest.c === entry.c;
+    toast.success(backToOrigin ? `${entry.name} 已恢复原位` : `${entry.name} 原位已被占用，已安排到 ${dest.r + 1}排${dest.c + 1}列`);
+  }, [pushHistory]);
+
+
 
   const applySnap = useCallback((snap: SeatSnap) => {
     setSeats(snap.seats.map(row => [...row]));
@@ -746,26 +788,27 @@ export default function SeatChart() {
   const seatReadiness = useMemo(() => evaluateSeatCheckinReadiness(seats), [seats]);
   // 签到名单：跨班级接序排座时，已就座的其他班级学生也必须纳入签到统计，
   // 否则签到码只覆盖当前左侧加载的班级名单。
+  const leaveNames = useMemo(() => new Set(leavePool.map(x => x.name.trim())), [leavePool]);
   const checkinStudentNames = useMemo(() => {
     const names: string[] = [];
     const seen = new Set<string>();
     const push = (n?: string | null) => {
       const name = (n || '').trim();
-      if (!name || seen.has(name)) return;
+      if (!name || seen.has(name) || leaveNames.has(name)) return;
       seen.add(name);
       names.push(name);
     };
     students.forEach(s => push(s.name));
     seats.forEach(row => row?.forEach(cell => push(cell as string | null)));
     return names;
-  }, [students, seats]);
+  }, [students, seats, leaveNames]);
   // Roster totals before name de-duplication so the check-in dialog can explain
   // why "656 seated" can become 654 check-in entries (duplicate names collapse).
   const checkinRosterStats = useMemo(() => {
     const counts = new Map<string, number>();
     const bump = (n?: string | null) => {
       const name = (n || '').trim();
-      if (!name) return;
+      if (!name || leaveNames.has(name)) return;
       counts.set(name, (counts.get(name) || 0) + 1);
     };
     students.forEach(s => bump(s.name));
@@ -773,12 +816,12 @@ export default function SeatChart() {
     const seatedOnly = new Set<string>();
     seats.forEach(row => row?.forEach(cell => {
       const name = (cell || '').trim();
-      if (name && !counts.has(name)) seatedOnly.add(name);
+      if (name && !leaveNames.has(name) && !counts.has(name)) seatedOnly.add(name);
     }));
     let total = 0;
     counts.forEach(c => { total += c; });
     return { total: total + seatedOnly.size, duplicates };
-  }, [students, seats]);
+  }, [students, seats, leaveNames]);
   const { className: exportClassName, resolveQrCode, handleSessionCreated } = useSeatExportQr({
     seatData: seats,
     studentNames: checkinStudentNames,
@@ -1013,7 +1056,7 @@ export default function SeatChart() {
             onDragStart={() => handleDragStart(ri, ci)}
             onDragOver={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const isStudentDrag = raw.startsWith('student:') || e.dataTransfer.types.includes('application/x-student-name'); if (isStudentDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r: ri, c: ci }); showStudentDropHint(e, { occupant: name || undefined }); return; } const isAisleDrag = !!draggingAisle || !!draggingAisleRef.current || raw.startsWith('col:') || raw.startsWith('row:'); if (isAisleDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return; } handleDragOver(e, ri, ci); }}
             onDragLeave={handleStudentDragLeave}
-            onDrop={e => { clearStudentDropHint(e); if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const studentName = raw.startsWith('student:') ? raw.slice('student:'.length) : e.dataTransfer.getData('application/x-student-name'); if (studentName) { e.preventDefault(); setSeats(prev => { const next = prev.map(row => [...row]); let existingR = -1, existingC = -1; for (let r = 0; r < next.length; r++) { for (let c = 0; c < (next[r]?.length || 0); c++) { if (next[r][c] === studentName) { existingR = r; existingC = c; break; } } if (existingR >= 0) break; } const targetName = next[ri]?.[ci] ?? null; if (existingR >= 0) { next[existingR][existingC] = targetName; } next[ri][ci] = studentName; return next; }); setDragFrom(null); setDropTarget(null); return; } const [dragType, dragIndex] = raw.split(':'); const parsedIndex = Number(dragIndex); const currentAisle = draggingAisle ?? draggingAisleRef.current; const isColAisleDrag = currentAisle?.type === 'col' || (dragType === 'col' && Number.isFinite(parsedIndex)); const isAnyAisleDrag = !!currentAisle || dragType === 'col' || dragType === 'row'; if (isColAisleDrag) { const targetIndex = Math.min(ci, cols - 2); handleAisleDropOnGap(e, 'col', targetIndex); return; } if (isAnyAisleDrag) { e.preventDefault(); return; } handleDrop(e, ri, ci); }}
+            onDrop={e => { clearStudentDropHint(e); if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const studentName = raw.startsWith('student:') ? raw.slice('student:'.length) : e.dataTransfer.getData('application/x-student-name'); if (studentName) { e.preventDefault(); setSeats(prev => { const next = prev.map(row => [...row]); let existingR = -1, existingC = -1; for (let r = 0; r < next.length; r++) { for (let c = 0; c < (next[r]?.length || 0); c++) { if (next[r][c] === studentName) { existingR = r; existingC = c; break; } } if (existingR >= 0) break; } const targetName = next[ri]?.[ci] ?? null; if (existingR >= 0) { next[existingR][existingC] = targetName; } next[ri][ci] = studentName; return next; }); setLeavePool(p => p.filter(x => x.name !== studentName)); setDragFrom(null); setDropTarget(null); return; } const [dragType, dragIndex] = raw.split(':'); const parsedIndex = Number(dragIndex); const currentAisle = draggingAisle ?? draggingAisleRef.current; const isColAisleDrag = currentAisle?.type === 'col' || (dragType === 'col' && Number.isFinite(parsedIndex)); const isAnyAisleDrag = !!currentAisle || dragType === 'col' || dragType === 'row'; if (isColAisleDrag) { const targetIndex = Math.min(ci, cols - 2); handleAisleDropOnGap(e, 'col', targetIndex); return; } if (isAnyAisleDrag) { e.preventDefault(); return; } handleDrop(e, ri, ci); }}
             onDragEnd={handleDragEnd}
             onClick={e => {
               // Shift+click on a seated student toggles a lock; plain click on an empty seat disables it.
@@ -1021,7 +1064,8 @@ export default function SeatChart() {
               if (e.shiftKey && isLocked) { toggleLocked(ri, ci); return; }
               if (!name) toggleDisabled(ri, ci);
             }}
-            title={isLocked ? '已锁定（Shift+点击解锁，自动排座时保持不动）' : name ? 'Shift+点击锁定该学生位置' : undefined}
+            onDoubleClick={() => { if (name && !isDisabled) moveToLeavePool(ri, ci, name); }}
+            title={isLocked ? '已锁定（Shift+点击解锁，自动排座时保持不动）' : name ? 'Shift+点击锁定该学生位置 · 双击移入请假池' : undefined}
             style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: toGridCol(visualCol) }}
             className={`relative w-16 h-12 rounded-lg border text-xs flex items-center justify-center transition-all select-none
               ${isDisabled ? 'bg-destructive/10 border-destructive/30 text-destructive cursor-pointer'
@@ -1580,10 +1624,64 @@ export default function SeatChart() {
                 </div>
               )}
             </div>
+
+            {/* 请假池：双击座位移入，双击/拖出恢复 */}
+            {seats.length > 0 && (
+              <div
+                className="mt-4 rounded-xl border border-dashed border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20 px-3 py-2.5"
+                onDragOver={e => {
+                  const types = Array.from(e.dataTransfer.types || []);
+                  if (types.includes('application/x-student-name') || types.includes('text/plain')) e.preventDefault();
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  const raw = e.dataTransfer.getData('text/plain');
+                  const name = raw.startsWith('student:') ? raw.slice('student:'.length) : e.dataTransfer.getData('application/x-student-name');
+                  if (!name) return;
+                  let found: { r: number; c: number } | null = null;
+                  seatsRef.current.forEach((row, r) => row?.forEach((cell, c) => { if (!found && cell === name) found = { r, c }; }));
+                  if (found) moveToLeavePool(found.r, found.c, name);
+                }}
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                    请假池（{leavePool.length} 人）
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    双击座位移入请假池 · 双击或拖回座位恢复
+                  </span>
+                </div>
+                {leavePool.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">暂无请假学生。双击座位上的姓名即可请假，其座位空出且不计入签到名单。</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {leavePool.map(entry => (
+                      <button
+                        key={`${entry.name}-${entry.r}-${entry.c}`}
+                        type="button"
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.setData('text/plain', `student:${entry.name}`);
+                          e.dataTransfer.setData('application/x-student-name', entry.name);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDoubleClick={() => restoreFromLeavePool(entry)}
+                        title={`原座位：${entry.r + 1}排${entry.c + 1}列 · 双击或拖到座位恢复`}
+                        className="px-2.5 py-1 rounded-md border border-amber-400/60 bg-background text-xs text-foreground shadow-sm cursor-grab active:cursor-grabbing hover:border-primary/60"
+                      >
+                        {entry.name}
+                        <span className="ml-1 text-[10px] text-muted-foreground">{entry.r + 1}-{entry.c + 1}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {seats.length > 0 && (
               <p className="text-center text-xs text-muted-foreground mt-4">
                 {t('seat.legend')}
-                <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。</span>
+                <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。· 双击学生座位可移入下方请假池。</span>
               </p>
             )}
             <MultiClassRosterLoader open={rosterLoaderOpen} onOpenChange={setRosterLoaderOpen} />
