@@ -1624,10 +1624,64 @@ export default function SeatChart() {
                 </div>
               )}
             </div>
+
+            {/* 请假池：双击座位移入，双击/拖出恢复 */}
+            {seats.length > 0 && (
+              <div
+                className="mt-4 rounded-xl border border-dashed border-amber-400/60 bg-amber-50/60 dark:bg-amber-950/20 px-3 py-2.5"
+                onDragOver={e => {
+                  const types = Array.from(e.dataTransfer.types || []);
+                  if (types.includes('application/x-student-name') || types.includes('text/plain')) e.preventDefault();
+                }}
+                onDrop={e => {
+                  e.preventDefault();
+                  const raw = e.dataTransfer.getData('text/plain');
+                  const name = raw.startsWith('student:') ? raw.slice('student:'.length) : e.dataTransfer.getData('application/x-student-name');
+                  if (!name) return;
+                  let found: { r: number; c: number } | null = null;
+                  seatsRef.current.forEach((row, r) => row?.forEach((cell, c) => { if (!found && cell === name) found = { r, c }; }));
+                  if (found) moveToLeavePool(found.r, found.c, name);
+                }}
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                    请假池（{leavePool.length} 人）
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">
+                    双击座位移入请假池 · 双击或拖回座位恢复
+                  </span>
+                </div>
+                {leavePool.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground">暂无请假学生。双击座位上的姓名即可请假，其座位空出且不计入签到名单。</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {leavePool.map(entry => (
+                      <button
+                        key={`${entry.name}-${entry.r}-${entry.c}`}
+                        type="button"
+                        draggable
+                        onDragStart={e => {
+                          e.dataTransfer.setData('text/plain', `student:${entry.name}`);
+                          e.dataTransfer.setData('application/x-student-name', entry.name);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDoubleClick={() => restoreFromLeavePool(entry)}
+                        title={`原座位：${entry.r + 1}排${entry.c + 1}列 · 双击或拖到座位恢复`}
+                        className="px-2.5 py-1 rounded-md border border-amber-400/60 bg-background text-xs text-foreground shadow-sm cursor-grab active:cursor-grabbing hover:border-primary/60"
+                      >
+                        {entry.name}
+                        <span className="ml-1 text-[10px] text-muted-foreground">{entry.r + 1}-{entry.c + 1}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {seats.length > 0 && (
               <p className="text-center text-xs text-muted-foreground mt-4">
                 {t('seat.legend')}
-                <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。</span>
+                <span className="ml-1">· Shift+点击学生座位可锁定（自动排座时保持不动），再次 Shift+点击解锁。· 双击学生座位可移入下方请假池。</span>
               </p>
             )}
             <MultiClassRosterLoader open={rosterLoaderOpen} onOpenChange={setRosterLoaderOpen} />
