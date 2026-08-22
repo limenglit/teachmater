@@ -4,6 +4,7 @@ import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
+import { classroomSeatNumber } from '@/lib/seat-number';
 
 interface Props {
   seatData: unknown;
@@ -205,7 +206,10 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     if (!activeDoor) return '';
     const s = activeDoor.side;
     const r = myPosition.r + 1;
-    const c = myPosition.c + 1;
+    const c = classroomSeatNumber(myPosition.r, myPosition.c, {
+      rowWidth: rowWidth(myPosition.r),
+      disabledSeats: disabledSeatSet,
+    }) ?? myPosition.c + 1;
     const lr = windowOnLeft ? t('seat.nav.dirLeft') : t('seat.nav.dirRight');
     if (s === 'top') return tFormat(t('seat.nav.classroomDirTop'), r, lr, c);
     if (s === 'bottom') return tFormat(t('seat.nav.classroomDirBottom'), r, lr, c);
