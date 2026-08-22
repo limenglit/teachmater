@@ -788,19 +788,20 @@ export default function SeatChart() {
   const seatReadiness = useMemo(() => evaluateSeatCheckinReadiness(seats), [seats]);
   // 签到名单：跨班级接序排座时，已就座的其他班级学生也必须纳入签到统计，
   // 否则签到码只覆盖当前左侧加载的班级名单。
+  const leaveNames = useMemo(() => new Set(leavePool.map(x => x.name.trim())), [leavePool]);
   const checkinStudentNames = useMemo(() => {
     const names: string[] = [];
     const seen = new Set<string>();
     const push = (n?: string | null) => {
       const name = (n || '').trim();
-      if (!name || seen.has(name)) return;
+      if (!name || seen.has(name) || leaveNames.has(name)) return;
       seen.add(name);
       names.push(name);
     };
     students.forEach(s => push(s.name));
     seats.forEach(row => row?.forEach(cell => push(cell as string | null)));
     return names;
-  }, [students, seats]);
+  }, [students, seats, leaveNames]);
   // Roster totals before name de-duplication so the check-in dialog can explain
   // why "656 seated" can become 654 check-in entries (duplicate names collapse).
   const checkinRosterStats = useMemo(() => {
