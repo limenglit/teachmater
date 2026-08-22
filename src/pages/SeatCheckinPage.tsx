@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { classroomSeatNumber } from '@/lib/seat-number';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -139,12 +140,23 @@ const cloneSeatDataWithGuestAssignments = (
   return assign(seatData);
 };
 
-const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string) => {
+const buildSeatHint = (
+  sceneType: string,
+  seatData: unknown,
+  studentName: string,
+  sceneConfig?: Record<string, unknown>,
+) => {
   if (sceneType === 'classroom') {
     const seats = seatData as (string | null)[][];
+    const disabledSeats = Array.isArray(sceneConfig?.disabledSeats) ? (sceneConfig!.disabledSeats as string[]) : [];
+    const rowColsCfg = Array.isArray(sceneConfig?.rowCols) ? (sceneConfig!.rowCols as number[]) : [];
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
-        if (isSameStudentName(seats[r][c], studentName)) return `第${r + 1}排第${c + 1}列`;
+        if (isSameStudentName(seats[r][c], studentName)) {
+          const rowWidth = Number(rowColsCfg[r]) > 0 ? Number(rowColsCfg[r]) : seats[r].length;
+          const no = classroomSeatNumber(r, c, { rowWidth, disabledSeats });
+          return `第${r + 1}排第${no ?? c + 1}号`;
+        }
       }
     }
     return null;
@@ -251,7 +263,7 @@ export default function SeatCheckinPage() {
       return {
         seatData: sessionData.seat_data,
         guestAssigned: false,
-        hint: buildSeatHint(sessionData.scene_type, sessionData.seat_data, normalized),
+        hint: buildSeatHint(sessionData.scene_type, sessionData.seat_data, normalized, sessionData.scene_config),
       };
     }
 
@@ -300,7 +312,7 @@ export default function SeatCheckinPage() {
       sceneType: sessionData.scene_type,
       disabledSeats,
     });
-    const hint = buildSeatHint(sessionData.scene_type, assignedSeatData, normalized);
+    const hint = buildSeatHint(sessionData.scene_type, assignedSeatData, normalized, sessionData.scene_config);
     return { seatData: assignedSeatData, guestAssigned: true, hint };
   };
 
@@ -494,7 +506,7 @@ export default function SeatCheckinPage() {
   const effectiveSeatData = displaySeatData ?? session.seat_data;
   // Resolve a clean seat-position label even if the assignedSeatHint is missing
   const seatLabel = assignedSeatHint
-    || buildSeatHint(sceneType, effectiveSeatData, studentName)
+    || buildSeatHint(sceneType, effectiveSeatData, studentName, session.scene_config)
     || t('seatCheckin.viewOnMap');
 
   return (
