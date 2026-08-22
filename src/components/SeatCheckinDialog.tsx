@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { classroomSeatNumber } from '@/lib/seat-number';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -149,7 +150,7 @@ const computeGuestAssignments = (params: {
         used.add(chosen.key);
         result.push({
           name,
-          seatHint: `第${chosen.r + 1}排第${chosen.c + 1}列`,
+          seatHint: `第${chosen.r + 1}排第${classroomSeatNumber(chosen.r, chosen.c, { rowWidth: grid[chosen.r].length, disabledSeats: disabledKeys }) ?? chosen.c + 1}号`,
           assignedKey: chosen.key,
           confirmed: override?.confirmed,
         });
@@ -164,7 +165,7 @@ const computeGuestAssignments = (params: {
   const cloned = cloneSeatDataSequential(seatData, guestNames);
   return guestNames.map(name => ({
     name,
-    seatHint: buildSeatHint(sceneType, cloned, name) || '待老师现场确认',
+    seatHint: buildSeatHint(sceneType, cloned, name, disabledSeats) || '待老师现场确认',
     confirmed: overrides[name]?.confirmed,
   }));
 };
@@ -188,12 +189,20 @@ const cloneSeatDataSequential = (seatData: unknown, guestNames: string[]) => {
   return assign(seatData);
 };
 
-const buildSeatHint = (sceneType: string, seatData: unknown, studentName: string) => {
+const buildSeatHint = (
+  sceneType: string,
+  seatData: unknown,
+  studentName: string,
+  disabledSeats: string[] = [],
+) => {
   if (sceneType === 'classroom') {
     const seats = seatData as (string | null)[][];
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
-        if (isSameStudentName(seats[r][c], studentName)) return `第${r + 1}排第${c + 1}列`;
+        if (isSameStudentName(seats[r][c], studentName)) {
+          const no = classroomSeatNumber(r, c, { rowWidth: seats[r].length, disabledSeats });
+          return `第${r + 1}排第${no ?? c + 1}号`;
+        }
       }
     }
     return null;
