@@ -510,6 +510,43 @@ export default function SeatCheckinPage() {
     || buildSeatHint(sceneType, effectiveSeatData, studentName, session.scene_config)
     || t('seatCheckin.viewOnMap');
 
+  const checkinOnlyMode = session.scene_config?.checkinOnlyMode === true;
+  const seatChartImageUrl = typeof session.scene_config?.seatChartImageUrl === 'string'
+    ? (session.scene_config.seatChartImageUrl as string)
+    : '';
+
+  if (checkinOnlyMode) {
+    return (
+      <div className="min-h-[100dvh] bg-background overflow-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+        <div className="max-w-2xl mx-auto space-y-4">
+          <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-primary/5 border border-primary/25 px-4 py-4 shadow-sm flex items-center gap-3">
+            <div className="shrink-0 w-11 h-11 rounded-full bg-primary/20 text-primary flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] font-medium text-primary/80 uppercase tracking-wide">
+                {t('seatCheckin.success')}
+                {alreadyCheckedIn && (
+                  <span className="ml-1.5 text-[10px] bg-primary/15 text-primary/90 px-1.5 py-0.5 rounded normal-case">{t('seatCheckin.checkInBadge')}</span>
+                )}
+              </div>
+              <div className="text-base font-bold text-foreground truncate">{studentName}</div>
+            </div>
+          </div>
+
+          {seatChartImageUrl ? (
+            <SeatChartImageView imageUrl={seatChartImageUrl} recenterSignal={recenterSignal} />
+          ) : (
+            <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
+              签到已完成，请按现场安排入座。
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div className="min-h-[100dvh] bg-background overflow-auto pb-[max(5rem,env(safe-area-inset-bottom))]">
       {/* Sticky "我的座位" info card */}
