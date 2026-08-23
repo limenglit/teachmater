@@ -305,6 +305,41 @@ export default function SeatCheckinDialog({
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
+  const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
+  const [seatChartImageUrl, setSeatChartImageUrl] = useState<string>('');
+  const [uploadingChart, setUploadingChart] = useState(false);
+  const seatChartInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleSeatChartUpload = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: '请选择图片文件', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: '图片不能超过 20MB', variant: 'destructive' });
+      return;
+    }
+    setUploadingChart(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `seat-charts/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+      const { error } = await supabase.storage.from('board-media').upload(path, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from('board-media').getPublicUrl(path);
+      setSeatChartImageUrl(data.publicUrl);
+      toast({ title: '座次表已上传' });
+    } catch (err) {
+      toast({ title: '座次表上传失败', description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
+    } finally {
+      setUploadingChart(false);
+    }
+  };
+
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const coverage = useMemo(
