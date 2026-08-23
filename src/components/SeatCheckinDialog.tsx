@@ -472,7 +472,7 @@ export default function SeatCheckinDialog({
   }, [currentSession?.id, currentSession?.status, timeLeft]);
 
   const createSession = async () => {
-    if (requireSeatAssignment && !seatAssignmentComplete) {
+    if (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete) {
       toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
       return;
     }
