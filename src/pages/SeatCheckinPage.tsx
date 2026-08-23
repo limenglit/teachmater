@@ -13,6 +13,7 @@ import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinV
 import ConcertCheckinView from '@/components/checkin-views/ConcertCheckinView';
 import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabCheckinView';
 import ArtStudioCheckinView from '@/components/checkin-views/ArtStudioCheckinView';
+import SeatChartImageView from '@/components/checkin-views/SeatChartImageView';
 
 const SEAT_CHECKIN_NAME_STORAGE_KEY = 'teachmate-seat-checkin-names';
 
