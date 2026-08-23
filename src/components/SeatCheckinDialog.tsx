@@ -888,14 +888,33 @@ export default function SeatCheckinDialog({
                   >
                     {uploadingChart ? '上传中…' : seatChartImageUrl ? '重新上传座次表' : '上传座次表图'}
                   </Button>
-                  {seatChartImageUrl && (
-                    <div className="rounded-lg border border-border overflow-hidden">
-                      <img src={seatChartImageUrl} alt="座次表预览" className="w-full max-h-48 object-contain bg-muted/30" />
+                  {(uploadingChart || (chartProgress > 0 && chartProgress < 100)) && (
+                    <div className="space-y-1">
+                      <Progress value={chartProgress} className="h-1.5" />
+                      <p className="text-xs text-muted-foreground">{chartStatus || '正在上传…'} {chartProgress}%</p>
                     </div>
                   )}
-                  {!seatChartImageUrl && (
+                  {(seatChartImageUrl || localPreview) && (
+                    <div className="flex items-start gap-2">
+                      <div className="rounded-lg border border-border overflow-hidden w-24 h-24 shrink-0 bg-muted/30">
+                        <img
+                          src={seatChartImageUrl || localPreview}
+                          alt="座次表缩略图"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="rounded-lg border border-border overflow-hidden flex-1">
+                        <img src={seatChartImageUrl || localPreview} alt="座次表预览" className="w-full max-h-48 object-contain bg-muted/30" />
+                      </div>
+                    </div>
+                  )}
+                  {seatChartImageUrl && !uploadingChart && (
+                    <p className="text-xs text-emerald-600">已上传并校验，学生端可即时加载。</p>
+                  )}
+                  {!seatChartImageUrl && !uploadingChart && (
                     <p className="text-xs text-amber-600">未上传座次表时，学生签到后仅显示签到成功提示。</p>
                   )}
+
                 </div>
               )}
             </div>
