@@ -305,6 +305,41 @@ export default function SeatCheckinDialog({
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
+  const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
+  const [seatChartImageUrl, setSeatChartImageUrl] = useState<string>('');
+  const [uploadingChart, setUploadingChart] = useState(false);
+  const seatChartInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleSeatChartUpload = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: '请选择图片文件', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: '图片不能超过 20MB', variant: 'destructive' });
+      return;
+    }
+    setUploadingChart(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `seat-charts/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+      const { error } = await supabase.storage.from('board-media').upload(path, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type,
+      });
+      if (error) throw error;
+      const { data } = supabase.storage.from('board-media').getPublicUrl(path);
+      setSeatChartImageUrl(data.publicUrl);
+      toast({ title: '座次表已上传' });
+    } catch (err) {
+      toast({ title: '座次表上传失败', description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
+    } finally {
+      setUploadingChart(false);
+    }
+  };
+
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const coverage = useMemo(
@@ -437,7 +472,7 @@ export default function SeatCheckinDialog({
   }, [currentSession?.id, currentSession?.status, timeLeft]);
 
   const createSession = async () => {
-    if (requireSeatAssignment && !seatAssignmentComplete) {
+    if (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete) {
       toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
       return;
     }
@@ -460,6 +495,13 @@ export default function SeatCheckinDialog({
           const back = nextSceneConfig.backDoorPosition as string | undefined;
           nextSceneConfig.entryDoorPosition = (mode === 'back' ? back : front) || front || 'top';
         }
+      }
+      // 降级策略：仅签到不导航（可附带座次表图片）
+      nextSceneConfig.checkinOnlyMode = checkinOnlyMode;
+      if (checkinOnlyMode && seatChartImageUrl) {
+        nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
+      } else {
+        delete nextSceneConfig.seatChartImageUrl;
       }
       console.log('[SeatCheckin] Publishing session with sceneConfig:', nextSceneConfig);
       const created = await createSeatCheckinSession({
@@ -780,9 +822,57 @@ export default function SeatCheckinDialog({
 
             </div>
 
-            <Button onClick={createSession} disabled={loading || (requireSeatAssignment && !seatAssignmentComplete)} className="w-full">
+            {/* 降级策略：仅签到不导航 + 座次表图片 */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  checked={checkinOnlyMode}
+                  onChange={e => setCheckinOnlyMode(e.target.checked)}
+                  className="accent-primary"
+                />
+                仅签到不导航（降级策略）
+              </label>
+              <p className="text-xs text-muted-foreground">
+                勾选后学生签到成功不再显示室内导航，改为展示你上传的座次表图片，支持手势放大缩小查看。
+              </p>
+              {checkinOnlyMode && (
+                <div className="space-y-2">
+                  <input
+                    ref={seatChartInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => {
+                      void handleSeatChartUpload(e.target.files?.[0] || null);
+                      e.target.value = '';
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-1.5 text-xs"
+                    disabled={uploadingChart}
+                    onClick={() => seatChartInputRef.current?.click()}
+                  >
+                    {uploadingChart ? '上传中…' : seatChartImageUrl ? '重新上传座次表' : '上传座次表图'}
+                  </Button>
+                  {seatChartImageUrl && (
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <img src={seatChartImageUrl} alt="座次表预览" className="w-full max-h-48 object-contain bg-muted/30" />
+                    </div>
+                  )}
+                  {!seatChartImageUrl && (
+                    <p className="text-xs text-amber-600">未上传座次表时，学生签到后仅显示签到成功提示。</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <Button onClick={createSession} disabled={loading || uploadingChart || (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete)} className="w-full">
               {loading ? t('seatCheckinDialog.generating') : createError ? t('seatCheckinDialog.retry') : t('seatCheckinDialog.generate')}
             </Button>
+
             {createError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
                 <p className="text-destructive font-medium mb-2">{t('seatCheckinDialog.createFailedToast')}</p>
