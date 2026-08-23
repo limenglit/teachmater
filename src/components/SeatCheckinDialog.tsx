@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
+
 import { classroomSeatNumber } from '@/lib/seat-number';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet, RefreshCw } from 'lucide-react';
@@ -308,6 +310,9 @@ export default function SeatCheckinDialog({
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
   const [seatChartImageUrl, setSeatChartImageUrl] = useState<string>('');
   const [uploadingChart, setUploadingChart] = useState(false);
+  const [chartProgress, setChartProgress] = useState(0);
+  const [chartStatus, setChartStatus] = useState<string>('');
+  const [localPreview, setLocalPreview] = useState<string>('');
   const seatChartInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSeatChartUpload = async (file: File | null) => {
@@ -320,7 +325,17 @@ export default function SeatCheckinDialog({
       toast({ title: '图片不能超过 20MB', variant: 'destructive' });
       return;
     }
+    const preview = URL.createObjectURL(file);
+    setLocalPreview(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      return preview;
+    });
     setUploadingChart(true);
+    setChartProgress(5);
+    setChartStatus('正在上传…');
+    const timer = window.setInterval(() => {
+      setChartProgress(p => (p < 85 ? p + Math.max(1, Math.round((85 - p) / 8)) : p));
+    }, 250);
     try {
       const ext = (file.name.split('.').pop() || 'png').toLowerCase();
       const path = `seat-charts/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
@@ -331,14 +346,32 @@ export default function SeatCheckinDialog({
       });
       if (error) throw error;
       const { data } = supabase.storage.from('board-media').getPublicUrl(path);
+      window.clearInterval(timer);
+      setChartProgress(90);
+      setChartStatus('正在校验学生端可访问性…');
+      // 预加载，确保学生端能立即加载到该图片
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        const to = window.setTimeout(() => reject(new Error('图片加载超时，请重试')), 20000);
+        img.onload = () => { window.clearTimeout(to); resolve(); };
+        img.onerror = () => { window.clearTimeout(to); reject(new Error('图片无法访问，请重试')); };
+        img.src = data.publicUrl;
+      });
       setSeatChartImageUrl(data.publicUrl);
-      toast({ title: '座次表已上传' });
+      setChartProgress(100);
+      setChartStatus('上传完成，学生端可正常加载');
+      toast({ title: '座次表已上传', description: '学生端已可正常加载该图片' });
     } catch (err) {
+      setChartProgress(0);
+      setChartStatus('');
+      setLocalPreview(prev => { if (prev) URL.revokeObjectURL(prev); return ''; });
       toast({ title: '座次表上传失败', description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
     } finally {
+      window.clearInterval(timer);
       setUploadingChart(false);
     }
   };
+
 
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
@@ -857,14 +890,33 @@ export default function SeatCheckinDialog({
                   >
                     {uploadingChart ? '上传中…' : seatChartImageUrl ? '重新上传座次表' : '上传座次表图'}
                   </Button>
-                  {seatChartImageUrl && (
-                    <div className="rounded-lg border border-border overflow-hidden">
-                      <img src={seatChartImageUrl} alt="座次表预览" className="w-full max-h-48 object-contain bg-muted/30" />
+                  {(uploadingChart || (chartProgress > 0 && chartProgress < 100)) && (
+                    <div className="space-y-1">
+                      <Progress value={chartProgress} className="h-1.5" />
+                      <p className="text-xs text-muted-foreground">{chartStatus || '正在上传…'} {chartProgress}%</p>
                     </div>
                   )}
-                  {!seatChartImageUrl && (
+                  {(seatChartImageUrl || localPreview) && (
+                    <div className="flex items-start gap-2">
+                      <div className="rounded-lg border border-border overflow-hidden w-24 h-24 shrink-0 bg-muted/30">
+                        <img
+                          src={seatChartImageUrl || localPreview}
+                          alt="座次表缩略图"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="rounded-lg border border-border overflow-hidden flex-1">
+                        <img src={seatChartImageUrl || localPreview} alt="座次表预览" className="w-full max-h-48 object-contain bg-muted/30" />
+                      </div>
+                    </div>
+                  )}
+                  {seatChartImageUrl && !uploadingChart && (
+                    <p className="text-xs text-emerald-600">已上传并校验，学生端可即时加载。</p>
+                  )}
+                  {!seatChartImageUrl && !uploadingChart && (
                     <p className="text-xs text-amber-600">未上传座次表时，学生签到后仅显示签到成功提示。</p>
                   )}
+
                 </div>
               )}
             </div>
