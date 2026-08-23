@@ -496,6 +496,13 @@ export default function SeatCheckinDialog({
           nextSceneConfig.entryDoorPosition = (mode === 'back' ? back : front) || front || 'top';
         }
       }
+      // 降级策略：仅签到不导航（可附带座次表图片）
+      nextSceneConfig.checkinOnlyMode = checkinOnlyMode;
+      if (checkinOnlyMode && seatChartImageUrl) {
+        nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
+      } else {
+        delete nextSceneConfig.seatChartImageUrl;
+      }
       console.log('[SeatCheckin] Publishing session with sceneConfig:', nextSceneConfig);
       const created = await createSeatCheckinSession({
         seatData,
