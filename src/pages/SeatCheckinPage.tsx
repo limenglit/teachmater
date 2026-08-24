@@ -611,13 +611,19 @@ export default function SeatCheckinPage() {
                 💡 {t('seatCheckin.guestAssignedHint')}
               </div>
             )}
+            {neighbor && (
+              <div className="mt-2 text-xs font-medium text-foreground bg-card/70 rounded-lg px-2.5 py-1.5 border border-primary/20">
+                🧭 {describeNeighbor(neighbor)}（{neighbor.name} 已签到）
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {sceneType === 'classroom' && (
-          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
+          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} neighborName={neighbor?.name} />
+
         )}
         {(sceneType === 'smartClassroom' || sceneType === 'banquet') && (
           <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} recenterSignal={recenterSignal} />
