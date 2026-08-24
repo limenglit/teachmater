@@ -11,6 +11,7 @@ import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
 import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
 import { downloadQrFromContainer } from '@/lib/qr-download';
+import { getCurrentUserId, fetchCloudCheckinHistory, mergeCheckinHistory, type CheckinHistoryEntry } from '@/lib/checkin-history-cloud';
 
 const HISTORY_KEY = 'teachmate_checkin_history';
 
