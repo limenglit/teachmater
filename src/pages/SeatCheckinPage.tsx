@@ -227,6 +227,22 @@ const buildSeatHint = (
   return null;
 };
 
+const TEACHMATE_URL = 'https://teachermate.org.cn';
+
+function TeachMateEntryBar() {
+  return (
+    <a
+      href={TEACHMATE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-primary/95 via-primary to-primary/95 text-primary-foreground text-sm font-medium shadow-[0_-4px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm active:opacity-90 transition-opacity"
+    >
+      <Sparkles className="w-4 h-4 animate-pulse" />
+      <span>AI助力教学创新入口</span>
+    </a>
+  );
+}
+
 export default function SeatCheckinPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { t } = useLanguage();
