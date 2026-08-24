@@ -55,6 +55,8 @@ export default function CheckInPanel() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [leaveSet, setLeaveSet] = useState<Set<string>>(new Set());
   const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<CheckinHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const resultExportRef = useRef<HTMLDivElement>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
