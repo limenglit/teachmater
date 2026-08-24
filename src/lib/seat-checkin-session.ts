@@ -394,10 +394,11 @@ export async function loadSeatCheckinRecords(sessionId: string) {
 
 export async function endSeatCheckinSession(sessionId: string) {
   const token = getSeatCheckinSessionToken(sessionId);
-  if (!token) throw new Error('Missing session token');
+  const { data: authData } = await supabase.auth.getUser();
+  if (!token && !authData.user?.id) throw new Error('Missing session token');
   const { error } = await supabase.rpc('update_seat_checkin_session', {
     p_session_id: sessionId,
-    p_token: token,
+    p_token: token || '',
     p_status: 'ended',
   } as any);
   if (error) throw error;
@@ -405,12 +406,13 @@ export async function endSeatCheckinSession(sessionId: string) {
 
 export async function deleteSeatCheckinSession(sessionId: string) {
   const token = getSeatCheckinSessionToken(sessionId);
-  if (!token) throw new Error('Missing session token');
+  const { data: authData } = await supabase.auth.getUser();
+  if (!token && !authData.user?.id) throw new Error('Missing session token');
 
   // Preferred hard delete path (new migration).
   const hardDelete = await (supabase.rpc as any)('delete_seat_checkin_session', {
     p_session_id: sessionId,
-    p_token: token,
+    p_token: token || '',
   });
   if (!hardDelete.error) {
     removeSeatCheckinSessionToken(sessionId);
@@ -420,9 +422,10 @@ export async function deleteSeatCheckinSession(sessionId: string) {
   // Fallback: soft delete via token-guarded update RPC.
   const softDelete = await supabase.rpc('update_seat_checkin_session', {
     p_session_id: sessionId,
-    p_token: token,
+    p_token: token || '',
     p_status: 'deleted',
   } as any);
   if (softDelete.error) throw softDelete.error;
   removeSeatCheckinSessionToken(sessionId);
 }
+
