@@ -190,11 +190,16 @@ export default function CheckInPanel() {
     if (!session) return;
     clearInterval(timerRef.current);
 
-    await supabase.rpc('update_checkin_session', {
+    const { error } = await supabase.rpc('update_checkin_session', {
       p_session_id: session.id,
-      p_token: (session as any).creator_token,
+      p_token: (session as any).creator_token || '',
       p_status: 'ended',
     } as any);
+
+    if (error) {
+      toast({ title: t('checkin.endFailed') || t('checkin.ended'), variant: 'destructive' });
+      return;
+    }
 
     const ended = { ...session, status: 'ended', ended_at: new Date().toISOString() };
     setSession(ended);
@@ -202,6 +207,7 @@ export default function CheckInPanel() {
     saveHistory(ended, records, studentNames);
     toast({ title: t('checkin.ended') });
   };
+
 
   const toggleLeave = (name: string) => {
     setLeaveSet(prev => {
