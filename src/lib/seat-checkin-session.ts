@@ -306,25 +306,56 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
     return [] as SeatCheckinHistoryRow[];
   };
 
-  // 1) Prefer owner-linked sessions via token RPC (works for guest teachers).
+  const mergeRows = (extra: SeatCheckinHistoryRow[]) => {
+    const seen = new Set(rows.map(r => r.id));
+    extra.forEach(r => {
+      if (r && !seen.has(r.id)) {
+        seen.add(r.id);
+        rows.push(r);
+      }
+    });
+  };
+
+  // 1) Account-wide history: every session created by the logged-in teacher,
+  //    regardless of which browser/device it was created on.
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id ?? null;
+  if (userId) {
+    mergeRows(
+      await queryHistoryRows((selectClause) =>
+        supabase
+          .from('seat_checkin_sessions')
+          .select(selectClause)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(200)
+      )
+    );
+  }
+
+  // 2) Owner-linked sessions via token RPC (works for guest teachers).
   const tokens = Object.values(getSeatCheckinSessionTokens()).filter(Boolean);
   if (tokens.length > 0) {
     const { data, error } = await supabase.rpc('get_seat_checkin_sessions_by_tokens', { p_tokens: tokens } as any);
     if (!error && Array.isArray(data)) {
-      rows = data as SeatCheckinHistoryRow[];
+      mergeRows(data as SeatCheckinHistoryRow[]);
     }
   }
 
-  // 2) Fallback: id-based query (works for logged-in owners via RLS).
+  // 3) Fallback: id-based query for locally remembered sessions.
   if (rows.length === 0 && ids.length > 0) {
-    rows = await queryHistoryRows((selectClause) =>
-      supabase
-        .from('seat_checkin_sessions')
-        .select(selectClause)
-        .in('id', ids)
-        .order('created_at', { ascending: false })
+    mergeRows(
+      await queryHistoryRows((selectClause) =>
+        supabase
+          .from('seat_checkin_sessions')
+          .select(selectClause)
+          .in('id', ids)
+          .order('created_at', { ascending: false })
+      )
     );
   }
+
+  rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   if (rows.length === 0) return [];
 
