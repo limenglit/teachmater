@@ -11,6 +11,7 @@ import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
 import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
 import { downloadQrFromContainer } from '@/lib/qr-download';
+import { getCurrentUserId, fetchCloudCheckinHistory, mergeCheckinHistory, type CheckinHistoryEntry } from '@/lib/checkin-history-cloud';
 
 const HISTORY_KEY = 'teachmate_checkin_history';
 
@@ -54,12 +55,34 @@ export default function CheckInPanel() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [leaveSet, setLeaveSet] = useState<Set<string>>(new Set());
   const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<CheckinHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const resultExportRef = useRef<HTMLDivElement>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   const studentNames = students.map(s => s.name);
+
+  // Load history: cloud (account-wide) merged with legacy local entries
+  useEffect(() => {
+    if (!showHistory) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    (async () => {
+      let cloud: CheckinHistoryEntry[] = [];
+      try {
+        cloud = await fetchCloudCheckinHistory();
+      } catch {
+        cloud = [];
+      }
+      if (cancelled) return;
+      setHistory(mergeCheckinHistory(cloud, loadHistory()));
+      setHistoryLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [showHistory]);
+
 
   // Real-time subscription
   useEffect(() => {
@@ -140,9 +163,14 @@ export default function CheckInPanel() {
   }, [timeLeft]);
 
   const handleStart = async () => {
+    const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('checkin_sessions')
-      .insert({ duration_minutes: duration, student_names: studentNames } as any)
+      .insert({
+        duration_minutes: duration,
+        student_names: studentNames,
+        ...(userId ? { user_id: userId } : {}),
+      } as any)
       .select()
       .single();
 
@@ -221,9 +249,8 @@ export default function CheckInPanel() {
     return t('checkin.minuteSecond').replace('{0}', String(Math.floor(s / 60))).replace('{1}', String(s % 60));
   };
 
-  // History view
+  // History view (cloud-first for logged-in users, local as fallback)
   if (showHistory) {
-    const history = loadHistory();
     return (
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
         <div className="max-w-2xl mx-auto">
@@ -231,12 +258,14 @@ export default function CheckInPanel() {
             <h2 className="text-lg font-bold text-foreground">{t('checkin.historyTitle')}</h2>
             <Button variant="outline" size="sm" onClick={() => setShowHistory(false)}>{t('checkin.back')}</Button>
           </div>
-          {history.length === 0 ? (
+          {historyLoading ? (
+            <p className="text-muted-foreground text-sm text-center py-8">…</p>
+          ) : history.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-8">{t('checkin.noHistory')}</p>
           ) : (
             <div className="space-y-3">
               {history.map((h: any, i: number) => (
-                <div key={i} className="border border-border rounded-lg p-4 bg-card">
+                <div key={h.session?.id || i} className="border border-border rounded-lg p-4 bg-card">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium text-foreground">
                       {new Date(h.session.created_at).toLocaleString()}
@@ -252,6 +281,7 @@ export default function CheckInPanel() {
             </div>
           )}
         </div>
+
       </div>
     );
   }
