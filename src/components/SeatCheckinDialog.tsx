@@ -1164,6 +1164,35 @@ export default function SeatCheckinDialog({
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" /> {t('seatCheckinDialog.exportCsv')}
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs gap-1 whitespace-nowrap"
+                  disabled={uncheckedNames.length === 0}
+                  onClick={() => {
+                    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+                    const rows = [
+                      [t('seatCheckinDialog.csvIndex'), t('seatCheckinDialog.csvName'), t('seatCheckinDialog.csvType')],
+                      ...uncheckedNames.map((n, i) => [String(i + 1), n.trim(), t('seatCheckinDialog.statsUnchecked')]),
+                    ];
+                    const csv = rows.map(row => row.map(escape).join(',')).join('\r\n');
+                    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    const today = new Date();
+                    const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                    const safeName = (resolvedThemeTitle || t('seatCheckinDialog.title')).replace(/[\\/:*?"<>|]/g, '_');
+                    a.href = url;
+                    a.download = `${safeName}_${t('seatCheckinDialog.csvUncheckedFile')}_${dateStr}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    toast({ title: t('seatCheckinDialog.exportSuccess') });
+                  }}
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" /> {t('seatCheckinDialog.exportUncheckedCsv')}
+                </Button>
               </div>
               {records.length === 0 ? (
                 <p className="text-xs text-muted-foreground">{t('seatCheckinDialog.empty')}</p>
