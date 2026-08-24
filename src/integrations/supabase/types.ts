@@ -2283,7 +2283,7 @@ export type Database = {
             Returns: undefined
           }
       update_seat_checkin_session: {
-        Args: { p_session_id: string; p_status: string; p_token: string }
+        Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined
       }
       update_task_session: {
