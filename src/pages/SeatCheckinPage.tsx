@@ -664,6 +664,7 @@ export default function SeatCheckinPage() {
           </div>
         )}
       </div>
+      <TeachMateEntryBar />
     </div>
   );
 }
