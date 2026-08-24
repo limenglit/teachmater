@@ -1209,8 +1209,44 @@ export default function SeatCheckinDialog({
                 <p className="font-medium text-foreground">{t('seatCheckinDialog.stats')}</p>
                 <p className="text-muted-foreground mt-1">{t('seatCheckinDialog.statsChecked')}：{checkedInNames.length} {t('seatCheckinDialog.people')}</p>
                 <p className="text-muted-foreground">{t('seatCheckinDialog.statsUnchecked')}：{uncheckedNames.length} {t('seatCheckinDialog.people')}</p>
+                {uncheckedNames.length > 0 && (
+                  <div className="mt-2 space-y-2">
+                    <div className="max-h-32 overflow-auto text-xs text-muted-foreground leading-relaxed">
+                      {uncheckedNames.map(n => n.trim()).join('、')}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2 text-xs gap-1 whitespace-nowrap"
+                      onClick={() => {
+                        const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+                        const rows = [
+                          [t('seatCheckinDialog.csvIndex'), t('seatCheckinDialog.csvName'), t('seatCheckinDialog.csvType')],
+                          ...uncheckedNames.map((n, i) => [String(i + 1), n.trim(), t('seatCheckinDialog.statsUnchecked')]),
+                        ];
+                        const csv = rows.map(row => row.map(escape).join(',')).join('\r\n');
+                        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        const today = new Date();
+                        const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+                        const safeName = (resolvedThemeTitle || t('seatCheckinDialog.title')).replace(/[\\/:*?"<>|]/g, '_');
+                        a.href = url;
+                        a.download = `${safeName}_${t('seatCheckinDialog.csvUncheckedFile')}_${dateStr}.csv`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        toast({ title: t('seatCheckinDialog.exportSuccess') });
+                      }}
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" /> {t('seatCheckinDialog.exportUncheckedCsv')}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
+
 
             <div className="flex w-full gap-2 flex-wrap">
               {currentSession.status === 'active' ? (
