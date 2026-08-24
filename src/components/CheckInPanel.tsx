@@ -64,6 +64,26 @@ export default function CheckInPanel() {
 
   const studentNames = students.map(s => s.name);
 
+  // Load history: cloud (account-wide) merged with legacy local entries
+  useEffect(() => {
+    if (!showHistory) return;
+    let cancelled = false;
+    setHistoryLoading(true);
+    (async () => {
+      let cloud: CheckinHistoryEntry[] = [];
+      try {
+        cloud = await fetchCloudCheckinHistory();
+      } catch {
+        cloud = [];
+      }
+      if (cancelled) return;
+      setHistory(mergeCheckinHistory(cloud, loadHistory()));
+      setHistoryLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [showHistory]);
+
+
   // Real-time subscription
   useEffect(() => {
     if (!session || session.status !== 'active') return;
