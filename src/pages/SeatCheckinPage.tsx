@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, CheckCircle2, Crosshair, ScanLine, User2 } from 'lucide-react';
+import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles } from 'lucide-react';
 import ClassroomCheckinView from '@/components/checkin-views/ClassroomCheckinView';
 import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinView';
 import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
@@ -226,6 +226,22 @@ const buildSeatHint = (
 
   return null;
 };
+
+const TEACHMATE_URL = 'https://teachermate.org.cn';
+
+function TeachMateEntryBar() {
+  return (
+    <a
+      href={TEACHMATE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-primary/95 via-primary to-primary/95 text-primary-foreground text-sm font-medium shadow-[0_-4px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm active:opacity-90 transition-opacity"
+    >
+      <Sparkles className="w-4 h-4 animate-pulse" />
+      <span>AI助力教学创新入口</span>
+    </a>
+  );
+}
 
 export default function SeatCheckinPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -464,7 +480,7 @@ export default function SeatCheckinPage() {
   if (!checkedIn) {
     return (
       <div className="min-h-[100dvh] bg-gradient-to-b from-primary/5 via-background to-background overflow-y-auto px-5 py-[max(1rem,env(safe-area-inset-top))]">
-        <div className="w-full max-w-sm mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="w-full max-w-sm mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(5.5rem,env(safe-area-inset-bottom))]">
           {/* Hero */}
           <div className="text-center space-y-3 mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mx-auto">
@@ -524,6 +540,7 @@ export default function SeatCheckinPage() {
             </p>
           </div>
         </div>
+        <TeachMateEntryBar />
       </div>
     );
   }
@@ -543,7 +560,7 @@ export default function SeatCheckinPage() {
 
   if (checkinOnlyMode) {
     return (
-      <div className="min-h-[100dvh] bg-background overflow-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <div className="min-h-[100dvh] bg-background overflow-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(6rem,env(safe-area-inset-bottom))]">
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-primary/5 border border-primary/25 px-4 py-4 shadow-sm flex items-center gap-3">
             <div className="shrink-0 w-11 h-11 rounded-full bg-primary/20 text-primary flex items-center justify-center">
@@ -568,13 +585,14 @@ export default function SeatCheckinPage() {
             </div>
           )}
         </div>
+        <TeachMateEntryBar />
       </div>
     );
   }
 
 
   return (
-    <div className="min-h-[100dvh] bg-background overflow-auto pb-[max(5rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-[100dvh] bg-background overflow-auto pb-[max(9rem,env(safe-area-inset-bottom))]">
       {/* Sticky "我的座位" info card */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/60 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="max-w-2xl mx-auto">
@@ -646,6 +664,7 @@ export default function SeatCheckinPage() {
           </div>
         )}
       </div>
+      <TeachMateEntryBar />
     </div>
   );
 }
