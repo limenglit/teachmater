@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { classroomSeatNumber } from '@/lib/seat-number';
+import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
+
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -245,10 +247,34 @@ export default function SeatCheckinPage() {
   const [isGuestAssigned, setIsGuestAssigned] = useState(false);
   const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
   const [recenterSignal, setRecenterSignal] = useState(0);
+  const [neighbor, setNeighbor] = useState<SeatNeighbor | null>(null);
 
   const handleRecenter = useCallback(() => {
     setRecenterSignal(s => s + 1);
   }, []);
+
+  // Poll the neighbouring seats (front / back / left / right) so we can tell the
+  // student "您在 XX 的后面" as soon as one of them has checked in.
+  const neighborSeatData = displaySeatData ?? session?.seat_data ?? null;
+  const checkedName = checkedIn ? normalizeStudentName(name) : '';
+  useEffect(() => {
+    if (!sessionId || !session || !checkedName) { setNeighbor(null); return; }
+    const candidates = getSeatNeighbors(session.scene_type, neighborSeatData, checkedName).slice(0, 8);
+    if (candidates.length === 0) { setNeighbor(null); return; }
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await (supabase.rpc as any)('get_seat_checkin_neighbor_status', {
+        p_session_id: sessionId,
+        p_names: candidates.map(c => c.name),
+      });
+      if (cancelled || error) return;
+      setNeighbor(pickCheckedInNeighbor(candidates, (data as string[]) || []));
+    };
+    load();
+    const timer = window.setInterval(load, 15000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [sessionId, session, neighborSeatData, checkedName]);
+
 
   const resolveSeatDataForName = async (sessionData: {
     seat_data: unknown;
@@ -585,13 +611,19 @@ export default function SeatCheckinPage() {
                 💡 {t('seatCheckin.guestAssignedHint')}
               </div>
             )}
+            {neighbor && (
+              <div className="mt-2 text-xs font-medium text-foreground bg-card/70 rounded-lg px-2.5 py-1.5 border border-primary/20">
+                🧭 {describeNeighbor(neighbor)}（{neighbor.name} 已签到）
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {sceneType === 'classroom' && (
-          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
+          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} neighborName={neighbor?.name} />
+
         )}
         {(sceneType === 'smartClassroom' || sceneType === 'banquet') && (
           <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} recenterSignal={recenterSignal} />

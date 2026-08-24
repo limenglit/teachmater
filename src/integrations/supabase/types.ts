@@ -2047,6 +2047,10 @@ export type Database = {
           student_name: string
         }[]
       }
+      get_seat_checkin_neighbor_status: {
+        Args: { p_names: string[]; p_session_id: string }
+        Returns: string[]
+      }
       get_seat_checkin_records_for_owner: {
         Args: { p_session_id: string; p_token: string }
         Returns: {
