@@ -250,6 +250,18 @@ export default function CheckInPanel() {
     link.click();
   };
 
+  const exportUncheckedCSV = () => {
+    const lines = [`${t('checkin.csvName')},${t('checkin.csvStatus')}`];
+    uncheckedStudents.forEach(n => {
+      lines.push(`${n},${leaveSet.has(n) ? t('checkin.csvLeave') : t('checkin.csvUnchecked')}`);
+    });
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${t('checkin.exportUncheckedName')}_${new Date().toLocaleDateString()}.csv`;
+    link.click();
+  };
+
   const formatDuration = (s: number) => {
     if (s < 60) return `${s}${t('checkin.secondsUnit')}`;
     return t('checkin.minuteSecond').replace('{0}', String(Math.floor(s / 60))).replace('{1}', String(s % 60));
@@ -415,6 +427,9 @@ export default function CheckInPanel() {
                 <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1.5 h-8 text-xs">
                   <Download className="w-3.5 h-3.5" /> CSV
                 </Button>
+                <Button variant="outline" size="sm" onClick={exportUncheckedCSV} disabled={uncheckedStudents.length === 0} className="gap-1.5 h-8 text-xs">
+                  <Download className="w-3.5 h-3.5" /> {t('checkin.unchecked')} CSV
+                </Button>
               </div>
             </div>
             );
@@ -442,6 +457,9 @@ export default function CheckInPanel() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={exportCSV} className="gap-1 h-8 text-xs">
             <Download className="w-3.5 h-3.5" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportUncheckedCSV} disabled={uncheckedStudents.length === 0} className="gap-1 h-8 text-xs">
+            <Download className="w-3.5 h-3.5" /> {t('checkin.unchecked')} CSV
           </Button>
           <ExportButtons targetRef={exportRef as React.RefObject<HTMLElement>} filename={t('checkin.exportName')} />
           <Button variant="destructive" size="sm" onClick={handleEnd} className="gap-1 h-8">
