@@ -140,9 +140,14 @@ export default function CheckInPanel() {
   }, [timeLeft]);
 
   const handleStart = async () => {
+    const userId = await getCurrentUserId();
     const { data, error } = await supabase
       .from('checkin_sessions')
-      .insert({ duration_minutes: duration, student_names: studentNames } as any)
+      .insert({
+        duration_minutes: duration,
+        student_names: studentNames,
+        ...(userId ? { user_id: userId } : {}),
+      } as any)
       .select()
       .single();
 
