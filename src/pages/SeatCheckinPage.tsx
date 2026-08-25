@@ -543,9 +543,31 @@ export default function SeatCheckinPage() {
                 </div>
               )}
             </div>
+            {session.otp_enabled && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  大屏上的 6 位签到口令
+                </label>
+                <Input
+                  value={otpInput}
+                  onChange={e => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="6 位数字"
+                  className="text-center text-2xl tracking-[0.4em] h-14 rounded-xl border-2 focus-visible:border-primary tabular-nums"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  enterKeyHint="done"
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+                <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+                  该口令每隔数十秒自动更换，请以教室大屏当前显示的数字为准。
+                </p>
+              </div>
+            )}
             <Button
               onClick={handleSubmit}
-              disabled={!name.trim() || submitting}
+              disabled={!name.trim() || submitting || (session.otp_enabled && otpInput.replace(/\D/g, '').length !== 6)}
+
               className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"
             >
               {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
