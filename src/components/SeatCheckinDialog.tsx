@@ -10,6 +10,7 @@ import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, Us
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
+  fetchSeatCheckinOtp,
   deleteSeatCheckinSession,
   endSeatCheckinSession,
   getSeatCheckinSessionToken,
@@ -308,6 +309,10 @@ export default function SeatCheckinDialog({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
+  // 防代签动态口令
+  const [otpEnabled, setOtpEnabled] = useState(false);
+  const [otpPeriodSeconds, setOtpPeriodSeconds] = useState(30);
+  const [otp, setOtp] = useState<{ code: string; secondsRemaining: number; periodSeconds: number } | null>(null);
   const [seatChartImageUrl, setSeatChartImageUrl] = useState<string>('');
   const [uploadingChart, setUploadingChart] = useState(false);
   const [chartProgress, setChartProgress] = useState(0);
@@ -544,6 +549,8 @@ export default function SeatCheckinDialog({
         sceneType,
         durationMinutes: minutes,
         className,
+        otpEnabled,
+        otpPeriodSeconds,
       });
       setCurrentSession(created.session);
       setSessionSeatData(seatData);
