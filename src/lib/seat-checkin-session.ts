@@ -198,6 +198,8 @@ export async function createSeatCheckinSession({
         p_scene_type: baseInsertData.scene_type,
         p_duration_minutes: enhancedInsertData.duration_minutes,
         p_class_name: className?.trim() || '',
+        p_otp_enabled: !!otpEnabled,
+        p_otp_period_seconds: Math.max(10, Math.floor(otpPeriodSeconds || 30)),
       });
 
       if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
