@@ -12,6 +12,8 @@ export interface SeatCheckinSessionSummary {
   scene_type: string;
   class_name: string;
   student_names: string[];
+  otp_enabled?: boolean;
+  otp_period_seconds?: number;
 }
 
 export interface SeatCheckinRecord {
@@ -19,6 +21,12 @@ export interface SeatCheckinRecord {
   session_id: string;
   student_name: string;
   checked_in_at: string;
+}
+
+export interface SeatCheckinOtp {
+  code: string;
+  secondsRemaining: number;
+  periodSeconds: number;
 }
 
 type SeatCheckinHistoryRow = {
@@ -30,6 +38,8 @@ type SeatCheckinHistoryRow = {
   scene_type?: string;
   class_name?: string;
   student_names?: unknown;
+  otp_enabled?: boolean;
+  otp_period_seconds?: number;
 };
 
 interface CreateSeatCheckinSessionParams {
@@ -39,6 +49,8 @@ interface CreateSeatCheckinSessionParams {
   sceneType: string;
   durationMinutes: number;
   className?: string;
+  otpEnabled?: boolean;
+  otpPeriodSeconds?: number;
 }
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
