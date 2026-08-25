@@ -495,7 +495,7 @@ export default function SeatCheckinPage() {
   if (!checkedIn) {
     return (
       <div className="min-h-[100dvh] bg-gradient-to-b from-primary/5 via-background to-background overflow-y-auto px-5 py-[max(1rem,env(safe-area-inset-top))]">
-        <div className="w-full max-w-sm mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(5.5rem,env(safe-area-inset-bottom))]">
+        <div className="w-full max-w-sm mx-auto min-h-[calc(100dvh-max(2rem,env(safe-area-inset-top))-env(safe-area-inset-bottom))] flex flex-col justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
           {/* Hero */}
           <div className="text-center space-y-3 mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 text-primary mx-auto">
@@ -577,7 +577,6 @@ export default function SeatCheckinPage() {
             </p>
           </div>
         </div>
-        <TeachMateEntryBar />
       </div>
     );
   }
