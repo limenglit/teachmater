@@ -296,7 +296,29 @@ export async function createSeatCheckinSession({
       scene_type: (data as any).scene_type ?? sceneType,
       class_name: (data as any).class_name ?? className?.trim() ?? '',
       student_names: ((data as any).student_names || []) as string[],
+      otp_enabled: (data as any).otp_enabled ?? false,
+      otp_period_seconds: (data as any).otp_period_seconds ?? otpPeriodSeconds,
     } as SeatCheckinSessionSummary,
+  };
+}
+
+/**
+ * 教师端拉取当前动态口令（防代签）。会话未开启口令时返回 null。
+ * 口令由服务端按「会话密钥 + 时间片」派生，不落库、不下发密钥。
+ */
+export async function fetchSeatCheckinOtp(sessionId: string): Promise<SeatCheckinOtp | null> {
+  const token = getSeatCheckinSessionToken(sessionId) || '';
+  const { data, error } = await (supabase.rpc as any)('get_seat_checkin_otp', {
+    p_session_id: sessionId,
+    p_token: token,
+  });
+  if (error) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.code) return null;
+  return {
+    code: String(row.code),
+    secondsRemaining: Number(row.seconds_remaining) || 0,
+    periodSeconds: Number(row.period_seconds) || 30,
   };
 }
 
