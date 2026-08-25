@@ -141,6 +141,8 @@ export async function createSeatCheckinSession({
   sceneType,
   durationMinutes,
   className,
+  otpEnabled = false,
+  otpPeriodSeconds = 30,
 }: CreateSeatCheckinSessionParams) {
   // Defensive serialization: strip functions/undefined and tolerate odd inputs
   // so the RPC always receives valid JSON values.
