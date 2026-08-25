@@ -327,7 +327,7 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   const ids = Array.from(new Set([...tokenIds, ...getSeatCheckinSessionIds()]));
   let rows: SeatCheckinHistoryRow[] = [];
 
-  const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names';
+  const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names, otp_enabled, otp_period_seconds';
   const selectLegacy = 'id, created_at, status, scene_type, student_names';
 
   const queryHistoryRows = async (build: (selectClause: string) => PromiseLike<{ data: unknown; error: unknown }>) => {
@@ -409,6 +409,8 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
       scene_type: item.scene_type ?? sceneType ?? 'classroom',
       class_name: item.class_name || '',
       student_names: (item.student_names || []) as string[],
+      otp_enabled: item.otp_enabled ?? false,
+      otp_period_seconds: item.otp_period_seconds ?? 30,
     }));
 }
 
