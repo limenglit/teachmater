@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles } from 'lucide-react';
+import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles, ShieldCheck } from 'lucide-react';
 import ClassroomCheckinView from '@/components/checkin-views/ClassroomCheckinView';
 import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinView';
 import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
