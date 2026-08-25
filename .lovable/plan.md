@@ -1,94 +1,55 @@
-# AI 算力订阅充值实现方案
+# 扫码签到防代签：动态 6 位口令
 
-## 一、套餐配置（写死在前端配置）
+方案可行。采用「服务端时间派生的一次性口令（TOTP 思路）」：签到码下方显示 6 位数字，每 30 秒自动刷新，学生在手机端输入姓名 + 当前 6 位数字才能签到，数字由服务端校验。是否开启由教师在发起签到时勾选。
 
-| 套餐 | 价格 | AI 次数 |
-|------|------|---------|
-| 入门包 | ￥10 | 100 次 |
-| 标准包 | ￥20 | 300 次 |
+## 为什么可行且安全
 
-有效期：**充值到账当月**，跨月自动清零。跨月由 `expires_at` 字段 + 消费时判断。
+- 口令不存数据库，而是由「会话密钥 + 30 秒时间片」在服务端计算得出，教师端只是展示同一算法的结果。
+- 校验放在数据库函数里，学生端无法绕过（前端只是输入框）。
+- 允许 ±1 个时间片容错（约 30–90 秒有效），避免手机与服务器时间/网络延迟造成误判。
+- 防代签效果：远端同学拿到二维码链接也无法签到，除非教室里有人实时把当前数字发给他（可将窗口压到 30 秒，进一步提高成本）。
 
-## 二、数据库改动（新增迁移）
+## 教师端
 
-### 1. `payment_qrcodes`（管理员维护收款码）
-放在 `system_config.config.paymentQR = { wechat_url, alipay_url, note }`，无需新表。
+在「发起签到」对话框新增开关：
+- 防代签动态口令（默认关闭）
+- 开启后可选刷新周期：30 秒 / 60 秒
 
-### 2. `user_ai_credits`（用户购买余额）
-- `user_id uuid PK`
-- `credits_balance int`（剩余次数）
-- `expires_at date`（当月月末）
-- `updated_at timestamptz`
+签到进行中的大屏区域，二维码下方显示：
+- 超大字号 6 位数字（分两组三位，便于口读）
+- 环形倒计时进度，剩余秒数到 0 自动换新
+- 文案提示「请输入姓名和屏幕上的 6 位数字」
 
-### 3. `ai_credit_orders`（订单）
-- `id uuid PK`
-- `user_id uuid`
-- `package_key text`（`p10_100` / `p20_300`）
-- `amount_cny numeric`
-- `credits int`
-- `pay_method text`（`wechat` / `alipay`）
-- `screenshot_url text`（付款截图）
-- `payer_note text`（用户备注/后四位）
-- `status text`（`pending` / `approved` / `rejected`）
-- `reject_reason text`
-- `created_at`, `reviewed_at`, `reviewed_by`
+## 学生端（手机）
 
-GRANT + RLS：用户只能读写自己订单；管理员通过 SECURITY DEFINER RPC 审核。
+- 会话开启防代签时，姓名输入框下方多出 6 位数字输入框（数字键盘、自动聚焦、满 6 位可提交）。
+- 校验失败时明确提示：「口令错误或已过期，请看大屏最新数字重试」，不消耗任何记录。
+- 未开启防代签的会话，界面与现在完全一致。
 
-### 4. Storage bucket `payment-screenshots`（公开读）
+## 技术设计
 
-### 5. RPC 函数
-- `create_ai_credit_order(package_key, pay_method, screenshot_url, payer_note)` — 用户下单
-- `admin_list_ai_credit_orders(status)` — 管理员列表
-- `admin_approve_ai_credit_order(order_id)` — 通过：将该套餐 credits 累加到 `user_ai_credits.credits_balance`，`expires_at` 设为当月月末（如已过期则重置余额）
-- `admin_reject_ai_credit_order(order_id, reason)`
-- `consume_purchased_ai_credit(user_id)` — 消费 1 次：若 `expires_at >= today` 且余额>0 则 -1 并返回 true，否则 false（供 useAIQuota 优先消耗）
-- `get_my_ai_credits()` — 返回 `{ balance, expires_at }`（自动过滤过期）
+数据库：
+1. `seat_checkin_sessions` 增加 `otp_enabled boolean not null default false`、`otp_period_seconds integer not null default 30`、`otp_secret text not null default ''`（创建时服务端随机生成，仅通过教师专属 RPC 下发）。
+2. 新增 `public.seat_checkin_otp(secret text, period int, ts timestamptz)` 内部函数：`hmac(floor(epoch/period)::text, secret, 'sha256')` 取末 4 字节做动态截断，模 1000000，左补零成 6 位（`pgcrypto` 已可用）。
+3. 教师侧 `get_seat_checkin_otp(p_session_id, p_token)`：校验 `creator_token` 或 `user_id` 后返回当前口令与本时间片剩余秒数。
+4. `get_seat_checkin_session_for_student` 返回 `otp_enabled`（不返回 secret）。
+5. `submit_seat_checkin_record` 增加 `p_otp text default null` 参数：会话开启防代签时，比对当前时间片及前后各 1 片的口令，不匹配则 `RAISE EXCEPTION 'INVALID_OTP'`；未开启则忽略该参数。保留旧签名以兼容。
+6. 新函数按现有约定 `GRANT EXECUTE` 给 `anon, authenticated`（教师侧 OTP 函数同样需要 token 校验后才返回）。
 
-## 三、前端改动
+前端：
+- `src/lib/seat-checkin-session.ts`：创建会话时透传 `otpEnabled`/`otpPeriod`；新增 `fetchSeatCheckinOtp(sessionId)`，教师端按剩余秒数定时轮询（每片刷新一次，误差内补拉）。
+- `src/components/SeatCheckinDialog.tsx`：新增开关与周期选择、二维码下方的口令展示与倒计时。
+- `src/pages/SeatCheckinPage.tsx`：读取 `otp_enabled`，条件渲染 6 位输入框，提交时带上 `p_otp`，区分「口令错误」与其他失败。
+- `src/contexts/LanguageContext.tsx`：新增相关多语言文案。
 
-### 1. `useAIQuota` 扩展
-- 新增 `purchasedRemaining`, `purchasedExpiresAt`
-- `remaining` UI 显示：`免费剩余 X / 已购 Y 次`
-- `consume()` 顺序：
-  1. Admin → 无限
-  2. 已购余额>0 且未过期 → 调 `consume_purchased_ai_credit` RPC
-  3. 否则走原有每日免费额度 localStorage 逻辑
-- 广播 `ai-quota-changed` 事件保持实时同步
+## 备选/可叠加的防代签手段（本次不做，供后续选择）
 
-### 2. 主页 `Index.tsx`
-在昵称旁 AI 剩余徽章后追加 **「充值」按钮**，点击打开 `RechargeDialog`。
+- 一人一码：为每位学生生成个人链接，签到后失效。
+- 设备指纹去重：同一设备短时间内多次签到不同姓名时告警。
+- 位置校验：需要定位授权，微信/浏览器体验较差。
+- 邻座互证：已有邻座签到状态可扩展为「需邻座确认」。
 
-### 3. `RechargeDialog` 组件（新）
-- 展示两个套餐卡片，选择套餐
-- 切换微信/支付宝，显示对应收款二维码（来自 `system_config.paymentQR`）
-- 提示：备注请填写你的邮箱/昵称
-- 上传付款截图（Storage）
-- 填写备注（付款金额、订单号后四位等）
-- 提交 → 调用 `create_ai_credit_order` → toast「已提交，等待管理员审核」
+## 测试
 
-### 4. `MyOrdersDialog`（新，可选简化为 RechargeDialog 内的历史区）
-显示我的订单历史与状态。
-
-### 5. Admin 端
-在 `AdminPage` 新增两块：
-- **「收款码配置」**：上传/替换微信、支付宝二维码图片，保存到 `system_config.paymentQR`
-- **「AI 充值订单审核」**：列表待审核订单，显示用户、套餐、金额、截图缩略图（点开大图）、备注、时间；操作按钮：通过 / 拒绝（填原因）
-
-## 四、消费点接入
-无需改现有 AI 调用点——`consume()` 内部自动决定扣哪个池子。
-
-## 五、跨月清零机制
-`get_my_ai_credits()` RPC 里：若 `expires_at < today` 则视为 0（不实际删除，审批时重置）。UI 展示 `已购 0 次（已过期）`。
-
-## 六、安全 & 细节
-- 订单 amount/credits 由服务端根据 `package_key` 白名单派生，不接受客户端传值
-- 截图 URL 校验为本项目 Storage 域名
-- 管理员审核时使用 `has_role(auth.uid(), 'admin')` 校验
-- 拒绝后不发放算力，用户可再次提交新订单
-
-## 交付分两步
-**Step 1**：数据库迁移 + RPC + Storage bucket
-**Step 2**：前端 UI（充值弹窗、Admin 审核、useAIQuota 接入）
-
-确认后我立即开始实施 Step 1。
+- 单元测试：口令生成与 ±1 时间片容错、过期口令拒绝、未开启时旧流程不受影响。
+- 端到端：教师开启防代签发起签到 → 学生输入正确口令成功、错误口令失败、上一片口令仍可用、更早口令失效。
