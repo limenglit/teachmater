@@ -10,6 +10,7 @@ import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, Us
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
+  fetchSeatCheckinOtp,
   deleteSeatCheckinSession,
   endSeatCheckinSession,
   getSeatCheckinSessionToken,
@@ -308,6 +309,10 @@ export default function SeatCheckinDialog({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
+  // 防代签动态口令
+  const [otpEnabled, setOtpEnabled] = useState(false);
+  const [otpPeriodSeconds, setOtpPeriodSeconds] = useState(30);
+  const [otp, setOtp] = useState<{ code: string; secondsRemaining: number; periodSeconds: number } | null>(null);
   const [seatChartImageUrl, setSeatChartImageUrl] = useState<string>('');
   const [uploadingChart, setUploadingChart] = useState(false);
   const [chartProgress, setChartProgress] = useState(0);
@@ -504,6 +509,41 @@ export default function SeatCheckinDialog({
     return () => window.clearInterval(timerId);
   }, [currentSession?.id, currentSession?.status, timeLeft]);
 
+  // 防代签动态口令：服务端按时间片派生，本地只做倒计时展示，到点重新拉取。
+  useEffect(() => {
+    const sessionId = currentSession?.id;
+    if (!sessionId || !currentSession?.otp_enabled || currentSession.status !== 'active') {
+      setOtp(null);
+      return;
+    }
+    let cancelled = false;
+    let reloadTimer = 0;
+
+    const load = async () => {
+      const next = await fetchSeatCheckinOtp(sessionId);
+      if (cancelled) return;
+      setOtp(next);
+      if (next) {
+        window.clearTimeout(reloadTimer);
+        reloadTimer = window.setTimeout(() => { void load(); }, Math.max(1, next.secondsRemaining) * 1000 + 300);
+      }
+    };
+
+    void load();
+
+    const tick = window.setInterval(() => {
+      setOtp(prev => (prev ? { ...prev, secondsRemaining: Math.max(0, prev.secondsRemaining - 1) } : prev));
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(reloadTimer);
+      window.clearInterval(tick);
+    };
+  }, [currentSession?.id, currentSession?.otp_enabled, currentSession?.status]);
+
+
+
   const createSession = async () => {
     if (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete) {
       toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
@@ -544,6 +584,8 @@ export default function SeatCheckinDialog({
         sceneType,
         durationMinutes: minutes,
         className,
+        otpEnabled,
+        otpPeriodSeconds,
       });
       setCurrentSession(created.session);
       setSessionSeatData(seatData);
@@ -855,6 +897,42 @@ export default function SeatCheckinDialog({
 
             </div>
 
+            {/* 防代签：动态口令 */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  checked={otpEnabled}
+                  onChange={e => setOtpEnabled(e.target.checked)}
+                  className="accent-primary"
+                />
+                防代签动态口令（可选）
+              </label>
+              <p className="text-xs text-muted-foreground">
+                开启后，签到码下方会显示一组 6 位数字并自动刷新，学生必须在手机端同时输入姓名和当前屏幕上的数字才能签到，可有效防止不在教室的同学远程代签。
+              </p>
+              {otpEnabled && (
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">刷新周期</span>
+                  {[30, 60].map(sec => (
+                    <button
+                      key={sec}
+                      type="button"
+                      onClick={() => setOtpPeriodSeconds(sec)}
+                      className={`px-2.5 py-1 rounded-full border transition-colors ${
+                        otpPeriodSeconds === sec
+                          ? 'border-primary/50 bg-primary/10 text-primary'
+                          : 'border-border bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {sec} 秒
+                    </button>
+                  ))}
+                  <span className="text-muted-foreground">（口令在前后各一个周期内仍然有效，避免网络延迟误判）</span>
+                </div>
+              )}
+            </div>
+
             {/* 降级策略：仅签到不导航 + 座次表图片 */}
             <div className="rounded-lg border border-border bg-card p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -1018,6 +1096,24 @@ export default function SeatCheckinDialog({
                 </>
               )}
             />
+
+            {currentSession.otp_enabled && currentSession.status === 'active' && (
+              <div className="w-full rounded-xl border-2 border-primary/30 bg-primary/5 p-3 text-center space-y-1.5">
+                <p className="text-xs text-muted-foreground">防代签口令 · 请学生连同姓名一起输入</p>
+                <p className="text-4xl font-bold tracking-[0.35em] text-primary tabular-nums pl-[0.35em]">
+                  {otp ? `${otp.code.slice(0, 3)} ${otp.code.slice(3)}` : '······'}
+                </p>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="h-1.5 w-32 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-[width] duration-1000 ease-linear"
+                      style={{ width: otp ? `${Math.max(0, Math.min(100, (otp.secondsRemaining / Math.max(1, otp.periodSeconds)) * 100))}%` : '0%' }}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground tabular-nums">{otp ? `${otp.secondsRemaining}s 后刷新` : '获取中…'}</span>
+                </div>
+              </div>
+            )}
 
             <div className="w-full border-t border-border pt-3">
               <div className="flex items-center justify-between mb-2 flex-wrap gap-y-1">

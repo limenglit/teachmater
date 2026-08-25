@@ -12,6 +12,8 @@ export interface SeatCheckinSessionSummary {
   scene_type: string;
   class_name: string;
   student_names: string[];
+  otp_enabled?: boolean;
+  otp_period_seconds?: number;
 }
 
 export interface SeatCheckinRecord {
@@ -19,6 +21,12 @@ export interface SeatCheckinRecord {
   session_id: string;
   student_name: string;
   checked_in_at: string;
+}
+
+export interface SeatCheckinOtp {
+  code: string;
+  secondsRemaining: number;
+  periodSeconds: number;
 }
 
 type SeatCheckinHistoryRow = {
@@ -30,6 +38,8 @@ type SeatCheckinHistoryRow = {
   scene_type?: string;
   class_name?: string;
   student_names?: unknown;
+  otp_enabled?: boolean;
+  otp_period_seconds?: number;
 };
 
 interface CreateSeatCheckinSessionParams {
@@ -39,6 +49,8 @@ interface CreateSeatCheckinSessionParams {
   sceneType: string;
   durationMinutes: number;
   className?: string;
+  otpEnabled?: boolean;
+  otpPeriodSeconds?: number;
 }
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
@@ -129,6 +141,8 @@ export async function createSeatCheckinSession({
   sceneType,
   durationMinutes,
   className,
+  otpEnabled = false,
+  otpPeriodSeconds = 30,
 }: CreateSeatCheckinSessionParams) {
   // Defensive serialization: strip functions/undefined and tolerate odd inputs
   // so the RPC always receives valid JSON values.
@@ -184,6 +198,8 @@ export async function createSeatCheckinSession({
         p_scene_type: baseInsertData.scene_type,
         p_duration_minutes: enhancedInsertData.duration_minutes,
         p_class_name: className?.trim() || '',
+        p_otp_enabled: !!otpEnabled,
+        p_otp_period_seconds: Math.max(10, Math.floor(otpPeriodSeconds || 30)),
       });
 
       if (!rpcResult.error && Array.isArray(rpcResult.data) && rpcResult.data.length > 0) {
@@ -280,7 +296,29 @@ export async function createSeatCheckinSession({
       scene_type: (data as any).scene_type ?? sceneType,
       class_name: (data as any).class_name ?? className?.trim() ?? '',
       student_names: ((data as any).student_names || []) as string[],
+      otp_enabled: (data as any).otp_enabled ?? false,
+      otp_period_seconds: (data as any).otp_period_seconds ?? otpPeriodSeconds,
     } as SeatCheckinSessionSummary,
+  };
+}
+
+/**
+ * 教师端拉取当前动态口令（防代签）。会话未开启口令时返回 null。
+ * 口令由服务端按「会话密钥 + 时间片」派生，不落库、不下发密钥。
+ */
+export async function fetchSeatCheckinOtp(sessionId: string): Promise<SeatCheckinOtp | null> {
+  const token = getSeatCheckinSessionToken(sessionId) || '';
+  const { data, error } = await (supabase.rpc as any)('get_seat_checkin_otp', {
+    p_session_id: sessionId,
+    p_token: token,
+  });
+  if (error) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.code) return null;
+  return {
+    code: String(row.code),
+    secondsRemaining: Number(row.seconds_remaining) || 0,
+    periodSeconds: Number(row.period_seconds) || 30,
   };
 }
 
@@ -289,7 +327,7 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   const ids = Array.from(new Set([...tokenIds, ...getSeatCheckinSessionIds()]));
   let rows: SeatCheckinHistoryRow[] = [];
 
-  const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names';
+  const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names, otp_enabled, otp_period_seconds';
   const selectLegacy = 'id, created_at, status, scene_type, student_names';
 
   const queryHistoryRows = async (build: (selectClause: string) => PromiseLike<{ data: unknown; error: unknown }>) => {
@@ -371,6 +409,8 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
       scene_type: item.scene_type ?? sceneType ?? 'classroom',
       class_name: item.class_name || '',
       student_names: (item.student_names || []) as string[],
+      otp_enabled: item.otp_enabled ?? false,
+      otp_period_seconds: item.otp_period_seconds ?? 30,
     }));
 }
 

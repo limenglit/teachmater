@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles } from 'lucide-react';
+import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles, ShieldCheck } from 'lucide-react';
 import ClassroomCheckinView from '@/components/checkin-views/ClassroomCheckinView';
 import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinView';
 import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
@@ -51,12 +51,16 @@ const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: stri
   return data === true;
 };
 
-const submitSeatCheckinRecord = async (sessionId: string, studentName: string) => {
+const submitSeatCheckinRecord = async (sessionId: string, studentName: string, otp?: string) => {
   const { data, error } = await (supabase.rpc as any)('submit_seat_checkin_record', {
     p_session_id: sessionId,
     p_student_name: studentName,
+    ...(otp ? { p_otp: otp } : {}),
   } as any);
-  if (error) throw error;
+  if (error) {
+    if (/INVALID_OTP/i.test(error.message || '')) throw new Error('INVALID_OTP');
+    throw error;
+  }
   if (!data || (Array.isArray(data) && data.length === 0)) {
     throw new Error('NO_RECORD_CREATED');
   }
@@ -252,9 +256,11 @@ export default function SeatCheckinPage() {
     scene_config: Record<string, unknown>;
     scene_type: string;
     status: string;
+    otp_enabled: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
+  const [otpInput, setOtpInput] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [checkedIn, setCheckedIn] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
@@ -375,6 +381,7 @@ export default function SeatCheckinPage() {
           scene_config: d.scene_config as unknown as Record<string, unknown>,
           scene_type: (d.scene_type as string) || 'classroom',
           status: (d.status as string) || 'active',
+          otp_enabled: d.otp_enabled === true,
         };
         setSession(nextSession);
 
@@ -414,6 +421,11 @@ export default function SeatCheckinPage() {
   const handleSubmit = async () => {
     if (!name.trim() || !sessionId || !session) return;
     const trimmedName = normalizeStudentName(name);
+    const otpCode = otpInput.replace(/\D/g, '');
+    if (session.otp_enabled && otpCode.length !== 6) {
+      toast({ title: '请输入大屏上的 6 位签到口令', variant: 'destructive' });
+      return;
+    }
     const isRegistered = session.student_names.some(n => normalizeStudentName(n) === trimmedName);
     setSubmitting(true);
     try {
@@ -441,7 +453,7 @@ export default function SeatCheckinPage() {
         return;
       }
 
-      await submitSeatCheckinRecord(sessionId, trimmedName);
+      await submitSeatCheckinRecord(sessionId, trimmedName, session.otp_enabled ? otpCode : undefined);
 
       const resolved = await resolveSeatDataForName(session, trimmedName, !isRegistered);
       setDisplaySeatData(resolved.seatData);
@@ -459,7 +471,10 @@ export default function SeatCheckinPage() {
       }
     } catch (err) {
       const code = err instanceof Error ? err.message : '';
-      if (code === 'NO_SEAT_FOR_GUEST') {
+      if (code === 'INVALID_OTP') {
+        setOtpInput('');
+        toast({ title: '口令错误或已过期', description: '请看大屏最新的 6 位数字后重试。', variant: 'destructive' });
+      } else if (code === 'NO_SEAT_FOR_GUEST') {
         toast({ title: t('seatCheckin.allSeatsFull'), variant: 'destructive' });
       } else {
         toast({ title: t('seatCheckin.failed'), variant: 'destructive' });
@@ -528,9 +543,31 @@ export default function SeatCheckinPage() {
                 </div>
               )}
             </div>
+            {session.otp_enabled && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  大屏上的 6 位签到口令
+                </label>
+                <Input
+                  value={otpInput}
+                  onChange={e => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="6 位数字"
+                  className="text-center text-2xl tracking-[0.4em] h-14 rounded-xl border-2 focus-visible:border-primary tabular-nums"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  enterKeyHint="done"
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+                <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
+                  该口令每隔数十秒自动更换，请以教室大屏当前显示的数字为准。
+                </p>
+              </div>
+            )}
             <Button
               onClick={handleSubmit}
-              disabled={!name.trim() || submitting}
+              disabled={!name.trim() || submitting || (session.otp_enabled && otpInput.replace(/\D/g, '').length !== 6)}
+
               className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"
             >
               {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
