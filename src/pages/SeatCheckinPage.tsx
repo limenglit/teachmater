@@ -596,7 +596,7 @@ export default function SeatCheckinPage() {
 
   if (checkinOnlyMode) {
     return (
-      <div className="min-h-[100dvh] bg-background overflow-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(6rem,env(safe-area-inset-bottom))]">
+      <div className="min-h-[100dvh] bg-background overflow-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-primary/5 border border-primary/25 px-4 py-4 shadow-sm flex items-center gap-3">
             <div className="shrink-0 w-11 h-11 rounded-full bg-primary/20 text-primary flex items-center justify-center">
@@ -621,7 +621,6 @@ export default function SeatCheckinPage() {
             </div>
           )}
         </div>
-        <TeachMateEntryBar />
       </div>
     );
   }
