@@ -1093,6 +1093,9 @@ export type Database = {
           duration_minutes: number
           ended_at: string | null
           id: string
+          otp_enabled: boolean
+          otp_period_seconds: number
+          otp_secret: string
           scene_config: Json
           scene_type: string
           seat_data: Json
@@ -1107,6 +1110,9 @@ export type Database = {
           duration_minutes?: number
           ended_at?: string | null
           id?: string
+          otp_enabled?: boolean
+          otp_period_seconds?: number
+          otp_secret?: string
           scene_config?: Json
           scene_type?: string
           seat_data?: Json
@@ -1121,6 +1127,9 @@ export type Database = {
           duration_minutes?: number
           ended_at?: string | null
           id?: string
+          otp_enabled?: boolean
+          otp_period_seconds?: number
+          otp_secret?: string
           scene_config?: Json
           scene_type?: string
           seat_data?: Json
@@ -1780,6 +1789,8 @@ export type Database = {
         Args: {
           p_class_name?: string
           p_duration_minutes?: number
+          p_otp_enabled?: boolean
+          p_otp_period_seconds?: number
           p_scene_config: Json
           p_scene_type: string
           p_seat_data: Json
@@ -1792,6 +1803,8 @@ export type Database = {
           duration_minutes: number
           ended_at: string
           id: string
+          otp_enabled: boolean
+          otp_period_seconds: number
           scene_type: string
           status: string
           student_names: Json
@@ -2051,6 +2064,14 @@ export type Database = {
         Args: { p_names: string[]; p_session_id: string }
         Returns: string[]
       }
+      get_seat_checkin_otp: {
+        Args: { p_session_id: string; p_token?: string }
+        Returns: {
+          code: string
+          period_seconds: number
+          seconds_remaining: number
+        }[]
+      }
       get_seat_checkin_records_for_owner: {
         Args: { p_session_id: string; p_token: string }
         Returns: {
@@ -2083,6 +2104,9 @@ export type Database = {
           duration_minutes: number
           ended_at: string | null
           id: string
+          otp_enabled: boolean
+          otp_period_seconds: number
+          otp_secret: string
           scene_config: Json
           scene_type: string
           seat_data: Json
@@ -2204,13 +2228,17 @@ export type Database = {
         Args: { p_reason: string; p_set_id: string }
         Returns: undefined
       }
+      seat_checkin_otp_code: {
+        Args: { p_counter: number; p_secret: string }
+        Returns: string
+      }
       set_my_username: { Args: { p_username: string }; Returns: undefined }
       submit_quiz_answers: {
         Args: { p_answers: Json; p_session_id: string; p_student_name: string }
         Returns: undefined
       }
       submit_seat_checkin_record: {
-        Args: { p_session_id: string; p_student_name: string }
+        Args: { p_otp?: string; p_session_id: string; p_student_name: string }
         Returns: {
           checked_in_at: string
           id: string
