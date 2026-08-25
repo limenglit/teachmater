@@ -509,6 +509,41 @@ export default function SeatCheckinDialog({
     return () => window.clearInterval(timerId);
   }, [currentSession?.id, currentSession?.status, timeLeft]);
 
+  // 防代签动态口令：服务端按时间片派生，本地只做倒计时展示，到点重新拉取。
+  useEffect(() => {
+    const sessionId = currentSession?.id;
+    if (!sessionId || !currentSession?.otp_enabled || currentSession.status !== 'active') {
+      setOtp(null);
+      return;
+    }
+    let cancelled = false;
+    let reloadTimer = 0;
+
+    const load = async () => {
+      const next = await fetchSeatCheckinOtp(sessionId);
+      if (cancelled) return;
+      setOtp(next);
+      if (next) {
+        window.clearTimeout(reloadTimer);
+        reloadTimer = window.setTimeout(() => { void load(); }, Math.max(1, next.secondsRemaining) * 1000 + 300);
+      }
+    };
+
+    void load();
+
+    const tick = window.setInterval(() => {
+      setOtp(prev => (prev ? { ...prev, secondsRemaining: Math.max(0, prev.secondsRemaining - 1) } : prev));
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(reloadTimer);
+      window.clearInterval(tick);
+    };
+  }, [currentSession?.id, currentSession?.otp_enabled, currentSession?.status]);
+
+
+
   const createSession = async () => {
     if (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete) {
       toast({ title: t('seatCheckinDialog.noSeatToast'), variant: 'destructive' });
