@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { classroomSeatNumber } from '@/lib/seat-number';
+import { formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -161,8 +161,8 @@ const buildSeatHint = (
       for (let c = 0; c < seats[r].length; c++) {
         if (isSameStudentName(seats[r][c], studentName)) {
           const rowWidth = Number(rowColsCfg[r]) > 0 ? Number(rowColsCfg[r]) : seats[r].length;
-          const no = classroomSeatNumber(r, c, { rowWidth, disabledSeats });
-          return `第${r + 1}排第${no ?? c + 1}号`;
+          const mode = normalizeSeatLabelMode(sceneConfig?.seatLabelMode);
+          return formatClassroomSeatLabel(r, c, { rowWidth, disabledSeats }, mode);
         }
       }
     }
