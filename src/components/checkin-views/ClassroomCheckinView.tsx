@@ -4,7 +4,7 @@ import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
-import { classroomSeatNumber, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
+import { classroomSeatNumber, formatClassroomSeatLabel, normalizeSeatLabelMode, openColumnNumber, openRowNumber } from '@/lib/seat-number';
 
 interface Props {
   seatData: unknown;
