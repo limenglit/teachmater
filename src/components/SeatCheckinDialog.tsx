@@ -702,6 +702,7 @@ export default function SeatCheckinDialog({
       disabledSeats,
       overrides: overridesObj,
       rotateOffsets: guestRotateOffsets,
+      seatLabelMode: normalizeSeatLabelMode(sessionSceneConfig?.seatLabelMode),
     });
   }, [currentSession, currentStudentNames, records, seatData, sessionSeatData, sceneConfig, guestRotateOffsets, guestConfirmed]);
 
