@@ -205,18 +205,25 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
 
   // Direction hint text
   const seatLabelMode = normalizeSeatLabelMode((config as Record<string, unknown>).seatLabelMode);
-  const seatNumberOpts = { rowWidth: rowWidth(myPosition.r), disabledSeats: disabledSeatSet };
+  const seatNumberOpts = {
+    rowWidth: rowWidth(myPosition.r),
+    disabledSeats: disabledSeatSet,
+    rowWidths: Array.from({ length: rows }, (_, r) => rowWidth(r)),
+  };
   const mySeatLabel = formatClassroomSeatLabel(myPosition.r, myPosition.c, seatNumberOpts, seatLabelMode);
 
   const dirHint = (() => {
     if (!activeDoor) return '';
     const s = activeDoor.side;
-    const r = myPosition.r + 1;
-    const seatNo = classroomSeatNumber(myPosition.r, myPosition.c, seatNumberOpts) ?? myPosition.c + 1;
+    // Row/col hints skip closed seats (and fully closed rows) so the numbers
+    // match what the student-facing label shows.
+    const r = openRowNumber(myPosition.r, seatNumberOpts);
+    const openCol = openColumnNumber(myPosition.r, myPosition.c, seatNumberOpts) ?? myPosition.c + 1;
+    const seatNo = classroomSeatNumber(myPosition.r, myPosition.c, seatNumberOpts) ?? openCol;
     const c = seatLabelMode === 'col'
-      ? myPosition.c + 1
+      ? openCol
       : seatLabelMode === 'both'
-        ? `${seatNo}（第${myPosition.c + 1}列）`
+        ? `${seatNo}（第${openCol}列）`
         : seatNo;
     const lr = windowOnLeft ? t('seat.nav.dirLeft') : t('seat.nav.dirRight');
     if (s === 'top') return tFormat(t('seat.nav.classroomDirTop'), r, lr, c);
