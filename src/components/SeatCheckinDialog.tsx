@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 
-import { classroomSeatNumber } from '@/lib/seat-number';
+import { formatClassroomSeatLabel, normalizeSeatLabelMode, type SeatLabelMode } from '@/lib/seat-number';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -124,8 +124,9 @@ const computeGuestAssignments = (params: {
   disabledSeats?: string[];
   overrides: Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }>;
   rotateOffsets: Record<string, number>;
+  seatLabelMode?: SeatLabelMode;
 }): GuestAssignmentEntry[] => {
-  const { sceneType, seatData, guestNames, disabledSeats = [], overrides, rotateOffsets } = params;
+  const { sceneType, seatData, guestNames, disabledSeats = [], overrides, rotateOffsets, seatLabelMode = 'no' } = params;
   if (guestNames.length === 0) return [];
 
   if (sceneType === 'classroom' && Array.isArray(seatData)) {
@@ -153,7 +154,7 @@ const computeGuestAssignments = (params: {
         used.add(chosen.key);
         result.push({
           name,
-          seatHint: `第${chosen.r + 1}排第${classroomSeatNumber(chosen.r, chosen.c, { rowWidth: grid[chosen.r].length, disabledSeats: disabledKeys }) ?? chosen.c + 1}号`,
+          seatHint: formatClassroomSeatLabel(chosen.r, chosen.c, { rowWidth: grid[chosen.r].length, disabledSeats: disabledKeys }, seatLabelMode),
           assignedKey: chosen.key,
           confirmed: override?.confirmed,
         });
@@ -168,7 +169,7 @@ const computeGuestAssignments = (params: {
   const cloned = cloneSeatDataSequential(seatData, guestNames);
   return guestNames.map(name => ({
     name,
-    seatHint: buildSeatHint(sceneType, cloned, name, disabledSeats) || '待老师现场确认',
+    seatHint: buildSeatHint(sceneType, cloned, name, disabledSeats, seatLabelMode) || '待老师现场确认',
     confirmed: overrides[name]?.confirmed,
   }));
 };
@@ -197,14 +198,14 @@ const buildSeatHint = (
   seatData: unknown,
   studentName: string,
   disabledSeats: string[] = [],
+  seatLabelMode: SeatLabelMode = 'no',
 ) => {
   if (sceneType === 'classroom') {
     const seats = seatData as (string | null)[][];
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
         if (isSameStudentName(seats[r][c], studentName)) {
-          const no = classroomSeatNumber(r, c, { rowWidth: seats[r].length, disabledSeats });
-          return `第${r + 1}排第${no ?? c + 1}号`;
+          return formatClassroomSeatLabel(r, c, { rowWidth: seats[r].length, disabledSeats }, seatLabelMode);
         }
       }
     }
@@ -309,6 +310,8 @@ export default function SeatCheckinDialog({
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
+  // 学生端座位表述方式：第几号 / 第几列 / 两者都显示
+  const [seatLabelMode, setSeatLabelMode] = useState<SeatLabelMode>('no');
   // 防代签动态口令
   const [otpEnabled, setOtpEnabled] = useState(false);
   const [otpPeriodSeconds, setOtpPeriodSeconds] = useState(30);
@@ -571,6 +574,7 @@ export default function SeatCheckinDialog({
       }
       // 降级策略：仅签到不导航（可附带座次表图片）
       nextSceneConfig.checkinOnlyMode = checkinOnlyMode;
+      nextSceneConfig.seatLabelMode = seatLabelMode;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
       } else {
@@ -698,6 +702,7 @@ export default function SeatCheckinDialog({
       disabledSeats,
       overrides: overridesObj,
       rotateOffsets: guestRotateOffsets,
+      seatLabelMode: normalizeSeatLabelMode(sessionSceneConfig?.seatLabelMode),
     });
   }, [currentSession, currentStudentNames, records, seatData, sessionSeatData, sceneConfig, guestRotateOffsets, guestConfirmed]);
 
@@ -896,6 +901,36 @@ export default function SeatCheckinDialog({
               )}
 
             </div>
+
+            {/* 学生端座位表述方式 */}
+            {sceneType === 'classroom' && (
+              <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                <p className="text-sm font-medium text-foreground">手机端座位表述方式</p>
+                <p className="text-xs text-muted-foreground">
+                  学生扫码后看到的位置提示，默认显示「第几排第几号」（按教室中心号位编号）。
+                </p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {([
+                    { value: 'no' as const, label: '第几排第几号（默认）' },
+                    { value: 'col' as const, label: '第几排第几列' },
+                    { value: 'both' as const, label: '两者都显示' },
+                  ]).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSeatLabelMode(opt.value)}
+                      className={`px-2.5 py-1 rounded-full border transition-colors ${
+                        seatLabelMode === opt.value
+                          ? 'border-primary/50 bg-primary/10 text-primary'
+                          : 'border-border bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* 防代签：动态口令 */}
             <div className="rounded-lg border border-border bg-card p-3 space-y-2">

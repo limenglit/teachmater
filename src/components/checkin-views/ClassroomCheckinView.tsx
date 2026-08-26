@@ -4,7 +4,7 @@ import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
-import { classroomSeatNumber } from '@/lib/seat-number';
+import { classroomSeatNumber, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 
 interface Props {
   seatData: unknown;
@@ -204,14 +204,20 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const podiumY = roomOy - podiumH / 2 - 4;
 
   // Direction hint text
+  const seatLabelMode = normalizeSeatLabelMode((config as Record<string, unknown>).seatLabelMode);
+  const seatNumberOpts = { rowWidth: rowWidth(myPosition.r), disabledSeats: disabledSeatSet };
+  const mySeatLabel = formatClassroomSeatLabel(myPosition.r, myPosition.c, seatNumberOpts, seatLabelMode);
+
   const dirHint = (() => {
     if (!activeDoor) return '';
     const s = activeDoor.side;
     const r = myPosition.r + 1;
-    const c = classroomSeatNumber(myPosition.r, myPosition.c, {
-      rowWidth: rowWidth(myPosition.r),
-      disabledSeats: disabledSeatSet,
-    }) ?? myPosition.c + 1;
+    const seatNo = classroomSeatNumber(myPosition.r, myPosition.c, seatNumberOpts) ?? myPosition.c + 1;
+    const c = seatLabelMode === 'col'
+      ? myPosition.c + 1
+      : seatLabelMode === 'both'
+        ? `${seatNo}（第${myPosition.c + 1}列）`
+        : seatNo;
     const lr = windowOnLeft ? t('seat.nav.dirLeft') : t('seat.nav.dirRight');
     if (s === 'top') return tFormat(t('seat.nav.classroomDirTop'), r, lr, c);
     if (s === 'bottom') return tFormat(t('seat.nav.classroomDirBottom'), r, lr, c);
@@ -372,6 +378,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
           <Navigation className="w-3.5 h-3.5" />
           {tFormat(t('seat.nav.fromDoor'), activeDoor?.label || t('seat.nav.entry'))}
         </p>
+        <p className="pl-5 font-medium text-foreground">📍 {mySeatLabel}</p>
         {dirHint && <p className="text-muted-foreground leading-relaxed pl-5">🚶 {dirHint}</p>}
       </div>
     </>

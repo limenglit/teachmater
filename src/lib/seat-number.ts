@@ -67,3 +67,26 @@ export function classroomSeatNumber(
   return rank * 2 + 1; // right: 3, 5, 7...
 }
 
+
+/** How the student-facing seat position is phrased. */
+export type SeatLabelMode = 'no' | 'col' | 'both';
+
+export const normalizeSeatLabelMode = (value: unknown): SeatLabelMode =>
+  value === 'col' || value === 'both' ? value : 'no';
+
+/**
+ * Student-facing label for a classroom seat, e.g. 「第3排第5号」/「第3排第7列」/
+ * 「第3排第5号（第7列）」. The teacher picks the mode when publishing the QR code.
+ */
+export function formatClassroomSeatLabel(
+  row: number,
+  col: number,
+  opts: ClassroomSeatNumberOptions,
+  mode: SeatLabelMode = 'no',
+): string {
+  const no = classroomSeatNumber(row, col, opts) ?? col + 1;
+  const rowText = `第${row + 1}排`;
+  if (mode === 'col') return `${rowText}第${col + 1}列`;
+  if (mode === 'both') return `${rowText}第${no}号（第${col + 1}列）`;
+  return `${rowText}第${no}号`;
+}
