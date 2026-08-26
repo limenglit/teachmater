@@ -74,6 +74,46 @@ export function classroomSeatNumber(
 }
 
 
+/**
+ * Student-facing column number (1-based) counting only open seats.
+ * Closed seats are skipped, so 「第N列」 reflects the usable layout.
+ * Returns null when the seat itself is closed / invalid.
+ */
+export function openColumnNumber(
+  row: number,
+  col: number,
+  opts: ClassroomSeatNumberOptions,
+): number | null {
+  const disabled = toSet(opts.disabledSeats);
+  if (col < 0 || col >= opts.rowWidth) return null;
+  if (disabled.has(`${row}-${col}`)) return null;
+  let n = 0;
+  for (let c = 0; c <= col; c++) {
+    if (disabled.has(`${row}-${c}`)) continue;
+    n++;
+  }
+  return n;
+}
+
+/**
+ * Student-facing row number (1-based). When `rowWidths` is provided, rows that
+ * are fully closed are skipped so 「第X排」 counts only usable rows.
+ */
+export function openRowNumber(row: number, opts: ClassroomSeatNumberOptions): number {
+  if (!Array.isArray(opts.rowWidths) || opts.rowWidths.length === 0) return row + 1;
+  const disabled = toSet(opts.disabledSeats);
+  let n = 0;
+  for (let r = 0; r <= row; r++) {
+    const w = Math.max(0, Math.floor(Number(opts.rowWidths[r]) || 0));
+    let open = false;
+    for (let c = 0; c < w; c++) {
+      if (!disabled.has(`${r}-${c}`)) { open = true; break; }
+    }
+    if (open) n++;
+  }
+  return n;
+}
+
 /** How the student-facing seat position is phrased. */
 export type SeatLabelMode = 'no' | 'col' | 'both';
 
@@ -83,6 +123,7 @@ export const normalizeSeatLabelMode = (value: unknown): SeatLabelMode =>
 /**
  * Student-facing label for a classroom seat, e.g. 「第3排第5号」/「第3排第7列」/
  * 「第3排第5号（第7列）」. The teacher picks the mode when publishing the QR code.
+ * 「排/列」counting skips closed seats (and fully closed rows when rowWidths is set).
  */
 export function formatClassroomSeatLabel(
   row: number,
@@ -91,8 +132,10 @@ export function formatClassroomSeatLabel(
   mode: SeatLabelMode = 'no',
 ): string {
   const no = classroomSeatNumber(row, col, opts) ?? col + 1;
-  const rowText = `第${row + 1}排`;
-  if (mode === 'col') return `${rowText}第${col + 1}列`;
-  if (mode === 'both') return `${rowText}第${no}号（第${col + 1}列）`;
+  const rowNo = openRowNumber(row, opts);
+  const colNo = openColumnNumber(row, col, opts) ?? col + 1;
+  const rowText = `第${rowNo}排`;
+  if (mode === 'col') return `${rowText}第${colNo}列`;
+  if (mode === 'both') return `${rowText}第${no}号（第${colNo}列）`;
   return `${rowText}第${no}号`;
 }
