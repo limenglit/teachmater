@@ -15,6 +15,12 @@ export interface ClassroomSeatNumberOptions {
   disabledSeats?: Iterable<string>;
   /** fixed centre column index; defaults to the geometric middle of the row */
   anchorCol?: number;
+  /**
+   * Optional per-row widths of the whole grid (index = row). When provided,
+   * 「第X排」counts only rows that still have at least one open seat, so fully
+   * closed rows are skipped.
+   */
+  rowWidths?: number[];
 }
 
 const toSet = (v?: Iterable<string>) =>
