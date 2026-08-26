@@ -154,7 +154,7 @@ const computeGuestAssignments = (params: {
         used.add(chosen.key);
         result.push({
           name,
-          seatHint: formatClassroomSeatLabel(chosen.r, chosen.c, { rowWidth: grid[chosen.r].length, disabledSeats: disabledKeys }, seatLabelMode),
+          seatHint: formatClassroomSeatLabel(chosen.r, chosen.c, { rowWidth: grid[chosen.r].length, disabledSeats: disabledKeys, rowWidths: grid.map(row => row?.length ?? 0) }, seatLabelMode),
           assignedKey: chosen.key,
           confirmed: override?.confirmed,
         });
@@ -205,7 +205,7 @@ const buildSeatHint = (
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
         if (isSameStudentName(seats[r][c], studentName)) {
-          return formatClassroomSeatLabel(r, c, { rowWidth: seats[r].length, disabledSeats }, seatLabelMode);
+          return formatClassroomSeatLabel(r, c, { rowWidth: seats[r].length, disabledSeats, rowWidths: seats.map(row => row?.length ?? 0) }, seatLabelMode);
         }
       }
     }

@@ -162,7 +162,9 @@ const buildSeatHint = (
         if (isSameStudentName(seats[r][c], studentName)) {
           const rowWidth = Number(rowColsCfg[r]) > 0 ? Number(rowColsCfg[r]) : seats[r].length;
           const mode = normalizeSeatLabelMode(sceneConfig?.seatLabelMode);
-          return formatClassroomSeatLabel(r, c, { rowWidth, disabledSeats }, mode);
+          const rowWidths = seats.map((row, i) =>
+            Number(rowColsCfg[i]) > 0 ? Number(rowColsCfg[i]) : (row?.length ?? 0));
+          return formatClassroomSeatLabel(r, c, { rowWidth, disabledSeats, rowWidths }, mode);
         }
       }
     }
