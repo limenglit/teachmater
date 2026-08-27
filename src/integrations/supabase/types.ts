@@ -1060,18 +1060,24 @@ export type Database = {
         Row: {
           checked_in_at: string
           id: string
+          org: string
+          phone: string
           session_id: string
           student_name: string
         }
         Insert: {
           checked_in_at?: string
           id?: string
+          org?: string
+          phone?: string
           session_id: string
           student_name: string
         }
         Update: {
           checked_in_at?: string
           id?: string
+          org?: string
+          phone?: string
           session_id?: string
           student_name?: string
         }
@@ -2077,6 +2083,8 @@ export type Database = {
         Returns: {
           checked_in_at: string
           id: string
+          org: string
+          phone: string
           session_id: string
           student_name: string
         }[]
@@ -2238,10 +2246,18 @@ export type Database = {
         Returns: undefined
       }
       submit_seat_checkin_record: {
-        Args: { p_otp?: string; p_session_id: string; p_student_name: string }
+        Args: {
+          p_org?: string
+          p_otp?: string
+          p_phone?: string
+          p_session_id: string
+          p_student_name: string
+        }
         Returns: {
           checked_in_at: string
           id: string
+          org: string
+          phone: string
           session_id: string
           student_name: string
         }[]

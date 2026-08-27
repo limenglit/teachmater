@@ -312,6 +312,9 @@ export default function SeatCheckinDialog({
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
   // 学生端座位表述方式：第几号 / 第几列 / 两者都显示
   const [seatLabelMode, setSeatLabelMode] = useState<SeatLabelMode>('no');
+  // 学生端附加采集字段：单位、手机号
+  const [collectOrg, setCollectOrg] = useState(false);
+  const [collectPhone, setCollectPhone] = useState(false);
   // 防代签动态口令
   const [otpEnabled, setOtpEnabled] = useState(false);
   const [otpPeriodSeconds, setOtpPeriodSeconds] = useState(30);
@@ -575,6 +578,8 @@ export default function SeatCheckinDialog({
       // 降级策略：仅签到不导航（可附带座次表图片）
       nextSceneConfig.checkinOnlyMode = checkinOnlyMode;
       nextSceneConfig.seatLabelMode = seatLabelMode;
+      nextSceneConfig.collectOrg = collectOrg;
+      nextSceneConfig.collectPhone = collectPhone;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
       } else {
@@ -932,6 +937,34 @@ export default function SeatCheckinDialog({
               </div>
             )}
 
+            {/* 学生端附加填写项：单位 / 手机号 */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <p className="text-sm font-medium text-foreground">签到需填写的附加信息（可选）</p>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2 text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={collectOrg}
+                    onChange={e => setCollectOrg(e.target.checked)}
+                    className="accent-primary"
+                  />
+                  单位
+                </label>
+                <label className="flex items-center gap-2 text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={collectPhone}
+                    onChange={e => setCollectPhone(e.target.checked)}
+                    className="accent-primary"
+                  />
+                  手机号
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                勾选后，学生手机端签到时会出现对应输入框，导出的签到 CSV 也会在姓名后增加相应列。
+              </p>
+            </div>
+
             {/* 防代签：动态口令 */}
             <div className="rounded-lg border border-border bg-card p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -1265,13 +1298,25 @@ export default function SeatCheckinDialog({
                     );
                     const inListSet = new Set(currentStudentNames.map(n => n.trim()));
                     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+                    // 姓名后的附加列按发布时的勾选（或已采集到的数据）动态生成
+                    const showOrg = collectOrg || sorted.some(r => (r.org || '').trim() !== '');
+                    const showPhone = collectPhone || sorted.some(r => (r.phone || '').trim() !== '');
                     const rows = [
-                      [t('seatCheckinDialog.csvIndex'), t('seatCheckinDialog.csvName'), t('seatCheckinDialog.csvType'), t('seatCheckinDialog.csvTime')],
+                      [
+                        t('seatCheckinDialog.csvIndex'),
+                        t('seatCheckinDialog.csvName'),
+                        ...(showOrg ? ['单位'] : []),
+                        ...(showPhone ? ['手机号'] : []),
+                        t('seatCheckinDialog.csvType'),
+                        t('seatCheckinDialog.csvTime'),
+                      ],
                       ...sorted.map((r, i) => {
                         const name = r.student_name.trim();
                         return [
                           String(i + 1),
                           name,
+                          ...(showOrg ? [(r.org || '').trim()] : []),
+                          ...(showPhone ? [(r.phone || '').trim()] : []),
                           inListSet.has(name) ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel'),
                           new Date(r.checked_in_at).toLocaleString(undefined, { hour12: false }),
                         ];
