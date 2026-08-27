@@ -558,6 +558,35 @@ export default function SeatCheckinPage() {
                 </div>
               )}
             </div>
+            {session.collect_org && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground">单位</label>
+                <Input
+                  value={orgInput}
+                  onChange={e => setOrgInput(e.target.value.slice(0, 100))}
+                  placeholder="请填写您的单位"
+                  className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary"
+                  autoComplete="organization"
+                  enterKeyHint="next"
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+              </div>
+            )}
+            {session.collect_phone && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground">手机号</label>
+                <Input
+                  value={phoneInput}
+                  onChange={e => setPhoneInput(e.target.value.replace(/[^\d+\-\s]/g, '').slice(0, 20))}
+                  placeholder="请填写您的手机号"
+                  className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary tabular-nums"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  enterKeyHint="done"
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+              </div>
+            )}
             {session.otp_enabled && (
               <div className="space-y-2">
                 <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -581,7 +610,12 @@ export default function SeatCheckinPage() {
             )}
             <Button
               onClick={handleSubmit}
-              disabled={!name.trim() || submitting || (session.otp_enabled && otpInput.replace(/\D/g, '').length !== 6)}
+              disabled={
+                !name.trim() || submitting
+                || (session.otp_enabled && otpInput.replace(/\D/g, '').length !== 6)
+                || (session.collect_org && !orgInput.trim())
+                || (session.collect_phone && !phoneInput.trim())
+              }
 
               className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"
             >
