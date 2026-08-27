@@ -937,6 +937,34 @@ export default function SeatCheckinDialog({
               </div>
             )}
 
+            {/* 学生端附加填写项：单位 / 手机号 */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <p className="text-sm font-medium text-foreground">签到需填写的附加信息（可选）</p>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <label className="flex items-center gap-2 text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={collectOrg}
+                    onChange={e => setCollectOrg(e.target.checked)}
+                    className="accent-primary"
+                  />
+                  单位
+                </label>
+                <label className="flex items-center gap-2 text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={collectPhone}
+                    onChange={e => setCollectPhone(e.target.checked)}
+                    className="accent-primary"
+                  />
+                  手机号
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                勾选后，学生手机端签到时会出现对应输入框，导出的签到 CSV 也会在姓名后增加相应列。
+              </p>
+            </div>
+
             {/* 防代签：动态口令 */}
             <div className="rounded-lg border border-border bg-card p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-foreground">
