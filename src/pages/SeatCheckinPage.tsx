@@ -393,6 +393,8 @@ export default function SeatCheckinPage() {
           scene_type: (d.scene_type as string) || 'classroom',
           status: (d.status as string) || 'active',
           otp_enabled: d.otp_enabled === true,
+          collect_org: (d.scene_config as any)?.collectOrg === true,
+          collect_phone: (d.scene_config as any)?.collectPhone === true,
         };
         setSession(nextSession);
 
