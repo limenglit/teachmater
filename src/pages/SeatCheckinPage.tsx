@@ -476,7 +476,10 @@ export default function SeatCheckinPage() {
         return;
       }
 
-      await submitSeatCheckinRecord(sessionId, trimmedName, session.otp_enabled ? otpCode : undefined);
+      await submitSeatCheckinRecord(sessionId, trimmedName, session.otp_enabled ? otpCode : undefined, {
+        org: session.collect_org ? orgInput.trim() : undefined,
+        phone: session.collect_phone ? phoneInput.trim() : undefined,
+      });
 
       const resolved = await resolveSeatDataForName(session, trimmedName, !isRegistered);
       setDisplaySeatData(resolved.seatData);
