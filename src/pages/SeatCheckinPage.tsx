@@ -51,11 +51,18 @@ const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: stri
   return data === true;
 };
 
-const submitSeatCheckinRecord = async (sessionId: string, studentName: string, otp?: string) => {
+const submitSeatCheckinRecord = async (
+  sessionId: string,
+  studentName: string,
+  otp?: string,
+  extra?: { org?: string; phone?: string },
+) => {
   const { data, error } = await (supabase.rpc as any)('submit_seat_checkin_record', {
     p_session_id: sessionId,
     p_student_name: studentName,
     ...(otp ? { p_otp: otp } : {}),
+    ...(extra?.org ? { p_org: extra.org } : {}),
+    ...(extra?.phone ? { p_phone: extra.phone } : {}),
   } as any);
   if (error) {
     if (/INVALID_OTP/i.test(error.message || '')) throw new Error('INVALID_OTP');
