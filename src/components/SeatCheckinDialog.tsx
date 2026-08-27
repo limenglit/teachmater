@@ -1298,13 +1298,25 @@ export default function SeatCheckinDialog({
                     );
                     const inListSet = new Set(currentStudentNames.map(n => n.trim()));
                     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+                    // 姓名后的附加列按发布时的勾选（或已采集到的数据）动态生成
+                    const showOrg = collectOrg || sorted.some(r => (r.org || '').trim() !== '');
+                    const showPhone = collectPhone || sorted.some(r => (r.phone || '').trim() !== '');
                     const rows = [
-                      [t('seatCheckinDialog.csvIndex'), t('seatCheckinDialog.csvName'), t('seatCheckinDialog.csvType'), t('seatCheckinDialog.csvTime')],
+                      [
+                        t('seatCheckinDialog.csvIndex'),
+                        t('seatCheckinDialog.csvName'),
+                        ...(showOrg ? ['单位'] : []),
+                        ...(showPhone ? ['手机号'] : []),
+                        t('seatCheckinDialog.csvType'),
+                        t('seatCheckinDialog.csvTime'),
+                      ],
                       ...sorted.map((r, i) => {
                         const name = r.student_name.trim();
                         return [
                           String(i + 1),
                           name,
+                          ...(showOrg ? [(r.org || '').trim()] : []),
+                          ...(showPhone ? [(r.phone || '').trim()] : []),
                           inListSet.has(name) ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel'),
                           new Date(r.checked_in_at).toLocaleString(undefined, { hour12: false }),
                         ];
