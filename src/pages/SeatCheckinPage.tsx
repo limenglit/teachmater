@@ -272,6 +272,8 @@ export default function SeatCheckinPage() {
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [otpInput, setOtpInput] = useState('');
+  const [orgInput, setOrgInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [checkedIn, setCheckedIn] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
