@@ -312,6 +312,9 @@ export default function SeatCheckinDialog({
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
   // 学生端座位表述方式：第几号 / 第几列 / 两者都显示
   const [seatLabelMode, setSeatLabelMode] = useState<SeatLabelMode>('no');
+  // 学生端附加采集字段：单位、手机号
+  const [collectOrg, setCollectOrg] = useState(false);
+  const [collectPhone, setCollectPhone] = useState(false);
   // 防代签动态口令
   const [otpEnabled, setOtpEnabled] = useState(false);
   const [otpPeriodSeconds, setOtpPeriodSeconds] = useState(30);
