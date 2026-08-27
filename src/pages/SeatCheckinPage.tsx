@@ -441,6 +441,14 @@ export default function SeatCheckinPage() {
       toast({ title: '请输入大屏上的 6 位签到口令', variant: 'destructive' });
       return;
     }
+    if (session.collect_org && !orgInput.trim()) {
+      toast({ title: '请填写您的单位', variant: 'destructive' });
+      return;
+    }
+    if (session.collect_phone && !phoneInput.trim()) {
+      toast({ title: '请填写您的手机号', variant: 'destructive' });
+      return;
+    }
     const isRegistered = session.student_names.some(n => normalizeStudentName(n) === trimmedName);
     setSubmitting(true);
     try {
