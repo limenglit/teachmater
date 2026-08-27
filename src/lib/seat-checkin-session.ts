@@ -21,6 +21,9 @@ export interface SeatCheckinRecord {
   session_id: string;
   student_name: string;
   checked_in_at: string;
+  /** Optional extra fields collected at check-in time. */
+  org?: string | null;
+  phone?: string | null;
 }
 
 export interface SeatCheckinOtp {
