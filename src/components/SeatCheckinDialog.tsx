@@ -578,6 +578,8 @@ export default function SeatCheckinDialog({
       // 降级策略：仅签到不导航（可附带座次表图片）
       nextSceneConfig.checkinOnlyMode = checkinOnlyMode;
       nextSceneConfig.seatLabelMode = seatLabelMode;
+      nextSceneConfig.collectOrg = collectOrg;
+      nextSceneConfig.collectPhone = collectPhone;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
       } else {
