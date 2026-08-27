@@ -266,6 +266,8 @@ export default function SeatCheckinPage() {
     scene_type: string;
     status: string;
     otp_enabled: boolean;
+    collect_org: boolean;
+    collect_phone: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
