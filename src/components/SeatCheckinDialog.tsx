@@ -1471,6 +1471,29 @@ export default function SeatCheckinDialog({
           </div>
         )}
         </div>
+
+        <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => { if (!open) setSessionToDelete(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('seatCheckinDialog.deleteConfirmTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('seatCheckinDialog.deleteConfirmDesc')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (sessionToDelete) {
+                    void handleDeleteSession(sessionToDelete);
+                    setSessionToDelete(null);
+                  }
+                }}
+              >
+                {t('common.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
