@@ -13,6 +13,8 @@ interface Props {
   recenterSignal?: number;
   /** A neighbouring student who already checked in — shown on their seat. */
   neighborName?: string;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
@@ -27,7 +29,7 @@ interface Door {
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
 
-export default function ClassroomCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, neighborName }: Props) {
+export default function ClassroomCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, neighborName, friendName }: Props) {
   const { t } = useLanguage();
   const seats = seatData as (string | null)[][];
   const config = sceneConfig as {
@@ -332,23 +334,37 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
                 const isMine = myPosition.r === r && myPosition.c === c;
                 const isNeighbor = !isMine && !!neighborName && !!name
                   && normalizeStudentName(name) === normalizeStudentName(neighborName);
+                const isFriend = !isMine && !!friendName && !!name
+                  && normalizeStudentName(name) === normalizeStudentName(friendName);
                 const isDisabled = disabledSeatSet.has(`${r}-${c}`) && !isMine;
                 if (isDisabled) return null;
                 return (
                   <g key={`s-${r}-${c}`} data-my-seat={isMine ? 'true' : undefined}>
                     <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                       className={isMine ? 'fill-primary stroke-primary'
+                        : isFriend ? 'fill-accent stroke-primary'
                         : isNeighbor ? 'fill-accent stroke-primary/70'
                         : name ? 'fill-card stroke-border'
                         : 'fill-muted/30 stroke-border/30'}
-                      strokeWidth={isMine ? 2.5 : isNeighbor ? 2 : 1}
+                      strokeWidth={isMine ? 2.5 : isFriend ? 2.5 : isNeighbor ? 2 : 1}
                     />
                     {isMine && (
                       <circle cx={x + seatW / 2} cy={y - 6} r={4} className="fill-primary">
                         <animate attributeName="r" values="3;5;3" dur="1.2s" repeatCount="indefinite" />
                       </circle>
                     )}
-                    {isNeighbor && (
+                    {isFriend && (
+                      <>
+                        <circle cx={x + seatW / 2} cy={y - 6} r={4} className="fill-primary/70">
+                          <animate attributeName="r" values="3;5.5;3" dur="1.2s" repeatCount="indefinite" />
+                        </circle>
+                        <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
+                          className="fill-foreground text-[8px] font-bold">
+                          {name}
+                        </text>
+                      </>
+                    )}
+                    {isNeighbor && !isFriend && (
                       <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                         className="fill-foreground text-[8px] font-semibold">
                         {name}
