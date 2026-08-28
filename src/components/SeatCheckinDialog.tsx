@@ -315,6 +315,7 @@ export default function SeatCheckinDialog({
   // 学生端附加采集字段：单位、手机号
   const [collectOrg, setCollectOrg] = useState(false);
   const [collectPhone, setCollectPhone] = useState(false);
+  const [findFriendEnabled, setFindFriendEnabled] = useState(true);
   // 防代签动态口令
   const [otpEnabled, setOtpEnabled] = useState(false);
   const [otpPeriodSeconds, setOtpPeriodSeconds] = useState(30);
@@ -580,6 +581,7 @@ export default function SeatCheckinDialog({
       nextSceneConfig.seatLabelMode = seatLabelMode;
       nextSceneConfig.collectOrg = collectOrg;
       nextSceneConfig.collectPhone = collectPhone;
+      nextSceneConfig.findFriendEnabled = findFriendEnabled;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
       } else {
@@ -962,6 +964,22 @@ export default function SeatCheckinDialog({
               </div>
               <p className="text-xs text-muted-foreground">
                 勾选后，学生手机端签到时会出现对应输入框，导出的签到 CSV 也会在姓名后增加相应列。
+              </p>
+            </div>
+
+            {/* 学生端「找朋友」功能 */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <input
+                  type="checkbox"
+                  checked={findFriendEnabled}
+                  onChange={e => setFindFriendEnabled(e.target.checked)}
+                  className="accent-primary"
+                />
+                开启「找朋友」功能
+              </label>
+              <p className="text-xs text-muted-foreground">
+                开启后，学生签到成功可在座位图下方搜索好友姓名并高亮其座位；关闭则不显示该面板。
               </p>
             </div>
 
