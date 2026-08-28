@@ -2442,6 +2442,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seatCheckinDialog.delete': '删除',
     'seatCheckinDialog.deletedRecord': '签到记录已删除',
     'seatCheckinDialog.deleteFailed': '删除签到记录失败',
+    'seatCheckinDialog.deleteConfirmTitle': '确认删除签到记录？',
+    'seatCheckinDialog.deleteConfirmDesc': '删除后该签到记录将无法恢复，已签到数据也会一并清除。',
     'seatCheckinDialog.noSeatToast': '请先完成排座后再发起签到',
     'seatCheckinDialog.guestConfirmed': '已确认座位',
     'seatCheckinDialog.guestReassigned': '已重新指派座位',
