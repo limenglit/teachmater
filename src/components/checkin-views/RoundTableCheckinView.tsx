@@ -13,6 +13,8 @@ interface Props {
   studentName: string;
   sceneType: string;
   recenterSignal?: number;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 type DoorSide = 'top' | 'bottom' | 'left' | 'right';
@@ -33,7 +35,10 @@ function classifyDoorSide(door: { x: number; y: number } | null | undefined, roo
   return 'bottom';
 }
 
-export default function RoundTableCheckinView({ seatData, sceneConfig, studentName, sceneType, recenterSignal = 0 }: Props) {
+export default function RoundTableCheckinView({ seatData, sceneConfig, studentName, sceneType, recenterSignal = 0, friendName }: Props) {
+  const isFriendSeat = (n?: string | null) =>
+    !!friendName && !!n && normalizeStudentName(n) === normalizeStudentName(friendName)
+      && normalizeStudentName(n) !== normalizeStudentName(studentName);
   const { t } = useLanguage();
   const tables = seatData as string[][];
   const seatsPerTable = (sceneConfig.seatsPerTable as number) || tables[0]?.length || 6;

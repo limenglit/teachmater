@@ -13,11 +13,16 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   studentName: string;
   recenterSignal?: number;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
 
-export default function ConcertCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+export default function ConcertCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, friendName }: Props) {
+  const isFriendSeat = (n?: string | null) =>
+    !!friendName && !!n && normalizeStudentName(n) === normalizeStudentName(friendName)
+      && normalizeStudentName(n) !== normalizeStudentName(studentName);
   const { t } = useLanguage();
   const rows = seatData as string[][];
   const seatsPerRow = (sceneConfig.seatsPerRow as number) || 12;

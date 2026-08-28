@@ -10,6 +10,8 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   studentName: string;
   recenterSignal?: number;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 interface LabRow {
@@ -31,7 +33,10 @@ const num = (value: unknown, fallback: number) => (Number.isFinite(Number(value)
  * it down to the phone. Any divergence here makes tables drift and names land
  * in the wrong boxes, so all constants come from the exported scene config.
  */
-export default function ComputerLabCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+export default function ComputerLabCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, friendName }: Props) {
+  const isFriendSeat = (n?: string | null) =>
+    !!friendName && !!n && normalizeStudentName(n) === normalizeStudentName(friendName)
+      && normalizeStudentName(n) !== normalizeStudentName(studentName);
   const { t } = useLanguage();
   const labRows = Array.isArray(seatData) ? (seatData as LabRow[]) : [];
 

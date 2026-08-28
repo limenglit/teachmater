@@ -10,11 +10,16 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   studentName: string;
   recenterSignal?: number;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
 
-export default function ArtStudioCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+export default function ArtStudioCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, friendName }: Props) {
+  const isFriendSeat = (n?: string | null) =>
+    !!friendName && !!n && normalizeStudentName(n) === normalizeStudentName(friendName)
+      && normalizeStudentName(n) !== normalizeStudentName(studentName);
   const { t } = useLanguage();
   const rings = Array.isArray(seatData) ? (seatData as string[][]) : [];
   const layoutMode = (sceneConfig.layoutMode as string) || 'radial';
