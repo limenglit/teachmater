@@ -16,7 +16,7 @@ interface StudentNoPreviewProps {
 
 /** Shows how each roster name is parsed into a student number for studentNo mode. */
 export default function StudentNoPreview({ students }: StudentNoPreviewProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const rows = useMemo(() => describeStudentEntryOrder(students), [students]);
   const parsed = rows.filter(r => r.no !== null).length;
   const missing = rows.length - parsed;
