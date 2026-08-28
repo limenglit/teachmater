@@ -12189,6 +12189,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seatCheckinDialog.delete': '삭제',
     'seatCheckinDialog.deletedRecord': '기록 삭제됨',
     'seatCheckinDialog.deleteFailed': '삭제 실패',
+    'seatCheckinDialog.deleteConfirmTitle': '체크인 기록을 삭제하시겠습니까?',
+    'seatCheckinDialog.deleteConfirmDesc': '이 작업은 되돌릴 수 없습니다. 해당 체크인 데이터도 함께 삭제됩니다.',
     'seatCheckinDialog.noSeatToast': '먼저 좌석 배정을 완료하세요',
     'seatCheckinDialog.guestConfirmed': '좌석 확인됨',
     'seatCheckinDialog.guestReassigned': '좌석 재배정됨',
