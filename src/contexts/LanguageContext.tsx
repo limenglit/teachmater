@@ -9754,6 +9754,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seatCheckinDialog.delete': '削除',
     'seatCheckinDialog.deletedRecord': '記録を削除しました',
     'seatCheckinDialog.deleteFailed': '削除失敗',
+    'seatCheckinDialog.deleteConfirmTitle': 'チェックイン記録を削除しますか？',
+    'seatCheckinDialog.deleteConfirmDesc': 'この操作は元に戻せません。チェックインデータも削除されます。',
     'seatCheckinDialog.noSeatToast': '先に席決めを完了してください',
     'seatCheckinDialog.guestConfirmed': '席を確認しました',
     'seatCheckinDialog.guestReassigned': '席を再割当しました',
