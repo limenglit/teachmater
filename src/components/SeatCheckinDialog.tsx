@@ -318,6 +318,7 @@ export default function SeatCheckinDialog({
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<SeatCheckinSessionSummary | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
   // 学生端座位表述方式：第几号 / 第几列 / 两者都显示
