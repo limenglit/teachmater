@@ -4882,6 +4882,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seatCheckinDialog.delete': 'Delete',
     'seatCheckinDialog.deletedRecord': 'Record deleted',
     'seatCheckinDialog.deleteFailed': 'Failed to delete',
+    'seatCheckinDialog.deleteConfirmTitle': 'Delete this check-in record?',
+    'seatCheckinDialog.deleteConfirmDesc': 'This action cannot be undone. All check-in data for this session will be removed.',
     'seatCheckinDialog.noSeatToast': 'Complete seating first',
     'seatCheckinDialog.guestConfirmed': 'Seat confirmed',
     'seatCheckinDialog.guestReassigned': 'Seat reassigned',
