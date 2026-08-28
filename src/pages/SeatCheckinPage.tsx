@@ -16,6 +16,7 @@ import ConcertCheckinView from '@/components/checkin-views/ConcertCheckinView';
 import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabCheckinView';
 import ArtStudioCheckinView from '@/components/checkin-views/ArtStudioCheckinView';
 import SeatChartImageView from '@/components/checkin-views/SeatChartImageView';
+import FindFriendPanel from '@/components/checkin-views/FindFriendPanel';
 
 const SEAT_CHECKIN_NAME_STORAGE_KEY = 'teachmate-seat-checkin-names';
 
@@ -240,6 +241,23 @@ const buildSeatHint = (
   return null;
 };
 
+/** Collect every seated name in any scene's seat data shape. */
+const collectSeatNames = (node: unknown, out: string[] = []): string[] => {
+  if (typeof node === 'string') {
+    const n = normalizeStudentName(node);
+    if (n) out.push(n);
+    return out;
+  }
+  if (Array.isArray(node)) {
+    node.forEach(item => collectSeatNames(item, out));
+    return out;
+  }
+  if (node && typeof node === 'object') {
+    Object.values(node as Record<string, unknown>).forEach(value => collectSeatNames(value, out));
+  }
+  return out;
+};
+
 const TEACHMATE_URL = 'https://teachermate.org.cn';
 
 function TeachMateEntryBar() {
@@ -283,6 +301,7 @@ export default function SeatCheckinPage() {
   const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
   const [recenterSignal, setRecenterSignal] = useState(0);
   const [neighbor, setNeighbor] = useState<SeatNeighbor | null>(null);
+  const [friendName, setFriendName] = useState<string | null>(null);
 
   const handleRecenter = useCallback(() => {
     setRecenterSignal(s => s + 1);
@@ -735,24 +754,31 @@ export default function SeatCheckinPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
         {sceneType === 'classroom' && (
-          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} neighborName={neighbor?.name} />
+          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} neighborName={neighbor?.name} friendName={friendName ?? undefined} />
 
         )}
         {(sceneType === 'smartClassroom' || sceneType === 'banquet') && (
-          <RoundTableCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} recenterSignal={recenterSignal} />
+          <RoundTableCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'conference' && (
-          <ConferenceCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
+          <ConferenceCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'concertHall' && (
-          <ConcertCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
+          <ConcertCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'artStudio' && (
-          <ArtStudioCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
+          <ArtStudioCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
         {sceneType === 'computerLab' && (
-          <ComputerLabCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
+          <ComputerLabCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
+        <FindFriendPanel
+          names={collectSeatNames(effectiveSeatData).concat(session.student_names)}
+          selfName={studentName}
+          resolveLabel={(n) => buildSeatHint(sceneType, effectiveSeatData, n, session.scene_config)}
+          selected={friendName}
+          onSelect={setFriendName}
+        />
         {!['classroom', 'smartClassroom', 'banquet', 'conference', 'concertHall', 'artStudio', 'computerLab'].includes(sceneType) && (
           <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
             暂不支持该座位场景的可视化展示，请按提示「{seatLabel}」入座。
