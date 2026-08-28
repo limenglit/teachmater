@@ -14628,6 +14628,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seatCheckinDialog.delete': 'Eliminar',
     'seatCheckinDialog.deletedRecord': 'Registro eliminado',
     'seatCheckinDialog.deleteFailed': 'Error al eliminar',
+    'seatCheckinDialog.deleteConfirmTitle': '¿Eliminar este registro de asistencia?',
+    'seatCheckinDialog.deleteConfirmDesc': 'Esta acción no se puede deshacer. Los datos de asistencia también se eliminarán.',
     'seatCheckinDialog.noSeatToast': 'Completa la asignación primero',
     'seatCheckinDialog.guestConfirmed': 'Asiento confirmado',
     'seatCheckinDialog.guestReassigned': 'Asiento reasignado',
