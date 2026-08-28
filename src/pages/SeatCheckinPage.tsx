@@ -772,6 +772,7 @@ export default function SeatCheckinPage() {
         {sceneType === 'computerLab' && (
           <ComputerLabCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
+        {(session.scene_config as any)?.findFriendEnabled !== false && (
         <FindFriendPanel
           names={collectSeatNames(effectiveSeatData).concat(session.student_names)}
           selfName={studentName}
@@ -779,6 +780,7 @@ export default function SeatCheckinPage() {
           selected={friendName}
           onSelect={setFriendName}
         />
+        )}
         {!['classroom', 'smartClassroom', 'banquet', 'conference', 'concertHall', 'artStudio', 'computerLab'].includes(sceneType) && (
           <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
             暂不支持该座位场景的可视化展示，请按提示「{seatLabel}」入座。
