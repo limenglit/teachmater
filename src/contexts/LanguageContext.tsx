@@ -7318,6 +7318,8 @@ const translations: Record<LangCode, Record<string, string>> = {
     'seatCheckinDialog.delete': 'Удалить',
     'seatCheckinDialog.deletedRecord': 'Запись удалена',
     'seatCheckinDialog.deleteFailed': 'Не удалось удалить',
+    'seatCheckinDialog.deleteConfirmTitle': 'Удалить запись регистрации?',
+    'seatCheckinDialog.deleteConfirmDesc': 'Это действие нельзя отменить. Все данные регистрации будут удалены.',
     'seatCheckinDialog.noSeatToast': 'Сначала завершите рассадку',
     'seatCheckinDialog.guestConfirmed': 'Место подтверждено',
     'seatCheckinDialog.guestReassigned': 'Место переназначено',
