@@ -13,11 +13,16 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   studentName: string;
   recenterSignal?: number;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
 
-export default function ConcertCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+export default function ConcertCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, friendName }: Props) {
+  const isFriendSeat = (n?: string | null) =>
+    !!friendName && !!n && normalizeStudentName(n) === normalizeStudentName(friendName)
+      && normalizeStudentName(n) !== normalizeStudentName(studentName);
   const { t } = useLanguage();
   const rows = seatData as string[][];
   const seatsPerRow = (sceneConfig.seatsPerRow as number) || 12;
@@ -177,13 +182,15 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
               const sx = cx + r * Math.cos(angle);
               const sy = stageY + 15 + r * Math.sin(angle);
               const isMine = ri === myPos.row && ci === myPos.col;
+              const isFriend = isFriendSeat(name);
               return (
                 <g key={`${ri}-${ci}`} data-my-seat={isMine ? 'true' : undefined}>
                   <circle cx={sx} cy={sy} r={seatR}
                     className={isMine
                       ? 'fill-primary stroke-primary shadow-lg'
+                      : isFriend ? 'fill-accent stroke-primary/70'
                       : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                    strokeWidth={isMine ? 2.5 : 1.5}
+                    strokeWidth={isMine ? 2.5 : isFriend ? 2.5 : 1.5}
                     filter={isMine ? 'drop-shadow(0 2px 8px #38bdf8aa)' : undefined}
                   />
                   {isMine && (
@@ -196,7 +203,7 @@ export default function ConcertCheckinView({ seatData, sceneConfig, studentName,
                       fontSize={getTextFontSize(name)}
                       textLength={name.length > 4 ? seatR * 2.2 : undefined}
                       lengthAdjust={name.length > 4 ? 'spacingAndGlyphs' : undefined}
-                      className={`pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+                      className={`pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : isFriend ? 'fill-foreground font-bold' : 'fill-foreground'}`}>
                       {name.length > 8 ? name.slice(0, 7) + '…' : name}
                     </text>
                   )}

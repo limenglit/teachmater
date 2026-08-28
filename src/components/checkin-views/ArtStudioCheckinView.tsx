@@ -10,11 +10,16 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   studentName: string;
   recenterSignal?: number;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
 
-export default function ArtStudioCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+export default function ArtStudioCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, friendName }: Props) {
+  const isFriendSeat = (n?: string | null) =>
+    !!friendName && !!n && normalizeStudentName(n) === normalizeStudentName(friendName)
+      && normalizeStudentName(n) !== normalizeStudentName(studentName);
   const { t } = useLanguage();
   const rings = Array.isArray(seatData) ? (seatData as string[][]) : [];
   const layoutMode = (sceneConfig.layoutMode as string) || 'radial';
@@ -86,6 +91,7 @@ export default function ArtStudioCheckinView({ seatData, sceneConfig, studentNam
                     const x = centerX + radius * Math.cos(angle);
                     const y = centerY + radius * Math.sin(angle);
                     const isMine = ringIndex === myPos.ring && seatIndex === myPos.seat;
+                    const isFriend = isFriendSeat(name);
                     return (
                       <g key={`seat-${ringIndex}-${seatIndex}`} data-my-seat={isMine ? 'true' : undefined}>
                         <ellipse
@@ -93,15 +99,15 @@ export default function ArtStudioCheckinView({ seatData, sceneConfig, studentNam
                           cy={y}
                           rx={seatRx}
                           ry={seatRy}
-                          className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/35 stroke-border/30'}
-                          strokeWidth={isMine ? 2.5 : 1.2}
+                          className={isMine ? 'fill-primary stroke-primary' : isFriend ? 'fill-accent stroke-primary/70' : name ? 'fill-card stroke-border' : 'fill-muted/35 stroke-border/30'}
+                          strokeWidth={isMine ? 2.5 : isFriend ? 2 : 1.2}
                         />
                         <text
                           x={x}
                           y={y + 1}
                           textAnchor="middle"
                           dominantBaseline="middle"
-                          className={isMine ? 'fill-primary-foreground text-[9px] font-semibold' : name ? 'fill-foreground text-[9px]' : 'fill-muted-foreground text-[8px]'}
+                          className={isMine ? 'fill-primary-foreground text-[9px] font-semibold' : isFriend ? 'fill-foreground text-[9px] font-bold' : name ? 'fill-foreground text-[9px]' : 'fill-muted-foreground text-[8px]'}
                         >
                           {name || `${seatIndex + 1}`}
                         </text>

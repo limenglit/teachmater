@@ -10,6 +10,8 @@ interface Props {
   sceneConfig: Record<string, unknown>;
   studentName: string;
   recenterSignal?: number;
+  /** Friend to highlight on the map (找朋友). */
+  friendName?: string;
 }
 
 interface LabRow {
@@ -31,7 +33,10 @@ const num = (value: unknown, fallback: number) => (Number.isFinite(Number(value)
  * it down to the phone. Any divergence here makes tables drift and names land
  * in the wrong boxes, so all constants come from the exported scene config.
  */
-export default function ComputerLabCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0 }: Props) {
+export default function ComputerLabCheckinView({ seatData, sceneConfig, studentName, recenterSignal = 0, friendName }: Props) {
+  const isFriendSeat = (n?: string | null) =>
+    !!friendName && !!n && normalizeStudentName(n) === normalizeStudentName(friendName)
+      && normalizeStudentName(n) !== normalizeStudentName(studentName);
   const { t } = useLanguage();
   const labRows = Array.isArray(seatData) ? (seatData as LabRow[]) : [];
 
@@ -216,15 +221,17 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                               const name = group?.students?.[globalCol] || '';
                               const isClosed = closedSeats.has(`${ri}-${side}-${globalCol}`);
                               const isMine = myPos.rowIndex === ri && myPos.side === side && myPos.col === globalCol;
+                              const isFriend = isFriendSeat(name);
                               return (
                                 <g key={`${side}-${globalCol}`} data-my-seat={isMine ? 'true' : undefined}>
                                   <rect x={x} y={y} width={seatW} height={seatH} rx={4}
                                     className={
                                       isMine ? 'fill-primary stroke-primary'
+                                        : isFriend ? 'fill-accent stroke-primary/70'
                                         : isClosed ? 'fill-muted stroke-destructive/60'
                                           : name ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/40'
                                     }
-                                    strokeWidth={isMine ? 3 : 1.5}
+                                    strokeWidth={isMine ? 3 : isFriend ? 2.5 : 1.5}
                                   />
                                   {isMine && (
                                     <circle cx={x + seatW / 2} cy={side === 'top' ? y - 8 : y + seatH + 8} r={5} className="fill-primary">
@@ -239,7 +246,7 @@ export default function ComputerLabCheckinView({ seatData, sceneConfig, studentN
                                   {name && (
                                     <text x={x + seatW / 2} y={y + seatH / 2 + 1} textAnchor="middle" dominantBaseline="middle"
                                       fontSize={nameFontSize(name)}
-                                      className={isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}>
+                                      className={isMine ? 'fill-primary-foreground font-bold' : isFriend ? 'fill-foreground font-bold' : 'fill-foreground'}>
                                       {name.length > 4 ? `${name.slice(0, 4)}…` : name}
                                     </text>
                                   )}
