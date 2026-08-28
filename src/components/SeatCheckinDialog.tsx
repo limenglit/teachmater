@@ -1464,7 +1464,7 @@ export default function SeatCheckinDialog({
                   {t('seatCheckinDialog.backToRecords')}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => void handleDeleteSession(currentSession)} disabled={deletingSessionId === currentSession.id}>
+              <Button variant="outline" onClick={() => setSessionToDelete(currentSession)} disabled={deletingSessionId === currentSession.id}>
                 <Trash2 className="w-4 h-4 mr-1" /> {t('seatCheckinDialog.delete')}
               </Button>
             </div>
