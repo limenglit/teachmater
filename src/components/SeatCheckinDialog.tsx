@@ -1139,7 +1139,7 @@ export default function SeatCheckinDialog({
                               {new Date(session.created_at).toLocaleString()} · {session.duration_minutes} {t('seatCheckinDialog.minutes')} · {session.status === 'active' ? t('seatCheckinDialog.inProgress') : t('seatCheckinDialog.ended')}
                             </p>
                           </button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => void handleDeleteSession(session)} disabled={isDeleting}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => setSessionToDelete(session)} disabled={isDeleting}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
