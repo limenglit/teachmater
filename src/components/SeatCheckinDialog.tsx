@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
@@ -308,6 +318,7 @@ export default function SeatCheckinDialog({
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<SeatCheckinSessionSummary | null>(null);
   const [requireSeatAssignment, setRequireSeatAssignment] = useState(() => getRequireSeatAssignmentBeforeCheckin());
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
   // 学生端座位表述方式：第几号 / 第几列 / 两者都显示
@@ -1128,7 +1139,7 @@ export default function SeatCheckinDialog({
                               {new Date(session.created_at).toLocaleString()} · {session.duration_minutes} {t('seatCheckinDialog.minutes')} · {session.status === 'active' ? t('seatCheckinDialog.inProgress') : t('seatCheckinDialog.ended')}
                             </p>
                           </button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => void handleDeleteSession(session)} disabled={isDeleting}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 px-0 text-muted-foreground hover:text-destructive shrink-0" onClick={() => setSessionToDelete(session)} disabled={isDeleting}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -1453,13 +1464,36 @@ export default function SeatCheckinDialog({
                   {t('seatCheckinDialog.backToRecords')}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => void handleDeleteSession(currentSession)} disabled={deletingSessionId === currentSession.id}>
+              <Button variant="outline" onClick={() => setSessionToDelete(currentSession)} disabled={deletingSessionId === currentSession.id}>
                 <Trash2 className="w-4 h-4 mr-1" /> {t('seatCheckinDialog.delete')}
               </Button>
             </div>
           </div>
         )}
         </div>
+
+        <AlertDialog open={!!sessionToDelete} onOpenChange={(open) => { if (!open) setSessionToDelete(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('seatCheckinDialog.deleteConfirmTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('seatCheckinDialog.deleteConfirmDesc')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => {
+                  if (sessionToDelete) {
+                    void handleDeleteSession(sessionToDelete);
+                    setSessionToDelete(null);
+                  }
+                }}
+              >
+                {t('common.delete')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
