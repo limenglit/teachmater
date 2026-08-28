@@ -209,13 +209,15 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
   const pathD = navPath.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
 
   const renderSeat = (x: number, y: number, w: number, h: number, name: string, isMine: boolean, key: string) => {
+    const isFriend = isFriendSeat(name);
     return (
       <g key={key} data-my-seat={isMine ? 'true' : undefined}>
         <rect x={x} y={y} width={w} height={h} rx={4}
           className={isMine ? 'fill-primary stroke-primary'
+            : isFriend ? 'fill-accent stroke-primary/70'
             : name ? 'fill-card stroke-border'
             : 'fill-muted/30 stroke-border/30'}
-          strokeWidth={isMine ? 2.5 : 1}
+          strokeWidth={isMine ? 2.5 : isFriend ? 2 : 1}
         />
         {isMine && (
           <circle cx={x + w / 2} cy={y - 6} r={4} className="fill-primary">
@@ -224,7 +226,7 @@ export default function ConferenceCheckinView({ seatData, sceneConfig, studentNa
         )}
         {name && (
           <text x={x + w / 2} y={y + h / 2 + 1} textAnchor="middle" dominantBaseline="middle"
-            className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+            className={`${name.length >= 4 ? 'text-[6px]' : 'text-[8px]'} ${isMine ? 'fill-primary-foreground font-bold' : isFriend ? 'fill-foreground font-bold' : 'fill-foreground'}`}>
             {name}
           </text>
         )}

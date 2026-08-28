@@ -91,6 +91,7 @@ export default function ArtStudioCheckinView({ seatData, sceneConfig, studentNam
                     const x = centerX + radius * Math.cos(angle);
                     const y = centerY + radius * Math.sin(angle);
                     const isMine = ringIndex === myPos.ring && seatIndex === myPos.seat;
+                    const isFriend = isFriendSeat(name);
                     return (
                       <g key={`seat-${ringIndex}-${seatIndex}`} data-my-seat={isMine ? 'true' : undefined}>
                         <ellipse
@@ -98,15 +99,15 @@ export default function ArtStudioCheckinView({ seatData, sceneConfig, studentNam
                           cy={y}
                           rx={seatRx}
                           ry={seatRy}
-                          className={isMine ? 'fill-primary stroke-primary' : name ? 'fill-card stroke-border' : 'fill-muted/35 stroke-border/30'}
-                          strokeWidth={isMine ? 2.5 : 1.2}
+                          className={isMine ? 'fill-primary stroke-primary' : isFriend ? 'fill-accent stroke-primary/70' : name ? 'fill-card stroke-border' : 'fill-muted/35 stroke-border/30'}
+                          strokeWidth={isMine ? 2.5 : isFriend ? 2 : 1.2}
                         />
                         <text
                           x={x}
                           y={y + 1}
                           textAnchor="middle"
                           dominantBaseline="middle"
-                          className={isMine ? 'fill-primary-foreground text-[9px] font-semibold' : name ? 'fill-foreground text-[9px]' : 'fill-muted-foreground text-[8px]'}
+                          className={isMine ? 'fill-primary-foreground text-[9px] font-semibold' : isFriend ? 'fill-foreground text-[9px] font-bold' : name ? 'fill-foreground text-[9px]' : 'fill-muted-foreground text-[8px]'}
                         >
                           {name || `${seatIndex + 1}`}
                         </text>

@@ -302,14 +302,16 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
                     const sy = center.y + offset.y;
                     const seatName = people[si] || '';
                     const isMine = ti === myPos.table && si === myPos.seat;
+                    const isFriend = isFriendSeat(seatName);
                     return (
                       <g key={si}>
                         <circle cx={sx} cy={sy} r={seatRadius}
                           className={isMine
                             ? 'fill-primary stroke-primary'
+                            : isFriend ? 'fill-accent stroke-primary/70'
                             : isMyTable && seatName ? 'fill-card stroke-primary/40'
                             : seatName ? 'fill-card stroke-border' : 'fill-muted/30 stroke-border/30'}
-                          strokeWidth={isMine ? 2.5 : 1.2} />
+                          strokeWidth={isMine ? 2.5 : isFriend ? 2 : 1.2} />
                         {isMine && (
                           <circle cx={sx} cy={sy - seatRadius - 4} r={3} className="fill-primary">
                             <animate attributeName="r" values="2;4;2" dur="1.2s" repeatCount="indefinite" />
@@ -319,7 +321,7 @@ export default function RoundTableCheckinView({ seatData, sceneConfig, studentNa
                           <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="middle"
                             textLength={seatName.length >= 5 ? 20 : undefined}
                             lengthAdjust={seatName.length >= 5 ? 'spacingAndGlyphs' : undefined}
-                            className={`${seatName.length >= 5 ? 'text-[6px]' : seatName.length >= 4 ? 'text-[7px]' : 'text-[8.5px]'} pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : 'fill-foreground'}`}>
+                            className={`${seatName.length >= 5 ? 'text-[6px]' : seatName.length >= 4 ? 'text-[7px]' : 'text-[8.5px]'} pointer-events-none ${isMine ? 'fill-primary-foreground font-bold' : isFriend ? 'fill-foreground font-bold' : 'fill-foreground'}`}>
                             {seatName}
                           </text>
                         )}
