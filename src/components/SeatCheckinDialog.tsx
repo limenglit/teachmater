@@ -36,6 +36,15 @@ import {
   isSeatAssignmentComplete,
   analyzeSeatCheckinCoverage,
 } from '@/lib/seat-checkin-policy';
+import {
+  CHECKIN_FIELD_PRESETS,
+  MAX_CHECKIN_CUSTOM_FIELDS,
+  createFieldId,
+  normalizeCustomFields,
+  readFieldValue,
+  resolveExportFields,
+  type CheckinCustomField,
+} from '@/lib/seat-checkin-fields';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MergeGuestEntry {
@@ -323,9 +332,8 @@ export default function SeatCheckinDialog({
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
   // 学生端座位表述方式：第几号 / 第几列 / 两者都显示
   const [seatLabelMode, setSeatLabelMode] = useState<SeatLabelMode>('no');
-  // 学生端附加采集字段：单位、手机号
-  const [collectOrg, setCollectOrg] = useState(false);
-  const [collectPhone, setCollectPhone] = useState(false);
+  // 学生端附加采集字段：完全自定义（名称 + 数量 + 是否必填）
+  const [customFields, setCustomFields] = useState<CheckinCustomField[]>(() => normalizeCustomFields(sceneConfig));
   const [findFriendEnabled, setFindFriendEnabled] = useState(true);
   // 防代签动态口令
   const [otpEnabled, setOtpEnabled] = useState(false);
@@ -590,8 +598,14 @@ export default function SeatCheckinDialog({
       // 降级策略：仅签到不导航（可附带座次表图片）
       nextSceneConfig.checkinOnlyMode = checkinOnlyMode;
       nextSceneConfig.seatLabelMode = seatLabelMode;
-      nextSceneConfig.collectOrg = collectOrg;
-      nextSceneConfig.collectPhone = collectPhone;
+      const cleanFields = customFields
+        .filter(f => f.label.trim() !== '')
+        .slice(0, MAX_CHECKIN_CUSTOM_FIELDS)
+        .map(f => ({ ...f, label: f.label.trim() }));
+      nextSceneConfig.customFields = cleanFields;
+      // 兼容旧版学生端读取
+      nextSceneConfig.collectOrg = cleanFields.some(f => f.id === 'org');
+      nextSceneConfig.collectPhone = cleanFields.some(f => f.id === 'phone');
       nextSceneConfig.findFriendEnabled = findFriendEnabled;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
@@ -950,31 +964,93 @@ export default function SeatCheckinDialog({
               </div>
             )}
 
-            {/* 学生端附加填写项：单位 / 手机号 */}
-            <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-              <p className="text-sm font-medium text-foreground">签到需填写的附加信息（可选）</p>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <label className="flex items-center gap-2 text-foreground">
-                  <input
-                    type="checkbox"
-                    checked={collectOrg}
-                    onChange={e => setCollectOrg(e.target.checked)}
-                    className="accent-primary"
-                  />
-                  单位
-                </label>
-                <label className="flex items-center gap-2 text-foreground">
-                  <input
-                    type="checkbox"
-                    checked={collectPhone}
-                    onChange={e => setCollectPhone(e.target.checked)}
-                    className="accent-primary"
-                  />
-                  手机号
-                </label>
+            {/* 学生端附加填写项：自定义名称与数量 */}
+            <div className="rounded-lg border border-border bg-card p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-medium text-foreground">签到需填写的附加信息（可自定义）</p>
+                <span className="text-xs text-muted-foreground">{customFields.length}/{MAX_CHECKIN_CUSTOM_FIELDS}</span>
               </div>
+
+              {customFields.length > 0 && (
+                <div className="space-y-2">
+                  {customFields.map((field, index) => (
+                    <div key={field.id} className="flex items-center gap-2 flex-wrap">
+                      <input
+                        value={field.label}
+                        onChange={e => {
+                          const label = e.target.value.slice(0, 20);
+                          setCustomFields(prev => prev.map((f, i) => (i === index ? { ...f, label } : f)));
+                        }}
+                        placeholder="填写项名称，如：单位"
+                        className="flex-1 min-w-[8rem] h-8 rounded-md border border-border bg-background px-2 text-sm"
+                      />
+                      <select
+                        value={field.type}
+                        onChange={e => {
+                          const type = e.target.value as CheckinCustomField['type'];
+                          setCustomFields(prev => prev.map((f, i) => (i === index ? { ...f, type } : f)));
+                        }}
+                        className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                      >
+                        <option value="text">文本</option>
+                        <option value="tel">电话</option>
+                        <option value="number">数字</option>
+                      </select>
+                      <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <input
+                          type="checkbox"
+                          checked={field.required}
+                          onChange={e => {
+                            const required = e.target.checked;
+                            setCustomFields(prev => prev.map((f, i) => (i === index ? { ...f, required } : f)));
+                          }}
+                          className="accent-primary"
+                        />
+                        必填
+                      </label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => setCustomFields(prev => prev.filter((_, i) => i !== index))}
+                      >
+                        删除
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={customFields.length >= MAX_CHECKIN_CUSTOM_FIELDS}
+                  onClick={() =>
+                    setCustomFields(prev => [
+                      ...prev,
+                      { id: createFieldId('field', prev.map(f => f.id)), label: '', required: true, type: 'text' },
+                    ])
+                  }
+                >
+                  + 添加填写项
+                </Button>
+                {CHECKIN_FIELD_PRESETS.filter(p => !customFields.some(f => f.id === p.id)).map(preset => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    disabled={customFields.length >= MAX_CHECKIN_CUSTOM_FIELDS}
+                    onClick={() => setCustomFields(prev => [...prev, { ...preset }])}
+                    className="px-2 py-1 rounded-full border border-border bg-muted text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    + {preset.label}
+                  </button>
+                ))}
+              </div>
+
               <p className="text-xs text-muted-foreground">
-                勾选后，学生手机端签到时会出现对应输入框，导出的签到 CSV 也会在姓名后增加相应列。
+                添加后，学生手机端签到时会依次出现对应输入框，导出的签到 CSV 也会在姓名后按顺序增加相应列。
               </p>
             </div>
 
@@ -1327,15 +1403,13 @@ export default function SeatCheckinDialog({
                     );
                     const inListSet = new Set(currentStudentNames.map(n => n.trim()));
                     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-                    // 姓名后的附加列按发布时的勾选（或已采集到的数据）动态生成
-                    const showOrg = collectOrg || sorted.some(r => (r.org || '').trim() !== '');
-                    const showPhone = collectPhone || sorted.some(r => (r.phone || '').trim() !== '');
+                    // 姓名后的附加列按发布时配置的自定义填写项（或已采集到的数据）动态生成
+                    const exportFields = resolveExportFields(customFields.filter(f => f.label.trim() !== ''), sorted);
                     const rows = [
                       [
                         t('seatCheckinDialog.csvIndex'),
                         t('seatCheckinDialog.csvName'),
-                        ...(showOrg ? ['单位'] : []),
-                        ...(showPhone ? ['手机号'] : []),
+                        ...exportFields.map(f => f.label),
                         t('seatCheckinDialog.csvType'),
                         t('seatCheckinDialog.csvTime'),
                       ],
@@ -1344,8 +1418,7 @@ export default function SeatCheckinDialog({
                         return [
                           String(i + 1),
                           name,
-                          ...(showOrg ? [(r.org || '').trim()] : []),
-                          ...(showPhone ? [(r.phone || '').trim()] : []),
+                          ...exportFields.map(f => readFieldValue(r, f.id)),
                           inListSet.has(name) ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel'),
                           new Date(r.checked_in_at).toLocaleString(undefined, { hour12: false }),
                         ];

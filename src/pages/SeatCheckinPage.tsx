@@ -5,6 +5,12 @@ import { formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-num
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 
 import { supabase } from '@/integrations/supabase/client';
+import {
+  findMissingRequiredField,
+  normalizeCustomFields,
+  splitFieldValues,
+  type CheckinCustomField,
+} from '@/lib/seat-checkin-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
@@ -56,7 +62,7 @@ const submitSeatCheckinRecord = async (
   sessionId: string,
   studentName: string,
   otp?: string,
-  extra?: { org?: string; phone?: string },
+  extra?: { org?: string; phone?: string; extra?: Record<string, string> },
 ) => {
   const { data, error } = await (supabase.rpc as any)('submit_seat_checkin_record', {
     p_session_id: sessionId,
@@ -64,6 +70,7 @@ const submitSeatCheckinRecord = async (
     ...(otp ? { p_otp: otp } : {}),
     ...(extra?.org ? { p_org: extra.org } : {}),
     ...(extra?.phone ? { p_phone: extra.phone } : {}),
+    ...(extra?.extra && Object.keys(extra.extra).length > 0 ? { p_extra: extra.extra } : {}),
   } as any);
   if (error) {
     if (/INVALID_OTP/i.test(error.message || '')) throw new Error('INVALID_OTP');
@@ -284,14 +291,12 @@ export default function SeatCheckinPage() {
     scene_type: string;
     status: string;
     otp_enabled: boolean;
-    collect_org: boolean;
-    collect_phone: boolean;
+    custom_fields: CheckinCustomField[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [otpInput, setOtpInput] = useState('');
-  const [orgInput, setOrgInput] = useState('');
-  const [phoneInput, setPhoneInput] = useState('');
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [checkedIn, setCheckedIn] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
@@ -414,8 +419,7 @@ export default function SeatCheckinPage() {
           scene_type: (d.scene_type as string) || 'classroom',
           status: (d.status as string) || 'active',
           otp_enabled: d.otp_enabled === true,
-          collect_org: (d.scene_config as any)?.collectOrg === true,
-          collect_phone: (d.scene_config as any)?.collectPhone === true,
+          custom_fields: normalizeCustomFields(d.scene_config),
         };
         setSession(nextSession);
 
@@ -460,12 +464,9 @@ export default function SeatCheckinPage() {
       toast({ title: '请输入大屏上的 6 位签到口令', variant: 'destructive' });
       return;
     }
-    if (session.collect_org && !orgInput.trim()) {
-      toast({ title: '请填写您的单位', variant: 'destructive' });
-      return;
-    }
-    if (session.collect_phone && !phoneInput.trim()) {
-      toast({ title: '请填写您的手机号', variant: 'destructive' });
+    const missingField = findMissingRequiredField(session.custom_fields, fieldValues);
+    if (missingField) {
+      toast({ title: `请填写${missingField.label}`, variant: 'destructive' });
       return;
     }
     const isRegistered = session.student_names.some(n => normalizeStudentName(n) === trimmedName);
@@ -495,9 +496,11 @@ export default function SeatCheckinPage() {
         return;
       }
 
+      const submitted = splitFieldValues(session.custom_fields, fieldValues);
       await submitSeatCheckinRecord(sessionId, trimmedName, session.otp_enabled ? otpCode : undefined, {
-        org: session.collect_org ? orgInput.trim() : undefined,
-        phone: session.collect_phone ? phoneInput.trim() : undefined,
+        org: submitted.org || undefined,
+        phone: submitted.phone || undefined,
+        extra: submitted.extra,
       });
 
       const resolved = await resolveSeatDataForName(session, trimmedName, !isRegistered);
@@ -588,35 +591,31 @@ export default function SeatCheckinPage() {
                 </div>
               )}
             </div>
-            {session.collect_org && (
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-muted-foreground">单位</label>
+            {session.custom_fields.map(field => (
+              <div key={field.id} className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  {field.label}
+                  {field.required && <span className="text-destructive"> *</span>}
+                </label>
                 <Input
-                  value={orgInput}
-                  onChange={e => setOrgInput(e.target.value.slice(0, 100))}
-                  placeholder="请填写您的单位"
-                  className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary"
-                  autoComplete="organization"
+                  value={fieldValues[field.id] || ''}
+                  onChange={e => {
+                    const raw = e.target.value;
+                    const v = field.type === 'tel'
+                      ? raw.replace(/[^\d+\-\s]/g, '').slice(0, 20)
+                      : field.type === 'number'
+                        ? raw.replace(/[^\d.]/g, '').slice(0, 20)
+                        : raw.slice(0, 100);
+                    setFieldValues(prev => ({ ...prev, [field.id]: v }));
+                  }}
+                  placeholder={`请填写${field.label}`}
+                  className={`text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary${field.type === 'text' ? '' : ' tabular-nums'}`}
+                  inputMode={field.type === 'tel' ? 'tel' : field.type === 'number' ? 'numeric' : 'text'}
                   enterKeyHint="next"
                   onKeyDown={e => e.key === 'Enter' && handleSubmit()}
                 />
               </div>
-            )}
-            {session.collect_phone && (
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-muted-foreground">手机号</label>
-                <Input
-                  value={phoneInput}
-                  onChange={e => setPhoneInput(e.target.value.replace(/[^\d+\-\s]/g, '').slice(0, 20))}
-                  placeholder="请填写您的手机号"
-                  className="text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary tabular-nums"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  enterKeyHint="done"
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                />
-              </div>
-            )}
+            ))}
             {session.otp_enabled && (
               <div className="space-y-2">
                 <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
@@ -643,8 +642,7 @@ export default function SeatCheckinPage() {
               disabled={
                 !name.trim() || submitting
                 || (session.otp_enabled && otpInput.replace(/\D/g, '').length !== 6)
-                || (session.collect_org && !orgInput.trim())
-                || (session.collect_phone && !phoneInput.trim())
+                || !!findMissingRequiredField(session.custom_fields, fieldValues)
               }
 
               className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"

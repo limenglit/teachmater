@@ -24,6 +24,8 @@ export interface SeatCheckinRecord {
   /** Optional extra fields collected at check-in time. */
   org?: string | null;
   phone?: string | null;
+  /** 教师自定义填写项的取值（字段 id -> 值）。 */
+  extra_fields?: Record<string, unknown> | null;
 }
 
 export interface SeatCheckinOtp {

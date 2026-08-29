@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -1059,6 +1059,7 @@ export type Database = {
       seat_checkin_records: {
         Row: {
           checked_in_at: string
+          extra_fields: Json
           id: string
           org: string
           phone: string
@@ -1067,6 +1068,7 @@ export type Database = {
         }
         Insert: {
           checked_in_at?: string
+          extra_fields?: Json
           id?: string
           org?: string
           phone?: string
@@ -1075,6 +1077,7 @@ export type Database = {
         }
         Update: {
           checked_in_at?: string
+          extra_fields?: Json
           id?: string
           org?: string
           phone?: string
@@ -2082,6 +2085,7 @@ export type Database = {
         Args: { p_session_id: string; p_token: string }
         Returns: {
           checked_in_at: string
+          extra_fields: Json
           id: string
           org: string
           phone: string
@@ -2247,6 +2251,7 @@ export type Database = {
       }
       submit_seat_checkin_record: {
         Args: {
+          p_extra?: Json
           p_org?: string
           p_otp?: string
           p_phone?: string
@@ -2255,6 +2260,7 @@ export type Database = {
         }
         Returns: {
           checked_in_at: string
+          extra_fields: Json
           id: string
           org: string
           phone: string
