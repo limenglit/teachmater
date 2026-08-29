@@ -1403,15 +1403,13 @@ export default function SeatCheckinDialog({
                     );
                     const inListSet = new Set(currentStudentNames.map(n => n.trim()));
                     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
-                    // 姓名后的附加列按发布时的勾选（或已采集到的数据）动态生成
-                    const showOrg = collectOrg || sorted.some(r => (r.org || '').trim() !== '');
-                    const showPhone = collectPhone || sorted.some(r => (r.phone || '').trim() !== '');
+                    // 姓名后的附加列按发布时配置的自定义填写项（或已采集到的数据）动态生成
+                    const exportFields = resolveExportFields(customFields.filter(f => f.label.trim() !== ''), sorted);
                     const rows = [
                       [
                         t('seatCheckinDialog.csvIndex'),
                         t('seatCheckinDialog.csvName'),
-                        ...(showOrg ? ['单位'] : []),
-                        ...(showPhone ? ['手机号'] : []),
+                        ...exportFields.map(f => f.label),
                         t('seatCheckinDialog.csvType'),
                         t('seatCheckinDialog.csvTime'),
                       ],
@@ -1420,8 +1418,7 @@ export default function SeatCheckinDialog({
                         return [
                           String(i + 1),
                           name,
-                          ...(showOrg ? [(r.org || '').trim()] : []),
-                          ...(showPhone ? [(r.phone || '').trim()] : []),
+                          ...exportFields.map(f => readFieldValue(r, f.id)),
                           inListSet.has(name) ? t('seatCheckinDialog.inListLabel') : t('seatCheckinDialog.outListLabel'),
                           new Date(r.checked_in_at).toLocaleString(undefined, { hour12: false }),
                         ];
