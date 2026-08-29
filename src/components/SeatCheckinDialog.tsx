@@ -36,6 +36,15 @@ import {
   isSeatAssignmentComplete,
   analyzeSeatCheckinCoverage,
 } from '@/lib/seat-checkin-policy';
+import {
+  CHECKIN_FIELD_PRESETS,
+  MAX_CHECKIN_CUSTOM_FIELDS,
+  createFieldId,
+  normalizeCustomFields,
+  readFieldValue,
+  resolveExportFields,
+  type CheckinCustomField,
+} from '@/lib/seat-checkin-fields';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MergeGuestEntry {
@@ -323,9 +332,8 @@ export default function SeatCheckinDialog({
   const [checkinOnlyMode, setCheckinOnlyMode] = useState(false);
   // 学生端座位表述方式：第几号 / 第几列 / 两者都显示
   const [seatLabelMode, setSeatLabelMode] = useState<SeatLabelMode>('no');
-  // 学生端附加采集字段：单位、手机号
-  const [collectOrg, setCollectOrg] = useState(false);
-  const [collectPhone, setCollectPhone] = useState(false);
+  // 学生端附加采集字段：完全自定义（名称 + 数量 + 是否必填）
+  const [customFields, setCustomFields] = useState<CheckinCustomField[]>(() => normalizeCustomFields(sceneConfig));
   const [findFriendEnabled, setFindFriendEnabled] = useState(true);
   // 防代签动态口令
   const [otpEnabled, setOtpEnabled] = useState(false);
@@ -590,8 +598,14 @@ export default function SeatCheckinDialog({
       // 降级策略：仅签到不导航（可附带座次表图片）
       nextSceneConfig.checkinOnlyMode = checkinOnlyMode;
       nextSceneConfig.seatLabelMode = seatLabelMode;
-      nextSceneConfig.collectOrg = collectOrg;
-      nextSceneConfig.collectPhone = collectPhone;
+      const cleanFields = customFields
+        .filter(f => f.label.trim() !== '')
+        .slice(0, MAX_CHECKIN_CUSTOM_FIELDS)
+        .map(f => ({ ...f, label: f.label.trim() }));
+      nextSceneConfig.customFields = cleanFields;
+      // 兼容旧版学生端读取
+      nextSceneConfig.collectOrg = cleanFields.some(f => f.id === 'org');
+      nextSceneConfig.collectPhone = cleanFields.some(f => f.id === 'phone');
       nextSceneConfig.findFriendEnabled = findFriendEnabled;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
