@@ -7,6 +7,8 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
 import { acceptStudentDragOver, readDraggedStudentName, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
+import LeavePoolPanel from './LeavePoolPanel';
+import type { LeavePoolEntry } from '@/lib/seat-leave-pool';
 import { toast } from 'sonner';
 import {
   loadComputerLabSnapshot,
@@ -155,6 +157,68 @@ export default function ComputerLab({ students }: Props) {
 
   const totalSeatsPerSide = seatsPerSide * tableCols;
   const seatKey = (row: number, side: 'top' | 'bottom', col: number) => `${row}-${side}-${col}`;
+
+  // 请假池：双击座位移入，双击/拖回座位恢复（i = assignment 下标，j = 座位列）
+  const [leavePool, setLeavePool] = useState<LeavePoolEntry[]>([]);
+  const assignmentRef = useRef(assignment);
+  useEffect(() => { assignmentRef.current = assignment; }, [assignment]);
+
+  const labSeatLabel = (groupIdx: number, col: number) => {
+    const g = assignmentRef.current[groupIdx];
+    if (!g) return `${col + 1}号`;
+    return `${g.rowIndex + 1}排${g.side === 'top' ? '上' : '下'}${col + 1}号`;
+  };
+
+  const moveToLeave = (groupIdx: number, col: number, name: string) => {
+    const clean = (name || '').trim();
+    if (!clean) return;
+    const label = labSeatLabel(groupIdx, col);
+    setAssignment(prev => prev.map((g, gi) => (gi === groupIdx
+      ? { ...g, students: (g.students ?? []).map((v, ci) => (ci === col ? '' : v)) }
+      : g)));
+    setLeavePool(prev => (prev.some(x => x.name === clean) ? prev : [...prev, { name: clean, i: groupIdx, j: col, label }]));
+    toast.success(`${clean} 已请假，座位已空出`);
+  };
+
+  const dropToLeave = (name: string) => {
+    const clean = (name || '').trim();
+    const groups = assignmentRef.current;
+    for (let gi = 0; gi < groups.length; gi++) {
+      const idx = (groups[gi].students ?? []).findIndex(v => (v || '').trim() === clean);
+      if (idx >= 0) { moveToLeave(gi, idx, clean); return; }
+    }
+  };
+
+  const restoreFromLeave = (entry: LeavePoolEntry) => {
+    const groups = assignmentRef.current;
+    const free = (gi: number, ci: number) => {
+      const g = groups[gi];
+      if (!g) return false;
+      if (ci >= totalSeatsPerSide) return false;
+      if ((g.students?.[ci] || '').trim()) return false;
+      return !closedSeats.has(seatKey(g.rowIndex, g.side, ci));
+    };
+    let target: { gi: number; ci: number } | null = free(entry.i, entry.j) ? { gi: entry.i, ci: entry.j } : null;
+    if (!target) {
+      outer: for (let gi = 0; gi < groups.length; gi++) {
+        for (let ci = 0; ci < totalSeatsPerSide; ci++) {
+          if (free(gi, ci)) { target = { gi, ci }; break outer; }
+        }
+      }
+    }
+    if (!target) { toast.error('没有空位可以恢复，请先增加座位'); return; }
+    const dest = target;
+    setAssignment(prev => prev.map((g, gi) => {
+      if (gi !== dest.gi) return g;
+      const students = [...(g.students ?? [])];
+      while (students.length <= dest.ci) students.push('');
+      students[dest.ci] = entry.name;
+      return { ...g, students };
+    }));
+    setLeavePool(prev => prev.filter(x => x.name !== entry.name));
+    const backToOrigin = dest.gi === entry.i && dest.ci === entry.j;
+    toast.success(backToOrigin ? `${entry.name} 已恢复原位` : `${entry.name} 原位已被占用，已安排到 ${labSeatLabel(dest.gi, dest.ci)}`);
+  };
 
   const toggleSeatOpen = (row: number, side: 'top' | 'bottom', col: number) => {
     const key = seatKey(row, side, col);
@@ -653,6 +717,13 @@ export default function ComputerLab({ students }: Props) {
             toggleSeatOpen(Number(rStr), side as 'top' | 'bottom', Number(cStr));
           }
         }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (!name || isClosed) return;
+          const [rStr, side, cStr] = slot.split('-');
+          const gi = assignmentRef.current.findIndex(g => g.rowIndex === Number(rStr) && g.side === side);
+          if (gi >= 0) moveToLeave(gi, Number(cStr), name);
+        }}
       >
         <rect x={x} y={y} width={seatW} height={seatH} rx={4}
           className={
@@ -982,6 +1053,9 @@ export default function ComputerLab({ students }: Props) {
         )}
       </div>
 
+      {assignment.length > 0 && (
+        <LeavePoolPanel entries={leavePool} onRestore={restoreFromLeave} onDropName={dropToLeave} />
+      )}
       {seated && (
         <p className="text-center text-xs text-muted-foreground mt-4">
           {t('seat.editor.lab.dragHint')}

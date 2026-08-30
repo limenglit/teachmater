@@ -13,6 +13,8 @@ import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, 
 import { getTableGeometry } from '@/lib/table-shape';
 
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
+import LeavePoolPanel from './LeavePoolPanel';
+import { useGridLeavePool } from './useGridLeavePool';
 import { toast } from 'sonner';
 import { buildOrganizationColorResolver } from '@/lib/org-color';
 import { buildTitleScorer, loadTitleRankRuleText, saveTitleRankRuleText } from '@/lib/title-rank';
@@ -192,6 +194,14 @@ export default function SmartClassroom({
   const { dragFrom, dropTarget, handleDragStart, handleDragOver, handleDrop, handleDragEnd } = useRoundTableDrag(assignment, setAssignment);
 
   const seatKey = (tableIndex: number, seatIndex: number) => `${tableIndex}-${seatIndex}`;
+
+  // 请假池：双击座位移入，双击/拖回座位恢复
+  const { leavePool, moveToLeave, restore: restoreFromLeave, dropName: dropToLeave } = useGridLeavePool({
+    assignment,
+    setAssignment,
+    isClosed: (i, j) => closedSeats.has(seatKey(i, j)),
+    labelOf: (i, j) => `${i + 1}桌${j + 1}号`,
+  });
 
   const toggleSeatOpen = (tableIndex: number, seatIndex: number) => {
     const key = seatKey(tableIndex, seatIndex);
@@ -977,6 +987,7 @@ export default function SmartClassroom({
                   seatDraggingRef.current = false;
                 }}
                 onClick={() => { if (!name && !isReservedTable) toggleSeatOpen(tableIndex, i); }}
+                onDoubleClick={(e) => { e.stopPropagation(); if (name && !isReservedTable) moveToLeave(tableIndex, i, name); }}
               >
                 <circle
                   cx={sx} cy={sy} r={seatRadius}
@@ -1497,6 +1508,9 @@ export default function SmartClassroom({
         )}
       </div>
 
+      {assignment.length > 0 && (
+        <LeavePoolPanel entries={leavePool} onRestore={restoreFromLeave} onDropName={dropToLeave} />
+      )}
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
           {t('seat.editor.smart.dragHint')}

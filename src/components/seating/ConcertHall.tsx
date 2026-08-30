@@ -7,6 +7,8 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
 import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
+import LeavePoolPanel from './LeavePoolPanel';
+import { useGridLeavePool } from './useGridLeavePool';
 import { toast } from 'sonner';
 import {
   loadConcertHallSnapshot,
@@ -124,6 +126,14 @@ export default function ConcertHall({ students }: Props) {
     return '#475569';
   };
   const seatKey = (row: number, col: number) => `${row}-${col}`;
+
+  // 请假池：双击座位移入，双击/拖回座位恢复
+  const { leavePool, moveToLeave, restore: restoreFromLeave, dropName: dropToLeave } = useGridLeavePool({
+    assignment,
+    setAssignment,
+    isClosed: (i, j) => closedSeats.has(seatKey(i, j)),
+    labelOf: (i, j) => `${i + 1}排${j + 1}号`,
+  });
 
   const seatR = 18;
   const stageW = 180;
@@ -899,6 +909,7 @@ export default function ConcertHall({ students }: Props) {
                           setDropTarget(null);
                         }}
                         onClick={() => { if (!name) toggleSeatOpen(ri, ci); }}
+                        onDoubleClick={(e) => { e.stopPropagation(); if (name) moveToLeave(ri, ci, name); }}
                       >
                         <circle cx={sx} cy={sy} r={seatR}
                           className={
@@ -961,6 +972,9 @@ export default function ConcertHall({ students }: Props) {
         )}
       </div>
 
+      {assignment.length > 0 && (
+        <LeavePoolPanel entries={leavePool} onRestore={restoreFromLeave} onDropName={dropToLeave} />
+      )}
       {assignment.length > 0 && (
         <p className="text-center text-xs text-muted-foreground mt-4">
           {t('seat.editor.concert.dragHint')}
