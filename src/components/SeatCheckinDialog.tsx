@@ -1248,11 +1248,55 @@ export default function SeatCheckinDialog({
                   <RotateCcw className="w-3.5 h-3.5 mr-1" /> {t('seatCheckinDialog.refresh')}
                 </Button>
               </div>
-              {historySessions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('seatCheckinDialog.empty')}</p>
+              {historyClasses.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={historyCollegeId}
+                    onValueChange={(v) => { setHistoryCollegeId(v); setHistoryClassId('all'); }}
+                  >
+                    <SelectTrigger className="h-8 w-[150px] text-xs">
+                      <SelectValue placeholder="全部学校/学院" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="all">全部学校/学院</SelectItem>
+                      {historyColleges.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={historyClassId} onValueChange={setHistoryClassId}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs">
+                      <SelectValue placeholder="全部班级" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="all">全部班级</SelectItem>
+                      {historyClassOptions.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(historyCollegeId !== 'all' || historyClassId !== 'all') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => { setHistoryCollegeId('all'); setHistoryClassId('all'); }}
+                    >
+                      清除筛选
+                    </Button>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {filteredHistorySessions.length} / {historySessions.length}
+                  </span>
+                </div>
+              )}
+              {filteredHistorySessions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {historySessions.length === 0 ? t('seatCheckinDialog.empty') : '该班级暂无签到记录'}
+                </p>
               ) : (
                 <div className="max-h-56 space-y-2 overflow-auto pr-1">
-                  {historySessions.map(session => {
+                  {filteredHistorySessions.map(session => {
                     const isDeleting = deletingSessionId === session.id;
                     return (
                       <div key={session.id} className="rounded-lg border border-border bg-card p-3">
