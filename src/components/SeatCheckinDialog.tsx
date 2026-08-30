@@ -433,6 +433,47 @@ export default function SeatCheckinDialog({
     void refreshHistory();
   }, [open, sceneType]);
 
+  // 加载班级库，用于按「学校/学院 + 班级」筛选签到历史
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { colleges, classes, classStudents } = await fetchClassLibrary();
+        if (cancelled) return;
+        const byClass = new Map<string, string[]>();
+        classStudents.forEach(s => {
+          const list = byClass.get(s.class_id) || [];
+          list.push(s.name);
+          byClass.set(s.class_id, list);
+        });
+        setHistoryColleges(colleges.map(c => ({ id: c.id, name: c.name })));
+        setHistoryClasses(
+          classes.map(c => ({ id: c.id, name: c.name, college_id: c.college_id, students: byClass.get(c.id) || [] })),
+        );
+      } catch {
+        if (!cancelled) {
+          setHistoryColleges([]);
+          setHistoryClasses([]);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const historyClassOptions = useMemo(
+    () => (historyCollegeId === 'all' ? historyClasses : historyClasses.filter(c => c.college_id === historyCollegeId)),
+    [historyClasses, historyCollegeId],
+  );
+
+  const filteredHistorySessions = useMemo(
+    () => filterHistorySessions(historySessions, historyClasses, {
+      collegeId: historyCollegeId === 'all' ? undefined : historyCollegeId,
+      classId: historyClassId === 'all' ? undefined : historyClassId,
+    }),
+    [historySessions, historyClasses, historyCollegeId, historyClassId],
+  );
+
   useEffect(() => {
     if (!currentSession) {
       setRecords([]);
