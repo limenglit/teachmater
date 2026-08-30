@@ -7,6 +7,8 @@ import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 
 import { acceptStudentDragOver, readDraggedStudentName, applyStudentDropToGrid, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
 import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
+import LeavePoolPanel from './LeavePoolPanel';
+import { useGridLeavePool } from './useGridLeavePool';
 
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
 
@@ -223,6 +225,13 @@ export default function ArtStudio({ students }: Props) {
   const [preset, setPreset] = useState<PresetType>('stillLife');
   const [layerRule, setLayerRule] = useState<LayerRule>('default');
   const [assignment, setAssignment] = useState<string[][]>([]);
+
+  // 请假池：双击座位移入，双击/拖回座位恢复
+  const { leavePool, moveToLeave, restore: restoreFromLeave, dropName: dropToLeave } = useGridLeavePool({
+    assignment,
+    setAssignment,
+    labelOf: (i, j) => `${i + 1}圈${j + 1}号`,
+  });
   const [seatPositions, setSeatPositions] = useState<Record<string, Point>>({});
   const [platforms, setPlatforms] = useState<{ model: Point; stillLife: Point }>({
     model: { x: CENTER_DEFAULT.x + 44, y: CENTER_DEFAULT.y - 10 },
@@ -682,6 +691,7 @@ export default function ArtStudio({ students }: Props) {
                   e.stopPropagation();
                   setAssignment(prev => applyStudentDropToGrid(ensureAssignmentShape(prev), dropped, node.ringIndex, node.seatIndex));
                 }}
+                onDoubleClick={(e) => { e.stopPropagation(); if (name) moveToLeave(node.ringIndex, node.seatIndex, name); }}
                 title={tFormat(t('seat.editor.art.seatTitle'), name || t('seat.editor.art.empty'), node.ringIndex + 1, node.seatIndex + 1, layerText)}
               >
                 <span className="truncate w-full">{name || t('seat.editor.art.easel')}</span>
@@ -720,6 +730,8 @@ export default function ArtStudio({ students }: Props) {
           </div>
         </div>
         )}
+
+        <LeavePoolPanel entries={leavePool} onRestore={restoreFromLeave} onDropName={dropToLeave} />
 
         <p className="mt-3 text-xs text-muted-foreground">{t('seat.editor.art.tipFinal')}</p>
       </div>
