@@ -46,6 +46,9 @@ import {
   type CheckinCustomField,
 } from '@/lib/seat-checkin-fields';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { fetchClassLibrary } from '@/lib/class-library-fetch';
+import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
 
 interface MergeGuestEntry {
   name: string;
@@ -324,6 +327,10 @@ export default function SeatCheckinDialog({
   const [historySessions, setHistorySessions] = useState<SeatCheckinSessionSummary[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(5);
   const [unlimited, setUnlimited] = useState(false);
+  const [historyColleges, setHistoryColleges] = useState<Array<{ id: string; name: string }>>([]);
+  const [historyClasses, setHistoryClasses] = useState<HistoryFilterClass[]>([]);
+  const [historyCollegeId, setHistoryCollegeId] = useState<string>('all');
+  const [historyClassId, setHistoryClassId] = useState<string>('all');
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
@@ -425,6 +432,47 @@ export default function SeatCheckinDialog({
     if (!open) return;
     void refreshHistory();
   }, [open, sceneType]);
+
+  // 加载班级库，用于按「学校/学院 + 班级」筛选签到历史
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { colleges, classes, classStudents } = await fetchClassLibrary();
+        if (cancelled) return;
+        const byClass = new Map<string, string[]>();
+        classStudents.forEach(s => {
+          const list = byClass.get(s.class_id) || [];
+          list.push(s.name);
+          byClass.set(s.class_id, list);
+        });
+        setHistoryColleges(colleges.map(c => ({ id: c.id, name: c.name })));
+        setHistoryClasses(
+          classes.map(c => ({ id: c.id, name: c.name, college_id: c.college_id, students: byClass.get(c.id) || [] })),
+        );
+      } catch {
+        if (!cancelled) {
+          setHistoryColleges([]);
+          setHistoryClasses([]);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const historyClassOptions = useMemo(
+    () => (historyCollegeId === 'all' ? historyClasses : historyClasses.filter(c => c.college_id === historyCollegeId)),
+    [historyClasses, historyCollegeId],
+  );
+
+  const filteredHistorySessions = useMemo(
+    () => filterHistorySessions(historySessions, historyClasses, {
+      collegeId: historyCollegeId === 'all' ? undefined : historyCollegeId,
+      classId: historyClassId === 'all' ? undefined : historyClassId,
+    }),
+    [historySessions, historyClasses, historyCollegeId, historyClassId],
+  );
 
   useEffect(() => {
     if (!currentSession) {
@@ -1200,11 +1248,55 @@ export default function SeatCheckinDialog({
                   <RotateCcw className="w-3.5 h-3.5 mr-1" /> {t('seatCheckinDialog.refresh')}
                 </Button>
               </div>
-              {historySessions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t('seatCheckinDialog.empty')}</p>
+              {historyClasses.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={historyCollegeId}
+                    onValueChange={(v) => { setHistoryCollegeId(v); setHistoryClassId('all'); }}
+                  >
+                    <SelectTrigger className="h-8 w-[150px] text-xs">
+                      <SelectValue placeholder="全部学校/学院" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="all">全部学校/学院</SelectItem>
+                      {historyColleges.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={historyClassId} onValueChange={setHistoryClassId}>
+                    <SelectTrigger className="h-8 w-[150px] text-xs">
+                      <SelectValue placeholder="全部班级" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      <SelectItem value="all">全部班级</SelectItem>
+                      {historyClassOptions.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {(historyCollegeId !== 'all' || historyClassId !== 'all') && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={() => { setHistoryCollegeId('all'); setHistoryClassId('all'); }}
+                    >
+                      清除筛选
+                    </Button>
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {filteredHistorySessions.length} / {historySessions.length}
+                  </span>
+                </div>
+              )}
+              {filteredHistorySessions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {historySessions.length === 0 ? t('seatCheckinDialog.empty') : '该班级暂无签到记录'}
+                </p>
               ) : (
                 <div className="max-h-56 space-y-2 overflow-auto pr-1">
-                  {historySessions.map(session => {
+                  {filteredHistorySessions.map(session => {
                     const isDeleting = deletingSessionId === session.id;
                     return (
                       <div key={session.id} className="rounded-lg border border-border bg-card p-3">
