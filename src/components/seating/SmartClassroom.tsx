@@ -987,6 +987,7 @@ export default function SmartClassroom({
                   seatDraggingRef.current = false;
                 }}
                 onClick={() => { if (!name && !isReservedTable) toggleSeatOpen(tableIndex, i); }}
+                onDoubleClick={(e) => { e.stopPropagation(); if (name && !isReservedTable) moveToLeave(tableIndex, i, name); }}
               >
                 <circle
                   cx={sx} cy={sy} r={seatRadius}

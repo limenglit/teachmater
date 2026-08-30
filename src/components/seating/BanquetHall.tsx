@@ -844,6 +844,7 @@ export default function BanquetHall({ students }: Props) {
                 }}
                 onDoubleClick={e => {
                   e.stopPropagation();
+                  if (name && !isReservedTable) { moveToLeave(tableIndex, i, name); return; }
                   if (!name && !isReservedTable) toggleSeatOpen(tableIndex, i);
                 }}
               >

@@ -909,6 +909,7 @@ export default function ConcertHall({ students }: Props) {
                           setDropTarget(null);
                         }}
                         onClick={() => { if (!name) toggleSeatOpen(ri, ci); }}
+                        onDoubleClick={(e) => { e.stopPropagation(); if (name) moveToLeave(ri, ci, name); }}
                       >
                         <circle cx={sx} cy={sy} r={seatR}
                           className={
