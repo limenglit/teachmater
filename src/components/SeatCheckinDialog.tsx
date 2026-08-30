@@ -327,6 +327,10 @@ export default function SeatCheckinDialog({
   const [historySessions, setHistorySessions] = useState<SeatCheckinSessionSummary[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(5);
   const [unlimited, setUnlimited] = useState(false);
+  const [historyColleges, setHistoryColleges] = useState<Array<{ id: string; name: string }>>([]);
+  const [historyClasses, setHistoryClasses] = useState<HistoryFilterClass[]>([]);
+  const [historyCollegeId, setHistoryCollegeId] = useState<string>('all');
+  const [historyClassId, setHistoryClassId] = useState<string>('all');
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [ending, setEnding] = useState(false);
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
