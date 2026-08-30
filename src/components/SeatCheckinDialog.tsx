@@ -46,6 +46,9 @@ import {
   type CheckinCustomField,
 } from '@/lib/seat-checkin-fields';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { fetchClassLibrary } from '@/lib/class-library-fetch';
+import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
 
 interface MergeGuestEntry {
   name: string;
