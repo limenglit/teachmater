@@ -24,6 +24,7 @@ import { loadLastGroups } from '@/lib/teamwork-local';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
+import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -138,6 +139,8 @@ export default function BoardPanel() {
   const [filterColleges, setFilterColleges] = useState<Array<{ id: string; name: string }>>([]);
   const [filterClasses, setFilterClasses] = useState<HistoryFilterClass[]>([]);
   const [filterCollegeId, setFilterCollegeId] = useState<string>('all');
+  const [boardPage, setBoardPage] = useState(1);
+  const [boardPageSize, setBoardPageSize] = useState(10);
   const [filterClassId, setFilterClassId] = useState<string>('all');
 
   // Load boards
