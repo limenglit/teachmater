@@ -1303,8 +1303,9 @@ export default function BoardPanel() {
               {t('seatCheckinDialog.noMatch') || '没有匹配该班级的白板记录'}
             </div>
           ) : (
+          <div className="space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredBoards.map(board => (
+            {pagedBoards.map(board => (
               <div
                 key={board.id}
                 className="flex flex-col justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group"
@@ -1332,6 +1333,14 @@ export default function BoardPanel() {
                 </div>
               </div>
             ))}
+          </div>
+          <AdminPagination
+            total={filteredBoards.length}
+            page={boardPage}
+            pageSize={boardPageSize}
+            onPageChange={setBoardPage}
+            onPageSizeChange={setBoardPageSize}
+          />
           </div>
           )
         )}
