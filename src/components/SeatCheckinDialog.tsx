@@ -1362,6 +1362,30 @@ export default function SeatCheckinDialog({
               )}
             />
 
+            {/* 一键通知学生：可直接粘贴到班级群，学生点开即可看座位图并签到 */}
+            <div className="w-full rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5" /> 通知学生（含签到时间与座位图入口）
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs" onClick={() => void copyNotification()}>
+                    {notificationCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {notificationCopied ? '已复制' : '复制通知'}
+                  </Button>
+                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                    <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs" onClick={() => void shareNotification()}>
+                      <Send className="w-3.5 h-3.5" /> 分享
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <pre className="whitespace-pre-wrap break-words text-xs text-muted-foreground leading-relaxed max-h-32 overflow-auto">
+                {notificationText}
+              </pre>
+            </div>
+
+
             {currentSession.otp_enabled && currentSession.status === 'active' && (
               <div className="w-full rounded-xl border-2 border-primary/30 bg-primary/5 p-3 text-center space-y-1.5">
                 <p className="text-xs text-muted-foreground">防代签口令 · 请学生连同姓名一起输入</p>
