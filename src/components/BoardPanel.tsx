@@ -1233,6 +1233,43 @@ export default function BoardPanel() {
           <p className="text-xs text-muted-foreground mb-4">{t('board.cloudSync')}</p>
         )}
 
+        {/* 按学校/班级过滤白板历史 */}
+        {isCloud && filterClasses.length > 0 && boards.length > 0 && (
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="text-xs text-muted-foreground">{t('seatCheckinDialog.filterByClass') || '按班级筛选'}:</span>
+            <Select value={filterCollegeId} onValueChange={(v) => { setFilterCollegeId(v); setFilterClassId('all'); }}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder={t('seatCheckinDialog.allColleges') || '全部学校/学院'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('seatCheckinDialog.allColleges') || '全部学校/学院'}</SelectItem>
+                {filterColleges.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterClassId} onValueChange={setFilterClassId}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder={t('seatCheckinDialog.allClasses') || '全部班级'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('seatCheckinDialog.allClasses') || '全部班级'}</SelectItem>
+                {filterClassOptions.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(filterCollegeId !== 'all' || filterClassId !== 'all') && (
+              <>
+                <span className="text-xs text-muted-foreground">{filteredBoards.length}/{boards.length}</span>
+                <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => { setFilterCollegeId('all'); setFilterClassId('all'); }}>
+                  {t('seatCheckinDialog.clearFilter') || '清除筛选'}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Board list - grid layout */}
         {boards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
