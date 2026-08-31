@@ -21,6 +21,9 @@ import { tFormat } from '@/contexts/LanguageContext';
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { loadLastGroups } from '@/lib/teamwork-local';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { fetchClassLibrary } from '@/lib/class-library-fetch';
+import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -131,6 +134,11 @@ export default function BoardPanel() {
   const [storyThemes, setStoryThemes] = useState('');
   const [latestGroupCount, setLatestGroupCount] = useState<number>(() => loadLastGroups().length);
   const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
+  // 白板历史按班级过滤
+  const [filterColleges, setFilterColleges] = useState<Array<{ id: string; name: string }>>([]);
+  const [filterClasses, setFilterClasses] = useState<HistoryFilterClass[]>([]);
+  const [filterCollegeId, setFilterCollegeId] = useState<string>('all');
+  const [filterClassId, setFilterClassId] = useState<string>('all');
 
   // Load boards
   useEffect(() => {
@@ -590,6 +598,36 @@ export default function BoardPanel() {
 
     return () => { supabase.removeChannel(channel); };
   }, [isCloud, activeBoard?.id]);
+
+  // 加载班级库用于白板历史过滤（登录用户）
+  useEffect(() => {
+    if (!user || !isCloud) return;
+    let mounted = true;
+    void fetchClassLibrary().then(({ colleges, classes, classStudents }) => {
+      if (!mounted) return;
+      setFilterColleges(colleges);
+      setFilterClasses(classes.map(c => ({
+        id: c.id,
+        name: c.name,
+        college_id: c.college_id,
+        students: classStudents.filter(s => s.class_id === c.id).map(s => s.name),
+      })));
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [user, isCloud]);
+
+  const filterClassOptions = filterCollegeId === 'all'
+    ? filterClasses
+    : filterClasses.filter(c => c.college_id === filterCollegeId);
+
+  // 白板历史过滤：标题包含班级名，或名单与班级名册有重叠（跨班级也能命中）
+  const filteredBoards = (filterCollegeId === 'all' && filterClassId === 'all')
+    ? boards
+    : filterHistorySessions(
+        boards.map(b => ({ board: b, class_name: b.title, student_names: (b.student_names || []) as string[] })),
+        filterClasses,
+        { collegeId: filterCollegeId === 'all' ? undefined : filterCollegeId, classId: filterClassId === 'all' ? undefined : filterClassId },
+      ).map(x => x.board);
 
   // Load classes for roster selection
   const loadClassesForSelect = async () => {
@@ -1195,6 +1233,43 @@ export default function BoardPanel() {
           <p className="text-xs text-muted-foreground mb-4">{t('board.cloudSync')}</p>
         )}
 
+        {/* 按学校/班级过滤白板历史 */}
+        {isCloud && filterClasses.length > 0 && boards.length > 0 && (
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="text-xs text-muted-foreground">{t('seatCheckinDialog.filterByClass') || '按班级筛选'}:</span>
+            <Select value={filterCollegeId} onValueChange={(v) => { setFilterCollegeId(v); setFilterClassId('all'); }}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder={t('seatCheckinDialog.allColleges') || '全部学校/学院'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('seatCheckinDialog.allColleges') || '全部学校/学院'}</SelectItem>
+                {filterColleges.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterClassId} onValueChange={setFilterClassId}>
+              <SelectTrigger className="h-8 w-[140px] text-xs">
+                <SelectValue placeholder={t('seatCheckinDialog.allClasses') || '全部班级'} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('seatCheckinDialog.allClasses') || '全部班级'}</SelectItem>
+                {filterClassOptions.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {(filterCollegeId !== 'all' || filterClassId !== 'all') && (
+              <>
+                <span className="text-xs text-muted-foreground">{filteredBoards.length}/{boards.length}</span>
+                <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => { setFilterCollegeId('all'); setFilterClassId('all'); }}>
+                  {t('seatCheckinDialog.clearFilter') || '清除筛选'}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Board list - grid layout */}
         {boards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -1216,8 +1291,13 @@ export default function BoardPanel() {
             </p>
           </div>
         ) : (
+          filteredBoards.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-12">
+              {t('seatCheckinDialog.noMatch') || '没有匹配该班级的白板记录'}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {boards.map(board => (
+            {filteredBoards.map(board => (
               <div
                 key={board.id}
                 className="flex flex-col justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group"
@@ -1246,6 +1326,7 @@ export default function BoardPanel() {
               </div>
             ))}
           </div>
+          )
         )}
       </div>
     </div>
