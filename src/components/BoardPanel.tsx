@@ -599,6 +599,36 @@ export default function BoardPanel() {
     return () => { supabase.removeChannel(channel); };
   }, [isCloud, activeBoard?.id]);
 
+  // 加载班级库用于白板历史过滤（登录用户）
+  useEffect(() => {
+    if (!user || !isCloud) return;
+    let mounted = true;
+    void fetchClassLibrary().then(({ colleges, classes, classStudents }) => {
+      if (!mounted) return;
+      setFilterColleges(colleges);
+      setFilterClasses(classes.map(c => ({
+        id: c.id,
+        name: c.name,
+        college_id: c.college_id,
+        students: classStudents.filter(s => s.class_id === c.id).map(s => s.name),
+      })));
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [user, isCloud]);
+
+  const filterClassOptions = filterCollegeId === 'all'
+    ? filterClasses
+    : filterClasses.filter(c => c.college_id === filterCollegeId);
+
+  // 白板历史过滤：标题包含班级名，或名单与班级名册有重叠（跨班级也能命中）
+  const filteredBoards = (filterCollegeId === 'all' && filterClassId === 'all')
+    ? boards
+    : filterHistorySessions(
+        boards.map(b => ({ board: b, class_name: b.title, student_names: (b.student_names || []) as string[] })),
+        filterClasses,
+        { collegeId: filterCollegeId === 'all' ? undefined : filterCollegeId, classId: filterClassId === 'all' ? undefined : filterClassId },
+      ).map(x => x.board);
+
   // Load classes for roster selection
   const loadClassesForSelect = async () => {
     if (!user) return;
