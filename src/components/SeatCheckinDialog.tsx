@@ -727,6 +727,41 @@ export default function SeatCheckinDialog({
     : '';
   const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || t('seatCheckinDialog.qrFallbackName'))}.png`;
 
+  // 一键通知：生成可转发的签到通知文案（时间 + 座位图入口）
+  const [notificationCopied, setNotificationCopied] = useState(false);
+  const notificationText = useMemo(() => {
+    if (!currentSession) return '';
+    return buildCheckinNotification({
+      title: resolvedThemeTitle,
+      checkinUrl,
+      createdAt: currentSession.created_at,
+      durationMinutes: currentSession.duration_minutes,
+      otpEnabled: currentSession.otp_enabled,
+      findFriendEnabled,
+    });
+  }, [currentSession, resolvedThemeTitle, checkinUrl, findFriendEnabled]);
+
+  const copyNotification = async () => {
+    if (!notificationText) return;
+    try {
+      await navigator.clipboard.writeText(notificationText);
+      setNotificationCopied(true);
+      setTimeout(() => setNotificationCopied(false), 2000);
+      toast({ title: '通知已复制，可直接粘贴到班级群' });
+    } catch {
+      toast({ title: '复制失败，请手动选择文本复制', variant: 'destructive' });
+    }
+  };
+
+  const shareNotification = async () => {
+    if (!notificationText) return;
+    try {
+      await navigator.share?.({ title: resolvedThemeTitle, text: notificationText, url: checkinUrl });
+    } catch {
+      // 用户取消分享，忽略
+    }
+  };
+
   const checkedInNames = useMemo(() => Array.from(new Set(records.map(record => record.student_name.trim()))), [records]);
   const currentStudentNames = currentSession?.student_names ?? studentNames;
   const uncheckedNames = currentStudentNames.filter(name => !checkedInNames.includes(name.trim()));
