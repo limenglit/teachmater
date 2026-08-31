@@ -21,6 +21,9 @@ import { tFormat } from '@/contexts/LanguageContext';
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { loadLastGroups } from '@/lib/teamwork-local';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { fetchClassLibrary } from '@/lib/class-library-fetch';
+import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -131,6 +134,11 @@ export default function BoardPanel() {
   const [storyThemes, setStoryThemes] = useState('');
   const [latestGroupCount, setLatestGroupCount] = useState<number>(() => loadLastGroups().length);
   const [classesForSelect, setClassesForSelect] = useState<{id: string; name: string; collegeName: string; students: string[]}[]>([]);
+  // 白板历史按班级过滤
+  const [filterColleges, setFilterColleges] = useState<Array<{ id: string; name: string }>>([]);
+  const [filterClasses, setFilterClasses] = useState<HistoryFilterClass[]>([]);
+  const [filterCollegeId, setFilterCollegeId] = useState<string>('all');
+  const [filterClassId, setFilterClassId] = useState<string>('all');
 
   // Load boards
   useEffect(() => {
