@@ -629,6 +629,10 @@ export default function BoardPanel() {
         { collegeId: filterCollegeId === 'all' ? undefined : filterCollegeId, classId: filterClassId === 'all' ? undefined : filterClassId },
       ).map(x => x.board);
 
+  // 白板历史分页：超过10条自动分页，每页数量可选
+  const pagedBoards = paginate(filteredBoards, boardPage, boardPageSize);
+  useEffect(() => { setBoardPage(1); }, [filterCollegeId, filterClassId, boardPageSize, boards.length]);
+
   // Load classes for roster selection
   const loadClassesForSelect = async () => {
     if (!user) return;
