@@ -1291,8 +1291,13 @@ export default function BoardPanel() {
             </p>
           </div>
         ) : (
+          filteredBoards.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground py-12">
+              {t('seatCheckinDialog.noMatch') || '没有匹配该班级的白板记录'}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {boards.map(board => (
+            {filteredBoards.map(board => (
               <div
                 key={board.id}
                 className="flex flex-col justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group"
