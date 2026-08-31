@@ -24,6 +24,7 @@ import { loadLastGroups } from '@/lib/teamwork-local';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
+import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -138,6 +139,8 @@ export default function BoardPanel() {
   const [filterColleges, setFilterColleges] = useState<Array<{ id: string; name: string }>>([]);
   const [filterClasses, setFilterClasses] = useState<HistoryFilterClass[]>([]);
   const [filterCollegeId, setFilterCollegeId] = useState<string>('all');
+  const [boardPage, setBoardPage] = useState(1);
+  const [boardPageSize, setBoardPageSize] = useState(10);
   const [filterClassId, setFilterClassId] = useState<string>('all');
 
   // Load boards
@@ -628,6 +631,10 @@ export default function BoardPanel() {
         filterClasses,
         { collegeId: filterCollegeId === 'all' ? undefined : filterCollegeId, classId: filterClassId === 'all' ? undefined : filterClassId },
       ).map(x => x.board);
+
+  // 白板历史分页：超过10条自动分页，每页数量可选
+  const pagedBoards = paginate(filteredBoards, boardPage, boardPageSize);
+  useEffect(() => { setBoardPage(1); }, [filterCollegeId, filterClassId, boardPageSize, boards.length]);
 
   // Load classes for roster selection
   const loadClassesForSelect = async () => {
@@ -1296,8 +1303,9 @@ export default function BoardPanel() {
               {t('seatCheckinDialog.noMatch') || '没有匹配该班级的白板记录'}
             </div>
           ) : (
+          <div className="space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredBoards.map(board => (
+            {pagedBoards.map(board => (
               <div
                 key={board.id}
                 className="flex flex-col justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group"
@@ -1325,6 +1333,14 @@ export default function BoardPanel() {
                 </div>
               </div>
             ))}
+          </div>
+          <AdminPagination
+            total={filteredBoards.length}
+            page={boardPage}
+            pageSize={boardPageSize}
+            onPageChange={setBoardPage}
+            onPageSizeChange={setBoardPageSize}
+          />
           </div>
           )
         )}

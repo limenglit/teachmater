@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export const PAGE_SIZE_OPTIONS = [10, 20, 40, 100];
+export const PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 100];
 
 interface AdminPaginationProps {
   total: number;
