@@ -16,7 +16,7 @@ import { Progress } from '@/components/ui/progress';
 
 import { formatClassroomSeatLabel, normalizeSeatLabelMode, type SeatLabelMode } from '@/lib/seat-number';
 import { supabase } from '@/integrations/supabase/client';
-import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet, RefreshCw, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   createSeatCheckinSession,
@@ -49,6 +49,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
+import { buildCheckinNotification } from '@/lib/checkin-notification';
 
 interface MergeGuestEntry {
   name: string;
@@ -726,6 +727,41 @@ export default function SeatCheckinDialog({
     : '';
   const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || t('seatCheckinDialog.qrFallbackName'))}.png`;
 
+  // 一键通知：生成可转发的签到通知文案（时间 + 座位图入口）
+  const [notificationCopied, setNotificationCopied] = useState(false);
+  const notificationText = useMemo(() => {
+    if (!currentSession) return '';
+    return buildCheckinNotification({
+      title: resolvedThemeTitle,
+      checkinUrl,
+      createdAt: currentSession.created_at,
+      durationMinutes: currentSession.duration_minutes,
+      otpEnabled: currentSession.otp_enabled,
+      findFriendEnabled,
+    });
+  }, [currentSession, resolvedThemeTitle, checkinUrl, findFriendEnabled]);
+
+  const copyNotification = async () => {
+    if (!notificationText) return;
+    try {
+      await navigator.clipboard.writeText(notificationText);
+      setNotificationCopied(true);
+      setTimeout(() => setNotificationCopied(false), 2000);
+      toast({ title: '通知已复制，可直接粘贴到班级群' });
+    } catch {
+      toast({ title: '复制失败，请手动选择文本复制', variant: 'destructive' });
+    }
+  };
+
+  const shareNotification = async () => {
+    if (!notificationText) return;
+    try {
+      await navigator.share?.({ title: resolvedThemeTitle, text: notificationText, url: checkinUrl });
+    } catch {
+      // 用户取消分享，忽略
+    }
+  };
+
   const checkedInNames = useMemo(() => Array.from(new Set(records.map(record => record.student_name.trim()))), [records]);
   const currentStudentNames = currentSession?.student_names ?? studentNames;
   const uncheckedNames = currentStudentNames.filter(name => !checkedInNames.includes(name.trim()));
@@ -1361,6 +1397,30 @@ export default function SeatCheckinDialog({
                 </>
               )}
             />
+
+            {/* 一键通知学生：可直接粘贴到班级群，学生点开即可看座位图并签到 */}
+            <div className="w-full rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5" /> 通知学生（含签到时间与座位图入口）
+                </p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs" onClick={() => void copyNotification()}>
+                    {notificationCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {notificationCopied ? '已复制' : '复制通知'}
+                  </Button>
+                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                    <Button variant="outline" size="sm" className="h-8 px-2.5 gap-1 text-xs" onClick={() => void shareNotification()}>
+                      <Send className="w-3.5 h-3.5" /> 分享
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <pre className="whitespace-pre-wrap break-words text-xs text-muted-foreground leading-relaxed max-h-32 overflow-auto">
+                {notificationText}
+              </pre>
+            </div>
+
 
             {currentSession.otp_enabled && currentSession.status === 'active' && (
               <div className="w-full rounded-xl border-2 border-primary/30 bg-primary/5 p-3 text-center space-y-1.5">
