@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getActiveClassContext } from '@/lib/class-context';
 
 const SEAT_CHECKIN_SESSION_TOKENS_KEY = 'teachmate_seat_checkin_session_tokens_v1';
 const SEAT_CHECKIN_SESSION_IDS_KEY = 'teachmate_seat_checkin_session_ids_v1';
@@ -14,6 +15,7 @@ export interface SeatCheckinSessionSummary {
   student_names: string[];
   otp_enabled?: boolean;
   otp_period_seconds?: number;
+  class_ids?: string[];
 }
 
 export interface SeatCheckinRecord {
@@ -45,6 +47,7 @@ type SeatCheckinHistoryRow = {
   student_names?: unknown;
   otp_enabled?: boolean;
   otp_period_seconds?: number;
+  scene_config?: unknown;
 };
 
 interface CreateSeatCheckinSessionParams {
@@ -167,10 +170,16 @@ export async function createSeatCheckinSession({
     new Set(studentNames.map(normalizeStudentName).filter(Boolean)),
   );
 
+  const activeClassContext = getActiveClassContext();
+  const persistedSceneConfig = {
+    ...sceneConfig,
+    associatedClassIds: activeClassContext.classIds,
+    associatedCollegeIds: activeClassContext.collegeIds,
+  };
   const baseInsertData = {
     seat_data: safeJson(seatData, []),
     student_names: safeJson(normalizedStudentNames, []),
-    scene_config: safeJson(sceneConfig, {}),
+    scene_config: safeJson(persistedSceneConfig, {}),
     scene_type: sceneType || 'classroom',
     ...(currentUserId ? { user_id: currentUserId } : {}),
   };
@@ -332,7 +341,7 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   const ids = Array.from(new Set([...tokenIds, ...getSeatCheckinSessionIds()]));
   let rows: SeatCheckinHistoryRow[] = [];
 
-  const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names, otp_enabled, otp_period_seconds';
+  const selectEnhanced = 'id, created_at, duration_minutes, status, ended_at, scene_type, class_name, student_names, scene_config, otp_enabled, otp_period_seconds';
   const selectLegacy = 'id, created_at, status, scene_type, student_names';
 
   const queryHistoryRows = async (build: (selectClause: string) => PromiseLike<{ data: unknown; error: unknown }>) => {
@@ -405,7 +414,14 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   return rows
     .filter(item => !sceneType || item.scene_type === sceneType)
     .filter(item => item.status !== 'deleted')
-    .map(item => ({
+    .map(item => {
+      const config = item.scene_config && typeof item.scene_config === 'object' && !Array.isArray(item.scene_config)
+        ? item.scene_config as Record<string, unknown>
+        : null;
+      const storedClassIds = config && Array.isArray(config.associatedClassIds)
+        ? config.associatedClassIds.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : undefined;
+      return ({
       id: item.id,
       created_at: item.created_at,
       duration_minutes: item.duration_minutes ?? 99999,
@@ -416,7 +432,9 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
       student_names: (item.student_names || []) as string[],
       otp_enabled: item.otp_enabled ?? false,
       otp_period_seconds: item.otp_period_seconds ?? 30,
-    }));
+      class_ids: storedClassIds,
+    });
+    });
 }
 
 export async function loadSeatCheckinRecords(sessionId: string) {

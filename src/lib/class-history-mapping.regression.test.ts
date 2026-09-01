@@ -81,4 +81,14 @@ describe('班级与签到、白板的对应关系', () => {
     const messy = [{ id: 'm1', class_name: '临时会话', student_names: [' 张　三 '] }];
     expect(filterHistorySessions(messy, classes, { classId: 'c-a' })).toHaveLength(1);
   });
+
+  it('新签到记录按班级 ID 精确归属，不受相似班名和同名学生干扰', () => {
+    const ambiguousClasses: HistoryFilterClass[] = [
+      { id: 'c-1', name: '1班', college_id: 'col-1', students: ['张三'] },
+      { id: 'c-11', name: '11班', college_id: 'col-1', students: ['张三'] },
+    ];
+    const session = [{ id: 'exact', class_name: '11班', student_names: ['张三'], class_ids: ['c-11'] }];
+    expect(filterHistorySessions(session, ambiguousClasses, { classId: 'c-1' })).toHaveLength(0);
+    expect(filterHistorySessions(session, ambiguousClasses, { classId: 'c-11' })).toHaveLength(1);
+  });
 });

@@ -9,6 +9,8 @@
 export interface HistoryFilterSession {
   class_name?: string;
   student_names?: string[];
+  /** Exact class links persisted when the session was published. Undefined means a legacy record. */
+  class_ids?: string[];
 }
 
 export interface HistoryFilterClass {
@@ -21,6 +23,8 @@ export interface HistoryFilterClass {
 const normalize = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, '').trim().toLowerCase();
 
 export function sessionMatchesClass(session: HistoryFilterSession, cls: HistoryFilterClass): boolean {
+  if (Array.isArray(session.class_ids)) return session.class_ids.includes(cls.id);
+
   const className = normalize(cls.name || '');
   if (!className) return false;
 
