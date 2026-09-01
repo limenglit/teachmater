@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { readSpreadsheetFile, writeExcelFile, writeCsvFile } from '@/lib/excel-utils';
 import { buildClassRosterPreview, type ClassRosterPreviewRow } from '@/lib/roster-import';
-import { setActiveClassName } from '@/lib/class-context';
+import { setActiveClassContext } from '@/lib/class-context';
 import { decodeTextBytes } from '@/lib/text-file';
 import { buildClassStudentInserts, chunkClassStudentInserts, type ClassStudentInsertRow } from '@/lib/class-roster-import';
 
@@ -266,7 +266,11 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       gender: 'unknown' as const,
       studentNumber: s.student_number || undefined,
     })));
-    setActiveClassName(selectedClassItem?.name || '');
+    setActiveClassContext({
+      label: selectedClassItem?.name || '',
+      classIds: selectedClassItem ? [selectedClassItem.id] : [],
+      collegeIds: selectedClassItem ? [selectedClassItem.college_id] : [],
+    });
     toast({ title: t('library.loadedToList'), description: `${classStudents.length} ${t('library.students')}` });
   };
 

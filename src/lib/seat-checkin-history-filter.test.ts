@@ -27,4 +27,15 @@ describe('seat checkin history filter', () => {
     expect(filterHistorySessions(sessions, classes, { collegeId: 'c1' })).toHaveLength(2);
     expect(filterHistorySessions(sessions, classes, {})).toHaveLength(3);
   });
+
+  it('uses persisted class ids instead of ambiguous names or shared students', () => {
+    const exact = { class_name: '一班联合活动', student_names: ['张三', '王五'], class_ids: ['b'] };
+    expect(sessionMatchesClass(exact, classA)).toBe(false);
+    expect(sessionMatchesClass(exact, classB)).toBe(true);
+  });
+
+  it('treats an explicitly empty class id list as unassociated', () => {
+    const unassociated = { class_name: '一班', student_names: ['张三'], class_ids: [] };
+    expect(sessionMatchesClass(unassociated, classA)).toBe(false);
+  });
 });

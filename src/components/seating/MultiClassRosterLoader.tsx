@@ -15,10 +15,11 @@ import {
   combinedClassLabel,
   type ClassRosterSelection,
 } from '@/lib/seat-roster-merge';
-import { setActiveClassName } from '@/lib/class-context';
+import { getActiveClassContext, setActiveClassContext } from '@/lib/class-context';
 
 interface ClassEntry extends ClassRosterSelection {
   id: string;
+  collegeId: string;
 }
 
 interface Props {
@@ -47,6 +48,7 @@ export default function MultiClassRosterLoader({ open, onOpenChange }: Props) {
       const { colleges, classes: cls, classStudents } = await fetchClassLibrary();
       const next: ClassEntry[] = cls.map(c => ({
         id: c.id,
+        collegeId: c.college_id,
         className: c.name,
         collegeName: colleges.find(col => col.id === c.college_id)?.name || '',
         students: classStudents
@@ -99,7 +101,18 @@ export default function MultiClassRosterLoader({ open, onOpenChange }: Props) {
     }
     const incoming = buildStudentsFromClasses(selected, { dedupe });
     const result = importMode === 'replace' ? replaceStudents(incoming) : appendStudents(incoming);
-    setActiveClassName(combinedClassLabel(selected));
+    const previous = getActiveClassContext();
+    const classIds = importMode === 'append'
+      ? [...previous.classIds, ...selected.map(item => item.id)]
+      : selected.map(item => item.id);
+    const collegeIds = importMode === 'append'
+      ? [...previous.collegeIds, ...selected.map(item => item.collegeId)]
+      : selected.map(item => item.collegeId);
+    setActiveClassContext({
+      label: combinedClassLabel(selected),
+      classIds,
+      collegeIds,
+    });
     toast.success(
       `${t('seat.roster.loaded')}: +${result.added} / ${t('sidebar.persons')} ${result.total}`,
     );
