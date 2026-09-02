@@ -9,6 +9,8 @@ import { acceptStudentDragOver, readDraggedStudentName, handleStudentDragLeave, 
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import LeavePoolPanel from './LeavePoolPanel';
 import type { LeavePoolEntry } from '@/lib/seat-leave-pool';
+import { computeLabRoomSize } from '@/lib/computer-lab-room';
+
 import { toast } from 'sonner';
 import {
   loadComputerLabSnapshot,
