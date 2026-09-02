@@ -90,7 +90,7 @@ export default function ComputerLab({ students }: Props) {
   const seatW = 56;
   const seatH = 36;
   const gap = 4;
-  const tableMargin = 20;
+  
   const tableW = seatsPerSide * (seatW + gap) + gap;
 
   const colGap = 40;
@@ -103,14 +103,61 @@ export default function ComputerLab({ students }: Props) {
   const rowGap = Math.max(tableGap, minRowGap);
   const maxRows = Math.max(...assignment.map(a => a.rowIndex), -1) + 1 || rowCount;
 
-  const hasRotatedRow = rowTransforms.some(t => (t?.rotation ?? 0) % 180 !== 0);
-  const rotationPad = hasRotatedRow ? Math.round(allTableW / 2) + 60 : 0;
-  const roomWidth = Math.max(980, allTableW + tableMargin * 2 + 220) + rotationPad;
-  const roomHeight = Math.max(760, maxRows * rowGap + 220) + rotationPad;
+  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 760));
+
+  /**
+   * Auto-fit canvas: measure the real bounding box of every row (including its
+   * drag offset and rotation) plus the visible reference badges, so the room
+   * shrinks/grows with the actual layout instead of a fixed 980x760 block.
+   */
+  const { roomWidth, roomHeight } = useMemo(() => {
+    const pad = 40;
+    const refPad = 24;
+    const badgeW = 90;
+    const badgeH = 32;
+    const rotateBtnW = sceneLocked ? 0 : 42;
+
+    let halfW = allTableW / 2 + rotateBtnW;
+    let maxY = 0;
+
+    for (let ri = 0; ri < Math.max(1, maxRows); ri++) {
+      const tf = rowTransforms[ri] || { x: 0, y: 0, rotation: 0 };
+      const baseY = 120 + ri * rowGap;
+      const rowCenterY = dualSide ? baseY + 20 : baseY + 52;
+      const topY = showTop ? baseY - seatH - 8 : baseY;
+      const bottomY = showBottom ? (dualSide ? baseY + 28 : baseY + 24 + 8) + seatH : baseY + 24;
+      const left = -allTableW / 2;
+      const right = allTableW / 2 + rotateBtnW;
+      const a = ((tf.rotation ?? 0) * Math.PI) / 180;
+      const cos = Math.cos(a);
+      const sin = Math.sin(a);
+      for (const [dx, y] of [[left, topY], [right, topY], [left, bottomY], [right, bottomY]] as const) {
+        const dy = y - rowCenterY;
+        const rx = dx * cos - dy * sin + (tf.x ?? 0);
+        const ry = rowCenterY + dx * sin + dy * cos + (tf.y ?? 0);
+        halfW = Math.max(halfW, Math.abs(rx));
+        maxY = Math.max(maxY, ry);
+      }
+    }
+
+    let width = Math.max(520, Math.round(halfW * 2 + pad * 2));
+    let height = Math.max(380, Math.round(maxY + pad));
+
+    for (const key of ['blackboard', 'window', 'door'] as RefKey[]) {
+      if (!refVisible[key]) continue;
+      const p = refPositions[key];
+      if (!p) continue;
+      width = Math.max(width, Math.round(p.x + badgeW + refPad));
+      height = Math.max(height, Math.round(p.y + badgeH + refPad));
+    }
+
+    return { roomWidth: width, roomHeight: height };
+  }, [allTableW, maxRows, rowGap, rowTransforms, dualSide, showTop, showBottom, seatH, sceneLocked, refPositions, refVisible]);
+
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
   const defaultRefPositions = useMemo(() => buildDefaultRefPositions(roomWidth, roomHeight), [roomWidth, roomHeight]);
-  const [refPositions, setRefPositions] = useState<RefPositions>(() => buildDefaultRefPositions(980, 760));
+
 
   // Determine door position quadrant for student navigation
   const doorQuadrant = useMemo(() => {
