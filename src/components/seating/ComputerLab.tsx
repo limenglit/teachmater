@@ -9,6 +9,8 @@ import { acceptStudentDragOver, readDraggedStudentName, handleStudentDragLeave, 
 import ZoomControls, { useSceneZoom, useZoomGestures } from './ZoomControls';
 import LeavePoolPanel from './LeavePoolPanel';
 import type { LeavePoolEntry } from '@/lib/seat-leave-pool';
+import { computeLabRoomSize } from '@/lib/computer-lab-room';
+
 import { toast } from 'sonner';
 import {
   loadComputerLabSnapshot,
@@ -110,49 +112,13 @@ export default function ComputerLab({ students }: Props) {
    * drag offset and rotation) plus the visible reference badges, so the room
    * shrinks/grows with the actual layout instead of a fixed 980x760 block.
    */
-  const { roomWidth, roomHeight } = useMemo(() => {
-    const pad = 40;
-    const refPad = 24;
-    const badgeW = 90;
-    const badgeH = 32;
-    const rotateBtnW = sceneLocked ? 0 : 42;
+  const { roomWidth, roomHeight } = useMemo(
+    () => computeLabRoomSize({
+      allTableW, maxRows, rowGap, rowTransforms, dualSide, showTop, showBottom, seatH, sceneLocked, refPositions, refVisible,
+    }),
+    [allTableW, maxRows, rowGap, rowTransforms, dualSide, showTop, showBottom, seatH, sceneLocked, refPositions, refVisible],
+  );
 
-    let halfW = allTableW / 2 + rotateBtnW;
-    let maxY = 0;
-
-    for (let ri = 0; ri < Math.max(1, maxRows); ri++) {
-      const tf = rowTransforms[ri] || { x: 0, y: 0, rotation: 0 };
-      const baseY = 120 + ri * rowGap;
-      const rowCenterY = dualSide ? baseY + 20 : baseY + 52;
-      const topY = showTop ? baseY - seatH - 8 : baseY;
-      const bottomY = showBottom ? (dualSide ? baseY + 28 : baseY + 24 + 8) + seatH : baseY + 24;
-      const left = -allTableW / 2;
-      const right = allTableW / 2 + rotateBtnW;
-      const a = ((tf.rotation ?? 0) * Math.PI) / 180;
-      const cos = Math.cos(a);
-      const sin = Math.sin(a);
-      for (const [dx, y] of [[left, topY], [right, topY], [left, bottomY], [right, bottomY]] as const) {
-        const dy = y - rowCenterY;
-        const rx = dx * cos - dy * sin + (tf.x ?? 0);
-        const ry = rowCenterY + dx * sin + dy * cos + (tf.y ?? 0);
-        halfW = Math.max(halfW, Math.abs(rx));
-        maxY = Math.max(maxY, ry);
-      }
-    }
-
-    let width = Math.max(520, Math.round(halfW * 2 + pad * 2));
-    let height = Math.max(380, Math.round(maxY + pad));
-
-    for (const key of ['blackboard', 'window', 'door'] as RefKey[]) {
-      if (!refVisible[key]) continue;
-      const p = refPositions[key];
-      if (!p) continue;
-      width = Math.max(width, Math.round(p.x + badgeW + refPad));
-      height = Math.max(height, Math.round(p.y + badgeH + refPad));
-    }
-
-    return { roomWidth: width, roomHeight: height };
-  }, [allTableW, maxRows, rowGap, rowTransforms, dualSide, showTop, showBottom, seatH, sceneLocked, refPositions, refVisible]);
 
   const zoom = useSceneZoom({ contentWidth: roomWidth, contentHeight: roomHeight });
   useZoomGestures({ setScale: zoom.setScale, targetRef: zoom.containerRef });
