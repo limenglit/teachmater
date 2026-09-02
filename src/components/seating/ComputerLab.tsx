@@ -90,7 +90,7 @@ export default function ComputerLab({ students }: Props) {
   const seatW = 56;
   const seatH = 36;
   const gap = 4;
-  const tableMargin = 20;
+  
   const tableW = seatsPerSide * (seatW + gap) + gap;
 
   const colGap = 40;
