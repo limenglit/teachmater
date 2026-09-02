@@ -38,7 +38,7 @@ describe('computeLabRoomSize', () => {
 
   it('expands to fit a rotated row', () => {
     const flat = computeLabRoomSize(base());
-    const rotated = computeLabRoomSize(base({ rowTransforms: [{ x: 0, y: 0, rotation: 90 }] }));
+    const rotated = computeLabRoomSize(base({ rowTransforms: [undefined, undefined, undefined, { x: 0, y: 0, rotation: 90 }] }));
     expect(rotated.roomHeight).toBeGreaterThan(flat.roomHeight);
     expect(rotated.roomWidth).toBeLessThanOrEqual(flat.roomWidth + 4);
   });
@@ -51,8 +51,8 @@ describe('computeLabRoomSize', () => {
   });
 
   it('is symmetric for mirrored row drags (content stays centred)', () => {
-    const left = computeLabRoomSize(base({ rowTransforms: [{ x: -300, y: 0, rotation: 0 }] }));
-    const right = computeLabRoomSize(base({ rowTransforms: [{ x: 300, y: 0, rotation: 0 }] }));
+    const left = computeLabRoomSize(base({ sceneLocked: true, refPositions: {}, refVisible: {}, rowTransforms: [{ x: -300, y: 0, rotation: 0 }] }));
+    const right = computeLabRoomSize(base({ sceneLocked: true, refPositions: {}, refVisible: {}, rowTransforms: [{ x: 300, y: 0, rotation: 0 }] }));
     expect(left.roomWidth).toBe(right.roomWidth);
   });
 
