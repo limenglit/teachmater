@@ -17,6 +17,16 @@ export function useGridLeavePool({ assignment, setAssignment, isClosed, labelOf 
   const gridRef = useRef(assignment);
   useEffect(() => { gridRef.current = assignment; }, [assignment]);
 
+  // 若某位请假学生已重新就座（例如从请假池拖回座位），自动把他移出请假池，
+  // 避免同一个人同时出现在座位与请假池中造成重复。
+  useEffect(() => {
+    setLeavePool(prev => {
+      const next = prev.filter(entry => !findInGrid(assignment, entry.name));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [assignment]);
+
+
   const closed = useCallback((i: number, j: number) => (isClosed ? isClosed(i, j) : false), [isClosed]);
 
   const moveToLeave = useCallback((i: number, j: number, name: string) => {
