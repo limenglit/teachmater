@@ -29,11 +29,12 @@ describe('alignGridRow', () => {
     expect(out).toEqual(['A', null, 'B', null]);
   });
 
-  it('skips disabled columns entirely', () => {
-    const out = alignGridRow(['A', null, 'B', null], segs([], 4), 'left', new Set([0]));
+  it('leaves disabled columns untouched and aligns the rest', () => {
+    const out = alignGridRow([null, null, 'B', 'C'], segs([], 4), 'left', new Set([0]));
     expect(out[0]).toBe(null);
-    expect(out).toEqual([null, 'A', 'B', null]);
+    expect(out).toEqual([null, 'B', 'C', null]);
   });
+
 
   it('never changes the number of seated students', () => {
     const row = ['A', null, 'B', 'C', null, 'D'];
