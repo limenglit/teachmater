@@ -342,6 +342,18 @@ export default function SeatCheckinDialog({
   const [seatLabelMode, setSeatLabelMode] = useState<SeatLabelMode>('no');
   // 学生端附加采集字段：完全自定义（名称 + 数量 + 是否必填）
   const [customFields, setCustomFields] = useState<CheckinCustomField[]>(() => normalizeCustomFields(sceneConfig));
+  /**
+   * 导出 CSV 时应使用「该场签到发布时」的填写项配置（保存在会话的 scene_config 里），
+   * 而不是当前编辑器里的草稿配置，否则表头会退化成 field_2 之类的内部 id，
+   * 或多出该场次并未采集的空列。
+   */
+  const sessionCustomFields = useMemo(() => {
+    const sc = (currentSession as unknown as { scene_config?: Record<string, unknown> } | null)?.scene_config;
+    if (!sc) return customFields;
+    const fromSession = normalizeCustomFields(sc);
+    return fromSession.length > 0 ? fromSession : customFields;
+  }, [currentSession, customFields]);
+
   const [findFriendEnabled, setFindFriendEnabled] = useState(true);
   // 防代签动态口令
   const [otpEnabled, setOtpEnabled] = useState(false);
