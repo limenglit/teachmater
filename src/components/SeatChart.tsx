@@ -1316,6 +1316,15 @@ export default function SeatChart() {
                       ))}
                     </div>
                   )}
+                  <SeatAlignmentPanel
+                    rows={rows}
+                    segments={alignSegments}
+                    getAlign={getAlign}
+                    onSetAlign={handleSetAlign}
+                    onApplyAll={handleApplyAlignAll}
+                    className="mt-2 border-t border-border/50 pt-2"
+                  />
+
                 </div>
               )}
             </div>
