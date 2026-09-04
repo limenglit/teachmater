@@ -1568,7 +1568,7 @@ export default function SeatCheckinDialog({
                     const inListSet = new Set(currentStudentNames.map(n => n.trim()));
                     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
                     // 姓名后的附加列按发布时配置的自定义填写项（或已采集到的数据）动态生成
-                    const exportFields = resolveExportFields(customFields.filter(f => f.label.trim() !== ''), sorted);
+                    const exportFields = resolveExportFields(sessionCustomFields.filter(f => f.label.trim() !== ''), sorted);
                     const rows = [
                       [
                         t('seatCheckinDialog.csvIndex'),
