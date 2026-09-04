@@ -22,6 +22,9 @@ import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { sortStudentsByStudentNo } from '@/lib/seat-student-no';
 import StudentNoPreview from '@/components/seating/StudentNoPreview';
+import SeatAlignmentPanel from '@/components/seating/SeatAlignmentPanel';
+import { computeSegments, type SeatAlignment } from '@/lib/seat-alignment';
+import { alignGridRow } from '@/lib/seat-alignment-grid';
 
 import { toast } from 'sonner';
 import {
@@ -152,6 +155,46 @@ export default function SeatChart() {
     setUndoStack(s => pushSeatUndo(s, snap));
     setRedoStack([]);
   }, []);
+
+  // ----- 座椅自动对齐与等间距 -----
+  const [seatAlignments, setSeatAlignments] = useState<Record<string, SeatAlignment>>({});
+  const alignSegments = useMemo(() => computeSegments(colAisles, cols), [colAisles, cols]);
+  const getAlign = useCallback((r: number, segIdx: number): SeatAlignment => seatAlignments[`${r}-${segIdx}`] || 'left', [seatAlignments]);
+  const disabledColsForRow = useCallback((r: number) => {
+    const set = new Set<number>();
+    for (let c = 0; c < cols; c++) if (disabledRef.current.has(`${r}-${c}`)) set.add(c);
+    return set;
+  }, [cols]);
+  const applyAlignRow = useCallback((r: number, map: Record<string, SeatAlignment>) => {
+    setSeats(prev => {
+      if (!prev[r]) return prev;
+      const next = prev.map(row => [...row]);
+      const disabled = disabledColsForRow(r);
+      let row = next[r];
+      alignSegments.forEach((seg, si) => {
+        row = alignGridRow(row, [seg], map[`${r}-${si}`] || 'left', disabled);
+      });
+      next[r] = row;
+      return next;
+    });
+  }, [alignSegments, disabledColsForRow]);
+  const handleSetAlign = useCallback((r: number, segIdx: number | 'all', value: SeatAlignment) => {
+    pushHistory();
+    setSeatAlignments(prev => {
+      const next = { ...prev };
+      if (segIdx === 'all') alignSegments.forEach((_, si) => { next[`${r}-${si}`] = value; });
+      else next[`${r}-${segIdx}`] = value;
+      applyAlignRow(r, next);
+      return next;
+    });
+  }, [alignSegments, applyAlignRow, pushHistory]);
+  const handleApplyAlignAll = useCallback(() => {
+    pushHistory();
+    for (let r = 0; r < rows; r++) applyAlignRow(r, seatAlignments);
+    toast.success(t('seat.custom.applyAlignmentAll') || '已重新应用对齐');
+  }, [rows, applyAlignRow, seatAlignments, pushHistory, t]);
+
+
 
   /** 双击座位 → 移入请假池：清空座位并记录原位置 */
   const moveToLeavePool = useCallback((r: number, c: number, name: string) => {
@@ -1273,6 +1316,15 @@ export default function SeatChart() {
                       ))}
                     </div>
                   )}
+                  <SeatAlignmentPanel
+                    rows={rows}
+                    segments={alignSegments}
+                    getAlign={getAlign}
+                    onSetAlign={handleSetAlign}
+                    onApplyAll={handleApplyAlignAll}
+                    className="mt-2 border-t border-border/50 pt-2"
+                  />
+
                 </div>
               )}
             </div>
