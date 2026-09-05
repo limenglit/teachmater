@@ -176,17 +176,6 @@ export default function ComputerLab({ students }: Props) {
   const assignmentRef = useRef(assignment);
   useEffect(() => { assignmentRef.current = assignment; }, [assignment]);
 
-  // 已重新就座（含从请假池拖回座位）的学生自动移出请假池，避免重复。
-  useEffect(() => {
-    setLeavePool(prev => {
-      const seated = new Set<string>();
-      for (const g of assignment) for (const s of g.students ?? []) { const v = (s || '').trim(); if (v) seated.add(v); }
-      const next = prev.filter(entry => !seated.has(entry.name));
-      return next.length === prev.length ? prev : next;
-    });
-  }, [assignment]);
-
-
   const labSeatLabel = (groupIdx: number, col: number) => {
     const g = assignmentRef.current[groupIdx];
     if (!g) return `${col + 1}号`;
