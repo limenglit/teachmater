@@ -1662,6 +1662,7 @@ export default function SeatChart() {
                       <button
                         key={`${entry.name}-${entry.r}-${entry.c}`}
                         type="button"
+                        data-leave-chip={entry.name}
                         draggable
                         onDragStart={e => {
                           e.dataTransfer.setData('text/plain', `student:${entry.name}`);
