@@ -1052,6 +1052,9 @@ export default function SeatChart() {
 
         elements.push(
           <div key={`seat-${ri}-${ci}`} draggable={!!name && !isDisabled && !isLocked}
+            data-seat={`${ri}-${ci}`}
+            data-seat-name={name || undefined}
+            data-seat-locked={isLocked ? 'true' : undefined}
             data-disabled-seat={isDisabled ? 'true' : undefined}
             onDragStart={() => handleDragStart(ri, ci)}
             onDragOver={e => { if (isDisabled) return; const raw = e.dataTransfer.getData('text/plain'); const isStudentDrag = raw.startsWith('student:') || e.dataTransfer.types.includes('application/x-student-name'); if (isStudentDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ r: ri, c: ci }); showStudentDropHint(e, { occupant: name || undefined }); return; } const isAisleDrag = !!draggingAisle || !!draggingAisleRef.current || raw.startsWith('col:') || raw.startsWith('row:'); if (isAisleDrag) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return; } handleDragOver(e, ri, ci); }}
