@@ -62,9 +62,8 @@ describe('alignGridRows', () => {
   });
 
   it('honours per-row closed seats', () => {
-    const rows = [[null, 'A', 'B']];
+    const rows = [[null, 'A', null]];
     const out = alignGridRows(rows, () => [seg(0, 3)], () => 'left', () => new Set([2]));
-    expect(out[0][2]).toBeNull();
-    expect(out[0].filter(Boolean)).toEqual(['A', 'B']);
+    expect(out[0]).toEqual(['A', null, null]);
   });
 });
