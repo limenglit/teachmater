@@ -727,19 +727,15 @@ export default function SeatChart() {
     return set;
   }, [cols, disabledSeats]);
   const applyAlignment = useCallback((alignFor: (r: number, segIdx: number) => SeatAlignment) => {
+    if (alignSegments.length === 0) return;
     pushHistory();
-    setSeats(prev => alignSegments.length === 0 ? prev : prev.map((row, r) => alignGridRows(
-      [row],
-      () => alignSegments,
-      () => 'left',
-      () => disabledColsForRow(r),
-      // per-segment alignment handled below
-    )[0] && alignSegments.reduce((acc, seg, si) => alignGridRows(
-      [acc],
-      () => [seg],
-      () => alignFor(r, si),
-      () => disabledColsForRow(r),
-    )[0], [...row])));
+    setSeats(prev => prev.map((row, r) => {
+      const closed = disabledColsForRow(r);
+      return alignSegments.reduce<(string | null)[]>(
+        (acc, seg, si) => alignGridRows([acc], () => [seg], () => alignFor(r, si), () => closed)[0],
+        [...row],
+      );
+    }));
   }, [alignSegments, disabledColsForRow, pushHistory]);
   const handleSetAlignment = useCallback((r: number, segIdx: number | 'all', value: SeatAlignment) => {
     setSeatAlignments(prev => {
