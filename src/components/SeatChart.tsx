@@ -22,6 +22,9 @@ import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { sortStudentsByStudentNo } from '@/lib/seat-student-no';
 import StudentNoPreview from '@/components/seating/StudentNoPreview';
+import SeatAlignmentPanel from '@/components/seating/SeatAlignmentPanel';
+import { computeSegments, type SeatAlignment } from '@/lib/seat-alignment';
+import { alignGridRows } from '@/lib/seat-alignment-grid';
 
 import { toast } from 'sonner';
 import {
