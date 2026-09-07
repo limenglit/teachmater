@@ -718,6 +718,45 @@ export default function SeatChart() {
   const removeColAisle = (idx: number) => { setColAisles(prev => prev.filter(a => a !== idx)); };
   const removeRowAisle = (idx: number) => { setRowAisles(prev => prev.filter(a => a !== idx)); };
 
+  // ---- Seat auto-alignment / even spacing (per row, per aisle segment) ----
+  const alignSegments = useMemo(() => computeSegments(colAisles, cols), [colAisles, cols]);
+  const getAlignment = useCallback((r: number, segIdx: number): SeatAlignment => seatAlignments[`${r}-${segIdx}`] || 'left', [seatAlignments]);
+  const disabledColsForRow = useCallback((r: number) => {
+    const set = new Set<number>();
+    for (let c = 0; c < cols; c++) if (disabledSeats.has(seatKey(r, c))) set.add(c);
+    return set;
+  }, [cols, disabledSeats]);
+  const applyAlignment = useCallback((alignFor: (r: number, segIdx: number) => SeatAlignment) => {
+    pushHistory();
+    setSeats(prev => alignSegments.length === 0 ? prev : prev.map((row, r) => alignGridRows(
+      [row],
+      () => alignSegments,
+      () => 'left',
+      () => disabledColsForRow(r),
+      // per-segment alignment handled below
+    )[0] && alignSegments.reduce((acc, seg, si) => alignGridRows(
+      [acc],
+      () => [seg],
+      () => alignFor(r, si),
+      () => disabledColsForRow(r),
+    )[0], [...row])));
+  }, [alignSegments, disabledColsForRow, pushHistory]);
+  const handleSetAlignment = useCallback((r: number, segIdx: number | 'all', value: SeatAlignment) => {
+    setSeatAlignments(prev => {
+      const next = { ...prev };
+      if (segIdx === 'all') alignSegments.forEach((_, si) => { next[`${r}-${si}`] = value; });
+      else next[`${r}-${segIdx}`] = value;
+      return next;
+    });
+    applyAlignment((row, si) => {
+      if (row !== r) return getAlignment(row, si);
+      if (segIdx === 'all' || segIdx === si) return value;
+      return getAlignment(row, si);
+    });
+  }, [alignSegments, applyAlignment, getAlignment]);
+  const handleApplyAllAlignment = useCallback(() => applyAlignment(getAlignment), [applyAlignment, getAlignment]);
+
+
   const moveAisle = useCallback((type: 'row' | 'col', oldIndex: number, newIndex: number) => {
     if (oldIndex === newIndex) return;
     if (type === 'col') { setColAisles(prev => { const next = prev.filter(a => a !== oldIndex); if (!next.includes(newIndex)) next.push(newIndex); return next.sort((a, b) => a - b); }); return; }
