@@ -22,6 +22,9 @@ import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls
 import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
 import { sortStudentsByStudentNo } from '@/lib/seat-student-no';
 import StudentNoPreview from '@/components/seating/StudentNoPreview';
+import SeatAlignmentPanel from '@/components/seating/SeatAlignmentPanel';
+import { computeSegments, type SeatAlignment } from '@/lib/seat-alignment';
+import { alignGridRows } from '@/lib/seat-alignment-grid';
 
 import { toast } from 'sonner';
 import {
@@ -130,6 +133,8 @@ export default function SeatChart() {
 
   const [colAisles, setColAisles] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
+  const [seatAlignments, setSeatAlignments] = useState<Record<string, SeatAlignment>>({});
+  const [alignPanelOpen, setAlignPanelOpen] = useState(false);
   const [draggingAisle, setDraggingAisle] = useState<{ type: 'row' | 'col'; index: number } | null>(null);
   const draggingAisleRef = useRef<{ type: 'row' | 'col'; index: number } | null>(null);
   const [pointerDraggingColAisle, setPointerDraggingColAisle] = useState<number | null>(null);
@@ -712,6 +717,41 @@ export default function SeatChart() {
   const addRowAisle = () => { const mid = Math.floor(rows / 2) - 1; const candidate = rowAisles.includes(mid) ? findNextFree(mid, rows - 1, rowAisles) : mid; if (candidate !== null) setRowAisles(prev => [...prev, candidate].sort((a, b) => a - b)); };
   const removeColAisle = (idx: number) => { setColAisles(prev => prev.filter(a => a !== idx)); };
   const removeRowAisle = (idx: number) => { setRowAisles(prev => prev.filter(a => a !== idx)); };
+
+  // ---- Seat auto-alignment / even spacing (per row, per aisle segment) ----
+  const alignSegments = useMemo(() => computeSegments(colAisles, cols), [colAisles, cols]);
+  const getAlignment = useCallback((r: number, segIdx: number): SeatAlignment => seatAlignments[`${r}-${segIdx}`] || 'left', [seatAlignments]);
+  const disabledColsForRow = useCallback((r: number) => {
+    const set = new Set<number>();
+    for (let c = 0; c < cols; c++) if (disabledSeats.has(seatKey(r, c))) set.add(c);
+    return set;
+  }, [cols, disabledSeats]);
+  const applyAlignment = useCallback((alignFor: (r: number, segIdx: number) => SeatAlignment) => {
+    if (alignSegments.length === 0) return;
+    pushHistory();
+    setSeats(prev => prev.map((row, r) => {
+      const closed = disabledColsForRow(r);
+      return alignSegments.reduce<(string | null)[]>(
+        (acc, seg, si) => alignGridRows([acc], () => [seg], () => alignFor(r, si), () => closed)[0],
+        [...row],
+      );
+    }));
+  }, [alignSegments, disabledColsForRow, pushHistory]);
+  const handleSetAlignment = useCallback((r: number, segIdx: number | 'all', value: SeatAlignment) => {
+    setSeatAlignments(prev => {
+      const next = { ...prev };
+      if (segIdx === 'all') alignSegments.forEach((_, si) => { next[`${r}-${si}`] = value; });
+      else next[`${r}-${segIdx}`] = value;
+      return next;
+    });
+    applyAlignment((row, si) => {
+      if (row !== r) return getAlignment(row, si);
+      if (segIdx === 'all' || segIdx === si) return value;
+      return getAlignment(row, si);
+    });
+  }, [alignSegments, applyAlignment, getAlignment]);
+  const handleApplyAllAlignment = useCallback(() => applyAlignment(getAlignment), [applyAlignment, getAlignment]);
+
 
   const moveAisle = useCallback((type: 'row' | 'col', oldIndex: number, newIndex: number) => {
     if (oldIndex === newIndex) return;
@@ -1569,6 +1609,31 @@ export default function SeatChart() {
                 </Button>
               )}
             </div>
+
+            {seats.length > 0 && (
+              <div className="mb-3 rounded-md border border-border/60 bg-muted/10 px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => setAlignPanelOpen(o => !o)}
+                  className="flex items-center gap-1 text-xs font-medium text-foreground/80"
+                >
+                  <span>{t('seat.custom.alignmentTitle') || '座椅自动对齐与等间距'}</span>
+                  <span>{alignPanelOpen ? '▲' : '▼'}</span>
+                </button>
+                {alignPanelOpen && (
+                  <SeatAlignmentPanel
+                    className="mt-2"
+                    rows={rows}
+                    segments={alignSegments}
+                    getAlign={getAlignment}
+                    onSetAlign={handleSetAlignment}
+                    onApplyAll={handleApplyAllAlignment}
+                  />
+                )}
+              </div>
+            )}
+
+
 
             {/* 5. 组织图例 */}
             {organizationLegend.length > 0 && (
