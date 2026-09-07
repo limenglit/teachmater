@@ -1610,6 +1610,31 @@ export default function SeatChart() {
               )}
             </div>
 
+            {seats.length > 0 && (
+              <div className="mb-3 rounded-md border border-border/60 bg-muted/10 px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => setAlignPanelOpen(o => !o)}
+                  className="flex items-center gap-1 text-xs font-medium text-foreground/80"
+                >
+                  <span>{t('seat.custom.alignmentTitle') || '座椅自动对齐与等间距'}</span>
+                  <span>{alignPanelOpen ? '▲' : '▼'}</span>
+                </button>
+                {alignPanelOpen && (
+                  <SeatAlignmentPanel
+                    className="mt-2"
+                    rows={rows}
+                    segments={alignSegments}
+                    getAlign={getAlignment}
+                    onSetAlign={handleSetAlignment}
+                    onApplyAll={handleApplyAllAlignment}
+                  />
+                )}
+              </div>
+            )}
+
+
+
             {/* 5. 组织图例 */}
             {organizationLegend.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3 rounded-md border border-border/60 bg-muted/20 px-2 py-2">
