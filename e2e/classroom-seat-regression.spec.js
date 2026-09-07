@@ -19,6 +19,11 @@ async function openClassroom(page) {
   await page.goto('/');
   await page.getByText('座位', { exact: true }).first().click();
   await expect(page.locator('[data-testid="seat-chart-panel"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: '自动排座' })).toBeVisible();
+}
+
+async function autoSeat(page) {
+  await page.getByRole('button', { name: '自动排座' }).click();
   await page.locator('[data-seat]').first().waitFor();
 }
 
