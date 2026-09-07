@@ -32,7 +32,7 @@ test.describe('classroom seating', () => {
     await openClassroom(page);
     for (const strategy of ['竖S形', '横S形', '智能集中', '随机排座', '考试座位', '学号顺序']) {
       await page.getByRole('button', { name: strategy, exact: true }).click();
-      await page.getByRole('button', { name: '自动排座' }).click();
+      await autoSeat(page);
       await expect.poll(async () => seatedCount(await readGrid(page))).toBeGreaterThan(0);
       const grid = await readGrid(page);
       const names = Object.values(grid).filter(Boolean);
@@ -42,7 +42,7 @@ test.describe('classroom seating', () => {
 
   test('drag swap, undo and redo keep the grid consistent', async ({ page }) => {
     await openClassroom(page);
-    await page.getByRole('button', { name: '自动排座' }).click();
+    await autoSeat(page);
     await expect.poll(async () => seatedCount(await readGrid(page))).toBeGreaterThan(1);
 
     const before = await readGrid(page);
@@ -61,7 +61,7 @@ test.describe('classroom seating', () => {
 
   test('leave pool removes and restores a student', async ({ page }) => {
     await openClassroom(page);
-    await page.getByRole('button', { name: '自动排座' }).click();
+    await autoSeat(page);
     await expect.poll(async () => seatedCount(await readGrid(page))).toBeGreaterThan(0);
 
     const grid = await readGrid(page);
@@ -78,7 +78,7 @@ test.describe('classroom seating', () => {
 
   test('clearing the grid empties every seat', async ({ page }) => {
     await openClassroom(page);
-    await page.getByRole('button', { name: '自动排座' }).click();
+    await autoSeat(page);
     await expect.poll(async () => seatedCount(await readGrid(page))).toBeGreaterThan(0);
     page.on('dialog', d => d.accept());
     await page.getByRole('button', { name: '清空座位' }).click();
