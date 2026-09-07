@@ -133,6 +133,8 @@ export default function SeatChart() {
 
   const [colAisles, setColAisles] = useState<number[]>([]);
   const [rowAisles, setRowAisles] = useState<number[]>([]);
+  const [seatAlignments, setSeatAlignments] = useState<Record<string, SeatAlignment>>({});
+  const [alignPanelOpen, setAlignPanelOpen] = useState(false);
   const [draggingAisle, setDraggingAisle] = useState<{ type: 'row' | 'col'; index: number } | null>(null);
   const draggingAisleRef = useRef<{ type: 'row' | 'col'; index: number } | null>(null);
   const [pointerDraggingColAisle, setPointerDraggingColAisle] = useState<number | null>(null);
