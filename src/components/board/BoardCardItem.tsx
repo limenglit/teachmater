@@ -200,6 +200,10 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
 
   return (
     <div
+      data-testid="board-card"
+      data-card-id={card.id}
+      data-card-pinned={card.is_pinned}
+      data-card-likes={card.likes_count}
       className="rounded-xl border border-border shadow-sm p-4 transition-all hover:shadow-md group relative"
       style={{ backgroundColor: card.color || '#ffffff' }}
     >
@@ -228,6 +232,8 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
               {isLongContent && (
                 <button
                   type="button"
+                  data-testid="board-card-expand"
+                  data-expanded={contentExpanded}
                   onClick={() => setContentExpanded(v => !v)}
                   className="text-xs text-primary hover:underline flex items-center gap-0.5"
                 >
@@ -238,6 +244,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
               )}
               <button
                 type="button"
+                data-testid="board-card-copy"
                 onClick={copyContent}
                 className="text-xs text-muted-foreground hover:text-primary flex items-center gap-0.5"
                 title={t('board.copyContent')}
@@ -268,6 +275,8 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
           <img
             src={card.media_url}
             alt=""
+            loading="lazy"
+            decoding="async"
             className="rounded-lg w-full max-h-40 object-cover cursor-zoom-in"
             onClick={() => setShowImagePreview(true)}
           />
@@ -488,6 +497,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
         </div>
         <div className="flex items-center gap-1">
           <button
+            data-testid="board-card-like"
             onClick={() => onLike(card.id)}
             className="flex items-center gap-0.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded hover:bg-destructive/5"
           >
@@ -504,12 +514,14 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
           {isCreator && (
             <>
               <button
+                data-testid="board-card-pin"
                 onClick={() => onManage(card.id, card.is_pinned ? 'unpin' : 'pin')}
                 className="text-xs text-muted-foreground hover:text-primary transition-colors px-1.5 py-0.5 rounded hover:bg-primary/5 opacity-0 group-hover:opacity-100"
               >
                 <Pin className="w-3 h-3" />
               </button>
               <button
+                data-testid="board-card-delete"
                 onClick={() => onManage(card.id, 'delete')}
                 className="text-xs text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded hover:bg-destructive/5 opacity-0 group-hover:opacity-100"
               >
