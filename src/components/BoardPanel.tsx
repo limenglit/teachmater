@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
 import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
+import { applyCardAction, likeCardLocal } from '@/lib/board-utils';
+import { getLikerToken, markLiked } from '@/lib/board-like';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -119,6 +121,9 @@ export default function BoardPanel() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [activeBoard, setActiveBoard] = useState<Board | null>(null);
   const [cards, setCards] = useState<BoardCard[]>([]);
+  // Keeps stable callbacks (manageCard / likeCard) pointed at the current board
+  // without re-creating them on every render.
+  const activeBoardRef = useRef<Board | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPPT, setShowPPT] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -142,6 +147,8 @@ export default function BoardPanel() {
   const [boardPage, setBoardPage] = useState(1);
   const [boardPageSize, setBoardPageSize] = useState(10);
   const [filterClassId, setFilterClassId] = useState<string>('all');
+
+  useEffect(() => { activeBoardRef.current = activeBoard; }, [activeBoard]);
 
   // Load boards
   useEffect(() => {
@@ -425,47 +432,42 @@ export default function BoardPanel() {
     }
   };
 
-  const manageCard = async (cardId: string, action: 'approve' | 'reject' | 'pin' | 'unpin' | 'delete') => {
-    if (!activeBoard) return;
+  const manageCard = useCallback(async (cardId: string, action: 'approve' | 'reject' | 'pin' | 'unpin' | 'delete') => {
+    const board = activeBoardRef.current;
+    if (!board) return;
     if (isCloud) {
-      const token = getCreatorToken(activeBoard.id);
+      const token = getCreatorToken(board.id);
       if (token) {
         await supabase.rpc('manage_board_card', {
-          p_board_id: activeBoard.id,
+          p_board_id: board.id,
           p_token: token,
           p_card_id: cardId,
           p_action: action,
         });
       }
     }
-    if (action === 'delete' || action === 'reject') {
-      const updated = cards.filter(c => c.id !== cardId);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    } else if (action === 'approve') {
-      const updated = cards.map(c => c.id === cardId ? { ...c, is_approved: true } : c);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    } else if (action === 'pin') {
-      const updated = cards.map(c => c.id === cardId ? { ...c, is_pinned: true } : c);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    } else if (action === 'unpin') {
-      const updated = cards.map(c => c.id === cardId ? { ...c, is_pinned: false } : c);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    }
-  };
+    setCards(prev => {
+      const updated = applyCardAction(prev, cardId, action);
+      if (!isCloud) saveLocalCards(board.id, updated);
+      return updated;
+    });
+  }, [isCloud]);
 
-  const likeCard = async (cardId: string) => {
-    const likerToken = localStorage.getItem('board-liker-token') || crypto.randomUUID();
-    localStorage.setItem('board-liker-token', likerToken);
+  const likeCard = useCallback(async (cardId: string) => {
+    // Idempotent: one liker token can only add one like per card.
+    const likerToken = getLikerToken();
+    if (!markLiked(cardId)) return;
     if (isCloud) {
-      await supabase.from('board_likes').insert({ card_id: cardId, liker_token: likerToken });
+      const { error } = await supabase.from('board_likes').insert({ card_id: cardId, liker_token: likerToken });
+      if (error) return;
     }
-    setCards(prev => prev.map(c => c.id === cardId ? { ...c, likes_count: c.likes_count + 1 } : c));
-    if (!isCloud && activeBoard) saveLocalCards(activeBoard.id, cards.map(c => c.id === cardId ? { ...c, likes_count: c.likes_count + 1 } : c));
-  };
+    setCards(prev => {
+      const updated = likeCardLocal(prev, cardId);
+      const board = activeBoardRef.current;
+      if (!isCloud && board) saveLocalCards(board.id, updated);
+      return updated;
+    });
+  }, [isCloud]);
 
   const exportCSV = async () => {
     const approvedCards = cards.filter(c => c.is_approved);
