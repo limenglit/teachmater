@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
 import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
+import { applyCardAction, likeCardLocal } from '@/lib/board-utils';
+import { getLikerToken, markLiked } from '@/lib/board-like';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -119,6 +121,9 @@ export default function BoardPanel() {
   const [boards, setBoards] = useState<Board[]>([]);
   const [activeBoard, setActiveBoard] = useState<Board | null>(null);
   const [cards, setCards] = useState<BoardCard[]>([]);
+  // Keeps stable callbacks (manageCard / likeCard) pointed at the current board
+  // without re-creating them on every render.
+  const activeBoardRef = useRef<Board | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPPT, setShowPPT] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -142,6 +147,8 @@ export default function BoardPanel() {
   const [boardPage, setBoardPage] = useState(1);
   const [boardPageSize, setBoardPageSize] = useState(10);
   const [filterClassId, setFilterClassId] = useState<string>('all');
+
+  useEffect(() => { activeBoardRef.current = activeBoard; }, [activeBoard]);
 
   // Load boards
   useEffect(() => {
@@ -425,47 +432,42 @@ export default function BoardPanel() {
     }
   };
 
-  const manageCard = async (cardId: string, action: 'approve' | 'reject' | 'pin' | 'unpin' | 'delete') => {
-    if (!activeBoard) return;
+  const manageCard = useCallback(async (cardId: string, action: 'approve' | 'reject' | 'pin' | 'unpin' | 'delete') => {
+    const board = activeBoardRef.current;
+    if (!board) return;
     if (isCloud) {
-      const token = getCreatorToken(activeBoard.id);
+      const token = getCreatorToken(board.id);
       if (token) {
         await supabase.rpc('manage_board_card', {
-          p_board_id: activeBoard.id,
+          p_board_id: board.id,
           p_token: token,
           p_card_id: cardId,
           p_action: action,
         });
       }
     }
-    if (action === 'delete' || action === 'reject') {
-      const updated = cards.filter(c => c.id !== cardId);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    } else if (action === 'approve') {
-      const updated = cards.map(c => c.id === cardId ? { ...c, is_approved: true } : c);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    } else if (action === 'pin') {
-      const updated = cards.map(c => c.id === cardId ? { ...c, is_pinned: true } : c);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    } else if (action === 'unpin') {
-      const updated = cards.map(c => c.id === cardId ? { ...c, is_pinned: false } : c);
-      setCards(updated);
-      if (!isCloud) saveLocalCards(activeBoard.id, updated);
-    }
-  };
+    setCards(prev => {
+      const updated = applyCardAction(prev, cardId, action);
+      if (!isCloud) saveLocalCards(board.id, updated);
+      return updated;
+    });
+  }, [isCloud]);
 
-  const likeCard = async (cardId: string) => {
-    const likerToken = localStorage.getItem('board-liker-token') || crypto.randomUUID();
-    localStorage.setItem('board-liker-token', likerToken);
+  const likeCard = useCallback(async (cardId: string) => {
+    // Idempotent: one liker token can only add one like per card.
+    const likerToken = getLikerToken();
+    if (!markLiked(cardId)) return;
     if (isCloud) {
-      await supabase.from('board_likes').insert({ card_id: cardId, liker_token: likerToken });
+      const { error } = await supabase.from('board_likes').insert({ card_id: cardId, liker_token: likerToken });
+      if (error) return;
     }
-    setCards(prev => prev.map(c => c.id === cardId ? { ...c, likes_count: c.likes_count + 1 } : c));
-    if (!isCloud && activeBoard) saveLocalCards(activeBoard.id, cards.map(c => c.id === cardId ? { ...c, likes_count: c.likes_count + 1 } : c));
-  };
+    setCards(prev => {
+      const updated = likeCardLocal(prev, cardId);
+      const board = activeBoardRef.current;
+      if (!isCloud && board) saveLocalCards(board.id, updated);
+      return updated;
+    });
+  }, [isCloud]);
 
   const exportCSV = async () => {
     const approvedCards = cards.filter(c => c.is_approved);
@@ -773,7 +775,7 @@ export default function BoardPanel() {
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
+          <Button data-testid="board-back" variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
           {renderEditableTitle(isCreator)}
@@ -809,6 +811,8 @@ export default function BoardPanel() {
                 </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  data-testid="board-lock-toggle"
+                  data-locked={activeBoard.is_locked}
                   onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
                 >
                   {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
@@ -889,7 +893,7 @@ export default function BoardPanel() {
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
         {/* Board header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
+          <Button data-testid="board-back" variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
           {renderEditableTitle(isCreator)}
@@ -912,6 +916,9 @@ export default function BoardPanel() {
                 variant={currentViewMode === mode ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs px-2"
+                data-testid="board-view-mode"
+                data-view-mode={mode}
+                data-active={currentViewMode === mode}
                 onClick={() => switchViewMode(mode)}
               >
                 {mode === 'wall' && <LayoutGrid className="w-3 h-3 mr-1" />}
@@ -963,13 +970,13 @@ export default function BoardPanel() {
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowPPT(true)}>
                   <Play className="w-3 h-3" /> {t('board.pptMode')}
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowWordCloud(true)}>
+                <Button data-testid="board-wordcloud-btn" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowWordCloud(true)}>
                   <CloudIcon className="w-3 h-3" /> {t('board.wordCloud')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowReport(true)}>
                   <FileText className="w-3 h-3" /> {t('board.smartReport')}
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
+                <Button data-testid="board-export-csv" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
                   <Download className="w-3 h-3" /> {t('board.exportCSV')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={archiveZip} disabled={archiving}>
@@ -977,6 +984,8 @@ export default function BoardPanel() {
                 </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  data-testid="board-lock-toggle"
+                  data-locked={activeBoard.is_locked}
                   onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
                 >
                   {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
@@ -1211,13 +1220,14 @@ export default function BoardPanel() {
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex gap-3">
             <Input
+              data-testid="board-create-input"
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
               placeholder={t('board.boardTitle')}
               className="h-10"
               onKeyDown={e => e.key === 'Enter' && createBoard()}
             />
-            <Button onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
+            <Button data-testid="board-create-btn" onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
               <Plus className="w-4 h-4" /> {t('board.create')}
             </Button>
           </div>
@@ -1309,6 +1319,9 @@ export default function BoardPanel() {
               <div
                 key={board.id}
                 className="flex flex-col justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group"
+                data-testid="board-item"
+                data-board-id={board.id}
+                data-board-title={board.title}
                 onClick={() => openBoard(board)}
               >
                 <div className="min-w-0 mb-3">
@@ -1326,6 +1339,7 @@ export default function BoardPanel() {
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive"
+                    data-testid="board-delete"
                     onClick={(e) => { e.stopPropagation(); deleteBoard(board); }}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
