@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense, useRef, memo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -27,7 +27,7 @@ interface Props {
   isCloud?: boolean;
 }
 
-export default function BoardCardItem({ card, onManage, onLike, isCreator, isCloud }: Props) {
+function BoardCardItem({ card, onManage, onLike, isCreator, isCloud }: Props) {
   const { t } = useLanguage();
   const [showComments, setShowComments] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -605,3 +605,7 @@ export default function BoardCardItem({ card, onManage, onLike, isCreator, isClo
     </div>
   );
 }
+
+// Cards are rendered in large lists; memo avoids re-rendering every card
+// when a single card's like/pin state changes.
+export default memo(BoardCardItem);
