@@ -773,7 +773,7 @@ export default function BoardPanel() {
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
+          <Button data-testid="board-back" variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
           {renderEditableTitle(isCreator)}
@@ -809,6 +809,8 @@ export default function BoardPanel() {
                 </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  data-testid="board-lock-toggle"
+                  data-locked={activeBoard.is_locked}
                   onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
                 >
                   {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
@@ -889,7 +891,7 @@ export default function BoardPanel() {
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
         {/* Board header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
-          <Button variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
+          <Button data-testid="board-back" variant="ghost" size="sm" onClick={() => setActiveBoard(null)} className="gap-1">
             <ArrowLeft className="w-4 h-4" /> {t('board.back')}
           </Button>
           {renderEditableTitle(isCreator)}
@@ -912,6 +914,9 @@ export default function BoardPanel() {
                 variant={currentViewMode === mode ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs px-2"
+                data-testid="board-view-mode"
+                data-view-mode={mode}
+                data-active={currentViewMode === mode}
                 onClick={() => switchViewMode(mode)}
               >
                 {mode === 'wall' && <LayoutGrid className="w-3 h-3 mr-1" />}
@@ -963,13 +968,13 @@ export default function BoardPanel() {
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowPPT(true)}>
                   <Play className="w-3 h-3" /> {t('board.pptMode')}
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowWordCloud(true)}>
+                <Button data-testid="board-wordcloud-btn" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowWordCloud(true)}>
                   <CloudIcon className="w-3 h-3" /> {t('board.wordCloud')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setShowReport(true)}>
                   <FileText className="w-3 h-3" /> {t('board.smartReport')}
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
+                <Button data-testid="board-export-csv" variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={exportCSV}>
                   <Download className="w-3 h-3" /> {t('board.exportCSV')}
                 </Button>
                 <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={archiveZip} disabled={archiving}>
@@ -977,6 +982,8 @@ export default function BoardPanel() {
                 </Button>
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
+                  data-testid="board-lock-toggle"
+                  data-locked={activeBoard.is_locked}
                   onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
                 >
                   {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
@@ -1211,13 +1218,14 @@ export default function BoardPanel() {
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex gap-3">
             <Input
+              data-testid="board-create-input"
               value={newTitle}
               onChange={e => setNewTitle(e.target.value)}
               placeholder={t('board.boardTitle')}
               className="h-10"
               onKeyDown={e => e.key === 'Enter' && createBoard()}
             />
-            <Button onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
+            <Button data-testid="board-create-btn" onClick={createBoard} className="h-10 gap-1.5 px-5 shrink-0">
               <Plus className="w-4 h-4" /> {t('board.create')}
             </Button>
           </div>
@@ -1309,6 +1317,9 @@ export default function BoardPanel() {
               <div
                 key={board.id}
                 className="flex flex-col justify-between p-4 border border-border rounded-xl bg-card hover:bg-muted/50 hover:shadow-md transition-all cursor-pointer group"
+                data-testid="board-item"
+                data-board-id={board.id}
+                data-board-title={board.title}
                 onClick={() => openBoard(board)}
               >
                 <div className="min-w-0 mb-3">
@@ -1326,6 +1337,7 @@ export default function BoardPanel() {
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 text-destructive"
+                    data-testid="board-delete"
                     onClick={(e) => { e.stopPropagation(); deleteBoard(board); }}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
