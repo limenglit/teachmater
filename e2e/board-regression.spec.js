@@ -52,7 +52,8 @@ async function submitCard(page, boardId, { nickname, content }) {
   await expect(editor).toBeVisible({ timeout: 15_000 });
   await editor.fill(content);
   await page.getByTestId('board-submit-btn').click();
-  await expect(page.getByTestId('board-submit-btn')).toBeEnabled({ timeout: 15_000 });
+  // 提交成功后编辑面板自动关闭
+  await expect(page.getByTestId('board-submit-content')).toHaveCount(0, { timeout: 20_000 });
 }
 
 test.describe('白板模块端到端回归', () => {
