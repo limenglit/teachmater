@@ -22,6 +22,27 @@ export interface HistoryFilterClass {
 
 const normalize = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, '').trim().toLowerCase();
 
+const WORDISH = /[0-9a-z\u4e00-\u9fff]/;
+const DIGIT = /[0-9]/;
+
+/**
+ * Title matching with a boundary guard so「1班」never matches「11班」or「设计1班」.
+ * The character right before the class name must not continue a longer name,
+ * and the character right after must not be another digit.
+ */
+export function titleMentionsClass(title: string, className: string): boolean {
+  if (!title || !className) return false;
+  let from = 0;
+  for (;;) {
+    const idx = title.indexOf(className, from);
+    if (idx === -1) return false;
+    const before = idx > 0 ? title[idx - 1] : '';
+    const after = title[idx + className.length] || '';
+    if (!WORDISH.test(before) && !DIGIT.test(after)) return true;
+    from = idx + 1;
+  }
+}
+
 export function sessionMatchesClass(session: HistoryFilterSession, cls: HistoryFilterClass): boolean {
   if (Array.isArray(session.class_ids)) return session.class_ids.includes(cls.id);
 
@@ -29,12 +50,13 @@ export function sessionMatchesClass(session: HistoryFilterSession, cls: HistoryF
   if (!className) return false;
 
   const title = normalize(session.class_name || '');
-  if (title && title.includes(className)) return true;
+  if (titleMentionsClass(title, className)) return true;
 
   const roster = new Set((cls.students || []).map(normalize).filter(Boolean));
   if (roster.size === 0) return false;
   return (session.student_names || []).some(n => roster.has(normalize(n || '')));
 }
+
 
 export function filterHistorySessions<T extends HistoryFilterSession>(
   sessions: T[],
