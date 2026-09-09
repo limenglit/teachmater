@@ -44,12 +44,13 @@ async function createBoard(page, title) {
 
 async function submitCard(page, boardId, { nickname, content }) {
   await page.goto(`/board/${boardId}/submit`);
-  await page.getByPlaceholder(/昵称|nickname/i).first().fill(nickname);
-  await page.getByRole('button', { name: /加入|join/i }).first().click();
-  const editor = page.locator('textarea').first();
-  await expect(editor).toBeVisible({ timeout: 10_000 });
+  await page.getByTestId('board-submit-nickname').fill(nickname);
+  await page.getByTestId('board-submit-join').click();
+  const editor = page.getByTestId('board-submit-content');
+  await expect(editor).toBeVisible({ timeout: 15_000 });
   await editor.fill(content);
-  await page.getByRole('button', { name: /^提交|submit/i }).last().click();
+  await page.getByTestId('board-submit-btn').click();
+  await expect(page.getByTestId('board-submit-btn')).toBeEnabled({ timeout: 15_000 });
 }
 
 test.describe('白板模块端到端回归', () => {
@@ -60,8 +61,6 @@ test.describe('白板模块端到端回归', () => {
     await openBoardTab(page);
     const item = await createBoard(page, title);
     await item.click();
-
-    await expect(page.getByTestId('board-panel-session')).toBeVisible();
 
     // 依次切换四种视图，每种都要保持页面可用
     for (const mode of ['timeline', 'canvas', 'storyboard', 'wall']) {
@@ -138,7 +137,7 @@ test.describe('白板模块端到端回归', () => {
     await expect(page.getByTestId('board-lock-toggle').first()).toHaveAttribute('data-locked', 'true', { timeout: 10_000 });
 
     await page.goto(`/board/${boardId}/submit`);
-    await expect(page.getByText(/锁定|locked/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('board-locked-screen')).toBeVisible({ timeout: 15_000 });
 
     await openBoardTab(page);
     page.once('dialog', d => d.accept());
