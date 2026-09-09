@@ -881,6 +881,7 @@ export default function BoardSubmitPage() {
               <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-foreground" />
             </div>
             <button
+              data-testid="board-submit-fab"
               onClick={openSubmit}
               className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
             >

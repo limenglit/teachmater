@@ -46,6 +46,8 @@ async function submitCard(page, boardId, { nickname, content }) {
   await page.goto(`/board/${boardId}/submit`);
   await page.getByTestId('board-submit-nickname').fill(nickname);
   await page.getByTestId('board-submit-join').click();
+  const fab = page.getByTestId('board-submit-fab');
+  if (await fab.count()) await fab.click();
   const editor = page.getByTestId('board-submit-content');
   await expect(editor).toBeVisible({ timeout: 15_000 });
   await editor.fill(content);
