@@ -812,7 +812,7 @@ export default function BoardPanel() {
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
                   data-testid="board-lock-toggle"
-                  data-locked={activeBoard.is_locked}
+                  data-locked={String(!!activeBoard.is_locked)}
                   onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
                 >
                   {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
@@ -918,7 +918,7 @@ export default function BoardPanel() {
                 className="h-7 text-xs px-2"
                 data-testid="board-view-mode"
                 data-view-mode={mode}
-                data-active={currentViewMode === mode}
+                data-active={String(currentViewMode === mode)}
                 onClick={() => switchViewMode(mode)}
               >
                 {mode === 'wall' && <LayoutGrid className="w-3 h-3 mr-1" />}
@@ -985,7 +985,7 @@ export default function BoardPanel() {
                 <Button
                   variant="outline" size="sm" className="h-7 text-xs gap-1"
                   data-testid="board-lock-toggle"
-                  data-locked={activeBoard.is_locked}
+                  data-locked={String(!!activeBoard.is_locked)}
                   onClick={() => updateBoardSetting('is_locked', !activeBoard.is_locked)}
                 >
                   {activeBoard.is_locked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}

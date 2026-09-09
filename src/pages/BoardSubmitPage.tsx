@@ -662,7 +662,7 @@ export default function BoardSubmitPage() {
   if (board.is_locked) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4" data-testid="board-locked-screen">
           <Lock className="w-12 h-12 text-muted-foreground mx-auto" />
           <h1 className="text-xl font-bold text-foreground">{t('board.locked')}</h1>
           <p className="text-sm text-muted-foreground">{t('board.lockedMsg')}</p>
@@ -707,9 +707,9 @@ export default function BoardSubmitPage() {
             <div className="space-y-3">
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input value={nickname} onChange={e => setNickname(e.target.value.slice(0, 12))} placeholder={t('board.nicknamePlaceholder')} className="pl-9" maxLength={12} onKeyDown={e => e.key === 'Enter' && confirmNickname()} autoFocus />
+                <Input data-testid="board-submit-nickname" value={nickname} onChange={e => setNickname(e.target.value.slice(0, 12))} placeholder={t('board.nicknamePlaceholder')} className="pl-9" maxLength={12} onKeyDown={e => e.key === 'Enter' && confirmNickname()} autoFocus />
               </div>
-              <Button onClick={confirmNickname} disabled={!nickname.trim()} className="w-full gap-2">{t('board.joinBoard')} 🚀</Button>
+              <Button data-testid="board-submit-join" onClick={confirmNickname} disabled={!nickname.trim()} className="w-full gap-2">{t('board.joinBoard')} 🚀</Button>
               {hasRoster && showManualInput && (
                 <button onClick={() => setShowManualInput(false)} className="w-full text-center text-xs text-primary hover:underline py-1">{t('board.selectYourName')}</button>
               )}
@@ -938,6 +938,7 @@ export default function BoardSubmitPage() {
 
             <div className="p-4 space-y-4">
               <Textarea
+                data-testid="board-submit-content"
                 value={content}
                 onChange={e => setContent(e.target.value)}
                 placeholder={t('board.cardContent')}
@@ -1036,7 +1037,7 @@ export default function BoardSubmitPage() {
                 ))}
               </div>
 
-              <Button onClick={handleSubmit} disabled={(!content.trim() && !mediaUrl) || submitting} className="w-full h-12 text-base gap-2">
+              <Button data-testid="board-submit-btn" onClick={handleSubmit} disabled={(!content.trim() && !mediaUrl) || submitting} className="w-full h-12 text-base gap-2">
                 <Send className="w-4 h-4" />
                 {submitting ? t('board.submitting') : t('board.submit')}
               </Button>
