@@ -1,9 +1,35 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+// 教师端功能需要登录态。会话文件由 `lovable auth-session --json --self` 生成，
+// 未找到时自动跳过（本地/CI 可通过 BOARD_E2E_SESSION_FILE 指定路径）。
+const SESSION_FILE = process.env.BOARD_E2E_SESSION_FILE
+  || path.join(os.homedir(), '.cache', 'lovable-auth', 'session.json');
+
+function loadSession() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
+    const storageKey = raw.storage_key || raw.storageKey;
+    const session = raw.session || raw;
+    if (!storageKey || !session?.access_token) return null;
+    return { storageKey, sessionJson: JSON.stringify(session) };
+  } catch {
+    return null;
+  }
+}
+
+const auth = loadSession();
 
 const LONG_TEXT = Array.from({ length: 12 }, (_, i) => `第 ${i + 1} 行：function demo${i}() { return ${i}; }`).join('\n');
 
 async function openBoardTab(page) {
   await page.goto('/');
+  if (auth) {
+    await page.evaluate(([k, v]) => localStorage.setItem(k, v), [auth.storageKey, auth.sessionJson]);
+    await page.reload();
+  }
   await page.getByRole('button', { name: /🎨/ }).first().click();
   await expect(page.getByTestId('board-panel')).toBeVisible();
 }
@@ -27,6 +53,8 @@ async function submitCard(page, boardId, { nickname, content }) {
 }
 
 test.describe('白板模块端到端回归', () => {
+  test.skip(!auth, '缺少登录态会话文件，跳过教师端白板回归');
+
   test('创建白板、切换视图、锁板与删除', async ({ page }) => {
     const title = `E2E白板-${Date.now()}`;
     await openBoardTab(page);
