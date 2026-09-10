@@ -307,7 +307,7 @@ export default function BoardPanel() {
         // 没有创建者凭证时无法写库：回滚乐观更新，避免"看似生效实则没保存"
         setActiveBoard(previousBoard);
         setBoards(prev => prev.map(b => b.id === previousBoard.id ? previousBoard : b));
-        toast({ title: t('board.noPermission'), variant: 'destructive' });
+        toast({ title: t('board.settingsSaveFailed'), variant: 'destructive' });
         return;
       }
 
