@@ -2269,40 +2269,23 @@ export type Database = {
         }[]
       }
       submit_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
-      update_board:
-        | {
-            Args: {
-              p_background_color?: string
-              p_banned_words?: string
-              p_board_id: string
-              p_columns?: Json
-              p_description?: string
-              p_is_locked?: boolean
-              p_moderation_enabled?: boolean
-              p_student_names?: Json
-              p_title?: string
-              p_token: string
-              p_view_mode?: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              p_allow_multiple_submissions?: boolean
-              p_background_color?: string
-              p_banned_words?: string
-              p_board_id: string
-              p_columns?: Json
-              p_description?: string
-              p_is_locked?: boolean
-              p_moderation_enabled?: boolean
-              p_student_names?: Json
-              p_title?: string
-              p_token: string
-              p_view_mode?: string
-            }
-            Returns: undefined
-          }
+      update_board: {
+        Args: {
+          p_allow_multiple_submissions?: boolean
+          p_background_color?: string
+          p_banned_words?: string
+          p_board_id: string
+          p_columns?: Json
+          p_description?: string
+          p_is_locked?: boolean
+          p_moderation_enabled?: boolean
+          p_student_names?: Json
+          p_title?: string
+          p_token: string
+          p_view_mode?: string
+        }
+        Returns: undefined
+      }
       update_checkin_session: {
         Args: { p_session_id: string; p_status?: string; p_token: string }
         Returns: undefined
