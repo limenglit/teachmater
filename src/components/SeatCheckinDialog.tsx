@@ -30,6 +30,9 @@ import {
   type SeatCheckinSessionSummary,
 } from '@/lib/seat-checkin-session';
 import { downloadQrFromContainer } from '@/lib/qr-download';
+import { recognizeSeatChartMarkers } from '@/lib/seat-chart-recognize';
+import { prepareMarkers, type SeatChartMarker } from '@/lib/seat-chart-markers';
+import SeatChartMarkerEditor from '@/components/seating/SeatChartMarkerEditor';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import {
   getRequireSeatAssignmentBeforeCheckin,
@@ -353,6 +356,46 @@ export default function SeatCheckinDialog({
   const [chartStatus, setChartStatus] = useState<string>('');
   const [localPreview, setLocalPreview] = useState<string>('');
   const seatChartInputRef = useRef<HTMLInputElement | null>(null);
+  const [seatChartMarkers, setSeatChartMarkers] = useState<SeatChartMarker[]>([]);
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizeProgress, setRecognizeProgress] = useState(0);
+  const [recognizeStatus, setRecognizeStatus] = useState('');
+
+  const handleRecognizeMarkers = async () => {
+    if (!seatChartImageUrl) return;
+    setRecognizing(true);
+    setRecognizeProgress(0);
+    setRecognizeStatus('正在识别座次表姓名…');
+    try {
+      const result = await recognizeSeatChartMarkers(seatChartImageUrl, p => {
+        setRecognizeProgress(Math.round((p.done / Math.max(1, p.total)) * 100));
+        setRecognizeStatus(`已完成 ${p.done}/${p.total} 块，识别到 ${p.found} 个姓名`);
+      });
+      setSeatChartMarkers(result.markers);
+      setRecognizeStatus(`识别完成：${result.markers.length} 人${result.failedTiles ? `（${result.failedTiles} 块识别失败）` : ''}`);
+      if (result.markers.length === 0) {
+        toast({
+          title: '未识别到姓名',
+          description: result.lastError || '可尝试上传更清晰的座次表，或手动补录姓名位置。',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: `已识别 ${result.markers.length} 个姓名`,
+          description: '请检查标注位置，可拖动微调、删除或补录后再发布。',
+        });
+      }
+    } catch (err) {
+      setRecognizeStatus('');
+      toast({
+        title: '识别失败',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setRecognizing(false);
+    }
+  };
 
   const handleSeatChartUpload = async (file: File | null) => {
     if (!file) return;
@@ -397,6 +440,9 @@ export default function SeatCheckinDialog({
         img.src = data.publicUrl;
       });
       setSeatChartImageUrl(data.publicUrl);
+      setSeatChartMarkers([]);
+      setRecognizeStatus('');
+      setRecognizeProgress(0);
       setChartProgress(100);
       setChartStatus('上传完成，学生端可正常加载');
       toast({ title: '座次表已上传', description: '学生端已可正常加载该图片' });
@@ -658,8 +704,15 @@ export default function SeatCheckinDialog({
       nextSceneConfig.findFriendEnabled = findFriendEnabled;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
+        const prepared = prepareMarkers(seatChartMarkers);
+        if (prepared.markers.length > 0) {
+          nextSceneConfig.seatChartMarkers = prepared.markers;
+        } else {
+          delete nextSceneConfig.seatChartMarkers;
+        }
       } else {
         delete nextSceneConfig.seatChartImageUrl;
+        delete nextSceneConfig.seatChartMarkers;
       }
       console.log('[SeatCheckin] Publishing session with sceneConfig:', nextSceneConfig);
       const created = await createSeatCheckinSession({
@@ -1252,11 +1305,60 @@ export default function SeatCheckinDialog({
                     <p className="text-xs text-amber-600">未上传座次表时，学生签到后仅显示签到成功提示。</p>
                   )}
 
+                  {seatChartImageUrl && !uploadingChart && (
+                    <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-1.5 text-xs"
+                          disabled={recognizing}
+                          onClick={() => void handleRecognizeMarkers()}
+                        >
+                          {recognizing ? '识别中…' : seatChartMarkers.length ? '重新识别姓名位置' : 'AI 识别姓名位置'}
+                        </Button>
+                        {seatChartMarkers.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 text-xs text-muted-foreground"
+                            disabled={recognizing}
+                            onClick={() => { setSeatChartMarkers([]); setRecognizeStatus(''); }}
+                          >
+                            清除标注
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        识别后，学生扫码签到会在座次表上用红点标出本人位置，并可搜索好友位置。
+                      </p>
+                      {recognizing && (
+                        <div className="space-y-1">
+                          <Progress value={recognizeProgress} className="h-1.5" />
+                          <p className="text-xs text-muted-foreground">{recognizeStatus}</p>
+                        </div>
+                      )}
+                      {!recognizing && recognizeStatus && (
+                        <p className="text-xs text-emerald-600">{recognizeStatus}</p>
+                      )}
+                      {seatChartMarkers.length > 0 && (
+                        <SeatChartMarkerEditor
+                          imageUrl={seatChartImageUrl}
+                          markers={seatChartMarkers}
+                          onChange={setSeatChartMarkers}
+                        />
+                      )}
+                    </div>
+                  )}
+
+
                 </div>
               )}
             </div>
 
-            <Button onClick={createSession} disabled={loading || uploadingChart || (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete)} className="w-full">
+            <Button onClick={createSession} disabled={loading || uploadingChart || recognizing || (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete)} className="w-full">
               {loading ? t('seatCheckinDialog.generating') : createError ? t('seatCheckinDialog.retry') : t('seatCheckinDialog.generate')}
             </Button>
 

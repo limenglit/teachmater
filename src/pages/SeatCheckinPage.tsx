@@ -23,6 +23,7 @@ import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabChecki
 import ArtStudioCheckinView from '@/components/checkin-views/ArtStudioCheckinView';
 import SeatChartImageView from '@/components/checkin-views/SeatChartImageView';
 import FindFriendPanel from '@/components/checkin-views/FindFriendPanel';
+import { prepareMarkers, markerNamePool, describeMarker, findMarkerByName } from '@/lib/seat-chart-markers';
 
 const SEAT_CHECKIN_NAME_STORAGE_KEY = 'teachmate-seat-checkin-names';
 
@@ -670,6 +671,7 @@ export default function SeatCheckinPage() {
   const seatChartImageUrl = typeof session.scene_config?.seatChartImageUrl === 'string'
     ? (session.scene_config.seatChartImageUrl as string)
     : '';
+  const seatChartMarkers = prepareMarkers(session.scene_config?.seatChartMarkers).markers;
 
   if (checkinOnlyMode) {
     return (
@@ -691,7 +693,25 @@ export default function SeatCheckinPage() {
           </div>
 
           {seatChartImageUrl ? (
-            <SeatChartImageView imageUrl={seatChartImageUrl} recenterSignal={recenterSignal} />
+            <>
+              <SeatChartImageView
+                imageUrl={seatChartImageUrl}
+                recenterSignal={recenterSignal}
+                markers={seatChartMarkers}
+                selfName={studentName}
+                friendName={friendName}
+              />
+              {seatChartMarkers.length > 0
+                && (session.scene_config as Record<string, unknown> | null)?.findFriendEnabled !== false && (
+                <FindFriendPanel
+                  names={markerNamePool(seatChartMarkers)}
+                  selfName={studentName}
+                  resolveLabel={(n) => describeMarker(findMarkerByName(seatChartMarkers, n)) || '已在座次表上标出'}
+                  selected={friendName}
+                  onSelect={setFriendName}
+                />
+              )}
+            </>
           ) : (
             <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
               签到已完成，请按现场安排入座。
