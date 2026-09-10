@@ -353,6 +353,46 @@ export default function SeatCheckinDialog({
   const [chartStatus, setChartStatus] = useState<string>('');
   const [localPreview, setLocalPreview] = useState<string>('');
   const seatChartInputRef = useRef<HTMLInputElement | null>(null);
+  const [seatChartMarkers, setSeatChartMarkers] = useState<SeatChartMarker[]>([]);
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizeProgress, setRecognizeProgress] = useState(0);
+  const [recognizeStatus, setRecognizeStatus] = useState('');
+
+  const handleRecognizeMarkers = async () => {
+    if (!seatChartImageUrl) return;
+    setRecognizing(true);
+    setRecognizeProgress(0);
+    setRecognizeStatus('正在识别座次表姓名…');
+    try {
+      const result = await recognizeSeatChartMarkers(seatChartImageUrl, p => {
+        setRecognizeProgress(Math.round((p.done / Math.max(1, p.total)) * 100));
+        setRecognizeStatus(`已完成 ${p.done}/${p.total} 块，识别到 ${p.found} 个姓名`);
+      });
+      setSeatChartMarkers(result.markers);
+      setRecognizeStatus(`识别完成：${result.markers.length} 人${result.failedTiles ? `（${result.failedTiles} 块识别失败）` : ''}`);
+      if (result.markers.length === 0) {
+        toast({
+          title: '未识别到姓名',
+          description: result.lastError || '可尝试上传更清晰的座次表，或手动补录姓名位置。',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: `已识别 ${result.markers.length} 个姓名`,
+          description: '请检查标注位置，可拖动微调、删除或补录后再发布。',
+        });
+      }
+    } catch (err) {
+      setRecognizeStatus('');
+      toast({
+        title: '识别失败',
+        description: err instanceof Error ? err.message : undefined,
+        variant: 'destructive',
+      });
+    } finally {
+      setRecognizing(false);
+    }
+  };
 
   const handleSeatChartUpload = async (file: File | null) => {
     if (!file) return;
