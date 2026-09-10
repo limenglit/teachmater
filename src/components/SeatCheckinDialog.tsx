@@ -1358,7 +1358,7 @@ export default function SeatCheckinDialog({
               )}
             </div>
 
-            <Button onClick={createSession} disabled={loading || uploadingChart || (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete)} className="w-full">
+            <Button onClick={createSession} disabled={loading || uploadingChart || recognizing || (requireSeatAssignment && !checkinOnlyMode && !seatAssignmentComplete)} className="w-full">
               {loading ? t('seatCheckinDialog.generating') : createError ? t('seatCheckinDialog.retry') : t('seatCheckinDialog.generate')}
             </Button>
 
