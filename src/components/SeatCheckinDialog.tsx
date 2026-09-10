@@ -712,6 +712,7 @@ export default function SeatCheckinDialog({
         }
       } else {
         delete nextSceneConfig.seatChartImageUrl;
+        delete nextSceneConfig.seatChartMarkers;
       }
       console.log('[SeatCheckin] Publishing session with sceneConfig:', nextSceneConfig);
       const created = await createSeatCheckinSession({
