@@ -440,6 +440,9 @@ export default function SeatCheckinDialog({
         img.src = data.publicUrl;
       });
       setSeatChartImageUrl(data.publicUrl);
+      setSeatChartMarkers([]);
+      setRecognizeStatus('');
+      setRecognizeProgress(0);
       setChartProgress(100);
       setChartStatus('上传完成，学生端可正常加载');
       toast({ title: '座次表已上传', description: '学生端已可正常加载该图片' });
@@ -701,6 +704,12 @@ export default function SeatCheckinDialog({
       nextSceneConfig.findFriendEnabled = findFriendEnabled;
       if (checkinOnlyMode && seatChartImageUrl) {
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
+        const prepared = prepareMarkers(seatChartMarkers);
+        if (prepared.markers.length > 0) {
+          nextSceneConfig.seatChartMarkers = prepared.markers;
+        } else {
+          delete nextSceneConfig.seatChartMarkers;
+        }
       } else {
         delete nextSceneConfig.seatChartImageUrl;
       }
