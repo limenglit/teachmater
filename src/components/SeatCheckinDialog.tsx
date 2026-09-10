@@ -1305,6 +1305,55 @@ export default function SeatCheckinDialog({
                     <p className="text-xs text-amber-600">未上传座次表时，学生签到后仅显示签到成功提示。</p>
                   )}
 
+                  {seatChartImageUrl && !uploadingChart && (
+                    <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-2.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 gap-1.5 text-xs"
+                          disabled={recognizing}
+                          onClick={() => void handleRecognizeMarkers()}
+                        >
+                          {recognizing ? '识别中…' : seatChartMarkers.length ? '重新识别姓名位置' : 'AI 识别姓名位置'}
+                        </Button>
+                        {seatChartMarkers.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 text-xs text-muted-foreground"
+                            disabled={recognizing}
+                            onClick={() => { setSeatChartMarkers([]); setRecognizeStatus(''); }}
+                          >
+                            清除标注
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        识别后，学生扫码签到会在座次表上用红点标出本人位置，并可搜索好友位置。
+                      </p>
+                      {recognizing && (
+                        <div className="space-y-1">
+                          <Progress value={recognizeProgress} className="h-1.5" />
+                          <p className="text-xs text-muted-foreground">{recognizeStatus}</p>
+                        </div>
+                      )}
+                      {!recognizing && recognizeStatus && (
+                        <p className="text-xs text-emerald-600">{recognizeStatus}</p>
+                      )}
+                      {seatChartMarkers.length > 0 && (
+                        <SeatChartMarkerEditor
+                          imageUrl={seatChartImageUrl}
+                          markers={seatChartMarkers}
+                          onChange={setSeatChartMarkers}
+                        />
+                      )}
+                    </div>
+                  )}
+
+
                 </div>
               )}
             </div>
