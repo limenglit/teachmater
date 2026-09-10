@@ -413,33 +413,24 @@ export default function SeatCheckinDialog({
       return preview;
     });
     setUploadingChart(true);
-    setChartProgress(5);
-    setChartStatus('正在上传…');
-    const timer = window.setInterval(() => {
-      setChartProgress(p => (p < 85 ? p + Math.max(1, Math.round((85 - p) / 8)) : p));
-    }, 250);
+    setChartProgress(2);
+    setChartStatus('正在压缩图片…');
     try {
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-      const path = `seat-charts/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
-      const { error } = await supabase.storage.from('board-media').upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type,
+      const uploaded = await uploadSeatChartImage(file, (pct, stage) => {
+        setChartProgress(pct);
+        setChartStatus(stage === 'compress' ? '正在压缩图片…' : '正在上传…');
       });
-      if (error) throw error;
-      const { data } = supabase.storage.from('board-media').getPublicUrl(path);
-      window.clearInterval(timer);
-      setChartProgress(90);
+      setChartProgress(92);
       setChartStatus('正在校验学生端可访问性…');
-      // 预加载，确保学生端能立即加载到该图片
-      await new Promise<void>((resolve, reject) => {
+      // 预加载，确保学生端能立即加载到该图片（失败不阻断上传结果）
+      await new Promise<void>(resolve => {
         const img = new Image();
-        const to = window.setTimeout(() => reject(new Error('图片加载超时，请重试')), 20000);
+        const to = window.setTimeout(() => resolve(), 15000);
         img.onload = () => { window.clearTimeout(to); resolve(); };
-        img.onerror = () => { window.clearTimeout(to); reject(new Error('图片无法访问，请重试')); };
-        img.src = data.publicUrl;
+        img.onerror = () => { window.clearTimeout(to); resolve(); };
+        img.src = uploaded.publicUrl;
       });
-      setSeatChartImageUrl(data.publicUrl);
+      setSeatChartImageUrl(uploaded.publicUrl);
       setSeatChartMarkers([]);
       setRecognizeStatus('');
       setRecognizeProgress(0);
