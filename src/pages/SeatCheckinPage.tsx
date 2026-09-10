@@ -670,6 +670,7 @@ export default function SeatCheckinPage() {
   const seatChartImageUrl = typeof session.scene_config?.seatChartImageUrl === 'string'
     ? (session.scene_config.seatChartImageUrl as string)
     : '';
+  const seatChartMarkers = prepareMarkers(session.scene_config?.seatChartMarkers).markers;
 
   if (checkinOnlyMode) {
     return (
