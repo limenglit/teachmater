@@ -29,6 +29,8 @@ async function openBoardTab(page) {
   if (auth) {
     await page.evaluate(([k, v]) => localStorage.setItem(k, v), [auth.storageKey, auth.sessionJson]);
     await page.reload();
+    // 等待登录态生效，否则新建的白板会挂在匿名身份下、列表看不到
+    await expect(page.getByRole('button', { name: '登录' })).toHaveCount(0, { timeout: 20_000 });
   }
   await page.getByRole('button', { name: /🎨/ }).first().click();
   await expect(page.getByTestId('board-panel')).toBeVisible();
