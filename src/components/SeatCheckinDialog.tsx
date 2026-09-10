@@ -443,7 +443,6 @@ export default function SeatCheckinDialog({
       setLocalPreview(prev => { if (prev) URL.revokeObjectURL(prev); return ''; });
       toast({ title: '座次表上传失败', description: err instanceof Error ? err.message : undefined, variant: 'destructive' });
     } finally {
-      window.clearInterval(timer);
       setUploadingChart(false);
     }
   };
