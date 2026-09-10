@@ -303,7 +303,13 @@ export default function BoardPanel() {
 
     if (isCloud) {
       const token = getCreatorToken(activeBoard.id);
-      if (!token) return;
+      if (!token) {
+        // 没有创建者凭证时无法写库：回滚乐观更新，避免"看似生效实则没保存"
+        setActiveBoard(previousBoard);
+        setBoards(prev => prev.map(b => b.id === previousBoard.id ? previousBoard : b));
+        toast({ title: t('board.settingsSaveFailed'), variant: 'destructive' });
+        return;
+      }
 
       const { error } = await supabase.rpc('update_board', {
         p_board_id: activeBoard.id,

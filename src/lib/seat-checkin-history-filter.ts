@@ -22,26 +22,32 @@ export interface HistoryFilterClass {
 
 const normalize = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, '').trim().toLowerCase();
 
-const WORDISH = /[0-9a-z\u4e00-\u9fff]/;
+const CJK_OR_DIGIT = /[0-9\u4e00-\u9fff]/;
 const DIGIT = /[0-9]/;
+const ALNUM = /[0-9a-z]/;
 
 /**
- * Title matching with a boundary guard so「1班」never matches「11班」or「设计1班」.
- * The character right before the class name must not continue a longer name,
- * and the character right after must not be another digit.
+ * Title matching with a boundary guard so「1班」never matches「11班」or「设计1班」,
+ * while「一班」still matches「物理 一班 期中」.
+ * - 数字开头的班级名（1班）要求前一个字符既不是数字也不是汉字，避免被更长的班名吞掉。
+ * - 其他班级名只要求前一个字符不是数字/字母。
+ * - 紧随其后的字符不能是数字（避免「1班」命中「1班2组」的编号串）。
  */
 export function titleMentionsClass(title: string, className: string): boolean {
   if (!title || !className) return false;
+  const strict = DIGIT.test(className[0]);
   let from = 0;
   for (;;) {
     const idx = title.indexOf(className, from);
     if (idx === -1) return false;
     const before = idx > 0 ? title[idx - 1] : '';
     const after = title[idx + className.length] || '';
-    if (!WORDISH.test(before) && !DIGIT.test(after)) return true;
+    const beforeOk = before === '' || !(strict ? CJK_OR_DIGIT : ALNUM).test(before);
+    if (beforeOk && !DIGIT.test(after)) return true;
     from = idx + 1;
   }
 }
+
 
 export function sessionMatchesClass(session: HistoryFilterSession, cls: HistoryFilterClass): boolean {
   if (Array.isArray(session.class_ids)) return session.class_ids.includes(cls.id);

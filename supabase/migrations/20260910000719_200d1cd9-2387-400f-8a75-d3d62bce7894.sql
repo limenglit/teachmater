@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.update_board(uuid, text, text, text, text, boolean, boolean, jsonb, text, text, jsonb);
