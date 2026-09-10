@@ -31,6 +31,7 @@ import {
 } from '@/lib/seat-checkin-session';
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import { recognizeSeatChartMarkers } from '@/lib/seat-chart-recognize';
+import { uploadSeatChartImage } from '@/lib/seat-chart-upload';
 import { prepareMarkers, type SeatChartMarker } from '@/lib/seat-chart-markers';
 import SeatChartMarkerEditor from '@/components/seating/SeatChartMarkerEditor';
 import QRActionPanel from '@/components/qr/QRActionPanel';
