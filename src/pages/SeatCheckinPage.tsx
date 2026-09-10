@@ -23,6 +23,7 @@ import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabChecki
 import ArtStudioCheckinView from '@/components/checkin-views/ArtStudioCheckinView';
 import SeatChartImageView from '@/components/checkin-views/SeatChartImageView';
 import FindFriendPanel from '@/components/checkin-views/FindFriendPanel';
+import { prepareMarkers, markerNamePool, describeMarker, findMarkerByName } from '@/lib/seat-chart-markers';
 
 const SEAT_CHECKIN_NAME_STORAGE_KEY = 'teachmate-seat-checkin-names';
 
