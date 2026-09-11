@@ -1339,7 +1339,9 @@ export default function SeatCheckinDialog({
                           imageUrl={seatChartImageUrl}
                           markers={seatChartMarkers}
                           onChange={setSeatChartMarkers}
+                          rosterNames={studentNames}
                         />
+
                       )}
                     </div>
                   )}
