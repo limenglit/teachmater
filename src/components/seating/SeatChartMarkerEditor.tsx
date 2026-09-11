@@ -124,6 +124,79 @@ export default function SeatChartMarkerEditor({ imageUrl, markers, onChange, ros
         </span>
       </div>
 
+      <div className="rounded-lg border border-border bg-background/60 p-2 space-y-2">
+        {duplicateExtra > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-foreground">
+              有 {duplicateGroups.length} 个姓名被重复识别，多出 {duplicateExtra} 人
+              （{duplicateGroups.slice(0, 5).map(g => g.name).join('、')}
+              {duplicateGroups.length > 5 ? ' 等' : ''}）
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => onChange(keepFirstPerName(markers))}
+            >
+              一键去重（保留 {markers.length - duplicateExtra} 人）
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs text-emerald-600">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            姓名无重复，共 {markers.length} 人
+          </div>
+        )}
+
+        {rosterDiff && (
+          <div className="space-y-1.5 border-t border-border/60 pt-2 text-xs">
+            <p className="text-muted-foreground">
+              与名单核对：名单 {roster.length} 人 · 对上 {rosterDiff.matchedCount} 人 ·
+              名单外 {rosterDiff.extraIndexes.length} 处 · 未识别 {rosterDiff.missingNames.length} 人
+            </p>
+            {rosterDiff.extraIndexes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-amber-600">
+                  名单外姓名（图中红框）：
+                  {rosterDiff.extraIndexes.slice(0, 8).map(i => markers[i]?.name).filter(Boolean).join('、')}
+                  {rosterDiff.extraIndexes.length > 8 ? ' 等' : ''}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs text-destructive"
+                  onClick={() => removeIndexes(new Set(rosterDiff.extraIndexes))}
+                >
+                  删除全部名单外姓名
+                </Button>
+              </div>
+            )}
+            {rosterDiff.missingNames.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-muted-foreground">未识别，可点击后在图上补录：</span>
+                {rosterDiff.missingNames.slice(0, 20).map(name => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => { setAddName(name); setAddMode(true); }}
+                    className="rounded-full border border-border px-2 py-0.5 text-[11px] text-foreground hover:bg-muted"
+                  >
+                    {name}
+                  </button>
+                ))}
+                {rosterDiff.missingNames.length > 20 && (
+                  <span className="text-muted-foreground">等 {rosterDiff.missingNames.length} 人</span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={addName}
