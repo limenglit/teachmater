@@ -697,10 +697,11 @@ export default function SeatCheckinDialog({
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
         const prepared = prepareMarkers(seatChartMarkers);
         if (prepared.markers.length > 0) {
-          nextSceneConfig.seatChartMarkers = prepared.markers;
+          nextSceneConfig.seatChartMarkers = stripMarkerInternals(prepared.markers);
         } else {
           delete nextSceneConfig.seatChartMarkers;
         }
+
       } else {
         delete nextSceneConfig.seatChartImageUrl;
         delete nextSceneConfig.seatChartMarkers;
