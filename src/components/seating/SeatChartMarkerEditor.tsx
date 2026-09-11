@@ -1,13 +1,21 @@
 import { useMemo, useRef, useState } from 'react';
-import { Search, Trash2, Plus, Crosshair } from 'lucide-react';
+import { Search, Trash2, Plus, Crosshair, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { normalizeMarkerName, type SeatChartMarker } from '@/lib/seat-chart-markers';
+import {
+  normalizeMarkerName,
+  findDuplicateNameGroups,
+  keepFirstPerName,
+  diffAgainstRoster,
+  type SeatChartMarker,
+} from '@/lib/seat-chart-markers';
 
 interface Props {
   imageUrl: string;
   markers: SeatChartMarker[];
   onChange: (markers: SeatChartMarker[]) => void;
+  /** Class roster used to cross-check recognized names, when available. */
+  rosterNames?: string[];
 }
 
 /**
@@ -15,7 +23,7 @@ interface Props {
  * chart: search, drag to correct, delete, and add missing names by tapping the
  * picture. Pointer events keep it usable on touch devices.
  */
-export default function SeatChartMarkerEditor({ imageUrl, markers, onChange }: Props) {
+export default function SeatChartMarkerEditor({ imageUrl, markers, onChange, rosterNames }: Props) {
   const [query, setQuery] = useState('');
   const [addName, setAddName] = useState('');
   const [addMode, setAddMode] = useState(false);
@@ -30,6 +38,28 @@ export default function SeatChartMarkerEditor({ imageUrl, markers, onChange }: P
     markers.forEach((m, i) => { if (m.name.includes(q)) set.add(i); });
     return set;
   }, [markers, q]);
+
+  const duplicateGroups = useMemo(() => findDuplicateNameGroups(markers), [markers]);
+  const duplicateExtra = duplicateGroups.reduce((sum, g) => sum + g.indexes.length - 1, 0);
+
+  const roster = useMemo(
+    () => (rosterNames ?? []).map(normalizeMarkerName).filter(Boolean),
+    [rosterNames],
+  );
+  const rosterDiff = useMemo(
+    () => (roster.length ? diffAgainstRoster(markers, roster) : null),
+    [markers, roster],
+  );
+  const extraSet = useMemo(
+    () => new Set(rosterDiff?.extraIndexes ?? []),
+    [rosterDiff],
+  );
+
+  const removeIndexes = (indexes: Set<number>) => {
+    onChange(markers.filter((_, i) => !indexes.has(i)));
+    setActiveIndex(null);
+  };
+
 
   const pointToNormalized = (clientX: number, clientY: number) => {
     const rect = surfaceRef.current?.getBoundingClientRect();
