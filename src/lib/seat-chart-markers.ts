@@ -17,19 +17,31 @@ export interface SeatChartMarker {
   seatNo?: number;
   /** Optional zone label, e.g. "A区". */
   zone?: string;
+  /**
+   * Internal: index of the recognition tile this marker came from. Used to
+   * merge duplicates produced by overlapping tiles; stripped before saving.
+   */
+  tile?: number;
 }
 
 /** Hard cap so `scene_config` stays a reasonable size. */
 export const MAX_SEAT_CHART_MARKERS = 2000;
 
-/** Two markers closer than this (normalized distance) with the same name are duplicates. */
+/** Same tile, same name, this close → the model listed the person twice. */
 const DUPLICATE_DISTANCE = 0.02;
+/**
+ * Different tiles: the same person sits in the overlap band and is reported by
+ * both requests, with a larger coordinate error because each tile normalizes
+ * against its own crop. Merge much more generously in that case.
+ */
+const CROSS_TILE_DISTANCE = 0.07;
 
 export function normalizeMarkerName(value: string): string {
   return String(value ?? '')
     .replace(/[\u3000\s]+/g, '')
     .trim();
 }
+
 
 function clamp01(v: number): number {
   if (!Number.isFinite(v)) return 0;
