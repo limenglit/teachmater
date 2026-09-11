@@ -32,7 +32,7 @@ import {
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import { recognizeSeatChartMarkers } from '@/lib/seat-chart-recognize';
 import { uploadSeatChartImage } from '@/lib/seat-chart-upload';
-import { prepareMarkers, type SeatChartMarker } from '@/lib/seat-chart-markers';
+import { prepareMarkers, stripMarkerInternals, type SeatChartMarker } from '@/lib/seat-chart-markers';
 import SeatChartMarkerEditor from '@/components/seating/SeatChartMarkerEditor';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import {
@@ -697,10 +697,11 @@ export default function SeatCheckinDialog({
         nextSceneConfig.seatChartImageUrl = seatChartImageUrl;
         const prepared = prepareMarkers(seatChartMarkers);
         if (prepared.markers.length > 0) {
-          nextSceneConfig.seatChartMarkers = prepared.markers;
+          nextSceneConfig.seatChartMarkers = stripMarkerInternals(prepared.markers);
         } else {
           delete nextSceneConfig.seatChartMarkers;
         }
+
       } else {
         delete nextSceneConfig.seatChartImageUrl;
         delete nextSceneConfig.seatChartMarkers;
@@ -1339,7 +1340,9 @@ export default function SeatCheckinDialog({
                           imageUrl={seatChartImageUrl}
                           markers={seatChartMarkers}
                           onChange={setSeatChartMarkers}
+                          rosterNames={studentNames}
                         />
+
                       )}
                     </div>
                   )}

@@ -9,8 +9,59 @@ import {
   describeMarker,
   markerNamePool,
   normalizeMarkerName,
+  findDuplicateNameGroups,
+  keepFirstPerName,
+  diffAgainstRoster,
+  stripMarkerInternals,
 } from './seat-chart-markers';
 import { buildTileGrid, suggestTileGrid, tilePointToImage } from './seat-chart-tiles';
+
+describe('seat-chart marker correction', () => {
+  it('merges the same name reported by two overlapping tiles', () => {
+    const merged = dedupeMarkers(sanitizeMarkers([
+      { name: '李蒙', x: 0.50, y: 0.40, tile: 0 },
+      { name: '李蒙', x: 0.54, y: 0.43, tile: 1 },
+    ]));
+    expect(merged).toHaveLength(1);
+  });
+
+  it('keeps two same-name people that sit far apart', () => {
+    const merged = dedupeMarkers(sanitizeMarkers([
+      { name: '李蒙', x: 0.10, y: 0.10, tile: 0 },
+      { name: '李蒙', x: 0.80, y: 0.80, tile: 1 },
+    ]));
+    expect(merged).toHaveLength(2);
+  });
+
+  it('reports duplicate name groups and can keep one per name', () => {
+    const markers = sanitizeMarkers([
+      { name: '李蒙', x: 0.1, y: 0.1 },
+      { name: '李蒙', x: 0.8, y: 0.8 },
+      { name: '王五', x: 0.3, y: 0.3 },
+    ]);
+    const groups = findDuplicateNameGroups(markers);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toEqual({ name: '李蒙', indexes: [0, 1] });
+    expect(keepFirstPerName(markers)).toHaveLength(2);
+  });
+
+  it('cross-checks recognized names against the roster', () => {
+    const markers = sanitizeMarkers([
+      { name: '李蒙', x: 0.1, y: 0.1 },
+      { name: '主席台', x: 0.2, y: 0.2 },
+    ]);
+    const diff = diffAgainstRoster(markers, ['李 蒙', '王五']);
+    expect(diff.matchedCount).toBe(1);
+    expect(diff.extraIndexes).toEqual([1]);
+    expect(diff.missingNames).toEqual(['王五']);
+  });
+
+  it('strips the internal tile tag before saving', () => {
+    expect(stripMarkerInternals([{ name: '李蒙', x: 0.1, y: 0.2, tile: 3 }]))
+      .toEqual([{ name: '李蒙', x: 0.1, y: 0.2 }]);
+  });
+});
+
 
 describe('seat-chart-markers', () => {
   it('drops entries without a name or coordinates', () => {

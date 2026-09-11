@@ -73,8 +73,9 @@ export async function recognizeSeatChartMarkers(
       const raw = sanitizeMarkers((data as { markers?: unknown })?.markers);
       for (const m of raw) {
         const mapped = tilePointToImage(tile, m.x, m.y, width, height);
-        collected.push({ ...m, x: mapped.x, y: mapped.y });
+        collected.push({ ...m, x: mapped.x, y: mapped.y, tile: tile.index });
       }
+
     } catch (err) {
       failedTiles += 1;
       lastError = err instanceof Error ? err.message : String(err);
