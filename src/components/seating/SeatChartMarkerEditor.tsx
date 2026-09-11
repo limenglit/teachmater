@@ -253,8 +253,11 @@ export default function SeatChartMarkerEditor({ imageUrl, markers, onChange, ros
                   ? 'bg-primary text-primary-foreground border-primary z-20'
                   : isMatch
                     ? 'bg-amber-400 text-amber-950 border-amber-500 z-10'
-                    : 'bg-background/85 text-foreground border-border'
+                    : extraSet.has(i)
+                      ? 'bg-destructive/15 text-destructive border-destructive z-10'
+                      : 'bg-background/85 text-foreground border-border'
               }`}
+
               style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%` }}
             >
               {m.name}
