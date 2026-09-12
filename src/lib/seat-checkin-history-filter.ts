@@ -50,7 +50,12 @@ export function titleMentionsClass(title: string, className: string): boolean {
 
 
 export function sessionMatchesClass(session: HistoryFilterSession, cls: HistoryFilterClass): boolean {
-  if (Array.isArray(session.class_ids)) return session.class_ids.includes(cls.id);
+  // Only trust explicit links when there are any; an empty array means the
+  // session was published without a Class Library roster, so fall back to
+  // title / roster-name matching instead of hiding the record entirely.
+  if (Array.isArray(session.class_ids) && session.class_ids.length > 0) {
+    return session.class_ids.includes(cls.id);
+  }
 
   const className = normalize(cls.name || '');
   if (!className) return false;

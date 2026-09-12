@@ -1,6 +1,10 @@
 // Cloud sync for seat history (all 6 scenes) — only for logged-in users.
 // Local helpers in `teamwork-local.ts` remain unchanged; this module layers cloud on top.
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+/** Shown when the cloud copy could not be written, so the save is local only. */
+const cloudSaveFailedMessage = '云端保存失败，已仅保存在本机。请重新登录后再试。';
 import {
   loadSmartClassroomHistory,
   loadBanquetHallHistory,
@@ -37,6 +41,22 @@ async function getUserId(): Promise<string | null> {
   return data.user?.id ?? null;
 }
 
+/**
+ * The row-level security check runs against the JWT actually sent with the
+ * request, not the cached user object. When the access token has expired the
+ * insert is rejected with "new row violates row-level security policy".
+ * Refresh once and hand back the fresh user id.
+ */
+async function refreshUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.refreshSession();
+  return data.session?.user?.id ?? null;
+}
+
+function isRlsError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '42501' || /row-level security/i.test(error.message ?? '');
+}
+
 export async function fetchCloudSeatHistory<S = unknown>(
   scene: SeatSceneType
 ): Promise<CloudSeatHistoryRow<S>[] | null> {
@@ -68,13 +88,21 @@ export async function saveCloudSeatHistory<S = unknown>(
 ): Promise<CloudSeatHistoryRow<S> | null> {
   const userId = await getUserId();
   if (!userId) return null;
-  const { data, error } = await supabase
-    .from('seat_history')
-    .insert({ user_id: userId, scene_type: scene, name, snapshot: snapshot as any })
-    .select('id, name, snapshot, created_at')
-    .single();
-  if (error) {
+  const insert = (uid: string) =>
+    supabase
+      .from('seat_history')
+      .insert({ user_id: uid, scene_type: scene, name, snapshot: snapshot as any })
+      .select('id, name, snapshot, created_at')
+      .single();
+
+  let { data, error } = await insert(userId);
+  if (error && isRlsError(error)) {
+    const freshId = await refreshUserId();
+    if (freshId) ({ data, error } = await insert(freshId));
+  }
+  if (error || !data) {
     console.error('[seat-history] save error', error);
+    toast.error(cloudSaveFailedMessage);
     return null;
   }
   return {

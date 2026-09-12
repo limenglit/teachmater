@@ -171,10 +171,17 @@ export async function createSeatCheckinSession({
   );
 
   const activeClassContext = getActiveClassContext();
+  // Persist explicit class links only when a Class Library roster is active.
+  // Writing an empty array would make later class filtering skip the
+  // title/roster fallbacks and hide the session from every class.
   const persistedSceneConfig = {
     ...sceneConfig,
-    associatedClassIds: activeClassContext.classIds,
-    associatedCollegeIds: activeClassContext.collegeIds,
+    ...(activeClassContext.classIds.length > 0
+      ? {
+          associatedClassIds: activeClassContext.classIds,
+          associatedCollegeIds: activeClassContext.collegeIds,
+        }
+      : {}),
   };
   const baseInsertData = {
     seat_data: safeJson(seatData, []),
@@ -418,9 +425,11 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
       const config = item.scene_config && typeof item.scene_config === 'object' && !Array.isArray(item.scene_config)
         ? item.scene_config as Record<string, unknown>
         : null;
-      const storedClassIds = config && Array.isArray(config.associatedClassIds)
+      const rawClassIds = config && Array.isArray(config.associatedClassIds)
         ? config.associatedClassIds.filter((value): value is string => typeof value === 'string' && value.length > 0)
         : undefined;
+      // Legacy records saved an empty array; treat it as "no explicit link".
+      const storedClassIds = rawClassIds && rawClassIds.length > 0 ? rawClassIds : undefined;
       return ({
       id: item.id,
       created_at: item.created_at,
