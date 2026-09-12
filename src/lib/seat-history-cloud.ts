@@ -84,13 +84,21 @@ export async function saveCloudSeatHistory<S = unknown>(
 ): Promise<CloudSeatHistoryRow<S> | null> {
   const userId = await getUserId();
   if (!userId) return null;
-  const { data, error } = await supabase
-    .from('seat_history')
-    .insert({ user_id: userId, scene_type: scene, name, snapshot: snapshot as any })
-    .select('id, name, snapshot, created_at')
-    .single();
-  if (error) {
+  const insert = (uid: string) =>
+    supabase
+      .from('seat_history')
+      .insert({ user_id: uid, scene_type: scene, name, snapshot: snapshot as any })
+      .select('id, name, snapshot, created_at')
+      .single();
+
+  let { data, error } = await insert(userId);
+  if (error && isRlsError(error)) {
+    const freshId = await refreshUserId();
+    if (freshId) ({ data, error } = await insert(freshId));
+  }
+  if (error || !data) {
     console.error('[seat-history] save error', error);
+    toast.error(cloudSaveFailedMessage);
     return null;
   }
   return {
