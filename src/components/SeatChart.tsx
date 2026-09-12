@@ -925,8 +925,10 @@ export default function SeatChart() {
       toast.error(t('seat.toolbar.saveBeforeArrange'));
       return;
     }
-    const name = recordName.trim() || `教室-${new Date().toLocaleString()}`;
-    const item = saveClassroomHistory(name, buildClassroomSnapshot());
+    const classLabel = getActiveClassName().trim();
+    const name = recordName.trim() || `${classLabel ? `${classLabel}-` : '教室-'}${new Date().toLocaleString()}`;
+    // 把当前班级写进快照，切换班级时可自动筛出对应的排座记录。
+    const item = saveClassroomHistory(name, withActiveClassContext(buildClassroomSnapshot()) as any);
     let savedItem = item;
     const cloud = await saveCloudSeatHistory('classroom', name, item.snapshot);
     if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as any;
