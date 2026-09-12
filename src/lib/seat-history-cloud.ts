@@ -37,6 +37,22 @@ async function getUserId(): Promise<string | null> {
   return data.user?.id ?? null;
 }
 
+/**
+ * The row-level security check runs against the JWT actually sent with the
+ * request, not the cached user object. When the access token has expired the
+ * insert is rejected with "new row violates row-level security policy".
+ * Refresh once and hand back the fresh user id.
+ */
+async function refreshUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.refreshSession();
+  return data.session?.user?.id ?? null;
+}
+
+function isRlsError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === '42501' || /row-level security/i.test(error.message ?? '');
+}
+
 export async function fetchCloudSeatHistory<S = unknown>(
   scene: SeatSceneType
 ): Promise<CloudSeatHistoryRow<S>[] | null> {
