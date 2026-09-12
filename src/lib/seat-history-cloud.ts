@@ -1,6 +1,10 @@
 // Cloud sync for seat history (all 6 scenes) — only for logged-in users.
 // Local helpers in `teamwork-local.ts` remain unchanged; this module layers cloud on top.
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
+/** Shown when the cloud copy could not be written, so the save is local only. */
+const cloudSaveFailedMessage = '云端保存失败，已仅保存在本机。请重新登录后再试。';
 import {
   loadSmartClassroomHistory,
   loadBanquetHallHistory,
