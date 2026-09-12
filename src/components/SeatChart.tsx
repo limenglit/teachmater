@@ -1001,6 +1001,31 @@ export default function SeatChart() {
     })();
   }, []);
 
+  // 切换班级时同步上下文，让排座历史自动匹配当前班级。
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sync = () => setActiveClassContextState(getActiveClassContext());
+    window.addEventListener(ACTIVE_CLASS_CHANGED_EVENT, sync);
+    window.addEventListener('storage', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener(ACTIVE_CLASS_CHANGED_EVENT, sync);
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
+  const visibleHistoryItems = useMemo(
+    () => filterHistoryByClass(historyItems as any, activeClassContext) as ClassroomHistoryItem[],
+    [historyItems, activeClassContext],
+  );
+
+  useEffect(() => {
+    if (selectedHistoryId && !visibleHistoryItems.some(item => item.id === selectedHistoryId)) {
+      setSelectedHistoryId('');
+    }
+  }, [visibleHistoryItems, selectedHistoryId]);
+
   useEffect(() => {
     if (restoredClassroomRef.current) return;
     const snapshot = loadClassroomSnapshot();
