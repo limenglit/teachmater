@@ -171,10 +171,17 @@ export async function createSeatCheckinSession({
   );
 
   const activeClassContext = getActiveClassContext();
+  // Persist explicit class links only when a Class Library roster is active.
+  // Writing an empty array would make later class filtering skip the
+  // title/roster fallbacks and hide the session from every class.
   const persistedSceneConfig = {
     ...sceneConfig,
-    associatedClassIds: activeClassContext.classIds,
-    associatedCollegeIds: activeClassContext.collegeIds,
+    ...(activeClassContext.classIds.length > 0
+      ? {
+          associatedClassIds: activeClassContext.classIds,
+          associatedCollegeIds: activeClassContext.collegeIds,
+        }
+      : {}),
   };
   const baseInsertData = {
     seat_data: safeJson(seatData, []),
