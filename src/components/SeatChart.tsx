@@ -107,6 +107,7 @@ export default function SeatChart() {
   const [recordName, setRecordName] = useState('');
   const [historyItems, setHistoryItems] = useState<ClassroomHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
+  const [activeClassContext, setActiveClassContextState] = useState<ActiveClassContext>(() => getActiveClassContext());
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
   const [groupSource, setGroupSource] = useState<SeatGroupSource>('auto');
