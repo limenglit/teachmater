@@ -34,8 +34,9 @@ describe('seat checkin history filter', () => {
     expect(sessionMatchesClass(exact, classB)).toBe(true);
   });
 
-  it('treats an explicitly empty class id list as unassociated', () => {
+  it('falls back to title/roster matching when no class ids were persisted', () => {
     const unassociated = { class_name: '一班', student_names: ['张三'], class_ids: [] };
-    expect(sessionMatchesClass(unassociated, classA)).toBe(false);
+    expect(sessionMatchesClass(unassociated, classA)).toBe(true);
+    expect(sessionMatchesClass({ class_name: '二班', student_names: ['陌生人'], class_ids: [] }, classA)).toBe(false);
   });
 });
