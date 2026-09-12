@@ -53,6 +53,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
+import { getActiveClassContext } from '@/lib/class-context';
 import { buildCheckinNotification } from '@/lib/checkin-notification';
 
 interface MergeGuestEntry {
@@ -489,6 +490,16 @@ export default function SeatCheckinDialog({
         setHistoryClasses(
           classes.map(c => ({ id: c.id, name: c.name, college_id: c.college_id, students: byClass.get(c.id) || [] })),
         );
+        // 默认按当前激活的班级过滤签到记录，切换班级后自动匹配。
+        const activeCtx = getActiveClassContext();
+        const normalize = (v: string) => v.replace(/\s+/g, '').trim().toLowerCase();
+        const activeClass =
+          classes.find(c => activeCtx.classIds.includes(c.id)) ||
+          (activeCtx.label ? classes.find(c => normalize(c.name) === normalize(activeCtx.label)) : undefined);
+        if (activeClass) {
+          setHistoryCollegeId(activeClass.college_id);
+          setHistoryClassId(activeClass.id);
+        }
       } catch {
         if (!cancelled) {
           setHistoryColleges([]);

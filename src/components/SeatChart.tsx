@@ -41,6 +41,8 @@ import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } fro
 import { deleteSeatHistoryLocal, renameSeatHistoryLocal } from '@/lib/teamwork-local';
 import MultiClassRosterLoader from '@/components/seating/MultiClassRosterLoader';
 import { toSnapshotRoster, missingFromRoster, allowedSeatNames, type SnapshotStudent } from '@/lib/seat-roster-merge';
+import { getActiveClassContext, getActiveClassName, ACTIVE_CLASS_CHANGED_EVENT, type ActiveClassContext } from '@/lib/class-context';
+import { withActiveClassContext, filterHistoryByClass, historyClassLabel } from '@/lib/seat-history-class';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
 type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -105,6 +107,7 @@ export default function SeatChart() {
   const [recordName, setRecordName] = useState('');
   const [historyItems, setHistoryItems] = useState<ClassroomHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
+  const [activeClassContext, setActiveClassContextState] = useState<ActiveClassContext>(() => getActiveClassContext());
   const [mode, setMode] = useState<SeatMode>('verticalS');
   const [groupCount, setGroupCount] = useState(4);
   const [groupSource, setGroupSource] = useState<SeatGroupSource>('auto');
@@ -922,8 +925,10 @@ export default function SeatChart() {
       toast.error(t('seat.toolbar.saveBeforeArrange'));
       return;
     }
-    const name = recordName.trim() || `教室-${new Date().toLocaleString()}`;
-    const item = saveClassroomHistory(name, buildClassroomSnapshot());
+    const classLabel = getActiveClassName().trim();
+    const name = recordName.trim() || `${classLabel ? `${classLabel}-` : '教室-'}${new Date().toLocaleString()}`;
+    // 把当前班级写进快照，切换班级时可自动筛出对应的排座记录。
+    const item = saveClassroomHistory(name, withActiveClassContext(buildClassroomSnapshot()) as any);
     let savedItem = item;
     const cloud = await saveCloudSeatHistory('classroom', name, item.snapshot);
     if (cloud) savedItem = { id: cloud.id, name: cloud.name, createdAt: cloud.createdAt, snapshot: cloud.snapshot } as any;
@@ -995,6 +1000,31 @@ export default function SeatChart() {
       }
     })();
   }, []);
+
+  // 切换班级时同步上下文，让排座历史自动匹配当前班级。
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sync = () => setActiveClassContextState(getActiveClassContext());
+    window.addEventListener(ACTIVE_CLASS_CHANGED_EVENT, sync);
+    window.addEventListener('storage', sync);
+    window.addEventListener('focus', sync);
+    return () => {
+      window.removeEventListener(ACTIVE_CLASS_CHANGED_EVENT, sync);
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
+  const visibleHistoryItems = useMemo(
+    () => filterHistoryByClass(historyItems as any, activeClassContext) as ClassroomHistoryItem[],
+    [historyItems, activeClassContext],
+  );
+
+  useEffect(() => {
+    if (selectedHistoryId && !visibleHistoryItems.some(item => item.id === selectedHistoryId)) {
+      setSelectedHistoryId('');
+    }
+  }, [visibleHistoryItems, selectedHistoryId]);
 
   useEffect(() => {
     if (restoredClassroomRef.current) return;
@@ -1540,11 +1570,14 @@ export default function SeatChart() {
                 className="h-8 min-w-0 max-w-60 px-2 rounded-md border border-input bg-background text-foreground text-sm"
               >
                 <option value="">{t('seat.toolbar.selectHistory')}</option>
-                {historyItems.map(item => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}（{new Date(item.createdAt).toLocaleString()}）
-                  </option>
-                ))}
+                {visibleHistoryItems.map(item => {
+                  const classLabel = historyClassLabel(item.snapshot);
+                  return (
+                    <option key={item.id} value={item.id}>
+                      {classLabel ? `[${classLabel}] ` : ''}{item.name}（{new Date(item.createdAt).toLocaleString()}）
+                    </option>
+                  );
+                })}
               </select>
               <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2">
                 <RotateCcw className="w-4 h-4" /> {t('seat.toolbar.restoreHistory')}
