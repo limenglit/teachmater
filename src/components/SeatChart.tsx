@@ -41,6 +41,8 @@ import { showStudentDropHint, handleStudentDragLeave, clearStudentDropHint } fro
 import { deleteSeatHistoryLocal, renameSeatHistoryLocal } from '@/lib/teamwork-local';
 import MultiClassRosterLoader from '@/components/seating/MultiClassRosterLoader';
 import { toSnapshotRoster, missingFromRoster, allowedSeatNames, type SnapshotStudent } from '@/lib/seat-roster-merge';
+import { getActiveClassContext, ACTIVE_CLASS_CHANGED_EVENT, type ActiveClassContext } from '@/lib/class-context';
+import { withActiveClassContext, filterHistoryByClass, historyClassLabel } from '@/lib/seat-history-class';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
 type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
