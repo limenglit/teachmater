@@ -1570,11 +1570,14 @@ export default function SeatChart() {
                 className="h-8 min-w-0 max-w-60 px-2 rounded-md border border-input bg-background text-foreground text-sm"
               >
                 <option value="">{t('seat.toolbar.selectHistory')}</option>
-                {historyItems.map(item => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}（{new Date(item.createdAt).toLocaleString()}）
-                  </option>
-                ))}
+                {visibleHistoryItems.map(item => {
+                  const classLabel = historyClassLabel(item.snapshot);
+                  return (
+                    <option key={item.id} value={item.id}>
+                      {classLabel ? `[${classLabel}] ` : ''}{item.name}（{new Date(item.createdAt).toLocaleString()}）
+                    </option>
+                  );
+                })}
               </select>
               <Button variant="outline" onClick={restoreClassroomFromHistory} disabled={!selectedHistoryId} className="gap-2">
                 <RotateCcw className="w-4 h-4" /> {t('seat.toolbar.restoreHistory')}
