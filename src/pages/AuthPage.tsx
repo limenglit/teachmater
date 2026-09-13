@@ -200,6 +200,21 @@ export default function AuthPage() {
                   className="pl-10"
                 />
               </div>
+              {mode === 'login' && needsEmailConfirm && (
+                <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium text-foreground">{t('auth.emailNotConfirmed')}</p>
+                  <p className="text-xs text-muted-foreground">{t('auth.emailNotConfirmedDesc')}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleResendConfirmation}
+                    disabled={resendLoading || !email}
+                  >
+                    {resendLoading ? t('auth.sending') : t('auth.resendConfirm')}
+                  </Button>
+                </div>
+              )}
               <Button onClick={mode === 'login' ? handleLogin : handleSignup} disabled={loading} className="w-full">
                 {loading ? t('auth.pleaseWait') : mode === 'login' ? t('auth.login') : t('auth.signup')}
               </Button>
