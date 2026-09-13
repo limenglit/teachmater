@@ -205,6 +205,7 @@ export type Database = {
       board_cards: {
         Row: {
           author_nickname: string
+          author_token_hash: string
           board_id: string
           card_type: string
           color: string
@@ -223,6 +224,7 @@ export type Database = {
         }
         Insert: {
           author_nickname?: string
+          author_token_hash?: string
           board_id: string
           card_type?: string
           color?: string
@@ -241,6 +243,7 @@ export type Database = {
         }
         Update: {
           author_nickname?: string
+          author_token_hash?: string
           board_id?: string
           card_type?: string
           color?: string
@@ -1832,7 +1835,12 @@ export type Database = {
         Returns: undefined
       }
       delete_own_board_card: {
-        Args: { p_board_id: string; p_card_id: string; p_nickname: string }
+        Args: {
+          p_board_id: string
+          p_card_id: string
+          p_nickname: string
+          p_token_hash?: string
+        }
         Returns: boolean
       }
       delete_poll: {
@@ -1982,8 +1990,9 @@ export type Database = {
         }[]
       }
       get_my_board_cards: {
-        Args: { p_board_id: string; p_nickname: string }
+        Args: { p_board_id: string; p_nickname: string; p_token_hash?: string }
         Returns: {
+          can_delete: boolean
           card_type: string
           column_id: string
           content: string
@@ -2054,6 +2063,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_public_system_config: { Args: never; Returns: Json }
       get_quiz_session_for_student: {
         Args: { p_session_id: string }
         Returns: Json
