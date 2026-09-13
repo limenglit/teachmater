@@ -153,6 +153,7 @@ export default function BoardSubmitPage() {
       p_board_id: boardId,
       p_card_id: cardId,
       p_nickname: nickname.trim(),
+      p_token_hash: await getBoardAuthorTokenHash(boardId),
     });
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     toast({ title: t('board.cancelled') });
