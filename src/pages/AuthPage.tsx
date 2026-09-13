@@ -26,6 +26,8 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
 
   if (user && approvalStatus === 'pending') {
@@ -86,7 +88,31 @@ export default function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
+      const unconfirmed =
+        (error as { code?: string }).code === 'email_not_confirmed' ||
+        /email\s+not\s+confirmed/i.test(error.message || '');
+      if (unconfirmed) {
+        setNeedsEmailConfirm(true);
+        return;
+      }
       toast({ title: t('auth.loginFailed'), description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) return;
+    setResendLoading(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setResendLoading(false);
+    if (error) {
+      toast({ title: t('auth.resendConfirmFailed'), description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: t('auth.resendConfirmSent') });
+      setNeedsEmailConfirm(false);
     }
   };
 
@@ -161,7 +187,7 @@ export default function AuthPage() {
               )}
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="email" placeholder={t('auth.emailPlaceholder')} value={email} onChange={e => setEmail(e.target.value)} className="pl-10" />
+                <Input type="email" placeholder={t('auth.emailPlaceholder')} value={email} onChange={e => { setEmail(e.target.value); setNeedsEmailConfirm(false); }} className="pl-10" />
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -174,6 +200,21 @@ export default function AuthPage() {
                   className="pl-10"
                 />
               </div>
+              {mode === 'login' && needsEmailConfirm && (
+                <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium text-foreground">{t('auth.emailNotConfirmed')}</p>
+                  <p className="text-xs text-muted-foreground">{t('auth.emailNotConfirmedDesc')}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleResendConfirmation}
+                    disabled={resendLoading || !email}
+                  >
+                    {resendLoading ? t('auth.sending') : t('auth.resendConfirm')}
+                  </Button>
+                </div>
+              )}
               <Button onClick={mode === 'login' ? handleLogin : handleSignup} disabled={loading} className="w-full">
                 {loading ? t('auth.pleaseWait') : mode === 'login' ? t('auth.login') : t('auth.signup')}
               </Button>
