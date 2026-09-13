@@ -629,8 +629,10 @@ export default function BoardSubmitPage() {
       const words = board.banned_words.split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
       if (words.some(w => content.toLowerCase().includes(w))) isApproved = false;
     }
+    const authorTokenHash = await getBoardAuthorTokenHash(boardId);
     const { error } = await supabase.from('board_cards').insert({
       board_id: boardId,
+      author_token_hash: authorTokenHash,
       content: content.trim(),
       card_type: mediaUrl ? getCardType(fileCategory) : url.trim() ? 'url' : 'text',
       url: url.trim(),
