@@ -26,6 +26,8 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
 
   if (user && approvalStatus === 'pending') {
@@ -86,7 +88,31 @@ export default function AuthPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
+      const unconfirmed =
+        (error as { code?: string }).code === 'email_not_confirmed' ||
+        /email\s+not\s+confirmed/i.test(error.message || '');
+      if (unconfirmed) {
+        setNeedsEmailConfirm(true);
+        return;
+      }
       toast({ title: t('auth.loginFailed'), description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!email) return;
+    setResendLoading(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: window.location.origin },
+    });
+    setResendLoading(false);
+    if (error) {
+      toast({ title: t('auth.resendConfirmFailed'), description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: t('auth.resendConfirmSent') });
+      setNeedsEmailConfirm(false);
     }
   };
 
