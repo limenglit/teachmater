@@ -15,6 +15,7 @@ import { getFileCategory, getCardType, getDocIcon, getCodeIcon, getCodeLanguage,
 import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
 import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import BoardCardItem from '@/components/board/BoardCardItem';
+import { getBoardAuthorTokenHash } from '@/lib/board-author-token';
 import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
