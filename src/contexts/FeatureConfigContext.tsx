@@ -97,13 +97,11 @@ export function FeatureConfigProvider({ children }: { children: ReactNode }) {
 
   const loadConfig = async () => {
     try {
-      const { data, error } = await supabase
-        .from('system_config' as any)
-        .select('config')
-        .limit(1)
-        .single();
+      // Public, sanitized view of the config (feature flags only).
+      // Internal infrastructure settings (AI gateway URL/model) stay admin-only.
+      const { data, error } = await (supabase as any).rpc('get_public_system_config');
       if (!error && data) {
-        const raw = (data as any).config;
+        const raw = data as any;
         if (raw && typeof raw === 'object' && raw.guest && raw.registered) {
           const nextConfig: SystemConfig = {
             guest: { ...DEFAULT_CONFIG.guest, ...raw.guest },

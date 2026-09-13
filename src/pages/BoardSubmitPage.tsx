@@ -15,6 +15,7 @@ import { getFileCategory, getCardType, getDocIcon, getCodeIcon, getCodeLanguage,
 import { compressImage, validateFile, UPLOAD_CONFIG } from '@/lib/upload-queue';
 import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import BoardCardItem from '@/components/board/BoardCardItem';
+import { getBoardAuthorTokenHash } from '@/lib/board-author-token';
 import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
@@ -128,6 +129,7 @@ export default function BoardSubmitPage() {
     const { data } = await supabase.rpc('get_my_board_cards' as any, {
       p_board_id: boardId,
       p_nickname: nickname.trim(),
+      p_token_hash: await getBoardAuthorTokenHash(boardId),
     });
     const list = (data as any[]) || [];
     setMyCards(list);
@@ -151,6 +153,7 @@ export default function BoardSubmitPage() {
       p_board_id: boardId,
       p_card_id: cardId,
       p_nickname: nickname.trim(),
+      p_token_hash: await getBoardAuthorTokenHash(boardId),
     });
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     toast({ title: t('board.cancelled') });
@@ -629,8 +632,10 @@ export default function BoardSubmitPage() {
       const words = board.banned_words.split(',').map(w => w.trim().toLowerCase()).filter(Boolean);
       if (words.some(w => content.toLowerCase().includes(w))) isApproved = false;
     }
+    const authorTokenHash = await getBoardAuthorTokenHash(boardId);
     const { error } = await supabase.from('board_cards').insert({
       board_id: boardId,
+      author_token_hash: authorTokenHash,
       content: content.trim(),
       card_type: mediaUrl ? getCardType(fileCategory) : url.trim() ? 'url' : 'text',
       url: url.trim(),

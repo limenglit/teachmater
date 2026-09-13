@@ -46,9 +46,8 @@ export default function RechargeDialog({ open, onOpenChange, onOrderSubmitted }:
     if (!open) return;
     // Load QR codes
     (async () => {
-      const { data } = await (supabase as any)
-        .from('system_config').select('config').limit(1).single();
-      const paymentQR = (data as any)?.config?.paymentQR || {};
+      const { data } = await (supabase as any).rpc('get_public_system_config');
+      const paymentQR = (data as any)?.paymentQR || {};
       setQr(paymentQR);
     })();
     // Load my orders

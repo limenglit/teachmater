@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 const corsHeaders: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -126,6 +128,47 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Auth is OPTIONAL: students answer quizzes via QR without signing in.
+    // Signed-in callers must have a valid JWT and consume their server-side
+    // AI quota; anonymous callers rely on gateway limits + input caps.
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader && !authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+      // A Bearer header that is just the publishable key means "no user".
+      if (token !== anonKey) {
+        const authClient = createClient(Deno.env.get('SUPABASE_URL')!, anonKey, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: { user }, error: userErr } = await authClient.auth.getUser(token);
+        if (userErr || !user) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        const svc = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        );
+        const { data: quotaOk } = await svc.rpc('consume_ai_quota', { p_user_id: user.id });
+        if (quotaOk === false) {
+          return new Response(JSON.stringify({ error: '已达今日 AI 使用上限' }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+
+
 
 
     const body = (await req.json()) as RequestBody;
