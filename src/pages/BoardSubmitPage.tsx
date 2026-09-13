@@ -129,6 +129,7 @@ export default function BoardSubmitPage() {
     const { data } = await supabase.rpc('get_my_board_cards' as any, {
       p_board_id: boardId,
       p_nickname: nickname.trim(),
+      p_token_hash: await getBoardAuthorTokenHash(boardId),
     });
     const list = (data as any[]) || [];
     setMyCards(list);
