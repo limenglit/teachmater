@@ -245,7 +245,8 @@ ${wrongList}
       });
     }
     if (resp.status === 402) {
-      return new Response(JSON.stringify({ error: 'AI 额度已用尽，请联系管理员充值' }), {
+      console.error('AI quota exhausted on both Lovable gateway and DeepSeek fallback');
+      return new Response(JSON.stringify({ error: 'AI 额度已用尽（平台算力与备用 DeepSeek 均不足），请联系管理员充值后重试' }), {
         status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
