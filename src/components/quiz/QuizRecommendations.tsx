@@ -212,7 +212,15 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
         {!loading && error && (
           <div className="flex items-start gap-2 p-4 rounded-md bg-muted/50 border border-border">
             <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <div className="space-y-2 flex-1">
+              <p className="text-sm text-muted-foreground">{error}</p>
+              {wrongs.length > 0 && (
+                <Button size="sm" variant="outline" className="h-7 text-xs"
+                  onClick={() => setRetryTick(t => t + 1)}>
+                  重新生成
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
