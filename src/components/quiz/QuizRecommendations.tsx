@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { addToPracticeList, getPracticeList, stripOptionPrefix } from '@/lib/practice-list';
+import { readEdgeFunctionError, refreshSessionIfUnauthorized } from '@/lib/edge-error';
 import PracticeRunner from './PracticeRunner';
 
 export interface QuizWrongItem {
