@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { addToPracticeList, getPracticeList, stripOptionPrefix } from '@/lib/practice-list';
+import { readEdgeFunctionError, refreshSessionIfUnauthorized } from '@/lib/edge-error';
 import PracticeRunner from './PracticeRunner';
 
 export interface QuizWrongItem {
@@ -116,6 +117,7 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
   const [selected, setSelected] = useState<Record<number, boolean>>({});
   const [runnerOpen, setRunnerOpen] = useState(false);
   const [listCount, setListCount] = useState(0);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     const sync = () => setListCount(getPracticeList().length);
@@ -135,23 +137,29 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
         setLoading(false);
         return;
       }
+      const invoke = () => supabase.functions.invoke('recommend-quiz-learning', {
+        body: { sessionTitle, wrongs },
+      });
+
       try {
-        const { data, error: fnErr } = await supabase.functions.invoke('recommend-quiz-learning', {
-          body: { sessionTitle, wrongs },
-        });
+        let { data, error: fnErr } = await invoke();
+        // 令牌过期时自动刷新会话并重试一次
+        if (fnErr && await refreshSessionIfUnauthorized(fnErr)) {
+          ({ data, error: fnErr } = await invoke());
+        }
         if (cancelled) return;
-        if (fnErr) { setError(fnErr.message || '推荐生成失败'); setLoading(false); return; }
+        if (fnErr) { setError(await readEdgeFunctionError(fnErr)); setLoading(false); return; }
         if ((data as any)?.error) { setError((data as any).error); setLoading(false); return; }
         setResult(data as ApiResult);
       } catch (e) {
-        if (!cancelled) setError((e as Error).message || '推荐生成失败');
+        if (!cancelled) setError(await readEdgeFunctionError(e));
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
 
     return () => { cancelled = true; };
-  }, [open, sessionTitle, wrongs]);
+  }, [open, sessionTitle, wrongs, retryTick]);
 
   const problems = result?.problems ?? [];
   const knowledgePoints = result?.knowledgePoints ?? [];
@@ -204,7 +212,15 @@ export default function QuizRecommendations({ open, onOpenChange, sessionTitle, 
         {!loading && error && (
           <div className="flex items-start gap-2 p-4 rounded-md bg-muted/50 border border-border">
             <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <div className="space-y-2 flex-1">
+              <p className="text-sm text-muted-foreground">{error}</p>
+              {wrongs.length > 0 && (
+                <Button size="sm" variant="outline" className="h-7 text-xs"
+                  onClick={() => setRetryTick(t => t + 1)}>
+                  重新生成
+                </Button>
+              )}
+            </div>
           </div>
         )}
 
