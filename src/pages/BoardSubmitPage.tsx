@@ -149,13 +149,20 @@ export default function BoardSubmitPage() {
 
   const cancelMyCard = useCallback(async (cardId: string, reupload = false) => {
     if (!boardId || !window.confirm(t('board.cancelConfirm'))) return;
-    const { error } = await supabase.rpc('delete_own_board_card' as any, {
+    const { data, error } = await supabase.rpc('delete_own_board_card' as any, {
       p_board_id: boardId,
       p_card_id: cardId,
       p_nickname: nickname.trim(),
       p_token_hash: await getBoardAuthorTokenHash(boardId),
     });
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
+    // The RPC returns false when no row matched (submitted from another browser,
+    // cleared storage, or an older card without an ownership token).
+    if (data !== true) {
+      toast({ title: t('board.cancelUnavailable'), variant: 'destructive' });
+      await loadMyCards();
+      return;
+    }
     toast({ title: t('board.cancelled') });
     setCards(prev => prev.filter(c => c.id !== cardId));
     await loadMyCards();
