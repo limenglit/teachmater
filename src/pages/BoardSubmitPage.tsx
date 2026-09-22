@@ -844,18 +844,26 @@ export default function BoardSubmitPage() {
                         {t('board.viewContent')}
                       </a>
                     )}
-                    <button
-                      onClick={() => cancelMyCard(mc.id)}
-                      className="h-8 px-3 inline-flex items-center rounded-md border border-destructive/40 text-destructive text-xs"
-                    >
-                      {t('board.cancelUpload')}
-                    </button>
-                    <button
-                      onClick={() => cancelMyCard(mc.id, true)}
-                      className="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs"
-                    >
-                      {t('board.reupload')}
-                    </button>
+                    {mc.can_delete === false ? (
+                      <span className="text-[11px] text-muted-foreground self-center">
+                        {t('board.cancelUnavailable')}
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => cancelMyCard(mc.id)}
+                          className="h-8 px-3 inline-flex items-center rounded-md border border-destructive/40 text-destructive text-xs"
+                        >
+                          {t('board.cancelUpload')}
+                        </button>
+                        <button
+                          onClick={() => cancelMyCard(mc.id, true)}
+                          className="h-8 px-3 inline-flex items-center rounded-md border border-border text-xs"
+                        >
+                          {t('board.reupload')}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
