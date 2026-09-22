@@ -113,7 +113,7 @@ export default function BoardSubmitPage() {
     setCardsLoading(true);
     const { data } = await supabase
       .from('board_cards')
-      .select('*')
+      .select('id, board_id, author_nickname, content, card_type, media_url, url, color, column_id, position_x, position_y, sort_order, is_pinned, is_approved, likes_count, created_at')
       .eq('board_id', boardId)
       .eq('is_approved', true)
       .order('created_at', { ascending: false })
