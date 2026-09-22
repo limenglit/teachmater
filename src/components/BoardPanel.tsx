@@ -252,7 +252,7 @@ export default function BoardPanel() {
     }
     setActiveBoard(board);
     if (isCloud) {
-      const { data } = await supabase.from('board_cards').select('*').eq('board_id', board.id).order('sort_order', { ascending: true });
+      const { data } = await supabase.from('board_cards').select('id, board_id, author_nickname, content, card_type, media_url, url, color, column_id, position_x, position_y, sort_order, is_pinned, is_approved, likes_count, created_at').eq('board_id', board.id).order('sort_order', { ascending: true });
       setCards((data as any[] || []) as BoardCard[]);
     } else {
       setCards(getLocalCards(board.id));
