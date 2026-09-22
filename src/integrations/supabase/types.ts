@@ -1782,6 +1782,11 @@ export type Database = {
       }
       approve_user: { Args: { p_user_id: string }; Returns: undefined }
       approve_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
+      board_exists: { Args: { p_board_id: string }; Returns: boolean }
+      board_is_open: { Args: { p_board_id: string }; Returns: boolean }
+      card_board_is_open: { Args: { p_card_id: string }; Returns: boolean }
+      card_board_owner: { Args: { p_card_id: string }; Returns: string }
+      card_exists: { Args: { p_card_id: string }; Returns: boolean }
       clear_board_strokes: {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
@@ -2245,6 +2250,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      poll_is_active: { Args: { p_poll_id: string }; Returns: boolean }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
       reject_vocab_set: {
         Args: { p_reason: string; p_set_id: string }
@@ -2279,6 +2285,7 @@ export type Database = {
         }[]
       }
       submit_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
+      topic_exists: { Args: { p_topic_id: string }; Returns: boolean }
       update_board: {
         Args: {
           p_allow_multiple_submissions?: boolean
