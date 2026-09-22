@@ -202,6 +202,32 @@ export type Database = {
           },
         ]
       }
+      board_card_tokens: {
+        Row: {
+          card_id: string
+          created_at: string
+          token_hash: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          token_hash?: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "board_card_tokens_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "board_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       board_cards: {
         Row: {
           author_nickname: string
