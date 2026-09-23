@@ -178,7 +178,7 @@ export default function PagesManager() {
     setPages((prev) => prev.filter((p) => p.id !== page.id));
   };
 
-  const pageUrl = (p: UserPage) => getPublicPageUrl(window.location.origin, p.username, p.slug);
+  const pageUrl = (p: UserPage) => getPublicPageUrl(getShareOrigin(), p.username, p.slug);
   const copyUrl = async (p: UserPage) => {
     await navigator.clipboard.writeText(pageUrl(p));
     setCopiedId(p.id);
