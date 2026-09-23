@@ -27,6 +27,7 @@ import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-check
 import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
 import { applyCardAction, likeCardLocal } from '@/lib/board-utils';
 import { getLikerToken, markLiked } from '@/lib/board-like';
+import { getShareOrigin } from '@/lib/share-origin';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -776,7 +777,7 @@ export default function BoardPanel() {
 
   // Collaborative board view
   if (activeBoard && activeBoard.is_collaborative) {
-    const submitUrl = `${window.location.origin}/board/${activeBoard.id}/collab?lang=${lang}`;
+    const submitUrl = `${getShareOrigin()}/board/${activeBoard.id}/collab?lang=${lang}`;
     const isCreator = isBoardCreator(activeBoard);
     return (
       <div data-testid="board-panel-session" className="flex-1 flex flex-col overflow-hidden">
@@ -892,7 +893,7 @@ export default function BoardPanel() {
 
   // Board detail view
   if (activeBoard) {
-    const submitUrl = `${window.location.origin}/board/${activeBoard.id}/submit`;
+    const submitUrl = `${getShareOrigin()}/board/${activeBoard.id}/submit`;
     const isCreator = isBoardCreator(activeBoard);
 
     return (

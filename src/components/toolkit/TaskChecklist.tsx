@@ -44,6 +44,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { downloadQrFromContainer } from '@/lib/qr-download';
+import { getShareOrigin } from '@/lib/share-origin';
 
 interface TaskDraftItem {
   id: string;
@@ -421,7 +422,7 @@ export default function TaskChecklist() {
     }
   };
 
-  const detailSubmitUrl = activeSession ? `${window.location.origin}/task/${activeSession.id}` : '';
+  const detailSubmitUrl = activeSession ? `${getShareOrigin()}/task/${activeSession.id}` : '';
   const isCreator = activeSession ? Boolean(getSessionManageToken(activeSession)) : false;
   const uncategorizedLabel = t('task.uncategorized');
 

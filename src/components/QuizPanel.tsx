@@ -35,6 +35,7 @@ import {
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { runQuizCall } from '@/lib/quiz-error';
+import { getShareOrigin } from '@/lib/share-origin';
 
 // Re-export for backward compat
 export type { QuizQuestion, QuizSession };
@@ -362,7 +363,7 @@ export default function QuizPanel() {
 
   // Active session view
   if (showSession && activeSession) {
-    const submitUrl = `${window.location.origin}/quiz/${activeSession.id}`;
+    const submitUrl = `${getShareOrigin()}/quiz/${activeSession.id}`;
     return (
       <div data-testid="quiz-panel-session" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card flex-wrap">
