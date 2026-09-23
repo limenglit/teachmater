@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { normalizeHtmlFileToUtf8 } from '@/lib/html-normalize';
 import { getPageStoragePath, getPublicPageUrl, normalizePageSlug, validatePageSlug } from '@/lib/page-slug';
+import { getShareOrigin } from '@/lib/share-origin';
 import PageImagesManager from '@/components/PageImagesManager';
 import { Upload, Trash2, ExternalLink, Copy, Check, ArrowLeft, Globe, Lock, Eye } from 'lucide-react';
 
@@ -211,7 +212,7 @@ export default function PagesManager() {
           {username ? (
             <div className="flex items-center gap-2 text-sm">
               <Globe className="w-4 h-4 text-primary" />
-              <span className="font-mono">{window.location.origin}/<b>{username}</b>/…</span>
+              <span className="font-mono">{getShareOrigin()}/<b>{username}</b>/…</span>
               <span className="text-xs text-muted-foreground">（已锁定，如需修改请联系管理员）</span>
             </div>
           ) : (
