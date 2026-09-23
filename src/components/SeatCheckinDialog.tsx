@@ -55,6 +55,7 @@ import { fetchClassLibrary } from '@/lib/class-library-fetch';
 import { filterHistorySessions, type HistoryFilterClass } from '@/lib/seat-checkin-history-filter';
 import { getActiveClassContext } from '@/lib/class-context';
 import { buildCheckinNotification } from '@/lib/checkin-notification';
+import { getShareOrigin } from '@/lib/share-origin';
 
 interface MergeGuestEntry {
   name: string;
@@ -779,7 +780,7 @@ export default function SeatCheckinDialog({
   };
 
   const checkinUrl = currentSession
-    ? `${window.location.origin}/seat-checkin/${currentSession.id}`
+    ? `${getShareOrigin()}/seat-checkin/${currentSession.id}`
     : '';
   const resolvedPngFileName = `${(pngFileName?.trim() || className?.trim() || t('seatCheckinDialog.qrFallbackName'))}.png`;
 

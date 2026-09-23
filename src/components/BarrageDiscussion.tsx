@@ -14,6 +14,7 @@ import RosterQuickBind from '@/components/RosterQuickBind';
 import ClassRosterPicker from './ClassRosterPicker';
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import { getShareOrigin } from '@/lib/share-origin';
 
 interface BarrageMessage {
   id: string;
@@ -149,7 +150,7 @@ export default function BarrageDiscussion() {
   const reportRef = useRef<HTMLDivElement>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
-  const discussUrl = topicId ? `${window.location.origin}/discuss/${topicId}` : '';
+  const discussUrl = topicId ? `${getShareOrigin()}/discuss/${topicId}` : '';
 
   useEffect(() => {
     if (!topicId || creatorToken) return;

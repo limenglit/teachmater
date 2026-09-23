@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { downloadQrPng } from '@/lib/qr-download';
+import { getShareOrigin } from '@/lib/share-origin';
 
 interface GenericTeam {
   id: string;
@@ -53,7 +54,7 @@ export default function TeamShareQR({ teams, type }: TeamShareQRProps) {
           .select('id')
           .single();
         if (error) throw error;
-        const base = window.location.origin;
+        const base = getShareOrigin();
         setUrl(`${base}/team-lookup/${data.id}`);
       } catch {
         toast.error('生成分享链接失败');

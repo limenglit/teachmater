@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getActiveClassContext } from '@/lib/class-context';
+import { getShareOrigin } from './share-origin';
 
 const SEAT_CHECKIN_SESSION_TOKENS_KEY = 'teachmate_seat_checkin_session_tokens_v1';
 const SEAT_CHECKIN_SESSION_IDS_KEY = 'teachmate_seat_checkin_session_ids_v1';
@@ -307,7 +308,7 @@ export async function createSeatCheckinSession({
 
   return {
     sessionId: data.id,
-    checkinUrl: `${window.location.origin}/seat-checkin/${data.id}`,
+    checkinUrl: `${getShareOrigin()}/seat-checkin/${data.id}`,
     session: {
       id: data.id,
       created_at: (data as any).created_at,

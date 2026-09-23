@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { downloadQrFromContainer } from '@/lib/qr-download';
+import { getShareOrigin } from '@/lib/share-origin';
 import {
   createVocabSession,
   normalizeStudentNames,
@@ -59,7 +60,7 @@ export default function VocabPublishDialog({ open, onOpenChange, set }: Props) {
   }, [open, set?.id]);
 
   const normalizedNames = useMemo(() => normalizeStudentNames(linkedNames), [linkedNames]);
-  const submitUrl = session ? `${window.location.origin}/vocab/${session.id}` : '';
+  const submitUrl = session ? `${getShareOrigin()}/vocab/${session.id}` : '';
 
   const handlePublish = async () => {
     if (!set) return;

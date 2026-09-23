@@ -13,6 +13,7 @@ import ClassRosterPicker from '@/components/ClassRosterPicker';
 import RosterQuickBind from '@/components/RosterQuickBind';
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import QRActionPanel from '@/components/qr/QRActionPanel';
+import { getShareOrigin } from '@/lib/share-origin';
 
 interface PollOption {
   label: string;
@@ -211,7 +212,7 @@ export default function PollManager() {
 
   // Poll detail view
   if (activePoll) {
-    const submitUrl = `${window.location.origin}/poll/${activePoll.id}`;
+    const submitUrl = `${getShareOrigin()}/poll/${activePoll.id}`;
     const isCreator = !!getCreatorToken(activePoll.id);
     const optionCounts = getOptionCounts();
     const totalVotes = votes.length;
