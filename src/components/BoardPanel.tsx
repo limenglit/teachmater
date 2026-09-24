@@ -412,7 +412,7 @@ export default function BoardPanel() {
         position_x: card.position_x ?? Math.random() * 600,
         position_y: card.position_y ?? Math.random() * 400,
         sort_order: cards.length,
-      }).select().single();
+      }).select('id, board_id, author_nickname, content, card_type, media_url, url, color, column_id, position_x, position_y, sort_order, is_pinned, is_approved, likes_count, created_at').single();
       if (data) setCards(prev => [...prev, data as any as BoardCard]);
     } else {
       const newCard: BoardCard = {
