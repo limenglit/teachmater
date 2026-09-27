@@ -37,7 +37,7 @@ async function renderQrBadge(container: HTMLElement, qrCode: ExportQrCodeOptions
     createElement(
       'div',
       { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' } },
-      createElement(QRCodeSVG, { value: qrCode.value, ...qrRenderProps(110, { allowSmall: true }) }),
+      createElement(QRCodeSVG, { value: qrCode.value, ...qrRenderProps(160, { allowSmall: true }) }),
       createElement(
         'div',
         {
