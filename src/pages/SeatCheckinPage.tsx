@@ -283,7 +283,10 @@ function TeachMateEntryBar() {
 }
 
 export default function SeatCheckinPage() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const { sessionId: rawSessionId } = useParams<{ sessionId: string }>();
+  const sessionId = normalizeSessionId(rawSessionId) || undefined;
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const { t } = useLanguage();
   const [session, setSession] = useState<{
     seat_data: unknown;
@@ -404,15 +407,18 @@ export default function SeatCheckinPage() {
   };
 
   useEffect(() => {
-    if (!sessionId) return;
-    supabase.rpc('get_seat_checkin_session_for_student', { p_session_id: sessionId } as any)
-      .then(async ({ data, error }) => {
-        if (error || !data) {
-          toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
+    if (!sessionId) { setLoading(false); return; }
+    setLoading(true);
+    setLoadFailed(false);
+    loadScanSession('get_seat_checkin_session_for_student', sessionId)
+      .then(async (res) => {
+        if (res.kind !== 'ok') {
+          if (res.kind === 'network') setLoadFailed(true);
+          else toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
           setLoading(false);
           return;
         }
-        const d: any = data;
+        const d: any = res.data;
         const nextSession = {
           seat_data: d.seat_data,
           student_names: ((d.student_names as unknown as string[]) || []).map(normalizeStudentName).filter(Boolean),
@@ -444,7 +450,7 @@ export default function SeatCheckinPage() {
 
         setLoading(false);
       });
-  }, [sessionId, t]);
+  }, [sessionId, t, reloadKey]);
 
   const handleNameInput = (val: string) => {
     setName(val);
@@ -538,7 +544,12 @@ export default function SeatCheckinPage() {
   }
 
   if (!session) {
-    return <div className="flex items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{t('seatCheckin.notFound')}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 min-h-[100dvh] px-4 text-center text-muted-foreground">
+        <p>{loadFailed ? '网络不稳定，签到页加载失败' : t('seatCheckin.notFound')}</p>
+        <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>重新加载</Button>
+      </div>
+    );
   }
 
   if (!checkedIn) {
