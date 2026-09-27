@@ -5,6 +5,7 @@ import { formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-num
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
 import {
   findMissingRequiredField,
   normalizeCustomFields,

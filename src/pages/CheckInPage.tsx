@@ -2,12 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 export default function CheckInPage() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const { sessionId: rawSessionId } = useParams<{ sessionId: string }>();
+  const sessionId = normalizeSessionId(rawSessionId) || undefined;
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const { t } = useLanguage();
   const [name, setName] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error' | 'expired'>('idle');
@@ -20,23 +24,26 @@ export default function CheckInPage() {
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!sessionId) return;
-    supabase.rpc('get_checkin_session_for_student', { p_session_id: sessionId } as any)
-      .then(({ data, error }) => {
-        if (error || !data) {
+    if (!sessionId) { setSessionValid(false); return; }
+    setSessionValid(null);
+    setLoadFailed(false);
+    loadScanSession('get_checkin_session_for_student', sessionId)
+      .then((res) => {
+        if (res.kind !== 'ok') {
+          setLoadFailed(res.kind === 'network');
           setSessionValid(false);
-        } else if ((data as any).status !== 'active') {
+          return;
+        }
+        const data: any = res.data;
+        if (data.status !== 'active') {
           setSessionValid(false);
           setStatus('expired');
         } else {
           setSessionValid(true);
-          const names = (data as any).student_names;
-          if (Array.isArray(names)) {
-            setStudentNames(names);
-          }
+          if (Array.isArray(data.student_names)) setStudentNames(data.student_names);
         }
       });
-  }, [sessionId]);
+  }, [sessionId, reloadKey]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
