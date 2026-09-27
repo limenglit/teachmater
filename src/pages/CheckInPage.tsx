@@ -115,7 +115,10 @@ export default function CheckInPage() {
         <div className="text-center space-y-4">
           <Clock className="w-12 h-12 text-muted-foreground mx-auto" />
           <h1 className="text-xl font-bold text-foreground">{t('checkinPage.expired')}</h1>
-          <p className="text-sm text-muted-foreground">{t('checkinPage.expiredDesc')}</p>
+          <p className="text-sm text-muted-foreground">{loadFailed ? '网络不稳定，签到页加载失败' : t('checkinPage.expiredDesc')}</p>
+          {status !== 'expired' ? (
+            <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>重新加载</Button>
+          ) : null}
         </div>
       </div>
     );
