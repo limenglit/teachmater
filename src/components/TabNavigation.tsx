@@ -1,8 +1,34 @@
-import { Dices, Users, LayoutGrid, Wrench, BotMessageSquare, PenBox, FileQuestion, Pencil, Presentation, ImageIcon, MessagesSquare, BookOpen, MonitorPlay } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useFeatureConfig } from '@/contexts/FeatureConfigContext';
+import {
+  Dices,
+  Users,
+  LayoutGrid,
+  Wrench,
+  BotMessageSquare,
+  PenBox,
+  FileQuestion,
+  Pencil,
+  Presentation,
+  ImageIcon,
+  MessagesSquare,
+  BookOpen,
+  MonitorPlay,
+} from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useFeatureConfig } from "@/contexts/FeatureConfigContext";
 
-export type TabId = 'random' | 'teamwork' | 'seats' | 'board' | 'quiz' | 'sketch' | 'ppt' | 'visual' | 'achieve' | 'community' | 'vocab' | 'toolkit';
+export type TabId =
+  | "random"
+  | "teamwork"
+  | "seats"
+  | "board"
+  | "quiz"
+  | "sketch"
+  | "ppt"
+  | "visual"
+  | "achieve"
+  | "community"
+  | "vocab"
+  | "toolkit";
 
 interface TabItem {
   id: TabId;
@@ -20,25 +46,35 @@ interface ExternalLink {
 }
 
 const tabs: TabItem[] = [
-  { id: 'random', labelKey: 'tab.random', emoji: '🎲', icon: <Dices className="w-4 h-4" /> },
-  { id: 'teamwork', labelKey: 'tab.teamwork', emoji: '👥', icon: <Users className="w-4 h-4" /> },
-  { id: 'seats', labelKey: 'tab.seats', emoji: '🏫', icon: <LayoutGrid className="w-4 h-4" /> },
-  { id: 'board', labelKey: 'tab.board', emoji: '🎨', icon: <PenBox className="w-4 h-4" /> },
-  { id: 'quiz', labelKey: 'tab.quiz', emoji: '📝', icon: <FileQuestion className="w-4 h-4" /> },
-  { id: 'sketch', labelKey: 'tab.sketch', emoji: '✏️', icon: <Pencil className="w-4 h-4" /> },
-  { id: 'ppt', labelKey: 'tab.ppt', emoji: '📊', icon: <Presentation className="w-4 h-4" /> },
-  { id: 'visual', labelKey: 'tab.visual', emoji: '📐', icon: <ImageIcon className="w-4 h-4" /> },
-  { id: 'achieve', labelKey: 'tab.achieve', emoji: '🏆', icon: <Dices className="w-4 h-4" /> },
-  { id: 'community', labelKey: 'tab.community', emoji: '👩‍🏫', icon: <MessagesSquare className="w-4 h-4" /> },
-  { id: 'vocab', labelKey: 'tab.vocab', emoji: '📚', icon: <BookOpen className="w-4 h-4" /> },
-  { id: 'toolkit', labelKey: 'tab.toolkit', emoji: '🧰', icon: <Wrench className="w-4 h-4" /> },
+  { id: "random", labelKey: "tab.random", emoji: "🎲", icon: <Dices className="w-4 h-4" /> },
+  { id: "teamwork", labelKey: "tab.teamwork", emoji: "👥", icon: <Users className="w-4 h-4" /> },
+  { id: "seats", labelKey: "tab.seats", emoji: "🏫", icon: <LayoutGrid className="w-4 h-4" /> },
+  { id: "board", labelKey: "tab.board", emoji: "🎨", icon: <PenBox className="w-4 h-4" /> },
+  { id: "quiz", labelKey: "tab.quiz", emoji: "📝", icon: <FileQuestion className="w-4 h-4" /> },
+  { id: "sketch", labelKey: "tab.sketch", emoji: "✏️", icon: <Pencil className="w-4 h-4" /> },
+  { id: "ppt", labelKey: "tab.ppt", emoji: "📊", icon: <Presentation className="w-4 h-4" /> },
+  { id: "visual", labelKey: "tab.visual", emoji: "📐", icon: <ImageIcon className="w-4 h-4" /> },
+  { id: "achieve", labelKey: "tab.achieve", emoji: "🏆", icon: <Dices className="w-4 h-4" /> },
+  { id: "community", labelKey: "tab.community", emoji: "👩‍🏫", icon: <MessagesSquare className="w-4 h-4" /> },
+  { id: "vocab", labelKey: "tab.vocab", emoji: "📚", icon: <BookOpen className="w-4 h-4" /> },
+  { id: "toolkit", labelKey: "tab.toolkit", emoji: "🧰", icon: <Wrench className="w-4 h-4" /> },
 ];
 
-const INTERACTIVE_CLASS_URL = import.meta.env.VITE_INTERACTIVE_CLASS_URL || 'https://sck12.lovable.app/';
+const INTERACTIVE_CLASS_URL = import.meta.env.VITE_INTERACTIVE_CLASS_URL || "https://sck12.lovable.app/";
 
 const externalLinks: ExternalLink[] = [
-  { labelKey: 'ext.ai', emoji: '🤖', icon: <BotMessageSquare className="w-4 h-4" />, url: 'https://mcuai.lovable.app/' },
-  { labelKey: 'ext.interactiveClass', emoji: '🧑‍🏫', icon: <MonitorPlay className="w-4 h-4" />, url: INTERACTIVE_CLASS_URL },
+  {
+    labelKey: "ext.ai",
+    emoji: "🤖",
+    icon: <BotMessageSquare className="w-4 h-4" />,
+    url: "https://deep-learning.fun/",
+  },
+  {
+    labelKey: "ext.interactiveClass",
+    emoji: "🧑‍🏫",
+    icon: <MonitorPlay className="w-4 h-4" />,
+    url: INTERACTIVE_CLASS_URL,
+  },
 ];
 
 interface Props {
@@ -51,18 +87,19 @@ interface Props {
 export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, userEmail }: Props) {
   const { t } = useLanguage();
   const { isFeatureVisible } = useFeatureConfig();
-  const visibleTabs = tabs.filter(tab => (!tab.requiresAuth || isLoggedIn) && isFeatureVisible(tab.id));
+  const visibleTabs = tabs.filter((tab) => (!tab.requiresAuth || isLoggedIn) && isFeatureVisible(tab.id));
 
   return (
     <nav className="flex flex-wrap items-center gap-0.5 gap-y-1 px-2 sm:px-4 py-2 border-b border-border bg-card">
-      {visibleTabs.map(tab => (
+      {visibleTabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0
-            ${activeTab === tab.id
-              ? 'bg-primary text-primary-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+            ${
+              activeTab === tab.id
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             }`}
         >
           <span className="text-sm">{tab.emoji}</span>
@@ -72,20 +109,20 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
 
       <div className="w-px h-4 bg-border mx-1.5 shrink-0" />
 
-      {externalLinks.map(link => {
-        const targetUrl = userEmail
-          ? `${link.url}?email=${encodeURIComponent(userEmail)}`
-          : link.url;
+      {externalLinks.map((link) => {
+        const targetUrl = userEmail ? `${link.url}?email=${encodeURIComponent(userEmail)}` : link.url;
         return (
           <a
             key={link.url}
             href={targetUrl}
             target="_blank"
             rel="noopener noreferrer"
-            title={t('ext.tip')}
+            title={t("ext.tip")}
             className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted/60"
           >
-            <span className="text-sm" aria-hidden="true">{link.icon}</span>
+            <span className="text-sm" aria-hidden="true">
+              {link.icon}
+            </span>
             <span>{t(link.labelKey)}</span>
           </a>
         );
