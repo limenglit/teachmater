@@ -1828,6 +1828,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_checkin_session: {
+        Args: { p_duration_minutes?: number; p_student_names?: Json }
+        Returns: {
+          created_at: string
+          creator_token: string
+          duration_minutes: number
+          ended_at: string
+          id: string
+          status: string
+          student_names: Json
+        }[]
+      }
       create_seat_checkin_session: {
         Args: {
           p_class_name?: string
