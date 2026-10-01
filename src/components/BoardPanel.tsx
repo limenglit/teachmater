@@ -192,6 +192,7 @@ export default function BoardPanel() {
     let allBoards: Board[] = [];
     
     if (user) {
+      await syncGuestContent(user.id);
       const { data } = await (supabase.from('boards').select('*') as any).eq('user_id', user.id).order('created_at', { ascending: false });
       if (data) allBoards = data as any[];
     }

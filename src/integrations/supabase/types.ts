@@ -1817,6 +1817,10 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: boolean
       }
+      claim_guest_content: {
+        Args: { p_board_tokens: string[]; p_quiz_tokens: string[] }
+        Returns: Json
+      }
       clear_board_strokes: {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
