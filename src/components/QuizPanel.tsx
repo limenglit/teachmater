@@ -110,9 +110,11 @@ export default function QuizPanel() {
 
   useEffect(() => {
     if (user) {
-      // Parallel fetch — these are independent queries; running them sequentially
-      // wastes ~3 round-trips of latency on tab open.
-      Promise.all([loadQuestions(), loadSessions(), loadCategories(), loadPapers()]);
+      // Move any signed-out content on this device into the account first,
+      // then load everything from the cloud in parallel.
+      syncGuestContent(user.id).finally(() => {
+        Promise.all([loadQuestions(), loadSessions(), loadCategories(), loadPapers()]);
+      });
     } else {
       setQuestions(getLocalQuestions());
       setCategories(getLocalCategories());
