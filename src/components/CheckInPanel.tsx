@@ -164,19 +164,21 @@ export default function CheckInPanel() {
   }, [timeLeft]);
 
   const handleStart = async () => {
-    const userId = await getCurrentUserId();
-    const { data, error } = await supabase
-      .from('checkin_sessions')
-      .insert({
-        duration_minutes: duration,
-        student_names: studentNames,
-        ...(userId ? { user_id: userId } : {}),
-      } as any)
-      .select()
-      .single();
+    // 服务端原子创建：先落库成功再返回，确保二维码指向的会话已持久化，任何设备扫码都能读到
+    let data: any = null;
+    let error: any = null;
+    for (let i = 0; i < 3 && !data; i++) {
+      const res = await (supabase.rpc as any)('create_checkin_session', {
+        p_duration_minutes: duration,
+        p_student_names: studentNames,
+      });
+      error = res.error;
+      data = Array.isArray(res.data) ? res.data[0] : res.data;
+      if (!data && i < 2) await new Promise(r => setTimeout(r, 500 * 2 ** i));
+    }
 
-    if (error || !data) {
-      toast({ title: t('checkin.createFailed'), variant: 'destructive' });
+    if (error || !data?.id) {
+      toast({ title: t('checkin.createFailed'), description: error?.message, variant: 'destructive' });
       return;
     }
 
