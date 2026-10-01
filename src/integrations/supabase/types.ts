@@ -1813,6 +1813,10 @@ export type Database = {
       card_board_is_open: { Args: { p_card_id: string }; Returns: boolean }
       card_board_owner: { Args: { p_card_id: string }; Returns: string }
       card_exists: { Args: { p_card_id: string }; Returns: boolean }
+      checkin_session_is_active: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       clear_board_strokes: {
         Args: { p_board_id: string; p_token: string }
         Returns: undefined
