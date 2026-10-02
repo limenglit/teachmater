@@ -202,7 +202,8 @@ export default function QuizPanel() {
 
   const publishQuizSession = async (selectedQuestions: QuizQuestion[], titleSeed?: string) => {
     if (publishing) return;
-    if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
+    // Guests can publish too — the session is owned via creator_token and can
+    // be claimed into an account later on sign-in.
     if (selectedQuestions.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
     // Validate question content & options - reject empty / malformed before publishing
     const invalidIdx = selectedQuestions.findIndex(q => !q || typeof q.content !== 'string' || q.content.trim() === '');
