@@ -21,7 +21,7 @@ describe('ExportButtons', () => {
     render(<ExportButtons targetRef={ref} filename="test-file" />);
     fireEvent.click(screen.getByText('PNG'));
     await waitFor(() => {
-      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file', undefined);
+      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file');
     });
   });
 
@@ -29,7 +29,7 @@ describe('ExportButtons', () => {
     render(<ExportButtons targetRef={ref} filename="test-file" />);
     fireEvent.click(screen.getByText('PDF'));
     await waitFor(() => {
-      expect(exportLib.exportToPDF).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file', undefined);
+      expect(exportLib.exportToPDF).toHaveBeenCalledWith(ref.current, 'test-file', 'test-file');
     });
   });
 
@@ -39,7 +39,7 @@ describe('ExportButtons', () => {
     fireEvent.change(input, { target: { value: '自定义标题' } });
     fireEvent.click(screen.getByText('PNG'));
     await waitFor(() => {
-      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, '自定义标题', '自定义标题', undefined);
+      expect(exportLib.exportToPNG).toHaveBeenCalledWith(ref.current, '自定义标题', '自定义标题');
     });
   });
 
@@ -59,5 +59,14 @@ describe('ExportButtons', () => {
     await waitFor(() => {
       expect(exportLib.exportToPNG).toHaveBeenCalled();
     });
+  });
+
+  it.each(['PNG', 'PDF', 'SVG'])('exports %s without creating or embedding a check-in QR', async format => {
+    const resolveQrCode = vi.fn().mockResolvedValue({ value: 'https://example.com/checkin', className: '一班' });
+    render(<ExportButtons targetRef={ref} filename="seatmap" resolveQrCode={resolveQrCode} />);
+    fireEvent.click(screen.getByText(format));
+    const exporter = format === 'PNG' ? exportLib.exportToPNG : format === 'PDF' ? exportLib.exportToPDF : exportLib.exportToSVG;
+    await waitFor(() => expect(exporter).toHaveBeenCalledWith(ref.current, 'seatmap', 'seatmap'));
+    expect(resolveQrCode).not.toHaveBeenCalled();
   });
 });
