@@ -187,7 +187,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string, opti
   }
 
   try {
-    await document.fonts.ready;
+    if (document.fonts?.ready) await document.fonts.ready;
     return await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
       scale: 2,
