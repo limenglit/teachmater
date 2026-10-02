@@ -233,11 +233,13 @@ export default function QuizPanel() {
     };
 
     setPublishing(true);
-    let { data, error } = await supabase.from('quiz_sessions').insert(payload).select().single() as any;
+    // Atomic server-side create: works signed-in or as guest, and returns the
+    // full row (incl. creator_token) without needing SELECT rights.
+    let { data, error } = await (supabase as any).rpc('create_quiz_session', payload) as any;
 
     if (error && isRevealSchemaError(error.message)) {
-      const { reveal_answers: _skip, ...fallbackPayload } = payload;
-      const retry = await supabase.from('quiz_sessions').insert(fallbackPayload).select().single() as any;
+      const { p_reveal_answers: _skip, ...fallbackPayload } = payload;
+      const retry = await (supabase as any).rpc('create_quiz_session', fallbackPayload) as any;
       data = retry.data;
       error = retry.error;
       if (!retry.error) {
