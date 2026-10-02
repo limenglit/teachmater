@@ -81,41 +81,33 @@ async function renderQrBadge(container: HTMLElement, qrCode: ExportQrCodeOptions
 async function captureWithHeaderFooter(element: HTMLElement, title: string, options?: ExportCaptureOptions) {
   const clone = element.cloneNode(true) as HTMLElement;
 
-  // Neutralize zoom transforms and remove scroll clipping on the clone subtree
-  // so the export captures the full content centered, regardless of on-screen scale.
+  // The room's zoom is presentation-only. Preserve child transforms (translated
+  // labels, rotated seats/tables): clearing every transform stacks them together.
   const neutralize = (root: HTMLElement) => {
     const all = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
     for (const el of all) {
       const s = el.style;
-      // Reset transform/scale that might shrink content for screen zoom
-      if (s.transform) s.transform = 'none';
       if (s.zoom) s.zoom = '';
-      // Allow internal scroll containers to expand to full natural size
-      const overflow = s.overflow || s.overflowX || s.overflowY;
-      if (overflow && overflow !== 'visible') {
-        s.overflow = 'visible';
-        s.overflowX = 'visible';
-        s.overflowY = 'visible';
-      }
-      // Drop fixed max-height/height constraints used for on-screen viewport
-      if (s.maxHeight) s.maxHeight = 'none';
-      if (s.maxWidth) s.maxWidth = 'none';
     }
-    // Also strip Tailwind classes like max-h-[80vh] / overflow-auto via style override above isn't enough — add inline overrides via attribute
-    root.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="max-h"]').forEach(el => {
+    root.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="max-h"], [class*="max-w"]').forEach(el => {
       el.style.overflow = 'visible';
       el.style.overflowX = 'visible';
       el.style.overflowY = 'visible';
       el.style.maxHeight = 'none';
-      el.style.transform = 'none';
+      el.style.maxWidth = 'none';
     });
-    // Zoom frames size themselves to scaled dimensions on screen; once the
-    // transform is neutralized they must grow back to natural size, otherwise
-    // the capture crops rotated/enlarged content.
-    root.querySelectorAll<HTMLElement>('[data-zoom-frame]').forEach(el => {
-      el.style.width = 'auto';
-      el.style.height = 'auto';
+    // All room scenes use a fixed-size child scaled inside an equally scaled
+    // frame. Size that frame from the unscaled scene, not the current zoom.
+    root.querySelectorAll<HTMLElement>('[data-zoom-frame], [class*="mx-auto"]').forEach(frame => {
+      const scene = frame.firstElementChild as HTMLElement | null;
+      if (!scene || !/^scale\([\d.]+\)$/.test(scene.style.transform)) return;
+      scene.style.transform = 'none';
+      frame.style.width = scene.style.width;
+      frame.style.height = scene.style.height;
+      frame.style.maxWidth = 'none';
     });
+    // Controls are screen UI, not part of the chart.
+    root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
   };
   neutralize(clone);
 
@@ -141,7 +133,13 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string, opti
   const naturalWidth = Math.max(clone.scrollWidth, clone.offsetWidth, 900);
   document.body.removeChild(sizer);
 
-  const width = Math.max(naturalWidth, element.scrollWidth, element.clientWidth, 900);
+  // The live scrollWidth reflects zoom, not the exported room dimensions.
+  const width = naturalWidth;
+  // A chart rendered in a narrow viewport can retain that viewport's fixed
+  // width on the clone. Give it the measured export width before centering,
+  // otherwise the expanded room can extend past the PNG/PDF right edge.
+  clone.style.width = `${width}px`;
+  clone.style.minWidth = `${width}px`;
 
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
@@ -194,6 +192,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string, opti
   }
 
   try {
+    if (document.fonts?.ready) await document.fonts.ready;
     return await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
       scale: 2,
@@ -235,40 +234,12 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
   const usableW = pageW - margin * 2;
   const usableH = pageH - margin * 2;
 
-  // Scale so that content width fits page width
-  const scale = usableW / imgW;
+  // Keep the entire seating chart on one page: slicing a raster image in
+  // arbitrary rows cuts names, seats and tables across page boundaries.
+  const scale = Math.min(usableW / imgW, usableH / imgH);
   const scaledTotalH = imgH * scale; // total height in mm at usable width
-
-  if (scaledTotalH <= usableH + 0.5) {
-    // Single page: center vertically
-    const y = (pageH - scaledTotalH) / 2;
-    pdf.addImage(imgData, 'PNG', margin, y, usableW, scaledTotalH);
-  } else {
-    // Multi-page: slice the source canvas vertically
-    const sliceHeightPx = Math.floor((usableH / scale)); // px of source per page
-    const totalPages = Math.ceil(imgH / sliceHeightPx);
-
-    const sliceCanvas = document.createElement('canvas');
-    sliceCanvas.width = imgW;
-    const ctx = sliceCanvas.getContext('2d');
-
-    for (let i = 0; i < totalPages; i++) {
-      const sy = i * sliceHeightPx;
-      const sh = Math.min(sliceHeightPx, imgH - sy);
-      sliceCanvas.height = sh;
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, imgW, sh);
-        ctx.drawImage(canvas, 0, sy, imgW, sh, 0, 0, imgW, sh);
-      }
-      const sliceData = sliceCanvas.toDataURL('image/png');
-      const sliceMmH = sh * scale;
-      if (i > 0) pdf.addPage('a4', orientation);
-      // Center vertically when last slice is short
-      const y = sliceMmH < usableH ? (pageH - sliceMmH) / 2 : margin;
-      pdf.addImage(sliceData, 'PNG', margin, y, usableW, sliceMmH);
-    }
-  }
+  const scaledW = imgW * scale;
+  pdf.addImage(imgData, 'PNG', (pageW - scaledW) / 2, (pageH - scaledTotalH) / 2, scaledW, scaledTotalH);
 
   pdf.save(`${filename}.pdf`);
 }
