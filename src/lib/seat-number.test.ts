@@ -80,3 +80,13 @@ describe('open column/row numbering skips closed seats', () => {
     expect(formatClassroomSeatLabel(0, 3, opts, 'both')).toBe('第1排第3号（第3列）');
   });
 });
+
+describe('openColumnNumber door side', () => {
+  it('counts from the right when the front door is on the right', async () => {
+    const { openColumnNumber, classroomDoorOnRight } = await import('./seat-number');
+    const opts = { rowWidth: 8, doorOnRight: classroomDoorOnRight({ windowOnLeft: true }) };
+    expect(openColumnNumber(0, 7, opts)).toBe(1);
+    expect(openColumnNumber(0, 0, opts)).toBe(8);
+    expect(openColumnNumber(0, 0, { rowWidth: 8 })).toBe(1);
+  });
+});
