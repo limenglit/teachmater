@@ -1836,6 +1836,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_board: {
+        Args: { p_is_collaborative?: boolean; p_title?: string }
+        Returns: Json
+      }
       create_checkin_session: {
         Args: { p_duration_minutes?: number; p_student_names?: Json }
         Returns: {
@@ -1847,6 +1851,15 @@ export type Database = {
           status: string
           student_names: Json
         }[]
+      }
+      create_quiz_session: {
+        Args: {
+          p_questions?: Json
+          p_reveal_answers?: boolean
+          p_student_names?: Json
+          p_title?: string
+        }
+        Returns: Json
       }
       create_seat_checkin_session: {
         Args: {
