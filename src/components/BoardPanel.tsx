@@ -28,6 +28,7 @@ import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
 import { applyCardAction, likeCardLocal } from '@/lib/board-utils';
 import { getLikerToken, markLiked } from '@/lib/board-like';
 import { getShareOrigin } from '@/lib/share-origin';
+import { syncGuestContent } from '@/lib/guest-content-sync';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -214,9 +215,12 @@ export default function BoardPanel() {
   const createBoard = async () => {
     const title = newTitle.trim() || t('board.title');
     if (isCloud) {
-      const insertData: any = { title, is_collaborative: newCollaborative };
-      if (user) insertData.user_id = user.id;
-      const { data, error } = await supabase.from('boards').insert(insertData).select().single();
+      // Atomic server-side create: works signed-in or as guest, and returns
+      // the full row (incl. creator_token) without needing SELECT rights.
+      const { data, error } = await (supabase as any).rpc('create_board', {
+        p_title: title,
+        p_is_collaborative: newCollaborative,
+      });
       if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
       const board = data as any as Board;
       saveCreatorToken(board.id, board.creator_token);

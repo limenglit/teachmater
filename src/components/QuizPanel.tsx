@@ -27,6 +27,7 @@ import QuizQuestionBank from '@/components/quiz/QuizQuestionBank';
 const QuizPaperBank = lazy(() => import('@/components/quiz/QuizPaperBank'));
 const QuizAIGenerator = lazy(() => import('@/components/quiz/QuizAIGenerator'));
 import type { QuizQuestion, QuizSession, QuizCategory, QuizPaper } from '@/components/quiz/quizTypes';
+import { syncGuestContent } from '@/lib/guest-content-sync';
 import {
   getSessionTokens, saveSessionToken, getSessionToken,
   getLocalQuestions, saveLocalQuestions,
@@ -201,7 +202,8 @@ export default function QuizPanel() {
 
   const publishQuizSession = async (selectedQuestions: QuizQuestion[], titleSeed?: string) => {
     if (publishing) return;
-    if (!user) { toast({ title: t('quiz.loginToPublish'), variant: 'destructive' }); return; }
+    // Guests can publish too — the session is owned via creator_token and can
+    // be claimed into an account later on sign-in.
     if (selectedQuestions.length === 0) { toast({ title: t('quiz.selectQuestions'), variant: 'destructive' }); return; }
     // Validate question content & options - reject empty / malformed before publishing
     const invalidIdx = selectedQuestions.findIndex(q => !q || typeof q.content !== 'string' || q.content.trim() === '');
@@ -220,11 +222,10 @@ export default function QuizPanel() {
     const names = sessionStudentNames.length > 0 ? sessionStudentNames : sidebarStudents.map(s => s.name);
     const title = (titleSeed || sessionTitle).trim() || t('quiz.defaultTitle');
     const payload: any = {
-      user_id: user.id,
-      title,
-      questions: selectedQuestions as any,
-      reveal_answers: revealAfterEnd,
-      student_names: names as any,
+      p_title: title,
+      p_questions: selectedQuestions as any,
+      p_reveal_answers: revealAfterEnd,
+      p_student_names: names as any,
     };
 
     const isRevealSchemaError = (message?: string) => {
@@ -233,11 +234,13 @@ export default function QuizPanel() {
     };
 
     setPublishing(true);
-    let { data, error } = await supabase.from('quiz_sessions').insert(payload).select().single() as any;
+    // Atomic server-side create: works signed-in or as guest, and returns the
+    // full row (incl. creator_token) without needing SELECT rights.
+    let { data, error } = await (supabase as any).rpc('create_quiz_session', payload) as any;
 
     if (error && isRevealSchemaError(error.message)) {
-      const { reveal_answers: _skip, ...fallbackPayload } = payload;
-      const retry = await supabase.from('quiz_sessions').insert(fallbackPayload).select().single() as any;
+      const { p_reveal_answers: _skip, ...fallbackPayload } = payload;
+      const retry = await (supabase as any).rpc('create_quiz_session', fallbackPayload) as any;
       data = retry.data;
       error = retry.error;
       if (!retry.error) {
