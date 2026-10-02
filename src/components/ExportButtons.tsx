@@ -8,13 +8,14 @@ import { toast } from '@/hooks/use-toast';
 interface Props {
   targetRef: React.RefObject<HTMLElement>;
   filename: string;
+  // Accepted for existing seat scenes; exporting never creates or embeds a check-in QR.
   resolveQrCode?: () => Promise<{ value: string; className?: string } | null>;
   titleValue?: string;
   onTitleChange?: (value: string) => void;
   hideTitleInput?: boolean;
 }
 
-export default function ExportButtons({ targetRef, filename, resolveQrCode, titleValue, onTitleChange, hideTitleInput = false }: Props) {
+export default function ExportButtons({ targetRef, filename, titleValue, onTitleChange, hideTitleInput = false }: Props) {
   const [customTitle, setCustomTitle] = useState('');
   const isControlled = typeof titleValue === 'string' && typeof onTitleChange === 'function';
   const currentTitle = isControlled ? titleValue : customTitle;
@@ -28,14 +29,10 @@ export default function ExportButtons({ targetRef, filename, resolveQrCode, titl
     if (!targetRef.current) return;
     const exportTitle = getExportTitle();
     try {
-      const qrCode = (type === 'png' || type === 'pdf') && resolveQrCode
-        ? await resolveQrCode()
-        : null;
-
       if (type === 'png') {
-        await exportToPNG(targetRef.current, exportTitle, exportTitle, qrCode ? { qrCode } : undefined);
+        await exportToPNG(targetRef.current, exportTitle, exportTitle);
       } else if (type === 'pdf') {
-        await exportToPDF(targetRef.current, exportTitle, exportTitle, qrCode ? { qrCode } : undefined);
+        await exportToPDF(targetRef.current, exportTitle, exportTitle);
       } else {
         await exportToSVG(targetRef.current, exportTitle, exportTitle);
       }
