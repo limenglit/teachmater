@@ -164,8 +164,9 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   const doorAnchor = (side: DoorSide, mySeat: { r: number; c: number }) => {
     // anchor near my seat to keep the route short and tidy
     switch (side) {
-      case 'top':    return toSvg(seatCx(mySeat.c), -8);
-      case 'bottom': return toSvg(seatCx(mySeat.c), roomH + 8);
+      // front/back wall doors sit at the door-side end of the wall
+      case 'top':    return toSvg(seatCx(doorOnRight ? cols - 1 : 0), -8);
+      case 'bottom': return toSvg(seatCx(doorOnRight ? cols - 1 : 0), roomH + 8);
       case 'left':   return toSvg(-8, seatCy(mySeat.r));
       case 'right':  return toSvg(roomW + 8, seatCy(mySeat.r));
     }
