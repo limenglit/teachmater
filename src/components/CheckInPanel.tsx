@@ -11,6 +11,7 @@ import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
 import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
 import { downloadQrFromContainer } from '@/lib/qr-download';
+import { tagWithActiveClass, getActiveClassId, useActiveClassId } from '@/lib/class-space';
 import { getCurrentUserId, fetchCloudCheckinHistory, mergeCheckinHistory, type CheckinHistoryEntry } from '@/lib/checkin-history-cloud';
 import { getShareOrigin } from '@/lib/share-origin';
 
@@ -64,6 +65,7 @@ export default function CheckInPanel() {
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   const studentNames = students.map(s => s.name);
+  const activeClassId = useActiveClassId();
 
   // Load history: cloud (account-wide) merged with legacy local entries
   useEffect(() => {
@@ -78,11 +80,12 @@ export default function CheckInPanel() {
         cloud = [];
       }
       if (cancelled) return;
-      setHistory(mergeCheckinHistory(cloud, loadHistory()));
+      // 本机旧记录没有班级归属，只在「未分班」里显示
+      setHistory(mergeCheckinHistory(cloud, getActiveClassId() ? [] : loadHistory()));
       setHistoryLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [showHistory]);
+  }, [showHistory, activeClassId]);
 
 
   // Real-time subscription
@@ -182,6 +185,7 @@ export default function CheckInPanel() {
       return;
     }
 
+    await tagWithActiveClass('checkin', data.id);
     setSession(data as SessionData);
     setRecords([]);
     setLeaveSet(new Set());

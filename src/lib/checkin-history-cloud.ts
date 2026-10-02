@@ -2,6 +2,7 @@
 // Ensures every session created by an account is visible on any device,
 // instead of relying on browser localStorage only.
 import { supabase } from '@/integrations/supabase/client';
+import { getActiveClassId } from '@/lib/class-space';
 import type { CheckinRecord, SessionData } from '@/lib/checkin-utils';
 
 export interface CheckinHistoryEntry {
@@ -22,10 +23,13 @@ export async function fetchCloudCheckinHistory(limit = 100): Promise<CheckinHist
   const userId = await getCurrentUserId();
   if (!userId) return [];
 
-  const { data: sessions, error } = await supabase
+  const activeClassId = getActiveClassId();
+  let q: any = supabase
     .from('checkin_sessions')
     .select('id, created_at, duration_minutes, status, ended_at, creator_token, student_names')
-    .eq('user_id', userId)
+    .eq('user_id', userId);
+  q = activeClassId ? q.eq('class_id', activeClassId) : q.is('class_id', null);
+  const { data: sessions, error } = await q
     .order('created_at', { ascending: false })
     .limit(limit);
 

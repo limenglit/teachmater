@@ -29,6 +29,7 @@ import { applyCardAction, likeCardLocal } from '@/lib/board-utils';
 import { getLikerToken, markLiked } from '@/lib/board-like';
 import { getShareOrigin } from '@/lib/share-origin';
 import { syncGuestContent } from '@/lib/guest-content-sync';
+import { filterByActiveClass, tagWithActiveClass, useActiveClassId } from '@/lib/class-space';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
@@ -150,6 +151,7 @@ export default function BoardPanel() {
   const [boardPageSize, setBoardPageSize] = useState(10);
   const [filterClassId, setFilterClassId] = useState<string>('all');
 
+  const activeClassId = useActiveClassId();
   useEffect(() => { activeBoardRef.current = activeBoard; }, [activeBoard]);
 
   // Load boards
@@ -159,7 +161,7 @@ export default function BoardPanel() {
     } else {
       setBoards(getLocalBoards());
     }
-  }, [isCloud]);
+  }, [isCloud, activeClassId]);
 
   useEffect(() => {
     if (!activeBoard) return;
@@ -208,6 +210,7 @@ export default function BoardPanel() {
       }
     }
     
+    allBoards = await filterByActiveClass('board', allBoards as any[]) as any[];
     setBoards(allBoards as Board[]);
     setLoading(false);
   };
@@ -224,6 +227,7 @@ export default function BoardPanel() {
       if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
       const board = data as any as Board;
       saveCreatorToken(board.id, board.creator_token);
+      await tagWithActiveClass('board', board.id);
       setBoards(prev => [board, ...prev]);
       setNewTitle('');
       setNewCollaborative(false);

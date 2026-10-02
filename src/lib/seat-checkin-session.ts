@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { getActiveClassContext } from '@/lib/class-context';
 import { getShareOrigin } from './share-origin';
+import { filterByActiveClass, tagWithActiveClass } from './class-space';
 
 const SEAT_CHECKIN_SESSION_TOKENS_KEY = 'teachmate_seat_checkin_session_tokens_v1';
 const SEAT_CHECKIN_SESSION_IDS_KEY = 'teachmate_seat_checkin_session_ids_v1';
@@ -305,6 +306,7 @@ export async function createSeatCheckinSession({
     saveSeatCheckinSessionToken(data.id, (data as any).creator_token);
   }
   saveSeatCheckinSessionId(data.id);
+  await tagWithActiveClass('seat_checkin', data.id);
 
   return {
     sessionId: data.id,
@@ -418,8 +420,9 @@ export async function loadSeatCheckinSessionHistory(sceneType?: string) {
   rows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   if (rows.length === 0) return [];
+  const scoped = await filterByActiveClass('seat_checkin', rows as any[]) as typeof rows;
 
-  return rows
+  return scoped
     .filter(item => !sceneType || item.scene_type === sceneType)
     .filter(item => item.status !== 'deleted')
     .map(item => {
