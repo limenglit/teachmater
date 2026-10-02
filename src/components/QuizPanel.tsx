@@ -221,11 +221,10 @@ export default function QuizPanel() {
     const names = sessionStudentNames.length > 0 ? sessionStudentNames : sidebarStudents.map(s => s.name);
     const title = (titleSeed || sessionTitle).trim() || t('quiz.defaultTitle');
     const payload: any = {
-      user_id: user.id,
-      title,
-      questions: selectedQuestions as any,
-      reveal_answers: revealAfterEnd,
-      student_names: names as any,
+      p_title: title,
+      p_questions: selectedQuestions as any,
+      p_reveal_answers: revealAfterEnd,
+      p_student_names: names as any,
     };
 
     const isRevealSchemaError = (message?: string) => {
