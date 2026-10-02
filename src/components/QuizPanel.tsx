@@ -27,6 +27,7 @@ import QuizQuestionBank from '@/components/quiz/QuizQuestionBank';
 const QuizPaperBank = lazy(() => import('@/components/quiz/QuizPaperBank'));
 const QuizAIGenerator = lazy(() => import('@/components/quiz/QuizAIGenerator'));
 import type { QuizQuestion, QuizSession, QuizCategory, QuizPaper } from '@/components/quiz/quizTypes';
+import { syncGuestContent } from '@/lib/guest-content-sync';
 import {
   getSessionTokens, saveSessionToken, getSessionToken,
   getLocalQuestions, saveLocalQuestions,

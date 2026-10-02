@@ -28,6 +28,7 @@ import AdminPagination, { paginate } from '@/components/admin/AdminPagination';
 import { applyCardAction, likeCardLocal } from '@/lib/board-utils';
 import { getLikerToken, markLiked } from '@/lib/board-like';
 import { getShareOrigin } from '@/lib/share-origin';
+import { syncGuestContent } from '@/lib/guest-content-sync';
 
 const buildGroupPanelNames = (count: number) =>
   Array.from({ length: count }, (_, i) => `第${i + 1}组`);
