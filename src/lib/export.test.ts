@@ -31,6 +31,7 @@ vi.mock('react-dom/client', () => ({
 vi.mock('qrcode.react', () => ({ QRCodeSVG: () => null }));
 
 import { exportToPNG, exportToPDF, exportToSVG } from './export';
+import { jsPDF } from 'jspdf';
 
 function buildSeatGrid(): HTMLElement {
   const root = document.createElement('div');
@@ -131,5 +132,54 @@ describe('export – disabled seats', () => {
     expect(html2canvasCalls.length).toBeGreaterThanOrEqual(1);
     const disabled = html2canvasCalls[0].querySelector<HTMLElement>('[data-disabled-seat="true"]');
     expect(disabled?.style.visibility).toBe('hidden');
+  });
+});
+
+describe('export – seating layout', () => {
+  it.each(['png', 'pdf'] as const)('restores room dimensions but preserves positioned labels in %s', async kind => {
+    const root = document.createElement('div');
+    const scroll = document.createElement('div');
+    scroll.className = 'overflow-auto max-h-[80vh]';
+    const frame = document.createElement('div');
+    frame.className = 'mx-auto';
+    frame.style.width = '360px';
+    frame.style.height = '180px';
+    const room = document.createElement('div');
+    room.style.width = '900px';
+    room.style.height = '450px';
+    room.style.transform = 'scale(0.4)';
+    const label = document.createElement('span');
+    label.textContent = '张三';
+    label.style.transform = 'translate(120px, 40px) rotate(15deg)';
+    room.appendChild(label);
+    frame.appendChild(room);
+    scroll.appendChild(frame);
+    root.appendChild(scroll);
+    document.body.appendChild(root);
+
+    if (kind === 'png') await exportToPNG(root, 'seatmap');
+    else await exportToPDF(root, 'seatmap');
+
+    const captured = html2canvasCalls[0];
+    const exportedFrame = captured.querySelector<HTMLElement>('.mx-auto');
+    expect(exportedFrame?.style.width).toBe('900px');
+    expect(exportedFrame?.style.height).toBe('450px');
+    expect(exportedFrame?.firstElementChild?.getAttribute('style')).toContain('transform: none');
+    expect(captured.querySelector('span')?.style.transform).toBe('translate(120px, 40px) rotate(15deg)');
+    expect(captured.querySelector('.overflow-auto')?.getAttribute('style')).toContain('overflow: visible');
+    expect(root.querySelector('.mx-auto')?.getAttribute('style')).toContain('width: 360px');
+  });
+
+  it('fits a tall chart onto one PDF page without cutting through names', async () => {
+    const root = buildSeatGrid();
+    await exportToPDF(root, 'seatmap');
+    const pdf = vi.mocked(jsPDF).mock.results.at(-1)?.value;
+    expect(pdf.addImage).toHaveBeenCalledTimes(1);
+    expect(pdf.addPage).not.toHaveBeenCalled();
+    const [, , x, y, width, height] = pdf.addImage.mock.calls[0];
+    expect(x).toBeGreaterThanOrEqual(10);
+    expect(y).toBeGreaterThanOrEqual(10);
+    expect(width).toBeLessThanOrEqual(277);
+    expect(height).toBeLessThanOrEqual(277);
   });
 });
