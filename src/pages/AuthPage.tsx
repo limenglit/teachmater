@@ -9,6 +9,13 @@ import { Mail, Lock, User, ArrowLeft, Clock, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useDocumentHead } from '@/hooks/useDocumentHead';
 
+/** True when the request never reached the server (blocked / DNS / offline). */
+function isNetworkError(err: { message?: string; name?: string; status?: number } | null | undefined): boolean {
+  if (!err) return false;
+  if (err.name === 'AuthRetryableFetchError') return true;
+  return /load failed|failed to fetch|networkerror|network request failed|fetch failed/i.test(err.message || '');
+}
+
 export default function AuthPage() {
   useDocumentHead({
     title: '登录 / 注册 — 教创搭子 TeacherMate',
@@ -27,6 +34,7 @@ export default function AuthPage() {
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  const [networkBlocked, setNetworkBlocked] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -85,9 +93,21 @@ export default function AuthPage() {
   const handleLogin = async () => {
     if (!email || !password) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setNetworkBlocked(false);
+    // Network-level failures ("Load failed" in Safari, "Failed to fetch" in
+    // Chromium) never reach the server — retry a few times before giving up.
+    let result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    for (let attempt = 1; attempt <= 2 && result.error && isNetworkError(result.error); attempt++) {
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+      result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    }
+    const { error } = result;
     setLoading(false);
     if (error) {
+      if (isNetworkError(error)) {
+        setNetworkBlocked(true);
+        return;
+      }
       const unconfirmed =
         (error as { code?: string }).code === 'email_not_confirmed' ||
         /email\s+not\s+confirmed/i.test(error.message || '');
