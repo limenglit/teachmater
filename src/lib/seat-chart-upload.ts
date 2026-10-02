@@ -127,10 +127,12 @@ export async function uploadSeatChartImage(
 
   const { data: sessionData } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token || (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string);
+  // Signed-in teachers upload into their own folder; guests into a shared guest folder.
+  const ownerFolder = sessionData.session?.user?.id || 'guest';
 
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const path = `seat-charts/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    const path = `seat-charts/${ownerFolder}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
     try {
       await xhrUpload(path, blob, contentType, accessToken, pct => {
         onProgress?.(8 + Math.round(pct * 0.8), 'upload');
