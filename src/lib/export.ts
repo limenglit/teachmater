@@ -135,6 +135,11 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string, opti
 
   // The live scrollWidth reflects zoom, not the exported room dimensions.
   const width = naturalWidth;
+  // A chart rendered in a narrow viewport can retain that viewport's fixed
+  // width on the clone. Give it the measured export width before centering,
+  // otherwise the expanded room can extend past the PNG/PDF right edge.
+  clone.style.width = `${width}px`;
+  clone.style.minWidth = `${width}px`;
 
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
