@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, Suspense } from 'react';
+import ClassSpaceSwitcher from '@/components/ClassSpaceSwitcher';
 import { StudentProvider } from '@/contexts/StudentContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -189,6 +190,7 @@ const Index = () => {
               >
                 <span className="text-base" aria-hidden="true">📋</span>
               </button>
+              <ClassSpaceSwitcher />
               {/* Auth button */}
               {isApproved && (
                 <button

@@ -28,6 +28,7 @@ const QuizPaperBank = lazy(() => import('@/components/quiz/QuizPaperBank'));
 const QuizAIGenerator = lazy(() => import('@/components/quiz/QuizAIGenerator'));
 import type { QuizQuestion, QuizSession, QuizCategory, QuizPaper } from '@/components/quiz/quizTypes';
 import { syncGuestContent } from '@/lib/guest-content-sync';
+import { filterByActiveClass, tagWithActiveClass, useActiveClassId } from '@/lib/class-space';
 import {
   getSessionTokens, saveSessionToken, getSessionToken,
   getLocalQuestions, saveLocalQuestions,
@@ -124,6 +125,13 @@ export default function QuizPanel() {
     }
   }, [user]);
 
+  const activeClassId = useActiveClassId();
+  const firstClassRun = useRef(true);
+  useEffect(() => {
+    if (firstClassRun.current) { firstClassRun.current = false; return; }
+    if (user) loadSessions();
+  }, [activeClassId]);
+
   // All loaders wrap their call in runQuizCall so network/timeout/5xx errors
   // become a visible toast instead of a silent empty list. RLS / auth errors
   // (e.g. session expired) also surface so the user knows to re-login.
@@ -184,7 +192,7 @@ export default function QuizPanel() {
         if (!all.find((a: any) => a.id === s.id)) all.push(s);
       }
     }
-    setSessions(all);
+    setSessions(await filterByActiveClass('quiz', all as any[]) as any);
   };
 
   const ensureSessionToken = (session: QuizSession | null): string | null => {
@@ -252,6 +260,7 @@ export default function QuizPanel() {
     setPublishing(false);
     if (error) { toast({ title: error.message, variant: 'destructive' }); return; }
     saveSessionToken(data.id, data.creator_token);
+    await tagWithActiveClass('quiz', data.id);
     setActiveSession(data); setShowSession(true);
     setSelectedIds(new Set()); setSessionTitle(''); setSessionStudentNames([]);
     loadSessions();

@@ -403,6 +403,7 @@ export type Database = {
           allow_multiple_submissions: boolean
           background_color: string
           banned_words: string
+          class_id: string | null
           columns: Json
           created_at: string
           creator_token: string
@@ -420,6 +421,7 @@ export type Database = {
           allow_multiple_submissions?: boolean
           background_color?: string
           banned_words?: string
+          class_id?: string | null
           columns?: Json
           created_at?: string
           creator_token?: string
@@ -437,6 +439,7 @@ export type Database = {
           allow_multiple_submissions?: boolean
           background_color?: string
           banned_words?: string
+          class_id?: string | null
           columns?: Json
           created_at?: string
           creator_token?: string
@@ -450,7 +453,15 @@ export type Database = {
           user_id?: string | null
           view_mode?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "boards_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       checkin_records: {
         Row: {
@@ -486,6 +497,7 @@ export type Database = {
       }
       checkin_sessions: {
         Row: {
+          class_id: string | null
           created_at: string
           creator_token: string
           duration_minutes: number
@@ -496,6 +508,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          class_id?: string | null
           created_at?: string
           creator_token?: string
           duration_minutes?: number
@@ -506,6 +519,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          class_id?: string | null
           created_at?: string
           creator_token?: string
           duration_minutes?: number
@@ -515,7 +529,15 @@ export type Database = {
           student_names?: Json | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "checkin_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       class_students: {
         Row: {
@@ -1018,6 +1040,7 @@ export type Database = {
       }
       quiz_sessions: {
         Row: {
+          class_id: string | null
           created_at: string
           creator_token: string
           ended_at: string | null
@@ -1031,6 +1054,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          class_id?: string | null
           created_at?: string
           creator_token?: string
           ended_at?: string | null
@@ -1044,6 +1068,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          class_id?: string | null
           created_at?: string
           creator_token?: string
           ended_at?: string | null
@@ -1056,7 +1081,15 @@ export type Database = {
           title?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "quiz_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scoring_rules: {
         Row: {
@@ -1125,6 +1158,7 @@ export type Database = {
       }
       seat_checkin_sessions: {
         Row: {
+          class_id: string | null
           class_name: string
           created_at: string
           creator_token: string | null
@@ -1142,6 +1176,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          class_id?: string | null
           class_name?: string
           created_at?: string
           creator_token?: string | null
@@ -1159,6 +1194,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          class_id?: string | null
           class_name?: string
           created_at?: string
           creator_token?: string | null
@@ -1175,7 +1211,15 @@ export type Database = {
           student_names?: Json
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "seat_checkin_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seat_history: {
         Row: {
@@ -1958,6 +2002,7 @@ export type Database = {
           allow_multiple_submissions: boolean
           background_color: string
           banned_words: string
+          class_id: string | null
           columns: Json
           created_at: string
           creator_token: string
@@ -2001,6 +2046,7 @@ export type Database = {
       get_checkin_sessions_by_tokens: {
         Args: { p_tokens: string[] }
         Returns: {
+          class_id: string | null
           created_at: string
           creator_token: string
           duration_minutes: number
@@ -2184,6 +2230,7 @@ export type Database = {
       get_seat_checkin_sessions_by_tokens: {
         Args: { p_tokens: string[] }
         Returns: {
+          class_id: string | null
           class_name: string
           created_at: string
           creator_token: string | null
@@ -2318,6 +2365,10 @@ export type Database = {
       seat_checkin_otp_code: {
         Args: { p_counter: number; p_secret: string }
         Returns: string
+      }
+      set_content_class: {
+        Args: { p_class_id: string; p_id: string; p_kind: string }
+        Returns: undefined
       }
       set_my_username: { Args: { p_username: string }; Returns: undefined }
       submit_quiz_answers: {
