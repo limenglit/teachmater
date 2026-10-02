@@ -4,7 +4,7 @@ import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
 import { useLanguage, tFormat } from '@/contexts/LanguageContext';
-import { classroomSeatNumber, formatClassroomSeatLabel, normalizeSeatLabelMode, openColumnNumber, openRowNumber } from '@/lib/seat-number';
+import { classroomDoorOnRight, classroomSeatNumber, formatClassroomSeatLabel, normalizeSeatLabelMode, openColumnNumber, openRowNumber } from '@/lib/seat-number';
 
 interface Props {
   seatData: unknown;
@@ -69,6 +69,9 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     ...rowColsConfig,
     ...seats.map(row => row?.length ?? 0),
   );
+  // Same rule as the teacher grid: window on the left => door on the right,
+  // and 第1列 is the column on the front-door side.
+  const doorOnRight = classroomDoorOnRight(config);
   const entryDoorMode = config.entryDoorMode || 'front';
   const frontDoorPos: DoorSide = config.frontDoorPosition || 'top';
   const backDoorPos: DoorSide = config.backDoorPosition || 'bottom';
@@ -77,8 +80,8 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
   // The door is *outside* the grid; pick an entry cell at the appropriate perimeter.
   const doorEntryCell = (side: DoorSide): { row: number; col: number } => {
     switch (side) {
-      case 'top':    return { row: 0,        col: 0 };
-      case 'bottom': return { row: rows - 1, col: 0 };
+      case 'top':    return { row: 0,        col: doorOnRight ? cols - 1 : 0 };
+      case 'bottom': return { row: rows - 1, col: doorOnRight ? cols - 1 : 0 };
       case 'left':   return { row: 0,        col: 0 };
       case 'right':  return { row: 0,        col: cols - 1 };
     }
@@ -96,7 +99,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     }
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryDoorMode, frontDoorPos, backDoorPos, rows, cols]);
+  }, [entryDoorMode, frontDoorPos, backDoorPos, rows, cols, doorOnRight]);
 
   // Pick the closest door (Manhattan distance from entry cell to my seat)
   const activeDoor: Door | null = useMemo(() => {
@@ -211,6 +214,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
     rowWidth: rowWidth(myPosition.r),
     disabledSeats: disabledSeatSet,
     rowWidths: Array.from({ length: rows }, (_, r) => rowWidth(r)),
+    doorOnRight,
   };
   const mySeatLabel = formatClassroomSeatLabel(myPosition.r, myPosition.c, seatNumberOpts, seatLabelMode);
 
@@ -390,7 +394,7 @@ export default function ClassroomCheckinView({ seatData, sceneConfig, studentNam
             {Array.from({ length: cols }).map((_, c) => (
               <text key={`cl-${c}`} x={roomOx + seatX(c) + seatW / 2} y={roomOy + roomH - 6}
                 textAnchor="middle" dominantBaseline="middle"
-                className="fill-muted-foreground/70 text-[7px]">{c + 1}</text>
+                className="fill-muted-foreground/70 text-[7px]">{doorOnRight ? cols - c : c + 1}</text>
             ))}
           </svg>
         </div>

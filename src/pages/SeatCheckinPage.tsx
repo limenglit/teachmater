@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
+import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 
 import { supabase } from '@/integrations/supabase/client';
@@ -181,7 +181,7 @@ const buildSeatHint = (
           const mode = normalizeSeatLabelMode(sceneConfig?.seatLabelMode);
           const rowWidths = seats.map((row, i) =>
             Number(rowColsCfg[i]) > 0 ? Number(rowColsCfg[i]) : (row?.length ?? 0));
-          return formatClassroomSeatLabel(r, c, { rowWidth, disabledSeats, rowWidths }, mode);
+          return formatClassroomSeatLabel(r, c, { rowWidth, disabledSeats, rowWidths, doorOnRight: classroomDoorOnRight(sceneConfig) }, mode);
         }
       }
     }

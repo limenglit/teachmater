@@ -21,6 +21,17 @@ export interface ClassroomSeatNumberOptions {
    * closed rows are skipped.
    */
   rowWidths?: number[];
+  /**
+   * True when the front door is on the right (teacher view: window on the
+   * left). Column numbering starts at the door side, so 第1列 is then the
+   * right-most column.
+   */
+  doorOnRight?: boolean;
+}
+
+/** Derive doorOnRight from a classroom scene_config (same rule as the teacher grid). */
+export function classroomDoorOnRight(config?: { windowOnLeft?: unknown } | null): boolean {
+  return !!config?.windowOnLeft;
 }
 
 const toSet = (v?: Iterable<string>) =>
@@ -88,6 +99,13 @@ export function openColumnNumber(
   if (col < 0 || col >= opts.rowWidth) return null;
   if (disabled.has(`${row}-${col}`)) return null;
   let n = 0;
+  if (opts.doorOnRight) {
+    for (let c = opts.rowWidth - 1; c >= col; c--) {
+      if (disabled.has(`${row}-${c}`)) continue;
+      n++;
+    }
+    return n;
+  }
   for (let c = 0; c <= col; c++) {
     if (disabled.has(`${row}-${c}`)) continue;
     n++;

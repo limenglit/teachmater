@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 
-import { formatClassroomSeatLabel, normalizeSeatLabelMode, type SeatLabelMode } from '@/lib/seat-number';
+import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode, type SeatLabelMode } from '@/lib/seat-number';
 import { supabase } from '@/integrations/supabase/client';
 import { Copy, Check, Download, QrCode, StopCircle, Trash2, Clock, RotateCcw, UserCheck, Shuffle, UsersRound, History, FileSpreadsheet, RefreshCw, Send } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -154,8 +154,9 @@ const computeGuestAssignments = (params: {
   overrides: Record<string, { seatHint: string; assignedKey?: string; confirmed?: boolean }>;
   rotateOffsets: Record<string, number>;
   seatLabelMode?: SeatLabelMode;
+  doorOnRight?: boolean;
 }): GuestAssignmentEntry[] => {
-  const { sceneType, seatData, guestNames, disabledSeats = [], overrides, rotateOffsets, seatLabelMode = 'no' } = params;
+  const { sceneType, seatData, guestNames, disabledSeats = [], overrides, rotateOffsets, seatLabelMode = 'no', doorOnRight = false } = params;
   if (guestNames.length === 0) return [];
 
   if (sceneType === 'classroom' && Array.isArray(seatData)) {
@@ -183,7 +184,7 @@ const computeGuestAssignments = (params: {
         used.add(chosen.key);
         result.push({
           name,
-          seatHint: formatClassroomSeatLabel(chosen.r, chosen.c, { rowWidth: grid[chosen.r].length, disabledSeats: disabledKeys, rowWidths: grid.map(row => row?.length ?? 0) }, seatLabelMode),
+          seatHint: formatClassroomSeatLabel(chosen.r, chosen.c, { rowWidth: grid[chosen.r].length, disabledSeats: disabledKeys, rowWidths: grid.map(row => row?.length ?? 0), doorOnRight }, seatLabelMode),
           assignedKey: chosen.key,
           confirmed: override?.confirmed,
         });
@@ -198,7 +199,7 @@ const computeGuestAssignments = (params: {
   const cloned = cloneSeatDataSequential(seatData, guestNames);
   return guestNames.map(name => ({
     name,
-    seatHint: buildSeatHint(sceneType, cloned, name, disabledSeats, seatLabelMode) || '待老师现场确认',
+    seatHint: buildSeatHint(sceneType, cloned, name, disabledSeats, seatLabelMode, doorOnRight) || '待老师现场确认',
     confirmed: overrides[name]?.confirmed,
   }));
 };
@@ -228,13 +229,14 @@ const buildSeatHint = (
   studentName: string,
   disabledSeats: string[] = [],
   seatLabelMode: SeatLabelMode = 'no',
+  doorOnRight = false,
 ) => {
   if (sceneType === 'classroom') {
     const seats = seatData as (string | null)[][];
     for (let r = 0; r < seats.length; r++) {
       for (let c = 0; c < seats[r].length; c++) {
         if (isSameStudentName(seats[r][c], studentName)) {
-          return formatClassroomSeatLabel(r, c, { rowWidth: seats[r].length, disabledSeats, rowWidths: seats.map(row => row?.length ?? 0) }, seatLabelMode);
+          return formatClassroomSeatLabel(r, c, { rowWidth: seats[r].length, disabledSeats, rowWidths: seats.map(row => row?.length ?? 0), doorOnRight }, seatLabelMode);
         }
       }
     }
@@ -876,6 +878,7 @@ export default function SeatCheckinDialog({
       overrides: overridesObj,
       rotateOffsets: guestRotateOffsets,
       seatLabelMode: normalizeSeatLabelMode(sessionSceneConfig?.seatLabelMode),
+      doorOnRight: classroomDoorOnRight(sessionSceneConfig),
     });
   }, [currentSession, currentStudentNames, records, seatData, sessionSeatData, sceneConfig, guestRotateOffsets, guestConfirmed]);
 
