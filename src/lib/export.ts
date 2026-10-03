@@ -24,10 +24,15 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       el.style.overflow = 'visible';
       el.style.overflowX = 'visible';
       el.style.overflowY = 'visible';
-      el.style.height = 'auto';
-      el.style.width = 'auto';
       el.style.maxHeight = 'none';
       el.style.maxWidth = 'none';
+      // Only scroll viewports should expand. Seat labels may use overflow-hidden
+      // to keep names inside fixed cells; changing their dimensions shifts rows.
+      if (el.classList.contains('overflow-auto') || el.classList.contains('overflow-scroll') ||
+          el.classList.contains('overflow-x-auto') || el.classList.contains('overflow-y-auto')) {
+        el.style.height = 'auto';
+        el.style.width = 'auto';
+      }
     });
     // All room scenes use a fixed-size child scaled inside an equally scaled
     // frame. Size that frame from the unscaled scene, not the current zoom.
