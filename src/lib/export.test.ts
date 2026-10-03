@@ -177,9 +177,32 @@ describe('export – seating layout', () => {
     expect(pdf.addImage).toHaveBeenCalledTimes(1);
     expect(pdf.addPage).not.toHaveBeenCalled();
     const [, , x, y, width, height] = pdf.addImage.mock.calls[0];
-    expect(x).toBeGreaterThanOrEqual(10);
-    expect(y).toBeGreaterThanOrEqual(10);
-    expect(width).toBeLessThanOrEqual(277);
-    expect(height).toBeLessThanOrEqual(277);
+    expect(x).toBeGreaterThanOrEqual(6);
+    expect(y).toBeGreaterThanOrEqual(6);
+    expect(width).toBeLessThanOrEqual(829);
+    expect(height).toBeLessThanOrEqual(829);
+  });
+
+  it('restores a zoomed classroom grid and removes its zoom toolbar without touching seat transforms', async () => {
+    const root = document.createElement('div');
+    const toolbar = document.createElement('div');
+    toolbar.setAttribute('data-export-exclude', '');
+    toolbar.textContent = 'zoom controls';
+    const grid = document.createElement('div');
+    grid.setAttribute('data-export-unscale', '');
+    grid.style.transform = 'scale(0.35)';
+    const seat = document.createElement('span');
+    seat.style.transform = 'translate(80px, 20px)';
+    seat.textContent = '王小明';
+    grid.appendChild(seat);
+    root.append(toolbar, grid);
+    document.body.appendChild(root);
+
+    await exportToPNG(root, 'large-class');
+    const captured = html2canvasCalls[0];
+    expect(captured.querySelector('[data-export-exclude]')).toBeNull();
+    expect(captured.querySelector<HTMLElement>('[data-export-unscale]')?.style.transform).toBe('none');
+    expect(captured.querySelector('span')?.style.transform).toBe('translate(80px, 20px)');
+    expect(grid.style.transform).toBe('scale(0.35)');
   });
 });

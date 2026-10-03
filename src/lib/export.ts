@@ -59,7 +59,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   sizer.style.display = 'inline-block';
   sizer.appendChild(clone);
   document.body.appendChild(sizer);
-  const naturalWidth = Math.max(clone.scrollWidth, clone.offsetWidth, 900);
+  const naturalWidth = Math.max(clone.scrollWidth, clone.offsetWidth, 1);
   document.body.removeChild(sizer);
 
   // The live scrollWidth reflects zoom, not the exported room dimensions.
@@ -121,7 +121,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
     // rows can extend past the initial scrollWidth measured in the sizer.
     wrapper.style.width = `${Math.max(wrapper.scrollWidth, width + 24)}px`;
     const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
-    const scale = Math.min(3, 12000 / maxDimension);
+    const scale = Math.min(3, 12000 / maxDimension, Math.sqrt(36_000_000 / (wrapper.scrollWidth * wrapper.scrollHeight)));
     const canvas = await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
       // 3x improves name legibility; cap extreme rooms to avoid oversized
@@ -188,26 +188,6 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
 export async function exportToSVG(element: HTMLElement, filename: string, title?: string) {
   const exportTitle = title || filename;
-  const width = Math.max(element.scrollWidth, element.clientWidth, 900);
-  const clone = element.cloneNode(true) as HTMLElement;
-
-  // Render to canvas first for accurate measurement
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '-100000px';
-  wrapper.style.top = '0';
-  wrapper.style.width = `${width}px`;
-  wrapper.appendChild(clone);
-  document.body.appendChild(wrapper);
-  const contentHeight = wrapper.scrollHeight;
-  document.body.removeChild(wrapper);
-
-  const padding = 20;
-  const titleHeight = 40;
-  const footerHeight = 30;
-  const totalHeight = padding + titleHeight + contentHeight + footerHeight + padding;
-  const totalWidth = width + padding * 2;
-
   // Use html2canvas to capture the element as an image, then embed in SVG
   const { canvas, scale } = await captureWithHeaderFooter(element, exportTitle);
   const dataUrl = canvas.toDataURL('image/png');
