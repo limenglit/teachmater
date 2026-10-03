@@ -121,20 +121,22 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
     // rows can extend past the initial scrollWidth measured in the sizer.
     wrapper.style.width = `${Math.max(wrapper.scrollWidth, width + 24)}px`;
     const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
-    return await html2canvas(wrapper, {
+    const scale = Math.min(3, 12000 / maxDimension);
+    const canvas = await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
       // 3x improves name legibility; cap extreme rooms to avoid oversized
       // canvases on mobile browsers while preserving the entire chart.
-      scale: Math.min(3, 12000 / maxDimension),
+      scale,
       useCORS: true,
     });
+    return { canvas, scale };
   } finally {
     document.body.removeChild(wrapper);
   }
 }
 
 export async function exportToPNG(element: HTMLElement, filename: string, title?: string) {
-  const canvas = await captureWithHeaderFooter(element, title || filename);
+  const { canvas } = await captureWithHeaderFooter(element, title || filename);
   const link = document.createElement('a');
   link.download = `${filename}.png`;
   link.href = canvas.toDataURL('image/png');
@@ -142,7 +144,7 @@ export async function exportToPNG(element: HTMLElement, filename: string, title?
 }
 
 export async function exportToPDF(element: HTMLElement, filename: string, title?: string) {
-  const canvas = await captureWithHeaderFooter(element, title || filename);
+  const { canvas, scale: canvasScale } = await captureWithHeaderFooter(element, title || filename);
   const imgData = canvas.toDataURL('image/png');
   const imgW = canvas.width;
   const imgH = canvas.height;
@@ -159,7 +161,6 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
   const margin = 6;
   const aspect = imgW / imgH;
   const orientation: 'portrait' | 'landscape' = aspect >= 1 ? 'landscape' : 'portrait';
-  const canvasScale = Math.min(3, 12000 / Math.max(imgW / 3, imgH / 3));
   const naturalW = imgW / canvasScale;
   const naturalH = imgH / canvasScale;
   const sheet = sheets.find(({ short, long }) => {
@@ -208,13 +209,13 @@ export async function exportToSVG(element: HTMLElement, filename: string, title?
   const totalWidth = width + padding * 2;
 
   // Use html2canvas to capture the element as an image, then embed in SVG
-  const canvas = await captureWithHeaderFooter(element, exportTitle);
+  const { canvas, scale } = await captureWithHeaderFooter(element, exportTitle);
   const dataUrl = canvas.toDataURL('image/png');
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-  width="${canvas.width / 2}" height="${canvas.height / 2}" viewBox="0 0 ${canvas.width / 2} ${canvas.height / 2}">
-  <image width="${canvas.width / 2}" height="${canvas.height / 2}" href="${dataUrl}" />
+  width="${canvas.width / scale}" height="${canvas.height / scale}" viewBox="0 0 ${canvas.width / scale} ${canvas.height / scale}">
+  <image width="${canvas.width / scale}" height="${canvas.height / scale}" href="${dataUrl}" />
 </svg>`;
 
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
