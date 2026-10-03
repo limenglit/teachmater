@@ -14,12 +14,25 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       const s = el.style;
       if (s.zoom) s.zoom = '';
     }
+    root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
+    // Classroom grid zoom has no frame; its natural grid width is already
+    // unscaled, so drop only this screen-level transform, not seat positions.
+    root.querySelectorAll<HTMLElement>('[data-export-unscale]').forEach(el => {
+      el.style.transform = 'none';
+    });
     root.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="max-h"], [class*="max-w"]').forEach(el => {
       el.style.overflow = 'visible';
       el.style.overflowX = 'visible';
       el.style.overflowY = 'visible';
       el.style.maxHeight = 'none';
       el.style.maxWidth = 'none';
+      // Only scroll viewports should expand. Seat labels may use overflow-hidden
+      // to keep names inside fixed cells; changing their dimensions shifts rows.
+      if (el.classList.contains('overflow-auto') || el.classList.contains('overflow-scroll') ||
+          el.classList.contains('overflow-x-auto') || el.classList.contains('overflow-y-auto')) {
+        el.style.height = 'auto';
+        el.style.width = 'auto';
+      }
     });
     // All room scenes use a fixed-size child scaled inside an equally scaled
     // frame. Size that frame from the unscaled scene, not the current zoom.
@@ -27,12 +40,10 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       const scene = frame.firstElementChild as HTMLElement | null;
       if (!scene || !/^scale\([\d.]+\)$/.test(scene.style.transform)) return;
       scene.style.transform = 'none';
-      frame.style.width = scene.style.width;
-      frame.style.height = scene.style.height;
+      if (scene.style.width) frame.style.width = scene.style.width;
+      if (scene.style.height) frame.style.height = scene.style.height;
       frame.style.maxWidth = 'none';
     });
-    // Controls are screen UI, not part of the chart.
-    root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
   };
   neutralize(clone);
 
@@ -49,13 +60,13 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   // First, measure natural content size by mounting clone off-screen at auto width
   const sizer = document.createElement('div');
   sizer.style.position = 'fixed';
-  sizer.style.left = '-100000px';
+  sizer.style.left = '0';
   sizer.style.top = '0';
   sizer.style.visibility = 'hidden';
   sizer.style.display = 'inline-block';
   sizer.appendChild(clone);
   document.body.appendChild(sizer);
-  const naturalWidth = Math.max(clone.scrollWidth, clone.offsetWidth, 900);
+  const naturalWidth = Math.max(clone.scrollWidth, clone.offsetWidth, 1);
   document.body.removeChild(sizer);
 
   // The live scrollWidth reflects zoom, not the exported room dimensions.
@@ -68,22 +79,26 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
-  wrapper.style.left = '-100000px';
+  // html2canvas clips fixed elements placed far outside the viewport, even
+  // when scrollWidth is correct. Keep the capture at 0,0 and move it back
+  // offscreen only after rendering.
+  wrapper.style.left = '0';
   wrapper.style.top = '0';
+  wrapper.style.visibility = 'hidden';
   wrapper.style.background = '#ffffff';
-  wrapper.style.width = `${width + 40}px`;
-  wrapper.style.padding = '22px 20px 16px';
+  wrapper.style.width = `${width + 24}px`;
+  wrapper.style.padding = '12px 12px 10px';
   wrapper.style.boxSizing = 'border-box';
 
   const heading = document.createElement('div');
   heading.textContent = title;
   heading.style.textAlign = 'center';
   heading.style.color = '#000000';
-  heading.style.fontSize = '28px';
+  heading.style.fontSize = '22px';
   heading.style.fontWeight = '700';
   heading.style.fontFamily = 'SimHei, "Microsoft YaHei", sans-serif';
   heading.style.lineHeight = '1.2';
-  heading.style.marginBottom = '16px';
+  heading.style.marginBottom = '8px';
 
   const content = document.createElement('div');
   content.style.display = 'flex';
@@ -99,10 +114,10 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const footer = document.createElement('div');
   footer.textContent = COPYRIGHT_TEXT;
-  footer.style.marginTop = '14px';
+  footer.style.marginTop = '8px';
   footer.style.textAlign = 'center';
   footer.style.color = '#333333';
-  footer.style.fontSize = '12px';
+  footer.style.fontSize = '10px';
   footer.style.fontFamily = '"Microsoft YaHei", sans-serif';
   footer.style.lineHeight = '1.2';
 
@@ -113,18 +128,29 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   try {
     if (document.fonts?.ready) await document.fonts.ready;
-    return await html2canvas(wrapper, {
+    // Use the post-layout extent: absolutely positioned room details and long
+    // rows can extend past the initial scrollWidth measured in the sizer.
+    wrapper.style.width = `${Math.max(wrapper.scrollWidth, width + 24)}px`;
+    const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
+    const scale = Math.min(3, 12000 / maxDimension, Math.sqrt(36_000_000 / (wrapper.scrollWidth * wrapper.scrollHeight)));
+    wrapper.style.visibility = 'visible';
+    const canvas = await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
-      scale: 2,
+      // 3x improves name legibility; cap extreme rooms to avoid oversized
+      // canvases on mobile browsers while preserving the entire chart.
+      scale,
       useCORS: true,
+      windowWidth: Math.max(document.documentElement.clientWidth, wrapper.scrollWidth),
+      windowHeight: Math.max(document.documentElement.clientHeight, wrapper.scrollHeight),
     });
+    return { canvas, scale };
   } finally {
     document.body.removeChild(wrapper);
   }
 }
 
 export async function exportToPNG(element: HTMLElement, filename: string, title?: string) {
-  const canvas = await captureWithHeaderFooter(element, title || filename);
+  const { canvas } = await captureWithHeaderFooter(element, title || filename);
   const link = document.createElement('a');
   link.download = `${filename}.png`;
   link.href = canvas.toDataURL('image/png');
@@ -132,22 +158,33 @@ export async function exportToPNG(element: HTMLElement, filename: string, title?
 }
 
 export async function exportToPDF(element: HTMLElement, filename: string, title?: string) {
-  const canvas = await captureWithHeaderFooter(element, title || filename);
+  const { canvas, scale: canvasScale } = await captureWithHeaderFooter(element, title || filename);
   const imgData = canvas.toDataURL('image/png');
   const imgW = canvas.width;
   const imgH = canvas.height;
 
-  // A4 sizes in mm
-  const A4_PORTRAIT = { w: 210, h: 297 };
-  const A4_LANDSCAPE = { w: 297, h: 210 };
-  const margin = 10;
-
-  // Pick orientation: prefer one that fits content on a single page, else minimizes pages
+  // Select the smallest standard sheet where the chart remains legible at
+  // roughly its natural print size (96dpi). Larger rooms need a larger sheet,
+  // not a tiny A4 rendering of dozens of seats.
+  const sheets = [
+    { name: 'a4', short: 210, long: 297 },
+    { name: 'a3', short: 297, long: 420 },
+    { name: 'a2', short: 420, long: 594 },
+    { name: 'a1', short: 594, long: 841 },
+  ];
+  const margin = 6;
   const aspect = imgW / imgH;
   const orientation: 'portrait' | 'landscape' = aspect >= 1 ? 'landscape' : 'portrait';
-  const page = orientation === 'landscape' ? A4_LANDSCAPE : A4_PORTRAIT;
+  const naturalW = imgW / canvasScale;
+  const naturalH = imgH / canvasScale;
+  const sheet = sheets.find(({ short, long }) => {
+    const w = orientation === 'landscape' ? long : short;
+    const h = orientation === 'landscape' ? short : long;
+    return naturalW * 0.25 <= w - margin * 2 && naturalH * 0.25 <= h - margin * 2;
+  }) ?? sheets[sheets.length - 1];
+  const page = orientation === 'landscape' ? { w: sheet.long, h: sheet.short } : { w: sheet.short, h: sheet.long };
 
-  const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+  const pdf = new jsPDF({ orientation, unit: 'mm', format: sheet.name });
   const pageW = page.w;
   const pageH = page.h;
   const usableW = pageW - margin * 2;
@@ -155,7 +192,7 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
   // Keep the entire seating chart on one page: slicing a raster image in
   // arbitrary rows cuts names, seats and tables across page boundaries.
-  const scale = Math.min(usableW / imgW, usableH / imgH);
+  const scale = Math.min(usableW / imgW, usableH / imgH, 0.25 / canvasScale);
   const scaledTotalH = imgH * scale; // total height in mm at usable width
   const scaledW = imgW * scale;
   pdf.addImage(imgData, 'PNG', (pageW - scaledW) / 2, (pageH - scaledTotalH) / 2, scaledW, scaledTotalH);
@@ -165,34 +202,14 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
 export async function exportToSVG(element: HTMLElement, filename: string, title?: string) {
   const exportTitle = title || filename;
-  const width = Math.max(element.scrollWidth, element.clientWidth, 900);
-  const clone = element.cloneNode(true) as HTMLElement;
-
-  // Render to canvas first for accurate measurement
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'fixed';
-  wrapper.style.left = '-100000px';
-  wrapper.style.top = '0';
-  wrapper.style.width = `${width}px`;
-  wrapper.appendChild(clone);
-  document.body.appendChild(wrapper);
-  const contentHeight = wrapper.scrollHeight;
-  document.body.removeChild(wrapper);
-
-  const padding = 20;
-  const titleHeight = 40;
-  const footerHeight = 30;
-  const totalHeight = padding + titleHeight + contentHeight + footerHeight + padding;
-  const totalWidth = width + padding * 2;
-
   // Use html2canvas to capture the element as an image, then embed in SVG
-  const canvas = await captureWithHeaderFooter(element, exportTitle);
+  const { canvas, scale } = await captureWithHeaderFooter(element, exportTitle);
   const dataUrl = canvas.toDataURL('image/png');
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
-  width="${canvas.width / 2}" height="${canvas.height / 2}" viewBox="0 0 ${canvas.width / 2} ${canvas.height / 2}">
-  <image width="${canvas.width / 2}" height="${canvas.height / 2}" href="${dataUrl}" />
+  width="${canvas.width / scale}" height="${canvas.height / scale}" viewBox="0 0 ${canvas.width / scale} ${canvas.height / scale}">
+  <image width="${canvas.width / scale}" height="${canvas.height / scale}" href="${dataUrl}" />
 </svg>`;
 
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });

@@ -32,6 +32,7 @@ vi.mock('qrcode.react', () => ({ QRCodeSVG: () => null }));
 
 import { exportToPNG, exportToPDF, exportToSVG } from './export';
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 function buildSeatGrid(): HTMLElement {
   const root = document.createElement('div');
@@ -177,9 +178,63 @@ describe('export – seating layout', () => {
     expect(pdf.addImage).toHaveBeenCalledTimes(1);
     expect(pdf.addPage).not.toHaveBeenCalled();
     const [, , x, y, width, height] = pdf.addImage.mock.calls[0];
-    expect(x).toBeGreaterThanOrEqual(10);
-    expect(y).toBeGreaterThanOrEqual(10);
-    expect(width).toBeLessThanOrEqual(277);
-    expect(height).toBeLessThanOrEqual(277);
+    expect(x).toBeGreaterThanOrEqual(6);
+    expect(y).toBeGreaterThanOrEqual(6);
+    expect(width).toBeLessThanOrEqual(829);
+    expect(height).toBeLessThanOrEqual(829);
+  });
+
+  it('restores a zoomed classroom grid and removes its zoom toolbar without touching seat transforms', async () => {
+    const root = document.createElement('div');
+    const toolbar = document.createElement('div');
+    toolbar.setAttribute('data-export-exclude', '');
+    toolbar.textContent = 'zoom controls';
+    const grid = document.createElement('div');
+    grid.setAttribute('data-export-unscale', '');
+    grid.style.transform = 'scale(0.35)';
+    const seat = document.createElement('span');
+    seat.style.transform = 'translate(80px, 20px)';
+    seat.textContent = '王小明';
+    grid.appendChild(seat);
+    root.append(toolbar, grid);
+    document.body.appendChild(root);
+
+    await exportToPNG(root, 'large-class');
+    const captured = html2canvasCalls[0];
+    expect(captured.querySelector('[data-export-exclude]')).toBeNull();
+    expect(captured.querySelector<HTMLElement>('[data-export-unscale]')?.style.transform).toBe('none');
+    expect(captured.querySelector('span')?.style.transform).toBe('translate(80px, 20px)');
+    expect(grid.style.transform).toBe('scale(0.35)');
+  });
+
+  it('expands scroll-limited classrooms for capture and uses higher resolution', async () => {
+    const root = document.createElement('div');
+    const scroller = document.createElement('div');
+    scroller.className = 'overflow-auto max-h-[75vh]';
+    scroller.style.height = '400px';
+    scroller.style.width = '480px';
+    const grid = document.createElement('div');
+    grid.style.width = '1500px';
+    grid.style.height = '900px';
+    const seat = document.createElement('div');
+    seat.className = 'overflow-hidden';
+    seat.style.width = '80px';
+    seat.style.height = '44px';
+    seat.textContent = '最后一排 张同学';
+    grid.appendChild(seat);
+    scroller.appendChild(grid);
+    root.appendChild(scroller);
+    document.body.appendChild(root);
+
+    await exportToPNG(root, 'large-class');
+    const captured = html2canvasCalls[0].querySelector<HTMLElement>('.overflow-auto');
+    expect(captured?.style.height).toBe('auto');
+    expect(captured?.style.width).toBe('auto');
+    expect(captured?.style.overflow).toBe('visible');
+    const capturedSeat = html2canvasCalls[0].querySelector<HTMLElement>('.overflow-hidden');
+    expect(capturedSeat?.style.width).toBe('80px');
+    expect(capturedSeat?.style.height).toBe('44px');
+    expect(html2canvasCalls[0].textContent).toContain('最后一排 张同学');
+    expect(vi.mocked(html2canvas).mock.lastCall?.[1]?.scale).toBe(3);
   });
 });

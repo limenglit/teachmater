@@ -1699,7 +1699,7 @@ export default function SeatChart() {
                     <ZoomControls scale={seatScale} onZoomIn={seatZoomIn} onZoomOut={seatZoomOut} onFit={seatZoomFit} onReset={seatZoomReset} />
                   </div>
                   <div ref={seatScrollRef} className="overflow-auto pb-2 max-h-[75vh]">
-                    <div ref={seatContentRef} className="mx-auto w-fit" style={{ transform: `scale(${seatScale})`, transformOrigin: 'top left' }}>
+                    <div ref={seatContentRef} data-export-unscale className="mx-auto w-fit" style={{ transform: `scale(${seatScale})`, transformOrigin: 'top left' }}>
                       <div className="inline-flex items-stretch gap-2 min-w-max min-h-max">
                         <div className="flex items-center shrink-0">
                           <div className="flex flex-col items-center gap-1 text-[11px] text-muted-foreground">
