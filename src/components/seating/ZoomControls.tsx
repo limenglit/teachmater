@@ -138,7 +138,7 @@ interface ZoomControlsProps {
 export default function ZoomControls({ scale, onZoomIn, onZoomOut, onFit, onReset }: ZoomControlsProps) {
   const { t } = useLanguage();
   return (
-    <div className="flex items-center gap-1 rounded-md border border-border bg-background/80 backdrop-blur px-1.5 py-1 shadow-sm">
+    <div data-export-exclude className="flex items-center gap-1 rounded-md border border-border bg-background/80 backdrop-blur px-1.5 py-1 shadow-sm">
       <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onZoomOut} title={t('seat.zoom.zoomOut')}>
         <ZoomOut className="w-3.5 h-3.5" />
       </Button>

@@ -14,6 +14,12 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       const s = el.style;
       if (s.zoom) s.zoom = '';
     }
+    root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
+    // Classroom grid zoom has no frame; its natural grid width is already
+    // unscaled, so drop only this screen-level transform, not seat positions.
+    root.querySelectorAll<HTMLElement>('[data-export-unscale]').forEach(el => {
+      el.style.transform = 'none';
+    });
     root.querySelectorAll<HTMLElement>('[class*="overflow"], [class*="max-h"], [class*="max-w"]').forEach(el => {
       el.style.overflow = 'visible';
       el.style.overflowX = 'visible';
@@ -27,12 +33,10 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       const scene = frame.firstElementChild as HTMLElement | null;
       if (!scene || !/^scale\([\d.]+\)$/.test(scene.style.transform)) return;
       scene.style.transform = 'none';
-      frame.style.width = scene.style.width;
-      frame.style.height = scene.style.height;
+      if (scene.style.width) frame.style.width = scene.style.width;
+      if (scene.style.height) frame.style.height = scene.style.height;
       frame.style.maxWidth = 'none';
     });
-    // Controls are screen UI, not part of the chart.
-    root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
   };
   neutralize(clone);
 
@@ -71,19 +75,19 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   wrapper.style.left = '-100000px';
   wrapper.style.top = '0';
   wrapper.style.background = '#ffffff';
-  wrapper.style.width = `${width + 40}px`;
-  wrapper.style.padding = '22px 20px 16px';
+  wrapper.style.width = `${width + 24}px`;
+  wrapper.style.padding = '12px 12px 10px';
   wrapper.style.boxSizing = 'border-box';
 
   const heading = document.createElement('div');
   heading.textContent = title;
   heading.style.textAlign = 'center';
   heading.style.color = '#000000';
-  heading.style.fontSize = '28px';
+  heading.style.fontSize = '22px';
   heading.style.fontWeight = '700';
   heading.style.fontFamily = 'SimHei, "Microsoft YaHei", sans-serif';
   heading.style.lineHeight = '1.2';
-  heading.style.marginBottom = '16px';
+  heading.style.marginBottom = '8px';
 
   const content = document.createElement('div');
   content.style.display = 'flex';
@@ -99,10 +103,10 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const footer = document.createElement('div');
   footer.textContent = COPYRIGHT_TEXT;
-  footer.style.marginTop = '14px';
+  footer.style.marginTop = '8px';
   footer.style.textAlign = 'center';
   footer.style.color = '#333333';
-  footer.style.fontSize = '12px';
+  footer.style.fontSize = '10px';
   footer.style.fontFamily = '"Microsoft YaHei", sans-serif';
   footer.style.lineHeight = '1.2';
 
@@ -113,9 +117,15 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   try {
     if (document.fonts?.ready) await document.fonts.ready;
+    // Use the post-layout extent: absolutely positioned room details and long
+    // rows can extend past the initial scrollWidth measured in the sizer.
+    wrapper.style.width = `${Math.max(wrapper.scrollWidth, width + 24)}px`;
+    const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
     return await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
-      scale: 2,
+      // 3x improves name legibility; cap extreme rooms to avoid oversized
+      // canvases on mobile browsers while preserving the entire chart.
+      scale: Math.min(3, 12000 / maxDimension),
       useCORS: true,
     });
   } finally {
@@ -137,17 +147,29 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
   const imgW = canvas.width;
   const imgH = canvas.height;
 
-  // A4 sizes in mm
-  const A4_PORTRAIT = { w: 210, h: 297 };
-  const A4_LANDSCAPE = { w: 297, h: 210 };
-  const margin = 10;
-
-  // Pick orientation: prefer one that fits content on a single page, else minimizes pages
+  // Select the smallest standard sheet where the chart remains legible at
+  // roughly its natural print size (96dpi). Larger rooms need a larger sheet,
+  // not a tiny A4 rendering of dozens of seats.
+  const sheets = [
+    { name: 'a4', short: 210, long: 297 },
+    { name: 'a3', short: 297, long: 420 },
+    { name: 'a2', short: 420, long: 594 },
+    { name: 'a1', short: 594, long: 841 },
+  ];
+  const margin = 6;
   const aspect = imgW / imgH;
   const orientation: 'portrait' | 'landscape' = aspect >= 1 ? 'landscape' : 'portrait';
-  const page = orientation === 'landscape' ? A4_LANDSCAPE : A4_PORTRAIT;
+  const canvasScale = Math.min(3, 12000 / Math.max(imgW / 3, imgH / 3));
+  const naturalW = imgW / canvasScale;
+  const naturalH = imgH / canvasScale;
+  const sheet = sheets.find(({ short, long }) => {
+    const w = orientation === 'landscape' ? long : short;
+    const h = orientation === 'landscape' ? short : long;
+    return naturalW * 0.25 <= w - margin * 2 && naturalH * 0.25 <= h - margin * 2;
+  }) ?? sheets[sheets.length - 1];
+  const page = orientation === 'landscape' ? { w: sheet.long, h: sheet.short } : { w: sheet.short, h: sheet.long };
 
-  const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+  const pdf = new jsPDF({ orientation, unit: 'mm', format: sheet.name });
   const pageW = page.w;
   const pageH = page.h;
   const usableW = pageW - margin * 2;
@@ -155,7 +177,7 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
   // Keep the entire seating chart on one page: slicing a raster image in
   // arbitrary rows cuts names, seats and tables across page boundaries.
-  const scale = Math.min(usableW / imgW, usableH / imgH);
+  const scale = Math.min(usableW / imgW, usableH / imgH, 0.25 / canvasScale);
   const scaledTotalH = imgH * scale; // total height in mm at usable width
   const scaledW = imgW * scale;
   pdf.addImage(imgData, 'PNG', (pageW - scaledW) / 2, (pageH - scaledTotalH) / 2, scaledW, scaledTotalH);
