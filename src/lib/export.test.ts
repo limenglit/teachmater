@@ -32,6 +32,7 @@ vi.mock('qrcode.react', () => ({ QRCodeSVG: () => null }));
 
 import { exportToPNG, exportToPDF, exportToSVG } from './export';
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 function buildSeatGrid(): HTMLElement {
   const root = document.createElement('div');
@@ -204,5 +205,28 @@ describe('export – seating layout', () => {
     expect(captured.querySelector<HTMLElement>('[data-export-unscale]')?.style.transform).toBe('none');
     expect(captured.querySelector('span')?.style.transform).toBe('translate(80px, 20px)');
     expect(grid.style.transform).toBe('scale(0.35)');
+  });
+
+  it('expands scroll-limited classrooms for capture and uses higher resolution', async () => {
+    const root = document.createElement('div');
+    const scroller = document.createElement('div');
+    scroller.className = 'overflow-auto max-h-[75vh]';
+    scroller.style.height = '400px';
+    scroller.style.width = '480px';
+    const grid = document.createElement('div');
+    grid.style.width = '1500px';
+    grid.style.height = '900px';
+    grid.textContent = '最后一排 张同学';
+    scroller.appendChild(grid);
+    root.appendChild(scroller);
+    document.body.appendChild(root);
+
+    await exportToPNG(root, 'large-class');
+    const captured = html2canvasCalls[0].querySelector<HTMLElement>('.overflow-auto');
+    expect(captured?.style.height).toBe('auto');
+    expect(captured?.style.width).toBe('max-content');
+    expect(captured?.style.overflow).toBe('visible');
+    expect(html2canvasCalls[0].textContent).toContain('最后一排 张同学');
+    expect(vi.mocked(html2canvas).mock.lastCall?.[1]?.scale).toBe(3);
   });
 });
