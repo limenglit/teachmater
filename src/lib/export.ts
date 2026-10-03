@@ -24,6 +24,8 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       el.style.overflow = 'visible';
       el.style.overflowX = 'visible';
       el.style.overflowY = 'visible';
+      el.style.height = 'auto';
+      el.style.width = 'max-content';
       el.style.maxHeight = 'none';
       el.style.maxWidth = 'none';
     });
@@ -53,7 +55,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   // First, measure natural content size by mounting clone off-screen at auto width
   const sizer = document.createElement('div');
   sizer.style.position = 'fixed';
-  sizer.style.left = '-100000px';
+  sizer.style.left = '0';
   sizer.style.top = '0';
   sizer.style.visibility = 'hidden';
   sizer.style.display = 'inline-block';
@@ -72,8 +74,12 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const wrapper = document.createElement('div');
   wrapper.style.position = 'fixed';
-  wrapper.style.left = '-100000px';
+  // html2canvas clips fixed elements placed far outside the viewport, even
+  // when scrollWidth is correct. Keep the capture at 0,0 and move it back
+  // offscreen only after rendering.
+  wrapper.style.left = '0';
   wrapper.style.top = '0';
+  wrapper.style.visibility = 'hidden';
   wrapper.style.background = '#ffffff';
   wrapper.style.width = `${width + 24}px`;
   wrapper.style.padding = '12px 12px 10px';
@@ -122,12 +128,15 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
     wrapper.style.width = `${Math.max(wrapper.scrollWidth, width + 24)}px`;
     const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
     const scale = Math.min(3, 12000 / maxDimension, Math.sqrt(36_000_000 / (wrapper.scrollWidth * wrapper.scrollHeight)));
+    wrapper.style.visibility = 'visible';
     const canvas = await html2canvas(wrapper, {
       backgroundColor: '#ffffff',
       // 3x improves name legibility; cap extreme rooms to avoid oversized
       // canvases on mobile browsers while preserving the entire chart.
       scale,
       useCORS: true,
+      windowWidth: Math.max(document.documentElement.clientWidth, wrapper.scrollWidth),
+      windowHeight: Math.max(document.documentElement.clientHeight, wrapper.scrollHeight),
     });
     return { canvas, scale };
   } finally {
