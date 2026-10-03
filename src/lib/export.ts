@@ -25,7 +25,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       el.style.overflowX = 'visible';
       el.style.overflowY = 'visible';
       el.style.height = 'auto';
-      el.style.width = 'max-content';
+      el.style.width = 'auto';
       el.style.maxHeight = 'none';
       el.style.maxWidth = 'none';
     });

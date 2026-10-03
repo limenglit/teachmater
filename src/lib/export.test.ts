@@ -224,7 +224,7 @@ describe('export – seating layout', () => {
     await exportToPNG(root, 'large-class');
     const captured = html2canvasCalls[0].querySelector<HTMLElement>('.overflow-auto');
     expect(captured?.style.height).toBe('auto');
-    expect(captured?.style.width).toBe('max-content');
+    expect(captured?.style.width).toBe('auto');
     expect(captured?.style.overflow).toBe('visible');
     expect(html2canvasCalls[0].textContent).toContain('最后一排 张同学');
     expect(vi.mocked(html2canvas).mock.lastCall?.[1]?.scale).toBe(3);
