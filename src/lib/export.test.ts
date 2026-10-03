@@ -216,7 +216,12 @@ describe('export – seating layout', () => {
     const grid = document.createElement('div');
     grid.style.width = '1500px';
     grid.style.height = '900px';
-    grid.textContent = '最后一排 张同学';
+    const seat = document.createElement('div');
+    seat.className = 'overflow-hidden';
+    seat.style.width = '80px';
+    seat.style.height = '44px';
+    seat.textContent = '最后一排 张同学';
+    grid.appendChild(seat);
     scroller.appendChild(grid);
     root.appendChild(scroller);
     document.body.appendChild(root);
@@ -226,6 +231,9 @@ describe('export – seating layout', () => {
     expect(captured?.style.height).toBe('auto');
     expect(captured?.style.width).toBe('auto');
     expect(captured?.style.overflow).toBe('visible');
+    const capturedSeat = html2canvasCalls[0].querySelector<HTMLElement>('.overflow-hidden');
+    expect(capturedSeat?.style.width).toBe('80px');
+    expect(capturedSeat?.style.height).toBe('44px');
     expect(html2canvasCalls[0].textContent).toContain('最后一排 张同学');
     expect(vi.mocked(html2canvas).mock.lastCall?.[1]?.scale).toBe(3);
   });
