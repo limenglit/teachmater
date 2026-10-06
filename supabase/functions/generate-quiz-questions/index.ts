@@ -27,6 +27,8 @@ interface GeneratedQuestion {
   tags: string;
 }
 
+const STEM_RE = /数学|代数|几何|函数|微积分|概率|统计|方程|物理|力学|电学|电磁|光学|热学|化学|有机|无机|离子|反应|math|algebra|geometry|calculus|physics|chemistry/i;
+
 function clampCount(value: number | undefined): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(20, Math.floor(value as number)));
@@ -181,7 +183,15 @@ Quality rules:
 - correct_answer for single should be one letter like "A".
 - correct_answer for multi should be an array like ["A","C"].
 - tags should include course name and one key knowledge point.
-- Return exactly the requested quantity.`;
+- Return exactly the requested quantity.
+${STEM_RE.test(`${courseName} ${knowledgePoints.join(' ')}`) ? `
+Formula & notation rules (STEM subject detected — mandatory):
+- Write EVERY mathematical expression, variable, formula, unit and chemical formula in LaTeX wrapped in $...$ (inline). Never use plain-text forms like x^2, sqrt(x), H2O, 1/2.
+- Math: fractions \\frac{a}{b}, roots \\sqrt{x}, powers x^{2}, subscripts a_{n}, angles 30^{\\circ}, vectors \\vec{a}, sets \\mathbb{R}; follow mainland China textbook conventions (e.g. \\lg, C_{n}^{k}).
+- Physics: italic symbols for quantities, upright SI units with \\mathrm and a thin space, e.g. $v=3.0\\times10^{8}\\,\\mathrm{m/s}$; vectors \\vec{F}; give g, constants and significant figures explicitly when needed.
+- Chemistry: use mhchem, e.g. $\\ce{H2SO4}$, ions $\\ce{SO4^2-}$, balanced equations $\\ce{2H2 + O2 ->[点燃] 2H2O}$, gas $\\ce{^}$ / precipitate $\\ce{v}$, reversible $\\ce{<=>}$; equations must be balanced with correct conditions.
+- Options must also use LaTeX where they contain formulas. Ensure numerical answers are correct and units are consistent.
+- Inside JSON strings escape every backslash (\\\\frac).` : ''}`;
 
     const toolDef = {
       type: 'function',

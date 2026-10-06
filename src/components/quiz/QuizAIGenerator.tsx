@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { QuizQuestion } from './quizTypes';
 import { getLocalQuestions, saveLocalQuestions } from './quizTypes';
 import { normalizeQuizOptions } from '@/lib/quiz-utils';
+import MathText from './MathText';
 
 interface Props {
   isGuest: boolean;
@@ -477,12 +478,12 @@ export default function QuizAIGenerator({
                       {typeIcon(item.type)}
                       <span className="text-xs text-muted-foreground">{item.type}</span>
                     </div>
-                    <p className="text-sm text-foreground">{item.content}</p>
+                    <p className="text-sm text-foreground"><MathText text={item.content} /></p>
                     {item.options.length > 0 && (
                       <div className="mt-1.5 flex flex-wrap gap-1">
                         {item.options.map((opt, idx) => (
                           <span key={`${item.id}-${idx}`} className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                            {String.fromCharCode(65 + idx)}. {opt}
+                            {String.fromCharCode(65 + idx)}. <MathText text={opt} />
                           </span>
                         ))}
                       </div>
