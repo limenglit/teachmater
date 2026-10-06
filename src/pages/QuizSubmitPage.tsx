@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import MathText from '@/components/quiz/MathText';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -446,7 +447,7 @@ export default function QuizSubmitPage() {
           <div className="space-y-3">
             {session.questions.map((q, idx) => (
               <div key={`${idx}-${q.content}`} id={`quiz-review-q-${idx}`} className="rounded-xl border border-border bg-card p-4 scroll-mt-24 transition-shadow" data-quiz-review-idx={idx}>
-                <p className="text-sm font-medium text-foreground mb-2">Q{idx + 1}. {q.content}</p>
+                <p className="text-sm font-medium text-foreground mb-2">Q{idx + 1}. <MathText text={q.content} /></p>
                 {q.options?.length > 0 && (
                   <div className="mb-2 flex flex-wrap gap-1.5">
                     {q.options.map((opt, i) => {
@@ -457,7 +458,7 @@ export default function QuizSubmitPage() {
                           key={`${idx}-${letter}`}
                           className={`text-[11px] px-2 py-0.5 rounded ${correct ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}
                         >
-                          {letter}. {normalizeQuizOptionText(opt, i)}
+                          {letter}. <MathText text={normalizeQuizOptionText(opt, i)} />
                         </span>
                       );
                     })}
@@ -694,7 +695,7 @@ export default function QuizSubmitPage() {
       <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 max-w-2xl mx-auto w-full pb-6">
         <div className="mb-6">
           <span className="text-xs font-medium text-primary">Q{currentQ + 1}/{questions.length}</span>
-          <h2 className="text-base sm:text-lg font-medium text-foreground mt-1 break-words" dir="auto">{q.content}</h2>
+          <h2 className="text-base sm:text-lg font-medium text-foreground mt-1 break-words" dir="auto"><MathText text={q.content} /></h2>
         </div>
 
 
@@ -715,7 +716,7 @@ export default function QuizSubmitPage() {
                   onClick={() => setAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground" aria-hidden="true">{letter}.</span>
-                  <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
+                  <span className="text-sm text-foreground break-words" dir="auto"><MathText text={normalizeQuizOptionText(opt, i)} /></span>
                 </button>
               );
             })}
@@ -739,7 +740,7 @@ export default function QuizSubmitPage() {
                   onClick={() => toggleMultiAnswer(currentQ, letter)}
                 >
                   <span className="font-mono text-sm mr-2 text-muted-foreground" aria-hidden="true">{letter}.</span>
-                  <span className="text-sm text-foreground break-words" dir="auto">{normalizeQuizOptionText(opt, i)}</span>
+                  <span className="text-sm text-foreground break-words" dir="auto"><MathText text={normalizeQuizOptionText(opt, i)} /></span>
                 </button>
               );
             })}

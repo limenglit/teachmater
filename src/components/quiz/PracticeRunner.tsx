@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import MathText from './MathText';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -154,7 +155,7 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
                       className={`w-full text-left text-sm p-2.5 rounded-md border transition-colors ${
                         selected ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted/50'
                       }`}>
-                      <span className="font-medium mr-1.5">{letter}.</span>{o}
+                      <span className="font-medium mr-1.5">{letter}.</span><MathText text={o} />
                     </button>
                   );
                 })}

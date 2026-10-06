@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import MathText from './MathText';
 import { supabase } from '@/integrations/supabase/client';
 import { runQuizCall } from '@/lib/quiz-error';
 import { toast } from '@/hooks/use-toast';
@@ -122,7 +123,7 @@ export default function QuizStatsView({ session }: Props) {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <span className="text-xs font-medium text-primary mr-2">Q{qi + 1}</span>
-                  <span className="text-sm text-foreground">{q.content}</span>
+                  <span className="text-sm text-foreground"><MathText text={q.content} /></span>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0 ml-2">
                   {total} {t('quiz.answers')} · {total > 0 ? `${Math.round((correct / total) * 100)}%` : '—'}

@@ -26,6 +26,9 @@ import {
   SlidersHorizontal, Tag, FileCheck, X, Eraser,
 } from 'lucide-react';
 import QuizImporter from './QuizImporter';
+import FormulaEditor from './FormulaEditor';
+import MathText, { hasMath } from './MathText';
+import { MATH_SUBJECT_PATTERN } from '@/lib/formula-library';
 import type {
   QuizQuestion, QuizCategory, QuestionType,
 } from './quizTypes';
@@ -84,6 +87,21 @@ export default function QuizQuestionBank({
   // Form state
   const [qType, setQType] = useState<QuestionType>('single');
   const [qContent, setQContent] = useState('');
+  const [showFormula, setShowFormula] = useState(false);
+  const [formulaTarget, setFormulaTarget] = useState<'content' | number>('content');
+  const insertFormula = (text: string) => {
+    if (formulaTarget === 'content') {
+      const el = document.getElementById('quiz-q-content') as HTMLTextAreaElement | null;
+      setQContent((prev) => {
+        const pos = el && document.activeElement !== el && el.selectionStart != null ? el.selectionStart : prev.length;
+        const at = Math.min(pos ?? prev.length, prev.length);
+        return (prev.slice(0, at) + text + prev.slice(at)).slice(0, 2000);
+      });
+    } else {
+      const idx = formulaTarget;
+      setQOptions((prev) => prev.map((o, i) => (i === idx ? (o + text).slice(0, 500) : o)));
+    }
+  };
   const [qOptions, setQOptions] = useState(['', '', '', '']);
   const [qCorrect, setQCorrect] = useState<string | string[]>('A');
   const [qTags, setQTags] = useState('');
@@ -440,7 +458,27 @@ export default function QuizQuestionBank({
 
           <div>
             <label className="text-xs font-medium text-foreground mb-1 block">{t('quiz.questionContent')}</label>
-            <Textarea value={qContent} onChange={e => setQContent(e.target.value)} placeholder={t('quiz.questionPlaceholder')} rows={3} maxLength={2000} dir="auto" />
+            <Textarea id="quiz-q-content" value={qContent} onChange={e => setQContent(e.target.value)} onFocus={() => setFormulaTarget('content')} placeholder={t('quiz.questionPlaceholder')} rows={3} maxLength={2000} dir="auto" />
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              <Button type="button" variant={showFormula ? 'default' : 'outline'} size="sm" className="h-7 text-xs" onClick={() => setShowFormula(v => !v)}>
+                ∑ 公式编辑器
+              </Button>
+              {!showFormula && MATH_SUBJECT_PATTERN.test(`${qTags} ${qContent}`) && <span className="text-[11px] text-muted-foreground">数理化题目可用公式编辑器插入规范公式</span>}
+            </div>
+            {showFormula && (
+              <div className="mt-2">
+                <FormulaEditor onInsert={insertFormula} onClose={() => setShowFormula(false)}
+                  defaultSubject={/物理|physics/i.test(qTags) ? 'physics' : /化学|chemistry/i.test(qTags) ? 'chem' : 'math'}
+                  targetLabel={formulaTarget === 'content' ? '题干' : `选项 ${String.fromCharCode(65 + formulaTarget)}`} />
+              </div>
+            )}
+            {(hasMath(qContent) || qOptions.some(hasMath)) && (
+              <div className="mt-2 rounded-md border border-border bg-background p-2 text-sm text-foreground space-y-1">
+                <p className="text-[10px] text-muted-foreground">公式预览</p>
+                <MathText text={qContent} />
+                {(qType === 'single' || qType === 'multi') && qOptions.map((o, i) => o.trim() ? <div key={i} className="text-xs"><span className="text-muted-foreground mr-1">{String.fromCharCode(65 + i)}.</span><MathText text={o} /></div> : null)}
+              </div>
+            )}
           </div>
 
           {(qType === 'single' || qType === 'multi') && (
@@ -450,7 +488,7 @@ export default function QuizQuestionBank({
                 {qOptions.map((opt, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <span className="text-xs font-mono text-muted-foreground w-4">{String.fromCharCode(65 + i)}</span>
-                    <Input value={opt} onChange={e => { const n = [...qOptions]; n[i] = e.target.value; setQOptions(n); }}
+                    <Input value={opt} onFocus={() => setFormulaTarget(i)} onChange={e => { const n = [...qOptions]; n[i] = e.target.value; setQOptions(n); }}
                       placeholder={`${t('quiz.option')} ${String.fromCharCode(65 + i)}`} className="flex-1 h-8 text-sm" maxLength={500} dir="auto" />
 
                     {i >= 2 && <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setQOptions(qOptions.filter((_, j) => j !== i))}>
@@ -789,13 +827,13 @@ export default function QuizQuestionBank({
                   {q.tags && <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded">{q.tags}</span>}
                   {q.category_id && <span className="text-[10px] bg-accent px-1.5 py-0.5 rounded flex items-center gap-0.5"><Folder className="w-2.5 h-2.5" />{getCategoryName(q.category_id)}</span>}
                 </div>
-                <p className="text-sm text-foreground line-clamp-2 break-words" dir="auto">{q.content}</p>
+                <p className="text-sm text-foreground line-clamp-2 break-words" dir="auto"><MathText text={q.content} /></p>
                 {q.options.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {q.options.map((o: string, i: number) => {
                       const letter = String.fromCharCode(65 + i);
                       const isCorrect = Array.isArray(q.correct_answer) ? q.correct_answer.includes(letter) : q.correct_answer === letter;
-                      return <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${isCorrect ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}>{letter}. {normalizeQuizOptionText(o, i)}</span>;
+                      return <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${isCorrect ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}>{letter}. <MathText text={normalizeQuizOptionText(o, i)} /></span>;
                     })}
                   </div>
                 )}
