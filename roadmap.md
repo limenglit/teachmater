@@ -4,5 +4,5 @@
 - [x] Run focused regression tests and student answer/review browser checks (9 tests passed; real temporary session submitted and read back; test data deleted).
 
 # Formula puzzle editor
-- [ ] Add draggable, sortable formula blocks with editable math and chemistry fields and live preview.
-- [ ] Preserve existing templates and direct LaTeX editing; verify assembly, reorder, edit, delete and insertion.
+- [x] Add draggable, sortable formula blocks with editable math and chemistry fields and live preview.
+- [x] Preserve existing templates and direct LaTeX editing; verify assembly, reorder, edit, delete and insertion (9 focused tests passed; real editor drag/reorder/insert verified).
