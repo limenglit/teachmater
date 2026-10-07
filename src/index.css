@@ -185,6 +185,42 @@
 }
 
 /* Custom scrollbar */
+/* Preserve KaTeX's superscript/subscript geometry and let only oversized
+   formulas scroll, never the surrounding question or page. */
+.math-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.math-formula {
+  display: inline-block;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.25em 0.125em;
+  vertical-align: middle;
+  overflow: auto;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+  text-indent: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.math-formula-display {
+  display: block;
+  margin: 0.25em 0;
+}
+.math-formula .katex-display {
+  margin: 0;
+  text-align: left;
+}
+.math-formula .katex {
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.math-formula:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
 }
