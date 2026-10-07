@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import MathText from './MathText';
 import { FORMULA_LIBRARY } from '@/lib/formula-library';
 
@@ -10,7 +10,7 @@ describe('MathText subject rendering', () => {
     ['ions', '$\\ce{SO4^2- + Ba^2+ -> BaSO4 v}$'],
   ])('renders %s as accessible notation', (_subject, text) => {
     const { container } = render(<MathText text={text} />);
-    expect(screen.getByRole('math')).toBeInTheDocument();
+    expect(container.querySelector('[role="math"]')).toHaveAttribute('aria-label');
     expect(container.querySelector('.katex')).not.toBeNull();
     expect(container.querySelector('.katex-mathml math')).not.toBeNull();
     expect(container.querySelector('.katex-error')).toBeNull();
