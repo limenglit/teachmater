@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, useDraggable, useDroppable, closestCenter, pointerWithin, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { GripVertical, Trash2, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import MathText from './MathText';
@@ -29,6 +29,11 @@ function PuzzleBlock({ block, selected, select }: { block: FormulaBlock; selecte
   </div>;
 }
 
+function AppendTarget() {
+  const { setNodeRef, isOver } = useDroppable({ id: 'formula-end' });
+  return <div ref={setNodeRef} aria-label="公式末尾" className={`flex items-center justify-center h-10 min-w-10 flex-1 border border-dashed rounded-md ${isOver ? 'border-primary text-primary' : 'border-border text-muted-foreground'}`}><Plus className="h-4 w-4" /></div>;
+}
+
 function PuzzleTray({ blocks, selected, select }: { blocks: FormulaBlock[]; selected: string | null; select: (id: string) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'formula-tray' });
   return <div ref={setNodeRef} aria-label="公式拼图区" className={`flex flex-wrap items-center gap-2 min-h-20 p-3 border border-dashed rounded-md ${isOver ? 'border-primary bg-primary/5' : 'border-border bg-muted/20'}`}>
@@ -36,6 +41,7 @@ function PuzzleTray({ blocks, selected, select }: { blocks: FormulaBlock[]; sele
       {blocks.map(b => <PuzzleBlock key={b.id} block={b} selected={selected === b.id} select={() => select(b.id)} />)}
     </SortableContext>
     {!blocks.length && <span className="text-sm text-muted-foreground">公式拼图区</span>}
+    <AppendTarget />
   </div>;
 }
 
