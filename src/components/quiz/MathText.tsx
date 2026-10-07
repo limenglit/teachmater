@@ -6,7 +6,7 @@ import 'katex/dist/katex.min.css';
 const MATH_RE = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+?\$)/g;
 
 export function renderLatex(latex: string, displayMode = false): string {
-  return katex.renderToString(latex, { throwOnError: false, displayMode, strict: 'ignore', trust: false, output: 'html' });
+  return katex.renderToString(latex, { throwOnError: false, displayMode, strict: 'ignore', trust: false, output: 'htmlAndMathml' });
 }
 
 export function hasMath(text: string): boolean {
@@ -24,15 +24,16 @@ function MathTextInner({ text, className }: { text: string; className?: string }
       else if (p.startsWith('\\[') && p.endsWith('\\]')) { body = p.slice(2, -2); display = true; }
       else if (p.startsWith('\\(') && p.endsWith('\\)')) body = p.slice(2, -2);
       else if (p.startsWith('$') && p.endsWith('$') && p.length > 2) body = p.slice(1, -1);
-      return body === null ? { text: p } : { html: renderLatex(body, display) };
+      return body === null ? { text: p } : { html: renderLatex(body, display), latex: body, display };
     });
   }, [text]);
 
-  if (!parts) return <span className={className}>{text}</span>;
+  if (!parts) return <span className={`math-text ${className || ''}`}>{text}</span>;
   return (
-    <span className={className}>
+    <span className={`math-text ${className || ''}`}>
       {parts.map((p, i) => ('html' in p
-        ? <span key={i} className="katex-inline" dangerouslySetInnerHTML={{ __html: p.html as string }} />
+        ? <span key={i} className={`math-formula ${p.display ? 'math-formula-display' : 'katex-inline'}`}
+            role="math" aria-label={p.latex} tabIndex={0} dangerouslySetInnerHTML={{ __html: p.html as string }} />
         : <span key={i}>{p.text}</span>))}
     </span>
   );

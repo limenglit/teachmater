@@ -89,7 +89,7 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
             {list.map((it, i) => (
               <div key={it.id} className="p-3 rounded-md border border-border bg-card flex items-start gap-2">
                 <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-sm text-foreground">{i + 1}. {it.question}</p>
+                   <p className="text-sm text-foreground">{i + 1}. <MathText text={it.question} /></p>
                   <div className="flex flex-wrap gap-1">
                     <Badge variant="secondary" className="text-[10px]">{TYPE_LABEL[it.type]}</Badge>
                     {it.knowledgePoint && <Badge variant="outline" className="text-[10px]">{it.knowledgePoint}</Badge>}
@@ -143,7 +143,7 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
               <span>第 {idx + 1} / {list.length} 题</span>
               <Badge variant="secondary" className="text-[10px]">{TYPE_LABEL[current.type]}</Badge>
             </div>
-            <p className="text-sm font-medium text-foreground">{current.question}</p>
+            <p className="text-sm font-medium text-foreground"><MathText text={current.question} /></p>
 
             {current.options.length > 0 ? (
               <div className="space-y-1.5">
@@ -151,12 +151,12 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
                   const letter = String.fromCharCode(65 + j);
                   const selected = response.includes(letter);
                   return (
-                    <button key={j} type="button" onClick={() => toggleLetter(letter)}
-                      className={`w-full text-left text-sm p-2.5 rounded-md border transition-colors ${
+                    <Button key={j} type="button" variant="ghost" disabled={checked} onClick={() => toggleLetter(letter)}
+                      className={`block h-auto whitespace-normal w-full text-left text-sm p-2.5 rounded-md border transition-colors ${
                         selected ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted/50'
                       }`}>
                       <span className="font-medium mr-1.5">{letter}.</span><MathText text={o} />
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -167,11 +167,11 @@ export default function PracticeRunner({ open, onOpenChange }: Props) {
 
             {checked && (
               <div className="p-3 rounded-md bg-muted/40 border border-border space-y-1">
-                <p className={`text-sm flex items-center gap-1.5 ${results[current.id] ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                  {results[current.id] ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                  {results[current.id] ? '回答正确' : `回答错误，正确答案：${current.answer || '—'}`}
+                <p className={`text-sm flex items-start gap-1.5 ${results[current.id] ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                  {results[current.id] ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 shrink-0 mt-0.5" />}
+                  <span className="min-w-0 flex-1">{results[current.id] ? '回答正确' : <>回答错误，正确答案：<MathText text={current.answer || '—'} /></>}</span>
                 </p>
-                {current.explanation && <p className="text-xs text-muted-foreground leading-relaxed">解析：{current.explanation}</p>}
+                {current.explanation && <p className="text-sm text-muted-foreground leading-relaxed">解析：<MathText text={current.explanation} /></p>}
               </div>
             )}
 

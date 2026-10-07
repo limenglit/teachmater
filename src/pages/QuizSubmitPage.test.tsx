@@ -65,7 +65,7 @@ describe('QuizSubmitPage ended result visibility', () => {
     render(<QuizSubmitPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('参考答案：B. 2')).toBeInTheDocument();
+      expect(screen.getByText((_text, el) => el?.tagName === 'P' && el.textContent === '参考答案：B. 2')).toBeInTheDocument();
     });
 
     await waitFor(() => {
@@ -78,7 +78,7 @@ describe('QuizSubmitPage ended result visibility', () => {
     await waitFor(() => {
       expect(screen.getByText('成绩：1 / 1')).toBeInTheDocument();
     });
-    expect(screen.getByText('你的作答：B')).toBeInTheDocument();
+    expect(screen.getByText((_text, el) => el?.tagName === 'P' && el.textContent === '你的作答：B')).toBeInTheDocument();
   });
 
   it('normalizes student name before submitting answers', async () => {
@@ -118,7 +118,7 @@ describe('QuizSubmitPage ended result visibility', () => {
     const startButton = await screen.findByRole('button', { name: 'quiz.startAnswer' });
     fireEvent.click(startButton);
 
-    const optionB = await screen.findByRole('button', { name: /B\./ });
+    const optionB = await screen.findByRole('radio', { name: '2' });
     fireEvent.click(optionB);
 
     fireEvent.click(screen.getByRole('button', { name: 'quiz.submit' }));
@@ -129,5 +129,24 @@ describe('QuizSubmitPage ended result visibility', () => {
         p_student_name: '张三',
       }));
     });
+  });
+
+  it('renders formulas in questions, options, submitted and reference answers', async () => {
+    const chemistry = '$\\ce{2H2O -> 2H2 ^ + O2 ^}$';
+    rpcMock.mockImplementation((fn: string) => Promise.resolve({
+      error: null,
+      data: fn === 'get_quiz_session_for_student' ? {
+        id: 'session-1', title: '学科公式核对', status: 'ended', reveal_answers: true,
+        student_names: ['张三'], questions: [
+          { type: 'single', content: '$x_{1}^{2}$', options: ['$\\frac{1}{2}$', '$2$'], correct_answer: 'A' },
+          { type: 'short', content: '\\(E_k=\\frac{1}{2}mv^2\\)', options: [], correct_answer: chemistry },
+        ],
+      } : { student_name: '张三', answers: [{ question_index: 1, answer: chemistry }], correct_count: 0, objective_total: 1 },
+    }));
+    const { container } = render(<QuizSubmitPage />);
+    await waitFor(() => expect(container.querySelectorAll('[role="math"]').length).toBeGreaterThanOrEqual(7));
+    expect(container.querySelector('.katex-error')).toBeNull();
+    const review = container.querySelector('#quiz-review-q-1');
+    expect(review?.querySelectorAll('p [role="math"]')).toHaveLength(3);
   });
 });

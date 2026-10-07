@@ -456,7 +456,7 @@ export default function QuizSubmitPage() {
                       return (
                         <span
                           key={`${idx}-${letter}`}
-                          className={`text-[11px] px-2 py-0.5 rounded ${correct ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}
+                          className={`text-sm min-w-0 max-w-full px-2 py-1 rounded ${correct ? 'bg-green-100 text-green-700 font-medium' : 'bg-muted text-muted-foreground'}`}
                         >
                           {letter}. <MathText text={normalizeQuizOptionText(opt, i)} />
                         </span>
@@ -465,10 +465,10 @@ export default function QuizSubmitPage() {
                   </div>
                 )}
                 <p className="text-sm text-muted-foreground mb-1">
-                  {tr('quiz.yourAnswer', '你的作答')}：{normalizeAnswer(answers[idx] ?? serverAnswerMap.get(idx)) || tr('quiz.notAnswered', '未作答')}
+                  {tr('quiz.yourAnswer', '你的作答')}：<MathText text={normalizeAnswer(answers[idx] ?? serverAnswerMap.get(idx)) || tr('quiz.notAnswered', '未作答')} />
                 </p>
                 <p className="text-sm text-green-700">
-                  {tr('quiz.referenceAnswer', '参考答案')}：{formatCorrectAnswer(q)}
+                  {tr('quiz.referenceAnswer', '参考答案')}：<MathText text={formatCorrectAnswer(q)} />
                 </p>
               </div>
             ))}
