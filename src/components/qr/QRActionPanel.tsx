@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { qrRenderProps, normalizeQrSize, toQrPayload } from '@/lib/qr-config';
+import { qrRenderProps, normalizeQrSize } from '@/lib/qr-config';
 
 interface QRActionPanelProps {
   url: string;
@@ -42,14 +42,21 @@ function QRActionPanel({
       }
     };
 
-    // 使用 data: URL 而非 blob: URL：iOS/鸿蒙微信的「长按识别二维码」需要
-    // 重新读取图片内容，blob: 地址在 WKWebView/X5 内核下常无法被识别。
     const build = () => {
       const canvas = canvasHostRef.current?.querySelector('canvas');
       if (!canvas) return;
       try {
-        const data = canvas.toDataURL('image/png');
-        if (!cancelled) setPngUrl(data && data.length > 30 ? data : null);
+        canvas.toBlob((blob) => {
+          if (cancelled) return;
+          if (!blob) {
+            setPngUrl(null);
+            return;
+          }
+          release();
+          const next = URL.createObjectURL(blob);
+          objectUrlRef.current = next;
+          setPngUrl(next);
+        }, 'image/png');
       } catch {
         if (!cancelled) setPngUrl(null);
       }
@@ -76,7 +83,7 @@ function QRActionPanel({
       >
         {/* 离屏 canvas：用于生成 PNG 与下载 */}
         <div ref={canvasHostRef} className={pngUrl ? 'hidden' : undefined}>
-          <QRCodeCanvas value={toQrPayload(url)} {...qrRenderProps(size)} />
+          <QRCodeCanvas value={url} {...qrRenderProps(size)} />
         </div>
         {pngUrl ? (
           <img
@@ -92,7 +99,7 @@ function QRActionPanel({
       {scanTip ? (
         <p className="text-[11px] leading-4 text-muted-foreground text-center">{scanTip}</p>
       ) : null}
-      <p className="text-[11px] leading-4 text-muted-foreground text-center break-all max-w-[280px] select-all">{url}</p>
+      <p className="text-[11px] leading-4 text-muted-foreground text-center break-all max-w-[280px]">{url}</p>
       {actions ? <div className="flex flex-wrap items-center justify-center gap-2 pt-1">{actions}</div> : null}
     </div>
   );
