@@ -18,13 +18,6 @@
     <link rel="preconnect" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" crossorigin />
     <link rel="dns-prefetch" href="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev" />
 
-    <!-- Google Fonts: load non-blocking to avoid delaying FCP. Falls back to system fonts until ready (display=swap). -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" /></noscript>
-
     <!-- Preload the LCP image (header logo) — WebP for modern browsers; PNG fallback handled by <picture> at runtime -->
     <link rel="preload" as="image" href="/logo.webp" type="image/webp" fetchpriority="high" />
 
@@ -85,6 +78,34 @@
         <div class="app-boot__title">教创搭子 · TeacherMate</div>
       </div>
     </div>
+    <script nomodule>
+      document.getElementById('root').innerHTML='<div style="padding:32px 20px;text-align:center;font-size:15px;line-height:1.7">当前浏览器版本过旧，无法打开页面。<br>请升级系统/微信，或点击右上角「…」选择「在浏览器打开」。</div>';
+    </script>
+    <script>
+      // 启动看门狗：iOS/鸿蒙 WebView 在弱网或跨境线路下脚本可能卡住或加载失败，
+      // 这里给出明确提示与重试，而不是一直转圈/白屏。
+      (function(){
+        var shown=false;
+        function show(msg){
+          if(shown||window.__TM_APP_MOUNTED__)return;shown=true;
+          var r=document.getElementById('root');if(!r)return;
+          r.innerHTML='<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;font-size:15px;line-height:1.7">'+
+            '<div>'+msg+'</div>'+
+            '<button id="tm-retry" style="padding:10px 26px;border-radius:999px;border:1px solid #2563eb;background:#2563eb;color:#fff;font-size:15px">重新加载</button>'+
+            '<div style="font-size:12px;opacity:.6">仍打不开：切换 4G/5G 与 Wi-Fi，或点右上角「…」在浏览器中打开</div></div>';
+          document.getElementById('tm-retry').onclick=function(){
+            var u=location.href.replace(/([?&])_r=\d+/,'');
+            location.replace(u+(u.indexOf('?')>-1?'&':'?')+'_r='+Date.now());
+          };
+        }
+        window.__TM_BOOT_FAIL__=show;
+        window.addEventListener('error',function(e){
+          var t=e&&e.target;
+          if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK'))show('页面资源加载失败（网络不稳定）。');
+        },true);
+        setTimeout(function(){show('页面加载较慢，可能是网络不稳定。');},15000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

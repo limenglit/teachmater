@@ -19,6 +19,7 @@ installWeChatCompat();
 const rootElement = document.getElementById("root");
 
 if (rootElement) {
+  (window as unknown as { __TM_APP_MOUNTED__?: boolean }).__TM_APP_MOUNTED__ = true;
   createRoot(rootElement).render(
     <ReactRuntimeRecoveryBoundary>
       <App />
