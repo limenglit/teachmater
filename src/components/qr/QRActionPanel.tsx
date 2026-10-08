@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { qrRenderProps, normalizeQrSize } from '@/lib/qr-config';
+import { qrRenderProps, normalizeQrSize, toQrPayload } from '@/lib/qr-config';
 
 interface QRActionPanelProps {
   url: string;
@@ -76,7 +76,7 @@ function QRActionPanel({
       >
         {/* 离屏 canvas：用于生成 PNG 与下载 */}
         <div ref={canvasHostRef} className={pngUrl ? 'hidden' : undefined}>
-          <QRCodeCanvas value={url} {...qrRenderProps(size)} />
+          <QRCodeCanvas value={toQrPayload(url)} {...qrRenderProps(size)} />
         </div>
         {pngUrl ? (
           <img
