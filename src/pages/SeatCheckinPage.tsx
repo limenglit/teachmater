@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
@@ -16,13 +16,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles, ShieldCheck } from 'lucide-react';
-import ClassroomCheckinView from '@/components/checkin-views/ClassroomCheckinView';
-import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinView';
-import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
-import ConcertCheckinView from '@/components/checkin-views/ConcertCheckinView';
-import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabCheckinView';
-import ArtStudioCheckinView from '@/components/checkin-views/ArtStudioCheckinView';
-import SeatChartImageView from '@/components/checkin-views/SeatChartImageView';
+const ClassroomCheckinView = lazy(() => import('@/components/checkin-views/ClassroomCheckinView'));
+const RoundTableCheckinView = lazy(() => import('@/components/checkin-views/RoundTableCheckinView'));
+const ConferenceCheckinView = lazy(() => import('@/components/checkin-views/ConferenceCheckinView'));
+const ConcertCheckinView = lazy(() => import('@/components/checkin-views/ConcertCheckinView'));
+const ComputerLabCheckinView = lazy(() => import('@/components/checkin-views/ComputerLabCheckinView'));
+const ArtStudioCheckinView = lazy(() => import('@/components/checkin-views/ArtStudioCheckinView'));
+const SeatChartImageView = lazy(() => import('@/components/checkin-views/SeatChartImageView'));
 import FindFriendPanel from '@/components/checkin-views/FindFriendPanel';
 import { prepareMarkers, markerNamePool, describeMarker, findMarkerByName } from '@/lib/seat-chart-markers';
 
