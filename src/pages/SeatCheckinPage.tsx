@@ -4,7 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 
-import { supabase } from '@/integrations/supabase/client';
+import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
 import {
   findMissingRequiredField,
