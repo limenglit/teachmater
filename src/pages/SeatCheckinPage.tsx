@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 
-import { supabase } from '@/integrations/supabase/client';
+import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
 import {
   findMissingRequiredField,
@@ -16,13 +16,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles, ShieldCheck } from 'lucide-react';
-import ClassroomCheckinView from '@/components/checkin-views/ClassroomCheckinView';
-import RoundTableCheckinView from '@/components/checkin-views/RoundTableCheckinView';
-import ConferenceCheckinView from '@/components/checkin-views/ConferenceCheckinView';
-import ConcertCheckinView from '@/components/checkin-views/ConcertCheckinView';
-import ComputerLabCheckinView from '@/components/checkin-views/ComputerLabCheckinView';
-import ArtStudioCheckinView from '@/components/checkin-views/ArtStudioCheckinView';
-import SeatChartImageView from '@/components/checkin-views/SeatChartImageView';
+const ClassroomCheckinView = lazy(() => import('@/components/checkin-views/ClassroomCheckinView'));
+const RoundTableCheckinView = lazy(() => import('@/components/checkin-views/RoundTableCheckinView'));
+const ConferenceCheckinView = lazy(() => import('@/components/checkin-views/ConferenceCheckinView'));
+const ConcertCheckinView = lazy(() => import('@/components/checkin-views/ConcertCheckinView'));
+const ComputerLabCheckinView = lazy(() => import('@/components/checkin-views/ComputerLabCheckinView'));
+const ArtStudioCheckinView = lazy(() => import('@/components/checkin-views/ArtStudioCheckinView'));
+const SeatChartImageView = lazy(() => import('@/components/checkin-views/SeatChartImageView'));
 import FindFriendPanel from '@/components/checkin-views/FindFriendPanel';
 import { prepareMarkers, markerNamePool, describeMarker, findMarkerByName } from '@/lib/seat-chart-markers';
 
@@ -705,7 +705,7 @@ export default function SeatCheckinPage() {
           </div>
 
           {seatChartImageUrl ? (
-            <>
+            <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">座次图加载中…</div>}>
               <SeatChartImageView
                 imageUrl={seatChartImageUrl}
                 recenterSignal={recenterSignal}
@@ -723,7 +723,7 @@ export default function SeatCheckinPage() {
                   onSelect={setFriendName}
                 />
               )}
-            </>
+            </Suspense>
           ) : (
             <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
               签到已完成，请按现场安排入座。
@@ -783,6 +783,7 @@ export default function SeatCheckinPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+        <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">座位图加载中…</div>}>
         {sceneType === 'classroom' && (
           <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} neighborName={neighbor?.name} friendName={friendName ?? undefined} />
 
@@ -802,6 +803,7 @@ export default function SeatCheckinPage() {
         {sceneType === 'computerLab' && (
           <ComputerLabCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
+        </Suspense>
         {(session.scene_config as any)?.findFriendEnabled !== false && (
         <FindFriendPanel
           names={collectSeatNames(effectiveSeatData).concat(session.student_names)}

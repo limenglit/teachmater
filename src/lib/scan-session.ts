@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { studentSupabase as supabase } from '@/lib/student-supabase';
 
 /**
  * 学生扫码进入页面时，统一「会话 ID 解析 + 读取重试」。
