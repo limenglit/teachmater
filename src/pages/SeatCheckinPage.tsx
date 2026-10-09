@@ -723,7 +723,7 @@ export default function SeatCheckinPage() {
                   onSelect={setFriendName}
                 />
               )}
-            </>
+            </Suspense>
           ) : (
             <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
               签到已完成，请按现场安排入座。
