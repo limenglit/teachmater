@@ -39,7 +39,9 @@ export async function loadScanSession<T = any>(
       const timer = ctrl ? setTimeout(() => ctrl.abort(), 10000) : null;
       let q = (supabase.rpc as any)(rpcName, { p_session_id: sessionId });
       if (ctrl && typeof q.abortSignal === 'function') q = q.abortSignal(ctrl.signal);
-      const { data, error } = await q.finally(() => { if (timer) clearTimeout(timer); });
+      let res: any;
+      try { res = await q; } finally { if (timer) clearTimeout(timer); }
+      const { data, error } = res;
       if (!error) return data ? { kind: 'ok', data: data as T } : { kind: 'not_found' };
       // 非法 UUID 等参数错误属于「不存在」，无需重试
       if (error.code === '22P02') return { kind: 'not_found' };
