@@ -705,7 +705,7 @@ export default function SeatCheckinPage() {
           </div>
 
           {seatChartImageUrl ? (
-            <>
+            <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">座次图加载中…</div>}>
               <SeatChartImageView
                 imageUrl={seatChartImageUrl}
                 recenterSignal={recenterSignal}
@@ -783,6 +783,7 @@ export default function SeatCheckinPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+        <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">座位图加载中…</div>}>
         {sceneType === 'classroom' && (
           <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} neighborName={neighbor?.name} friendName={friendName ?? undefined} />
 
@@ -802,6 +803,7 @@ export default function SeatCheckinPage() {
         {sceneType === 'computerLab' && (
           <ComputerLabCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
         )}
+        </Suspense>
         {(session.scene_config as any)?.findFriendEnabled !== false && (
         <FindFriendPanel
           names={collectSeatNames(effectiveSeatData).concat(session.student_names)}
