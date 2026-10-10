@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
-import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
+import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
@@ -11,6 +11,7 @@ export default function CheckInPage() {
   const { sessionId: rawSessionId } = useParams<{ sessionId: string }>();
   const sessionId = normalizeSessionId(rawSessionId) || undefined;
   const [loadFailed, setLoadFailed] = useState(false);
+  const [diagText, setDiagText] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const { t } = useLanguage();
   const [name, setName] = useState('');
@@ -29,8 +30,10 @@ export default function CheckInPage() {
     setLoadFailed(false);
     loadScanSession('get_checkin_session_for_student', sessionId)
       .then((res) => {
+        if (res.diag) reportScanDiag('checkin', sessionId, res.kind === 'ok', res.diag);
         if (res.kind !== 'ok') {
           setLoadFailed(res.kind === 'network');
+          if (res.kind === 'network') setDiagText(formatScanDiag(res.diag));
           setSessionValid(false);
           return;
         }
@@ -115,7 +118,10 @@ export default function CheckInPage() {
         <div className="text-center space-y-4">
           <Clock className="w-12 h-12 text-muted-foreground mx-auto" />
           <h1 className="text-xl font-bold text-foreground">{t('checkinPage.expired')}</h1>
-          <p className="text-sm text-muted-foreground">{loadFailed ? '网络不稳定，签到页加载失败' : t('checkinPage.expiredDesc')}</p>
+          <p className="text-sm text-muted-foreground">{loadFailed ? '签到页加载失败' : t('checkinPage.expiredDesc')}</p>
+          {loadFailed && diagText ? (
+            <p className="max-w-xs mx-auto break-all text-[11px] leading-4 text-muted-foreground/80 select-all">诊断：{diagText}</p>
+          ) : null}
           {status !== 'expired' ? (
             <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>重新加载</Button>
           ) : null}
