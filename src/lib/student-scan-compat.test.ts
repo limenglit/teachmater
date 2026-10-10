@@ -30,7 +30,7 @@ const files = [
 describe('student scan pages stay compatible with older iPhones', () => {
   for (const f of files) {
     it(`${f} has no unsupported syntax/API`, () => {
-      const src = readFileSync(join(root, f), 'utf8').replace(/\/\/.*$/gm, '');
+      const src = readFileSync(join(root, f), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
       for (const [re, label] of FORBIDDEN) expect(re.test(src), `${f}: ${label}`).toBe(false);
     });
   }
