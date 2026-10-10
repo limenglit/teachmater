@@ -101,9 +101,9 @@
         window.__TM_BOOT_FAIL__=show;
         window.addEventListener('error',function(e){
           var t=e&&e.target;
-          if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK'))show('页面资源加载失败（网络不稳定）。');
+          if(t&&t.tagName==='SCRIPT'&&t.type==='module')show('页面资源加载失败（网络不稳定）。');
         },true);
-        setTimeout(function(){show('页面加载较慢，可能是网络不稳定。');},15000);
+        setTimeout(function(){show('页面加载较慢，可能是网络不稳定。');},45000);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>

@@ -80,7 +80,7 @@ export function formatScanDiag(d: ScanDiag): string {
 export async function loadScanSession<T = any>(
   rpcName: string,
   sessionId: string | null,
-  attempts = 6,
+  attempts = 4,
 ): Promise<ScanLoadResult<T>> {
   const dev = deviceInfo();
   const start = now();

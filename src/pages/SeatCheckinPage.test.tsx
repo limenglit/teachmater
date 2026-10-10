@@ -7,7 +7,7 @@ const rpcMock = vi.fn();
 const toastMock = vi.fn();
 
 vi.mock('react-router-dom', () => ({
-  useParams: () => ({ sessionId: 'session-1' }),
+  useParams: () => ({ sessionId: '11111111-1111-4111-8111-111111111111' }),
 }));
 
 vi.mock('@/contexts/LanguageContext', () => ({
@@ -24,6 +24,13 @@ vi.mock('@/integrations/supabase/client', () => ({
     from: (...args: any[]) => fromMock(...args),
   },
 }));
+vi.mock('@/lib/student-supabase', () => ({
+  studentSupabase: {
+    rpc: (...args: any[]) => rpcMock(...args),
+    from: (...args: any[]) => fromMock(...args),
+  },
+}));
+
 
 vi.mock('@/components/checkin-views/ClassroomCheckinView', () => ({
   default: ({ studentName }: { studentName: string }) => <div>座位视图-{studentName}</div>,
@@ -71,7 +78,7 @@ const setupSeatCheckinRpc = ({
     if (fn === 'get_seat_checkin_session_for_student') {
       return Promise.resolve({
         data: {
-          id: 'session-1',
+          id: '11111111-1111-4111-8111-111111111111',
           seat_data: [['张三', '李四']],
           student_names: studentNames,
           scene_config: {},
@@ -113,7 +120,7 @@ describe('SeatCheckinPage', () => {
   });
 
   it('restores the seat directly and shows already checked-in reminder on second scan', async () => {
-    localStorage.setItem('teachmate-seat-checkin-names', JSON.stringify({ 'session-1': '张三' }));
+    localStorage.setItem('teachmate-seat-checkin-names', JSON.stringify({ '11111111-1111-4111-8111-111111111111': '张三' }));
     setupSeatCheckinRpc({ status: 'active', existingNames: ['张三'] });
 
     fromMock.mockImplementation((table: string) => {
@@ -204,7 +211,7 @@ describe('SeatCheckinPage', () => {
       title: '您没提前注册，已为您分配临时座位',
     }));
     expect(rpcMock).toHaveBeenCalledWith('submit_seat_checkin_record', expect.objectContaining({
-      p_session_id: 'session-1',
+      p_session_id: '11111111-1111-4111-8111-111111111111',
       p_student_name: '张三',
     }));
   });
