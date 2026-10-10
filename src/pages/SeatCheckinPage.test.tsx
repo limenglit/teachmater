@@ -24,6 +24,13 @@ vi.mock('@/integrations/supabase/client', () => ({
     from: (...args: any[]) => fromMock(...args),
   },
 }));
+vi.mock('@/lib/student-supabase', () => ({
+  studentSupabase: {
+    rpc: (...args: any[]) => rpcMock(...args),
+    from: (...args: any[]) => fromMock(...args),
+  },
+}));
+
 
 vi.mock('@/components/checkin-views/ClassroomCheckinView', () => ({
   default: ({ studentName }: { studentName: string }) => <div>座位视图-{studentName}</div>,
