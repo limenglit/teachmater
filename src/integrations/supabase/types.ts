@@ -1091,6 +1091,51 @@ export type Database = {
           },
         ]
       }
+      scan_diagnostics: {
+        Row: {
+          attempts: number
+          created_at: string
+          elapsed_ms: number
+          error: string
+          id: string
+          ios_version: string
+          ok: boolean
+          page: string
+          session_id: string | null
+          stage: string
+          ua: string
+          wechat_version: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          elapsed_ms?: number
+          error?: string
+          id?: string
+          ios_version?: string
+          ok?: boolean
+          page?: string
+          session_id?: string | null
+          stage?: string
+          ua?: string
+          wechat_version?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          elapsed_ms?: number
+          error?: string
+          id?: string
+          ios_version?: string
+          ok?: boolean
+          page?: string
+          session_id?: string | null
+          stage?: string
+          ua?: string
+          wechat_version?: string
+        }
+        Relationships: []
+      }
       scoring_rules: {
         Row: {
           created_at: string
@@ -2338,6 +2383,21 @@ export type Database = {
         Returns: boolean
       }
       is_approved_user: { Args: { _user_id: string }; Returns: boolean }
+      log_scan_diagnostic: {
+        Args: {
+          p_attempts: number
+          p_elapsed_ms: number
+          p_error: string
+          p_ios_version: string
+          p_ok: boolean
+          p_page: string
+          p_session_id: string
+          p_stage: string
+          p_ua: string
+          p_wechat_version: string
+        }
+        Returns: undefined
+      }
       manage_board_card: {
         Args: {
           p_action: string

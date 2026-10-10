@@ -8,10 +8,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { FeatureConfigProvider } from "@/contexts/FeatureConfigContext";
 import { lazyRetry } from "@/lib/lazy-retry";
-import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { StudentDropHintOverlay } from "@/lib/student-drop-hint";
 
+const Index = lazyRetry(() => import("./pages/Index"));
 const DiscussPage = lazyRetry(() => import("./pages/DiscussPage"));
 const CheckInPage = lazyRetry(() => import("./pages/CheckInPage"));
 const AuthPage = lazyRetry(() => import("./pages/AuthPage"));
@@ -49,7 +49,7 @@ const App = () => (
             <StudentDropHintOverlay />
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Suspense fallback={<Loading />}><Index /></Suspense>} />
                 <Route path="/auth" element={<Suspense fallback={<Loading />}><AuthPage /></Suspense>} />
                 <Route path="/reset-password" element={<Suspense fallback={<Loading />}><ResetPassword /></Suspense>} />
                 <Route path="/admin" element={<Suspense fallback={<Loading />}><AdminPage /></Suspense>} />

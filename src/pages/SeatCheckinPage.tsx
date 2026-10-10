@@ -5,7 +5,7 @@ import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode 
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 
 import { studentSupabase as supabase } from '@/lib/student-supabase';
-import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
+import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
 import {
   findMissingRequiredField,
   normalizeCustomFields,
@@ -287,6 +287,7 @@ export default function SeatCheckinPage() {
   const { sessionId: rawSessionId } = useParams<{ sessionId: string }>();
   const sessionId = normalizeSessionId(rawSessionId) || undefined;
   const [loadFailed, setLoadFailed] = useState(false);
+  const [diagText, setDiagText] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const { t } = useLanguage();
   const [session, setSession] = useState<{
@@ -413,8 +414,9 @@ export default function SeatCheckinPage() {
     setLoadFailed(false);
     loadScanSession('get_seat_checkin_session_for_student', sessionId)
       .then(async (res) => {
+        if (res.diag) reportScanDiag('seat-checkin', sessionId, res.kind === 'ok', res.diag);
         if (res.kind !== 'ok') {
-          if (res.kind === 'network') setLoadFailed(true);
+          if (res.kind === 'network') { setLoadFailed(true); setDiagText(formatScanDiag(res.diag)); }
           else toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
           setLoading(false);
           return;
@@ -547,8 +549,11 @@ export default function SeatCheckinPage() {
   if (!session) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 min-h-[100dvh] px-4 text-center text-muted-foreground">
-        <p>{loadFailed ? '网络不稳定，签到页加载失败' : t('seatCheckin.notFound')}</p>
+        <p>{loadFailed ? '签到页加载失败' : t('seatCheckin.notFound')}</p>
         <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>重新加载</Button>
+        {loadFailed && diagText ? (
+          <p className="max-w-xs break-all text-[11px] leading-4 text-muted-foreground/80 select-all">诊断：{diagText}</p>
+        ) : null}
       </div>
     );
   }

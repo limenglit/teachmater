@@ -1,3 +1,4 @@
+import { isStudentScanRoute } from '@/lib/student-route';
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
@@ -57,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // 学生扫码签到页不需要登录：跳过登录检查，避免与签到请求争抢、拖慢旧款 iPhone。
+    if (isStudentScanRoute()) { setLoading(false); return; }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
