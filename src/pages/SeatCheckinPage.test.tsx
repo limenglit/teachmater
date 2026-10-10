@@ -7,7 +7,7 @@ const rpcMock = vi.fn();
 const toastMock = vi.fn();
 
 vi.mock('react-router-dom', () => ({
-  useParams: () => ({ sessionId: 'session-1' }),
+  useParams: () => ({ sessionId: '11111111-1111-4111-8111-111111111111' }),
 }));
 
 vi.mock('@/contexts/LanguageContext', () => ({
