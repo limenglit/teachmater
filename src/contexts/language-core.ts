@@ -20,3 +20,7 @@ const keyFallback: LanguageContextValue = { lang: 'zh', setLang: () => {}, t: (k
 export function useLanguage(): LanguageContextValue {
   return useContext(LanguageCoreContext) || keyFallback;
 }
+
+export function tFormat(template: string, ...args: (string | number)[]): string {
+  return args.reduce<string>((str, arg, i) => str.replace(`{${i}}`, String(arg)), template);
+}
