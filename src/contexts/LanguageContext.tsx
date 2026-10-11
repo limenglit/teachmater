@@ -17,7 +17,7 @@ export const LANGUAGES: LangOption[] = [
   { code: 'es', label: 'Español', flag: '🇪🇸' },
 ];
 
-const translations: Record<LangCode, Record<string, string>> = {
+export const __translations: Record<LangCode, Record<string, string>> = {
   zh: {
     // App header
     'app.title': '教创搭子',
@@ -14852,9 +14852,9 @@ interface LanguageContextValue {
 
 function resolveTranslation(lang: LangCode, key: string): string {
   return (
-    translations[lang]?.[key] ??
-    translations.en?.[key] ??
-    translations.zh?.[key] ??
+    __translations[lang]?.[key] ??
+    __translations.en?.[key] ??
+    __translations.zh?.[key] ??
     key
   );
 }
