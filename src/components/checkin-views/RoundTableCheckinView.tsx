@@ -4,7 +4,7 @@ import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
-import { useLanguage, tFormat } from '@/contexts/LanguageContext';
+import { useLanguage, tFormat } from '@/contexts/language-core';
 import { getTableGeometry, readTableShapeConfig, REFERENCE_ROUND_ORBIT } from '@/lib/table-shape';
 
 interface Props {

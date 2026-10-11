@@ -3,7 +3,7 @@ import { Navigation } from 'lucide-react';
 import { useAutoCenterMySeat } from './useAutoCenterMySeat';
 import { usePinchZoom } from './usePinchZoom';
 import ZoomIndicator from './ZoomIndicator';
-import { useLanguage, tFormat } from '@/contexts/LanguageContext';
+import { useLanguage, tFormat } from '@/contexts/language-core';
 import { classroomDoorOnRight, classroomSeatNumber, formatClassroomSeatLabel, normalizeSeatLabelMode, openColumnNumber, openRowNumber } from '@/lib/seat-number';
 
 interface Props {
