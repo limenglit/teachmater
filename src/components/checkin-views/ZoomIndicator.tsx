@@ -1,5 +1,5 @@
 import { ZoomIn, RotateCcw } from 'lucide-react';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/language-core';
 
 interface Props {
   scale: number;

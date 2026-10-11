@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { useContext, useState, useCallback, type ReactNode } from 'react';
+import { LanguageCoreContext, type LangCode as CoreLangCode, type LanguageContextValue } from './language-core';
 
-export type LangCode = 'zh' | 'en' | 'ru' | 'ja' | 'ko' | 'es';
+export type LangCode = CoreLangCode;
 
 export interface LangOption {
   code: LangCode;
@@ -14844,11 +14845,6 @@ export function tFormat(template: string, ...args: (string | number)[]): string 
   return args.reduce<string>((str, arg, i) => str.replace(`{${i}}`, String(arg)), template);
 }
 
-interface LanguageContextValue {
-  lang: LangCode;
-  setLang: (lang: LangCode) => void;
-  t: (key: string) => string;
-}
 
 function resolveTranslation(lang: LangCode, key: string): string {
   return (
@@ -14865,7 +14861,6 @@ const fallbackLanguageContext: LanguageContextValue = {
   t: (key: string) => resolveTranslation('zh', key),
 };
 
-const LanguageContext = createContext<LanguageContextValue>(fallbackLanguageContext);
 
 function isLangCode(value: string | null): value is LangCode {
   return !!value && LANGUAGES.some((language) => language.code === value);
@@ -14897,13 +14892,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, [lang]);
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t }}>
+    <LanguageCoreContext.Provider value={{ lang, setLang, t }}>
       {children}
-    </LanguageContext.Provider>
+    </LanguageCoreContext.Provider>
   );
 }
 
 export function useLanguage() {
-  return useContext(LanguageContext);
+  return useContext(LanguageCoreContext) || fallbackLanguageContext;
 }
 
