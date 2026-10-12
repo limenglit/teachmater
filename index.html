@@ -78,6 +78,10 @@
         <div class="app-boot__title">教创搭子 · TeacherMate</div>
       </div>
     </div>
+    <script>
+      // 扫码签到页：首帧立刻显示系统字体的签到骨架，不等任何脚本。
+      (function(){try{var p=location.pathname.toLowerCase();if(p.indexOf('/checkin/')===0||p.indexOf('/seat-checkin/')===0){var r=document.getElementById('root');if(r)r.innerHTML='<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;font-family:-apple-system,BlinkMacSystemFont,\'PingFang SC\',\'Microsoft YaHei\',sans-serif"><div style="font-size:40px">📋</div><div style="font-size:18px;font-weight:600">签到 · Check-in</div><div style="width:100%;max-width:320px;height:48px;border-radius:10px;border:2px solid rgba(100,116,139,.25)"></div><div style="width:100%;max-width:320px;height:48px;border-radius:10px;background:rgba(37,99,235,.35)"></div><div style="font-size:13px;opacity:.6">正在连接签到… Loading</div></div>';}}catch(e){}})();
+    </script>
     <script nomodule>
       document.getElementById('root').innerHTML='<div style="padding:32px 20px;text-align:center;font-size:15px;line-height:1.7">当前浏览器版本过旧，无法打开页面。<br>请升级系统/微信，或点击右上角「…」选择「在浏览器打开」。</div>';
     </script>
