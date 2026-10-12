@@ -1737,7 +1737,7 @@ export default function SeatCheckinDialog({
                 <div className="flex items-center justify-between mb-2 flex-wrap gap-y-1">
                   <p className="text-sm font-medium min-w-0 break-words">
                     {t("seatCheckinDialog.currentCheckedIn")}{" "}
-                    <span className="text-primary">{checkedInNames.length + guestSeatAssignments.length}</span>{" "}
+                    <span className="text-primary">{checkedInNames.length}</span>{" "}
                     {t("seatCheckinDialog.people")}
                   </p>
                   <p className="text-xs text-muted-foreground whitespace-nowrap">
