@@ -12,9 +12,7 @@ import {
   splitFieldValues,
   type CheckinCustomField,
 } from '@/lib/seat-checkin-fields';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from '@/hooks/use-toast';
+import { Button, Input, toast } from '@/components/student-ui';
 import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles, ShieldCheck } from 'lucide-react';
 const ClassroomCheckinView = lazy(() => import('@/components/checkin-views/ClassroomCheckinView'));
 const RoundTableCheckinView = lazy(() => import('@/components/checkin-views/RoundTableCheckinView'));

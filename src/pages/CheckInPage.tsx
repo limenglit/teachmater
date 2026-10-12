@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/language-core';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Button, Input } from '@/components/student-ui';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 export default function CheckInPage() {
