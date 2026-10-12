@@ -14,7 +14,7 @@ vi.mock('@/contexts/LanguageContext', () => ({
   useLanguage: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock('@/hooks/use-toast', () => ({
+vi.mock('@/components/student-ui', async (orig) => ({ ...(await orig<any>()),
   toast: (...args: any[]) => toastMock(...args),
 }));
 
