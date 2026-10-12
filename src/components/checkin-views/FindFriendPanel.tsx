@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, UserSearch, X, MapPin } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/student-ui';
 
 interface Props {
   /** All names currently seated in the scene. */
