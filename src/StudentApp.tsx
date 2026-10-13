@@ -1,3 +1,4 @@
+import './student.css';
 import { Suspense, useState, useCallback, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MiniToaster } from '@/components/student-ui';
