@@ -1,4 +1,3 @@
-import './student.css';
 import { Suspense, useState, useCallback, useEffect } from 'react';
 import { MiniToaster } from '@/components/student-ui';
 import { LanguageCoreContext, type LangCode } from '@/contexts/language-core';

@@ -1,3 +1,4 @@
+import '@/student.css';
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
