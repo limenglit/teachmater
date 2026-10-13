@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';

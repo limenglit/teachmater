@@ -1,6 +1,5 @@
 import './student.css';
 import { Suspense, useState, useCallback, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MiniToaster } from '@/components/student-ui';
 import { LanguageCoreContext, type LangCode } from '@/contexts/language-core';
 import { detectStudentLang, cachedDict, loadDict, ZH_DICT } from '@/lib/student-i18n-loader';
@@ -30,15 +29,9 @@ export default function StudentApp() {
   return (
     <LanguageCoreContext.Provider value={{ lang, setLang, t }}>
       <MiniToaster />
-      <BrowserRouter>
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            <Route path="/checkin/:sessionId" element={<CheckInPage />} />
-            <Route path="/seat-checkin/:sessionId" element={<SeatCheckinPage />} />
-            <Route path="*" element={<CheckInPage />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+      <Suspense fallback={<Loading />}>
+        {window.location.pathname.toLowerCase().indexOf('/seat-checkin/') === 0 ? <SeatCheckinPage /> : <CheckInPage />}
+      </Suspense>
     </LanguageCoreContext.Provider>
   );
 }
