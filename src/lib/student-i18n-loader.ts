@@ -13,6 +13,9 @@ export function detectStudentLang(): LangCode {
   try {
     const q = new URLSearchParams(window.location.search).get('lang') || localStorage.getItem('app-lang');
     if (q && SUPPORTED.indexOf(q as LangCode) >= 0) return q as LangCode;
+    // 微信内置浏览器把界面语言写在 UA 的 Language/xx_XX 里，比系统语言更准确。
+    const wx = /Language\/([a-zA-Z]{2})/.exec(navigator.userAgent || '');
+    if (wx && SUPPORTED.indexOf(wx[1].toLowerCase() as LangCode) >= 0) return wx[1].toLowerCase() as LangCode;
     const nav = ((navigator.languages && navigator.languages[0]) || navigator.language || 'zh').toLowerCase().slice(0, 2);
     if (SUPPORTED.indexOf(nav as LangCode) >= 0) return nav as LangCode;
   } catch { /* ignore */ }
