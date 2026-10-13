@@ -21,8 +21,6 @@
     <!-- Preload the LCP image (header logo) — WebP for modern browsers; PNG fallback handled by <picture> at runtime -->
     <link rel="preload" as="image" href="/logo.webp" type="image/webp" fetchpriority="high" />
 
-    <!-- Preload the app entry so the browser can start fetching JS in parallel with HTML parsing -->
-    <link rel="modulepreload" href="/src/main.tsx" />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://teachermate.org.cn/" />
