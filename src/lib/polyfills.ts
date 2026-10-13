@@ -3,9 +3,6 @@
 
 const g: any = typeof globalThis !== 'undefined' ? globalThis : window;
 
-// 告诉首页看门狗：启动脚本已经开始运行（不是旧缓存或下载失败）。
-try { g.__TM_ENTRY_RAN__ = true; } catch { /* ignore */ }
-
 // crypto.randomUUID: Safari 15.4+, Chrome 92+. Also missing on non-secure contexts.
 try {
   const c: any = g.crypto || (g.crypto = {});

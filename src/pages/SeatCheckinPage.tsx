@@ -1,6 +1,5 @@
-import '@/student-seat.css';
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useParams } from '@/lib/scan-params';
+import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/language-core';
 import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';

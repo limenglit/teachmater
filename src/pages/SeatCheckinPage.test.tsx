@@ -6,7 +6,7 @@ const fromMock = vi.fn();
 const rpcMock = vi.fn();
 const toastMock = vi.fn();
 
-vi.mock('@/lib/scan-params', () => ({
+vi.mock('react-router-dom', () => ({
   useParams: () => ({ sessionId: '11111111-1111-4111-8111-111111111111' }),
 }));
 
