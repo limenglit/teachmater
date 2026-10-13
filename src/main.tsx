@@ -30,6 +30,7 @@ function boot(attempt: number) {
     ({ default: Root }) => {
       if (!rootElement) return;
       (window as unknown as { __TM_APP_MOUNTED__?: boolean }).__TM_APP_MOUNTED__ = true;
+      try { sessionStorage.removeItem('tm-auto-heal'); } catch { /* ignore */ }
       createRoot(rootElement).render(
         <ReactRuntimeRecoveryBoundary>
           <Root />
