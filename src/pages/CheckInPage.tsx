@@ -5,7 +5,16 @@ import { useLanguage } from '@/contexts/language-core';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
 import { Button, Input } from '@/components/student-ui';
-import { CheckCircle2, XCircle, Clock } from 'lucide-react';
+
+// 极简内联图标：不加载图标库，学生手机少下载。
+const Ico = ({ d, className }: { d: string; className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="10" /><path d={d} />
+  </svg>
+);
+const Clock = (p: { className?: string }) => <Ico d="M12 6v6l4 2" {...p} />;
+const CheckCircle2 = (p: { className?: string }) => <Ico d="m9 12 2 2 4-4" {...p} />;
+const XCircle = (p: { className?: string }) => <Ico d="m15 9-6 6M9 9l6 6" {...p} />;
 
 export default function CheckInPage() {
   const { sessionId: rawSessionId } = useParams<{ sessionId: string }>();
