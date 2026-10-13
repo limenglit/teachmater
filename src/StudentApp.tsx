@@ -1,43 +1,40 @@
 import { Suspense, useState, useCallback, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MiniToaster } from '@/components/student-ui';
 import { LanguageCoreContext, type LangCode } from '@/contexts/language-core';
-import { detectStudentLang, cachedDict, loadDict, ZH_DICT } from '@/lib/student-i18n-loader';
+import { detectStudentLang, cachedDict, loadDict, type DictGroup } from '@/lib/student-i18n-loader';
 import { lazyRetry } from '@/lib/lazy-retry';
 
 /**
- * 学生扫码签到专用的精简应用：不加载教师端、登录、全站设置、大词典和弹窗组件库；
- * 按手机界面语言只下载一种小词典，弱网和旧手机也能快速打开。
+ * 学生扫码签到专用的精简应用：不加载教师端、路由库、登录、全站设置、大词典和弹窗组件库；
+ * 每个页面自带极小样式表，按手机界面语言只下载该页面的一种小词典。
  */
-const CheckInPage = lazyRetry(() => import('./pages/CheckInPage'));
-const SeatCheckinPage = lazyRetry(() => import('./pages/SeatCheckinPage'));
+const isSeat = window.location.pathname.toLowerCase().indexOf('/seat-checkin/') === 0;
+const GROUP: DictGroup = isSeat ? 'seat' : 'checkin';
+const Page = isSeat
+  ? lazyRetry(() => import('./pages/SeatCheckinPage'))
+  : lazyRetry(() => import('./pages/CheckInPage'));
 
 const Loading = () => (
-  <div className="flex items-center justify-center min-h-[100dvh] text-muted-foreground">加载中…</div>
+  <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6 }}>加载中… Loading</div>
 );
 
 export default function StudentApp() {
   const [lang, setLangState] = useState<LangCode>(detectStudentLang);
-  const [dict, setDict] = useState<Record<string, string>>(() => cachedDict(lang) || ZH_DICT);
+  const [dict, setDict] = useState<Record<string, string> | null>(() => cachedDict(GROUP, lang));
   useEffect(() => {
     let alive = true;
-    loadDict(lang).then((d) => { if (alive) setDict(d); }, () => {});
+    loadDict(GROUP, lang).then((d) => { if (alive) setDict(d); }, () => { if (alive) setDict((x) => x || {}); });
     return () => { alive = false; };
   }, [lang]);
   const setLang = useCallback((c: LangCode) => setLangState(c), []);
-  const t = useCallback((k: string) => dict[k] ?? ZH_DICT[k] ?? k, [dict]);
+  const t = useCallback((k: string) => (dict && dict[k]) ?? k, [dict]);
+  if (!dict) return <Loading />;
   return (
     <LanguageCoreContext.Provider value={{ lang, setLang, t }}>
       <MiniToaster />
-      <BrowserRouter>
-        <Suspense fallback={<Loading />}>
-          <Routes>
-            <Route path="/checkin/:sessionId" element={<CheckInPage />} />
-            <Route path="/seat-checkin/:sessionId" element={<SeatCheckinPage />} />
-            <Route path="*" element={<CheckInPage />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
+      <Suspense fallback={<Loading />}>
+        <Page />
+      </Suspense>
     </LanguageCoreContext.Provider>
   );
 }
