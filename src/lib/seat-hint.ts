@@ -1,5 +1,12 @@
 import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 
+export const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+
+export const isSameStudentName = (left: unknown, right: string) => {
+  if (typeof left !== 'string') return false;
+  return normalizeStudentName(left) === normalizeStudentName(right);
+};
+
 export const buildSeatHint = (
   sceneType: string,
   seatData: unknown,
