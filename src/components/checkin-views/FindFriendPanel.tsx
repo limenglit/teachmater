@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, UserSearch, X, MapPin } from 'lucide-react';
+import { Search, UserSearch, X, MapPin } from '@/components/student-icons';
 import { Input } from '@/components/student-ui';
 
 interface Props {

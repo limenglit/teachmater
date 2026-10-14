@@ -1,3 +1,4 @@
+import '@/student-seat-result.css';
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useLanguage } from '@/contexts/language-core';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
