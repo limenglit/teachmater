@@ -159,7 +159,7 @@ describe('SeatCheckinPage', () => {
     render(<SeatCheckinPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('⚠️ seatCheckin.endedNotice')).toBeInTheDocument();
+      expect(screen.getByText(/seatCheckin\.endedNotice/)).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByPlaceholderText('seatCheckin.namePlaceholder'), { target: { value: '张三' } });
@@ -181,7 +181,7 @@ describe('SeatCheckinPage', () => {
     render(<SeatCheckinPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('签到已结束，仅已签到同学可查看座位。')).toBeInTheDocument();
+      expect(screen.getByText(/seatCheckin\.endedNotice/)).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByPlaceholderText('seatCheckin.namePlaceholder'), { target: { value: '李四' } });
@@ -189,7 +189,7 @@ describe('SeatCheckinPage', () => {
 
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({
-        title: '签到已结束，无法新增签到',
+        title: 'seatCheckin.endedCannotAdd',
         variant: 'destructive',
       }));
     });
