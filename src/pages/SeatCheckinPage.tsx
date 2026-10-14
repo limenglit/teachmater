@@ -5,12 +5,8 @@ import { useLanguage } from '@/contexts/language-core';
 import { normalizeStudentName } from '@/lib/student-name';
 
 import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
-import {
-  findMissingRequiredField,
-  normalizeCustomFields,
-  splitFieldValues,
-  type CheckinCustomField,
-} from '@/lib/seat-checkin-fields';
+import { findMissingRequiredField, normalizeCustomFields, splitFieldValues } from '@/lib/seat-checkin-fields-core';
+import type { CheckinCustomField } from '@/lib/seat-checkin-fields';
 import { Button, Input, toast } from '@/components/student-ui';
 import { MapPin, ScanLine, User2, ShieldCheck } from '@/components/student-icons';
 const SeatCheckinResult = lazy(() => import('@/components/checkin-views/SeatCheckinResult'));

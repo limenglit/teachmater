@@ -1,6 +1,7 @@
 import '@/student-seat-result.css';
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useLanguage } from '@/contexts/language-core';
+import { useLanguage, LanguageCoreContext } from '@/contexts/language-core';
+import { cachedDict, loadDict } from '@/lib/student-i18n-loader';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { buildSeatHint } from '@/lib/seat-hint';
@@ -60,7 +61,7 @@ export interface SeatCheckinResultProps {
   isGuestAssigned: boolean;
 }
 
-export default function SeatCheckinResult({ sessionId, session, name, displaySeatData, assignedSeatHint, alreadyCheckedIn, isGuestAssigned }: SeatCheckinResultProps) {
+function SeatCheckinResultView({ sessionId, session, name, displaySeatData, assignedSeatHint, alreadyCheckedIn, isGuestAssigned }: SeatCheckinResultProps) {
   const { t } = useLanguage();
   const checkedIn = true;
   const [recenterSignal, setRecenterSignal] = useState(0);
@@ -241,5 +242,23 @@ export default function SeatCheckinResult({ sessionId, session, name, displaySea
       </div>
       <TeachMateEntryBar />
     </div>
+  );
+}
+
+/** 先补齐座位展示用的小词典（与签到表单词典合并），再显示座位图。 */
+export default function SeatCheckinResult(props: SeatCheckinResultProps) {
+  const core = useLanguage();
+  const [extra, setExtra] = useState<Record<string, string> | null>(() => cachedDict('seatResult', core.lang));
+  useEffect(() => {
+    let alive = true;
+    loadDict('seatResult', core.lang).then((d) => { if (alive) setExtra(d); }, () => { if (alive) setExtra((x) => x || {}); });
+    return () => { alive = false; };
+  }, [core.lang]);
+  const t = useCallback((k: string) => (extra && extra[k]) ?? core.t(k), [extra, core]);
+  if (!extra) return <div className="flex items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{core.t('seatCheckin.loading')}</div>;
+  return (
+    <LanguageCoreContext.Provider value={{ ...core, t }}>
+      <SeatCheckinResultView {...props} />
+    </LanguageCoreContext.Provider>
   );
 }
