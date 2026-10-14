@@ -75,10 +75,12 @@ export default function SeatCheckinPage() {
     setLoadFailed(false);
     loadScanSession('get_seat_checkin_session_for_student', sessionId)
       .then(async (res) => {
-        const diagMod = res.diag ? await import('@/lib/scan-diag') : null;
-        if (diagMod && res.diag) diagMod.reportScanDiag('seat-checkin', sessionId, res.kind === 'ok', res.diag);
+        // 诊断上报放到页面显示之后再下载，不拖慢首屏
+        const diag = res.diag;
+        const diagMod = () => import('@/lib/scan-diag');
+        if (diag) void diagMod().then((m) => m.reportScanDiag('seat-checkin', sessionId, res.kind === 'ok', diag), () => undefined);
         if (res.kind !== 'ok') {
-          if (res.kind === 'network') { setLoadFailed(true); setDiagText(diagMod ? diagMod.formatScanDiag(res.diag) : ''); }
+          if (res.kind === 'network') { setLoadFailed(true); void diagMod().then((m) => setDiagText(m.formatScanDiag(res.diag)), () => undefined); }
           else toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
           setLoading(false);
           return;
