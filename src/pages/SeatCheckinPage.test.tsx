@@ -14,6 +14,13 @@ vi.mock('@/contexts/LanguageContext', () => ({
   useLanguage: () => ({ t: (key: string) => key }),
 }));
 
+vi.mock('@/contexts/language-core', () => ({
+  useLanguage: () => ({ lang: 'zh', setLang: () => {}, t: (key: string) => key }),
+  LanguageCoreContext: { Provider: ({ children }: { children: React.ReactNode }) => children },
+  tFormat: (template: string, ...args: (string | number)[]) =>
+    args.reduce<string>((str, arg, i) => str.replace(`{${i}}`, String(arg)), template),
+}));
+
 vi.mock('@/components/student-ui', async (orig) => ({ ...(await orig<any>()),
   toast: (...args: any[]) => toastMock(...args),
 }));
@@ -99,6 +106,10 @@ const setupSeatCheckinRpc = ({
 
     if (fn === 'get_seat_checkin_guest_records') {
       return Promise.resolve({ data: [], error: null });
+    }
+
+    if (fn === 'get_seat_checkin_neighbor_status') {
+      return Promise.resolve({ data: null, error: null });
     }
 
     if (fn === 'submit_seat_checkin_record') {
