@@ -182,9 +182,6 @@ export default function SeatCheckinPage() {
   const [displaySeatData, setDisplaySeatData] = useState<unknown | null>(null);
   const [isGuestAssigned, setIsGuestAssigned] = useState(false);
   const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
-  const [recenterSignal, setRecenterSignal] = useState(0);
-  const [neighbor, setNeighbor] = useState<SeatNeighbor | null>(null);
-  const [friendName, setFriendName] = useState<string | null>(null);
 
 
 
