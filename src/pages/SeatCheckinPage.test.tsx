@@ -139,7 +139,7 @@ describe('SeatCheckinPage', () => {
       expect(screen.getByText('座位视图-张三')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('seatCheckin.checkInBadge')).toBeInTheDocument();
+    expect(screen.getByText('已签到')).toBeInTheDocument();
   });
 
   it('allows ended session student with existing record to view seat by entering name', async () => {
