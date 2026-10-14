@@ -276,7 +276,6 @@ export default function SeatCheckinPage() {
                 <SeatCheckinExtraFields fields={session.custom_fields} values={fieldValues} setValues={setFieldValues} otpEnabled={session.otp_enabled} otp={otpInput} setOtp={setOtpInput} onEnter={handleSubmit} />
               </Suspense>
             )}
-            )}
             <Button
               onClick={handleSubmit}
               disabled={

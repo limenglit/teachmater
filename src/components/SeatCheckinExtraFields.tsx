@@ -62,6 +62,7 @@ export default function SeatCheckinExtraFields({ fields, values, setValues, otpE
         该口令每隔数十秒自动更换，请以教室大屏当前显示的数字为准。
       </p>
     </div>
+    )}
     </>
   );
 }
