@@ -2,3 +2,25 @@
 
 @tailwind base;
 @tailwind utilities;
+
+/* 座位图用到、但签到表单用不到的颜色，随座位展示一起下载 */
+:root {
+  --card-foreground: 220 18% 18%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 18% 18%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 220 18% 18%;
+  --accent: 210 30% 92%;
+  --accent-foreground: 210 45% 40%;
+  --surface: 210 15% 98%;
+  --surface-foreground: 220 18% 18%;
+  --highlight: 210 45% 55%;
+  --highlight-soft: 210 40% 95%;
+  --success: 150 35% 50%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 80% 55%;
+  --warning-foreground: 0 0% 100%;
+  --shadow-soft: 0 2px 12px -2px hsl(210 20% 50% / 0.08);
+  --shadow-card: 0 1px 3px 0 hsl(210 20% 50% / 0.06), 0 1px 2px -1px hsl(210 20% 50% / 0.06);
+  --shadow-elevated: 0 4px 24px -4px hsl(210 20% 50% / 0.12);
+}
