@@ -14,6 +14,7 @@ vi.mock('@/contexts/LanguageContext', () => ({
   useLanguage: () => ({ t: (key: string) => key }),
 }));
 
+
 vi.mock('@/components/student-ui', async (orig) => ({ ...(await orig<any>()),
   toast: (...args: any[]) => toastMock(...args),
 }));
@@ -101,6 +102,10 @@ const setupSeatCheckinRpc = ({
       return Promise.resolve({ data: [], error: null });
     }
 
+    if (fn === 'get_seat_checkin_neighbor_status') {
+      return Promise.resolve({ data: null, error: null });
+    }
+
     if (fn === 'submit_seat_checkin_record') {
       const studentName = typeof args?.p_student_name === 'string' ? args.p_student_name.trim() : '';
       return Promise.resolve({
@@ -134,7 +139,7 @@ describe('SeatCheckinPage', () => {
       expect(screen.getByText('座位视图-张三')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('已经完成签到，以下为你的座位信息。')).toBeInTheDocument();
+    expect(screen.getByText('已签到')).toBeInTheDocument();
   });
 
   it('allows ended session student with existing record to view seat by entering name', async () => {
@@ -148,7 +153,7 @@ describe('SeatCheckinPage', () => {
     render(<SeatCheckinPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('签到已结束，仅已签到同学可查看座位。')).toBeInTheDocument();
+      expect(screen.getByText(/seatCheckin\.endedNotice/)).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByPlaceholderText('seatCheckin.namePlaceholder'), { target: { value: '张三' } });
@@ -170,7 +175,7 @@ describe('SeatCheckinPage', () => {
     render(<SeatCheckinPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('签到已结束，仅已签到同学可查看座位。')).toBeInTheDocument();
+      expect(screen.getByText(/seatCheckin\.endedNotice/)).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByPlaceholderText('seatCheckin.namePlaceholder'), { target: { value: '李四' } });
@@ -178,7 +183,7 @@ describe('SeatCheckinPage', () => {
 
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({
-        title: '签到已结束，无法新增签到',
+        title: 'seatCheckin.endedCannotAdd',
         variant: 'destructive',
       }));
     });
