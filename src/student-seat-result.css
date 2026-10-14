@@ -1,3 +1,4 @@
 @config "../tailwind.student-seat-result.config.cjs";
 
+@tailwind base;
 @tailwind utilities;

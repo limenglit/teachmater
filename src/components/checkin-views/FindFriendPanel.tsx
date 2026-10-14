@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, UserSearch, X, MapPin } from '@/components/student-icons';
+import { Search, UserSearch, X, MapPin } from '@/components/student-icons-extra';
 import { Input } from '@/components/student-ui';
 
 interface Props {

@@ -7,7 +7,7 @@ import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { buildSeatHint } from '@/lib/seat-hint';
 import { prepareMarkers, markerNamePool, describeMarker, findMarkerByName } from '@/lib/seat-chart-markers';
 import FindFriendPanel from './FindFriendPanel';
-import { CheckCircle2, Crosshair, Sparkles } from '@/components/student-icons';
+import { CheckCircle2, Crosshair, Sparkles } from '@/components/student-icons-extra';
 const ClassroomCheckinView = lazy(() => import('./ClassroomCheckinView'));
 const RoundTableCheckinView = lazy(() => import('./RoundTableCheckinView'));
 const ConferenceCheckinView = lazy(() => import('./ConferenceCheckinView'));
