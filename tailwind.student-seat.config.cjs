@@ -2,7 +2,7 @@
 const base = require("./tailwind.config.cjs");
 module.exports = {
   ...base,
-  content: ["./src/StudentApp.tsx", "./src/pages/SeatCheckinPage.tsx", "./src/components/student-ui.tsx", "./src/components/student-icons.tsx"],
+  content: ["./src/StudentApp.tsx", "./src/pages/SeatCheckinPage.tsx", "./src/components/student-ui.tsx", "./src/components/student-icons.tsx", "./src/components/SeatCheckinExtraFields.tsx"],
   plugins: [],
   corePlugins: { preflight: false },
   experimental: { optimizeUniversalDefaults: true },

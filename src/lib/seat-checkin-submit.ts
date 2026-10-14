@@ -1,5 +1,6 @@
 /** 座位签到提交与外来人员排座：点击签到时才下载，缩小首屏。 */
 import { studentSupabase as supabase } from '@/lib/student-supabase';
+export { splitFieldValues } from '@/lib/seat-checkin-fields-core';
 import { buildSeatHint, normalizeStudentName } from '@/lib/seat-hint';
 
 export const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: string) => {

@@ -5,12 +5,17 @@ import { useLanguage } from '@/contexts/language-core';
 import { normalizeStudentName } from '@/lib/student-name';
 
 import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
-import { findMissingRequiredField, normalizeCustomFields, splitFieldValues } from '@/lib/seat-checkin-fields-core';
 import type { CheckinCustomField } from '@/lib/seat-checkin-fields';
 import { Button, Input, toast } from '@/components/student-ui';
-import { MapPin, ScanLine, User2, ShieldCheck } from '@/components/student-icons';
+import { MapPin, ScanLine, User2 } from '@/components/student-icons';
 const SeatCheckinResult = lazy(() => import('@/components/checkin-views/SeatCheckinResult'));
 
+const SeatCheckinExtraFields = lazy(() => import('@/components/SeatCheckinExtraFields'));
+const findMissingRequiredField = (fields: CheckinCustomField[], values: Record<string, string>) => fields.find(f => f.required && !(values[f.id] || '').trim()) || null;
+const hasCustomFields = (cfg: unknown) => {
+  const c = (cfg || {}) as Record<string, unknown>;
+  return (Array.isArray(c.customFields) && c.customFields.length > 0) || c.collectOrg === true || c.collectPhone === true;
+};
 const submitMod = () => import('@/lib/seat-checkin-submit');
 
 const SEAT_CHECKIN_NAME_STORAGE_KEY = 'teachmate-seat-checkin-names';
@@ -85,7 +90,8 @@ export default function SeatCheckinPage() {
           scene_type: (d.scene_type as string) || 'classroom',
           status: (d.status as string) || 'active',
           otp_enabled: d.otp_enabled === true,
-          custom_fields: normalizeCustomFields(d.scene_config),
+          // 只有老师设置了自定义填写项时，才下载解析工具
+          custom_fields: hasCustomFields(d.scene_config) ? (await import('@/lib/seat-checkin-fields-core')).normalizeCustomFields(d.scene_config) : [],
         };
         setSession(nextSession);
 
@@ -162,7 +168,7 @@ export default function SeatCheckinPage() {
         return;
       }
 
-      const submitted = splitFieldValues(session.custom_fields, fieldValues);
+      const submitted = (await submitMod()).splitFieldValues(session.custom_fields, fieldValues);
       await (await submitMod()).submitSeatCheckinRecord(sessionId, trimmedName, session.otp_enabled ? otpCode : undefined, {
         org: submitted.org || undefined,
         phone: submitted.phone || undefined,
@@ -265,51 +271,11 @@ export default function SeatCheckinPage() {
                 </div>
               )}
             </div>
-            {session.custom_fields.map(field => (
-              <div key={field.id} className="space-y-2">
-                <label className="block text-xs font-medium text-muted-foreground">
-                  {field.label}
-                  {field.required && <span className="text-destructive"> *</span>}
-                </label>
-                <Input
-                  value={fieldValues[field.id] || ''}
-                  onChange={e => {
-                    const raw = e.target.value;
-                    const v = field.type === 'tel'
-                      ? raw.replace(/[^\d+\-\s]/g, '').slice(0, 20)
-                      : field.type === 'number'
-                        ? raw.replace(/[^\d.]/g, '').slice(0, 20)
-                        : raw.slice(0, 100);
-                    setFieldValues(prev => ({ ...prev, [field.id]: v }));
-                  }}
-                  placeholder={`请填写${field.label}`}
-                  className={`text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary${field.type === 'text' ? '' : ' tabular-nums'}`}
-                  inputMode={field.type === 'tel' ? 'tel' : field.type === 'number' ? 'numeric' : 'text'}
-                  enterKeyHint="next"
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                />
-              </div>
-            ))}
-            {session.otp_enabled && (
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  大屏上的 6 位签到口令
-                </label>
-                <Input
-                  value={otpInput}
-                  onChange={e => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="6 位数字"
-                  className="text-center text-2xl tracking-[0.4em] h-14 rounded-xl border-2 focus-visible:border-primary tabular-nums"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  enterKeyHint="done"
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                />
-                <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-                  该口令每隔数十秒自动更换，请以教室大屏当前显示的数字为准。
-                </p>
-              </div>
+            {(session.custom_fields.length > 0 || session.otp_enabled) && (
+              <Suspense fallback={null}>
+                <SeatCheckinExtraFields fields={session.custom_fields} values={fieldValues} setValues={setFieldValues} otpEnabled={session.otp_enabled} otp={otpInput} setOtp={setOtpInput} onEnter={handleSubmit} />
+              </Suspense>
+            )}
             )}
             <Button
               onClick={handleSubmit}
