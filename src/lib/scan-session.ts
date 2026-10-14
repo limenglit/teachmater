@@ -13,7 +13,6 @@ export function normalizeSessionId(raw?: string | null): string | null {
   return m ? m[0].toLowerCase() : null;
 }
 
-export { reportScanDiag, formatScanDiag } from '@/lib/scan-diag';
 
 export interface ScanDiag {
   stage: string;      // timeout | fetch | server | parse | ok
