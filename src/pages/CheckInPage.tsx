@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
-import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
+import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
 import { Button, Input } from '@/components/student-ui';
 
 // 极简内联图标：不加载图标库，学生手机少下载。
@@ -39,10 +39,11 @@ export default function CheckInPage() {
     setLoadFailed(false);
     loadScanSession('get_checkin_session_for_student', sessionId)
       .then((res) => {
-        if (res.diag) reportScanDiag('checkin', sessionId, res.kind === 'ok', res.diag);
+        const diagMod = res.diag ? await import('@/lib/scan-diag') : null;
+        if (diagMod && res.diag) diagMod.reportScanDiag('checkin', sessionId, res.kind === 'ok', res.diag);
         if (res.kind !== 'ok') {
           setLoadFailed(res.kind === 'network');
-          if (res.kind === 'network') setDiagText(formatScanDiag(res.diag));
+          if (res.kind === 'network') setDiagText(diagMod ? diagMod.formatScanDiag(res.diag) : '');
           setSessionValid(false);
           return;
         }

@@ -4,7 +4,7 @@ import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
 import { normalizeStudentName } from '@/lib/student-name';
 
-import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
+import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
 import type { CheckinCustomField } from '@/lib/seat-checkin-fields';
 import { Button, Input, toast } from '@/components/student-ui';
 import { MapPin, ScanLine, User2 } from '@/components/student-icons';
@@ -75,9 +75,10 @@ export default function SeatCheckinPage() {
     setLoadFailed(false);
     loadScanSession('get_seat_checkin_session_for_student', sessionId)
       .then(async (res) => {
-        if (res.diag) reportScanDiag('seat-checkin', sessionId, res.kind === 'ok', res.diag);
+        const diagMod = res.diag ? await import('@/lib/scan-diag') : null;
+        if (diagMod && res.diag) diagMod.reportScanDiag('seat-checkin', sessionId, res.kind === 'ok', res.diag);
         if (res.kind !== 'ok') {
-          if (res.kind === 'network') { setLoadFailed(true); setDiagText(formatScanDiag(res.diag)); }
+          if (res.kind === 'network') { setLoadFailed(true); setDiagText(diagMod ? diagMod.formatScanDiag(res.diag) : ''); }
           else toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
           setLoading(false);
           return;

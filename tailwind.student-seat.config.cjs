@@ -4,6 +4,7 @@ module.exports = {
   ...base,
   content: ["./src/StudentApp.tsx", "./src/pages/SeatCheckinPage.tsx", "./src/components/student-ui.tsx", "./src/components/student-icons.tsx", "./src/components/SeatCheckinExtraFields.tsx"],
   plugins: [],
+  blocklist: ['filter', 'outline'],
   corePlugins: { preflight: false },
   experimental: { optimizeUniversalDefaults: true },
 };
