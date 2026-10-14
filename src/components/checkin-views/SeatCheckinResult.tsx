@@ -242,3 +242,4 @@ export default function SeatCheckinResult({ sessionId, session, name, displaySea
       <TeachMateEntryBar />
     </div>
   );
+}
