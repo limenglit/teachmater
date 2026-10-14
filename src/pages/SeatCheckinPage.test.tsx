@@ -145,7 +145,7 @@ describe('SeatCheckinPage', () => {
       expect(screen.getByText('座位视图-张三')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('已经完成签到，以下为你的座位信息。')).toBeInTheDocument();
+    expect(screen.getByText('seatCheckin.checkInBadge')).toBeInTheDocument();
   });
 
   it('allows ended session student with existing record to view seat by entering name', async () => {
@@ -159,7 +159,7 @@ describe('SeatCheckinPage', () => {
     render(<SeatCheckinPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('签到已结束，仅已签到同学可查看座位。')).toBeInTheDocument();
+      expect(screen.getByText('⚠️ seatCheckin.endedNotice')).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByPlaceholderText('seatCheckin.namePlaceholder'), { target: { value: '张三' } });
