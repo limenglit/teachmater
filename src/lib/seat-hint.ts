@@ -1,6 +1,7 @@
 import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
 
-export const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+import { normalizeStudentName } from '@/lib/student-name';
+export { normalizeStudentName };
 
 export const isSameStudentName = (left: unknown, right: string) => {
   if (typeof left !== 'string') return false;

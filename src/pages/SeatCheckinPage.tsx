@@ -2,7 +2,7 @@ import '@/student-seat.css';
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
-import { normalizeStudentName } from '@/lib/seat-hint';
+import { normalizeStudentName } from '@/lib/student-name';
 
 import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
 import {
@@ -33,12 +33,6 @@ const saveStoredSeatCheckinName = (sessionId: string, studentName: string) => {
   const next = getStoredSeatCheckinNames();
   next[sessionId] = studentName;
   localStorage.setItem(SEAT_CHECKIN_NAME_STORAGE_KEY, JSON.stringify(next));
-};
-
-
-const isSameStudentName = (left: unknown, right: string) => {
-  if (typeof left !== 'string') return false;
-  return normalizeStudentName(left) === normalizeStudentName(right);
 };
 
 
