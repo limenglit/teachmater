@@ -11,22 +11,15 @@
     --foreground: 220 18% 18%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 18% 18%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 18% 18%;
 
     --primary: 210 45% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 220 18% 18%;
 
     --muted: 210 15% 96%;
     --muted-foreground: 215 12% 55%;
 
-    --accent: 210 30% 92%;
-    --accent-foreground: 210 45% 40%;
 
     --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 100%;
@@ -37,68 +30,26 @@
 
     --radius: 0.625rem;
 
-    --surface: 210 15% 98%;
-    --surface-foreground: 220 18% 18%;
 
-    --highlight: 210 45% 55%;
-    --highlight-soft: 210 40% 95%;
 
-    --success: 150 35% 50%;
-    --success-foreground: 0 0% 100%;
 
-    --warning: 38 80% 55%;
-    --warning-foreground: 0 0% 100%;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 18% 18%;
-    --sidebar-primary: 210 45% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 30% 92%;
-    --sidebar-accent-foreground: 210 45% 40%;
-    --sidebar-border: 210 18% 92%;
-    --sidebar-ring: 210 45% 55%;
 
-    --shadow-soft: 0 2px 12px -2px hsl(210 20% 50% / 0.08);
-    --shadow-card: 0 1px 3px 0 hsl(210 20% 50% / 0.06), 0 1px 2px -1px hsl(210 20% 50% / 0.06);
-    --shadow-elevated: 0 4px 24px -4px hsl(210 20% 50% / 0.12);
   }
 
-  .dark {
-    --background: 222 20% 8%;
-    --foreground: 210 20% 92%;
-    --card: 222 18% 12%;
-    --card-foreground: 210 20% 92%;
-    --popover: 222 18% 12%;
-    --popover-foreground: 210 20% 92%;
-    --primary: 210 45% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 20% 16%;
-    --secondary-foreground: 210 20% 92%;
-    --muted: 217 18% 16%;
-    --muted-foreground: 215 15% 60%;
-    --accent: 217 20% 18%;
-    --accent-foreground: 210 40% 70%;
-    --destructive: 0 55% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 217 18% 18%;
-    --input: 217 18% 18%;
-    --ring: 210 45% 60%;
-    --surface: 222 18% 10%;
-    --surface-foreground: 210 20% 92%;
-    --sidebar-background: 222 18% 10%;
-    --sidebar-foreground: 210 20% 92%;
-    --sidebar-primary: 210 45% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 20% 18%;
-    --sidebar-accent-foreground: 210 40% 70%;
-    --sidebar-border: 217 18% 18%;
-    --sidebar-ring: 210 45% 60%;
-  }
 }
 
 @layer base {
+  *, ::before, ::after { box-sizing: border-box; border: 0 solid; }
+  html { line-height: 1.5; }
+  body, h1, h2, h3, p { margin: 0; }
+  h1, h2, h3 { font-size: inherit; font-weight: inherit; }
+  button, input { color: inherit; margin: 0; padding: 0; background: transparent; }
+  button { cursor: pointer; }
+  svg { display: block; vertical-align: middle; }
+  input::placeholder { opacity: 1; color: hsl(var(--muted-foreground)); }
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
@@ -128,12 +79,6 @@
     text-size-adjust: 100%;
   }
 
-  /* Smooth scroll with reduced-motion respect */
-  @media (prefers-reduced-motion: no-preference) {
-    html {
-      scroll-behavior: smooth;
-    }
-  }
 
   /* Fix Firefox button inner focus */
   button::-moz-focus-inner {

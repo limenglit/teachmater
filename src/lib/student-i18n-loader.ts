@@ -6,7 +6,7 @@ import type { LangCode } from '@/contexts/language-core';
  */
 const SUPPORTED: LangCode[] = ['zh', 'en', 'ru', 'ja', 'ko', 'es'];
 const CACHE = 'tm-lang-dict-v2';
-export type DictGroup = 'checkin' | 'seat';
+export type DictGroup = 'checkin' | 'seat' | 'seatResult';
 type Dict = Record<string, string>;
 
 export function detectStudentLang(): LangCode {
@@ -42,6 +42,12 @@ const loaders: Record<string, () => Promise<{ default: Dict }>> = {
   'seat-ja': () => import('./student-i18n/seat-ja'),
   'seat-ko': () => import('./student-i18n/seat-ko'),
   'seat-es': () => import('./student-i18n/seat-es'),
+  'seatResult-zh': () => import('./student-i18n/seatResult-zh'),
+  'seatResult-en': () => import('./student-i18n/seatResult-en'),
+  'seatResult-ru': () => import('./student-i18n/seatResult-ru'),
+  'seatResult-ja': () => import('./student-i18n/seatResult-ja'),
+  'seatResult-ko': () => import('./student-i18n/seatResult-ko'),
+  'seatResult-es': () => import('./student-i18n/seatResult-es'),
 };
 
 export async function loadDict(group: DictGroup, lang: LangCode): Promise<Dict> {

@@ -3,7 +3,9 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'fs';
 import { __translations } from '../src/contexts/LanguageContext';
 const groups: Record<string, string[]> = {
   checkin: ['src/pages/CheckInPage.tsx'],
-  seat: ['src/pages/SeatCheckinPage.tsx', ...readdirSync('src/components/checkin-views').map(f=>'src/components/checkin-views/'+f)],
+  seat: ['src/pages/SeatCheckinPage.tsx'],
+  // 签到成功后的座位展示词典，随座位图一起按需下载
+  seatResult: readdirSync('src/components/checkin-views').map(f=>'src/components/checkin-views/'+f),
 };
 const langs = ['zh','en','ru','ja','ko','es'] as const;
 mkdirSync('src/lib/student-i18n', { recursive: true });

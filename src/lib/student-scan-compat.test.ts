@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { isStudentScanRoute } from './student-route';
-import { deviceInfo, formatScanDiag } from './scan-session';
+import { deviceInfo } from './scan-session';
+import { formatScanDiag } from './scan-diag';
 
 // 学生扫码页相关源码不得使用旧 iOS（15–17）不支持、且打包工具不会自动转换的写法。
 const FORBIDDEN: [RegExp, string][] = [

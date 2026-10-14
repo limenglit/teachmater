@@ -35,6 +35,14 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: ['es2020', 'chrome80', 'firefox78', 'safari14', 'edge88'],
     cssTarget: ['chrome80', 'firefox78', 'safari14', 'edge88'],
+    rollupOptions: {
+      output: {
+        // 学生扫码页的公共小模块合成一个文件：少几次请求，压缩率也更高。
+        manualChunks(id: string) {
+          if (/src\/(StudentApp\.tsx|components\/student-ui\.tsx|contexts\/language-core\.ts|lib\/(student-i18n-loader|scan-session|student-supabase|scan-params|student-name)\.ts)$/.test(id)) return 'student-core';
+        },
+      },
+    },
   },
   optimizeDeps: {
     // Keep the cold-start crawl focused on the real app entry. Scanning every

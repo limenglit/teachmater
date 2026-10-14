@@ -2,28 +2,21 @@ import '@/student-seat.css';
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
-import { classroomDoorOnRight, formatClassroomSeatLabel, normalizeSeatLabelMode } from '@/lib/seat-number';
-import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
+import { normalizeStudentName } from '@/lib/student-name';
 
-import { studentSupabase as supabase } from '@/lib/student-supabase';
-import { normalizeSessionId, loadScanSession, reportScanDiag, formatScanDiag } from '@/lib/scan-session';
-import {
-  findMissingRequiredField,
-  normalizeCustomFields,
-  splitFieldValues,
-  type CheckinCustomField,
-} from '@/lib/seat-checkin-fields';
+import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
+import type { CheckinCustomField } from '@/lib/seat-checkin-fields';
 import { Button, Input, toast } from '@/components/student-ui';
-import { MapPin, CheckCircle2, Crosshair, ScanLine, User2, Sparkles, ShieldCheck } from 'lucide-react';
-const ClassroomCheckinView = lazy(() => import('@/components/checkin-views/ClassroomCheckinView'));
-const RoundTableCheckinView = lazy(() => import('@/components/checkin-views/RoundTableCheckinView'));
-const ConferenceCheckinView = lazy(() => import('@/components/checkin-views/ConferenceCheckinView'));
-const ConcertCheckinView = lazy(() => import('@/components/checkin-views/ConcertCheckinView'));
-const ComputerLabCheckinView = lazy(() => import('@/components/checkin-views/ComputerLabCheckinView'));
-const ArtStudioCheckinView = lazy(() => import('@/components/checkin-views/ArtStudioCheckinView'));
-const SeatChartImageView = lazy(() => import('@/components/checkin-views/SeatChartImageView'));
-import FindFriendPanel from '@/components/checkin-views/FindFriendPanel';
-import { prepareMarkers, markerNamePool, describeMarker, findMarkerByName } from '@/lib/seat-chart-markers';
+import { MapPin, ScanLine, User2 } from '@/components/student-icons';
+const SeatCheckinResult = lazy(() => import('@/components/checkin-views/SeatCheckinResult'));
+
+const SeatCheckinExtraFields = lazy(() => import('@/components/SeatCheckinExtraFields'));
+const findMissingRequiredField = (fields: CheckinCustomField[], values: Record<string, string>) => fields.find(f => f.required && !(values[f.id] || '').trim()) || null;
+const hasCustomFields = (cfg: unknown) => {
+  const c = (cfg || {}) as Record<string, unknown>;
+  return (Array.isArray(c.customFields) && c.customFields.length > 0) || c.collectOrg === true || c.collectPhone === true;
+};
+const submitMod = () => import('@/lib/seat-checkin-submit');
 
 const SEAT_CHECKIN_NAME_STORAGE_KEY = 'teachmate-seat-checkin-names';
 
@@ -43,244 +36,7 @@ const saveStoredSeatCheckinName = (sessionId: string, studentName: string) => {
   localStorage.setItem(SEAT_CHECKIN_NAME_STORAGE_KEY, JSON.stringify(next));
 };
 
-const normalizeStudentName = (value: string) => value.replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
 
-const isSameStudentName = (left: unknown, right: string) => {
-  if (typeof left !== 'string') return false;
-  return normalizeStudentName(left) === normalizeStudentName(right);
-};
-
-const hasExistingSeatCheckinRecord = async (sessionId: string, studentName: string) => {
-  const { data, error } = await supabase.rpc('has_seat_checkin_record', {
-    p_session_id: sessionId,
-    p_student_name: studentName,
-  } as any);
-  if (error) throw error;
-  return data === true;
-};
-
-const submitSeatCheckinRecord = async (
-  sessionId: string,
-  studentName: string,
-  otp?: string,
-  extra?: { org?: string; phone?: string; extra?: Record<string, string> },
-) => {
-  const { data, error } = await (supabase.rpc as any)('submit_seat_checkin_record', {
-    p_session_id: sessionId,
-    p_student_name: studentName,
-    ...(otp ? { p_otp: otp } : {}),
-    ...(extra?.org ? { p_org: extra.org } : {}),
-    ...(extra?.phone ? { p_phone: extra.phone } : {}),
-    ...(extra?.extra && Object.keys(extra.extra).length > 0 ? { p_extra: extra.extra } : {}),
-  } as any);
-  if (error) {
-    if (/INVALID_OTP/i.test(error.message || '')) throw new Error('INVALID_OTP');
-    throw error;
-  }
-  if (!data || (Array.isArray(data) && data.length === 0)) {
-    throw new Error('NO_RECORD_CREATED');
-  }
-  return Array.isArray(data) ? data[0] : data;
-};
-
-const isSeatEmptyValue = (value: unknown) => value === null || value === '';
-
-const countEmptySeatSlots = (node: unknown): number => {
-  if (Array.isArray(node)) {
-    return node.reduce((sum: number, item) => sum + countEmptySeatSlots(item), 0 as number);
-  }
-  if (node && typeof node === 'object') {
-    return (Object.values(node as Record<string, unknown>) as unknown[]).reduce<number>((sum, value) => sum + countEmptySeatSlots(value), 0);
-  }
-  return isSeatEmptyValue(node) ? 1 : 0;
-};
-
-/**
- * Build classroom guest seat priority: front rows first, center columns first,
- * skipping disabled seats and seats already taken.
- */
-const buildClassroomGuestSlots = (
-  grid: (string | null)[][],
-  disabledKeys: Set<string>
-): Array<{ r: number; c: number }> => {
-  const rows = grid.length;
-  if (rows === 0) return [];
-  const cols = grid[0]?.length ?? 0;
-  const centerC = (cols - 1) / 2;
-  const slots: Array<{ r: number; c: number; score: number }> = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      if (disabledKeys.has(`${r}-${c}`)) continue;
-      if (!isSeatEmptyValue(grid[r][c])) continue;
-      // Lower score = higher priority. Front row first (heavy), then center.
-      const score = r * 100 + Math.abs(c - centerC);
-      slots.push({ r, c, score });
-    }
-  }
-  slots.sort((a, b) => a.score - b.score);
-  return slots.map(({ r, c }) => ({ r, c }));
-};
-
-const cloneSeatDataWithGuestAssignments = (
-  seatData: unknown,
-  guestNames: string[],
-  options: { sceneType?: string; disabledSeats?: string[] } = {}
-) => {
-  if (guestNames.length === 0) return seatData;
-
-  // Classroom: smart front-center placement that respects disabled seats.
-  if (options.sceneType === 'classroom' && Array.isArray(seatData)) {
-    const grid = (seatData as (string | null)[][]).map(row => [...row]);
-    const disabledKeys = new Set(options.disabledSeats || []);
-    const slots = buildClassroomGuestSlots(grid, disabledKeys);
-    for (let i = 0; i < guestNames.length && i < slots.length; i++) {
-      const { r, c } = slots[i];
-      grid[r][c] = guestNames[i];
-    }
-    return grid;
-  }
-
-  // Other scenes: sequential fill of empty slots (preserve existing behavior).
-  let cursor = 0;
-  const assign = (node: unknown): unknown => {
-    if (Array.isArray(node)) {
-      return node.map(item => assign(item));
-    }
-    if (node && typeof node === 'object') {
-      const next: Record<string, unknown> = {};
-      for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
-        next[key] = assign(value);
-      }
-      return next;
-    }
-    if (isSeatEmptyValue(node) && cursor < guestNames.length) {
-      const assigned = guestNames[cursor];
-      cursor += 1;
-      return assigned;
-    }
-    return node;
-  };
-  return assign(seatData);
-};
-
-const buildSeatHint = (
-  sceneType: string,
-  seatData: unknown,
-  studentName: string,
-  sceneConfig?: Record<string, unknown>,
-) => {
-  if (sceneType === 'classroom') {
-    const seats = seatData as (string | null)[][];
-    const disabledSeats = Array.isArray(sceneConfig?.disabledSeats) ? (sceneConfig!.disabledSeats as string[]) : [];
-    const rowColsCfg = Array.isArray(sceneConfig?.rowCols) ? (sceneConfig!.rowCols as number[]) : [];
-    for (let r = 0; r < seats.length; r++) {
-      for (let c = 0; c < seats[r].length; c++) {
-        if (isSameStudentName(seats[r][c], studentName)) {
-          const rowWidth = Number(rowColsCfg[r]) > 0 ? Number(rowColsCfg[r]) : seats[r].length;
-          const mode = normalizeSeatLabelMode(sceneConfig?.seatLabelMode);
-          const rowWidths = seats.map((row, i) =>
-            Number(rowColsCfg[i]) > 0 ? Number(rowColsCfg[i]) : (row?.length ?? 0));
-          return formatClassroomSeatLabel(r, c, { rowWidth, disabledSeats, rowWidths, doorOnRight: classroomDoorOnRight(sceneConfig) }, mode);
-        }
-      }
-    }
-    return null;
-  }
-
-  if (sceneType === 'smartClassroom' || sceneType === 'banquet') {
-    const tables = seatData as string[][];
-    for (let t = 0; t < tables.length; t++) {
-      for (let s = 0; s < tables[t].length; s++) {
-        if (isSameStudentName(tables[t][s], studentName)) return `第${t + 1}桌第${s + 1}号座`;
-      }
-    }
-    return null;
-  }
-
-  if (sceneType === 'conference') {
-    const data = seatData as {
-      headLeft?: string;
-      headRight?: string;
-      top?: string[];
-      bottom?: string[];
-      mainTop?: string[];
-      mainBottom?: string[];
-    };
-    if (isSameStudentName(data.headLeft, studentName)) return '左侧主位';
-    if (isSameStudentName(data.headRight, studentName)) return '右侧主位';
-    const top = data.top || data.mainTop || [];
-    const bottom = data.bottom || data.mainBottom || [];
-    const topIdx = top.findIndex(name => isSameStudentName(name, studentName));
-    if (topIdx >= 0) return `上方第${topIdx + 1}位`;
-    const bottomIdx = bottom.findIndex(name => isSameStudentName(name, studentName));
-    if (bottomIdx >= 0) return `下方第${bottomIdx + 1}位`;
-    return null;
-  }
-
-  if (sceneType === 'concertHall') {
-    const rows = seatData as string[][];
-    for (let r = 0; r < rows.length; r++) {
-      for (let c = 0; c < rows[r].length; c++) {
-        if (isSameStudentName(rows[r][c], studentName)) return `第${r + 1}排第${c + 1}座`;
-      }
-    }
-    return null;
-  }
-
-  if (sceneType === 'artStudio') {
-    const rings = seatData as string[][];
-    for (let ring = 0; ring < rings.length; ring++) {
-      for (let seat = 0; seat < rings[ring].length; seat++) {
-        if (isSameStudentName(rings[ring][seat], studentName)) return `第${ring + 1}圈第${seat + 1}位`;
-      }
-    }
-    return null;
-  }
-
-  if (sceneType === 'computerLab') {
-    const rows = seatData as Array<{ rowIndex: number; side: 'top' | 'bottom'; students: string[] }>;
-    for (const row of rows) {
-      const idx = row.students.findIndex(name => isSameStudentName(name, studentName));
-      if (idx >= 0) return `第${row.rowIndex + 1}排${row.side === 'top' ? '上侧' : '下侧'}第${idx + 1}位`;
-    }
-    return null;
-  }
-
-  return null;
-};
-
-/** Collect every seated name in any scene's seat data shape. */
-const collectSeatNames = (node: unknown, out: string[] = []): string[] => {
-  if (typeof node === 'string') {
-    const n = normalizeStudentName(node);
-    if (n) out.push(n);
-    return out;
-  }
-  if (Array.isArray(node)) {
-    node.forEach(item => collectSeatNames(item, out));
-    return out;
-  }
-  if (node && typeof node === 'object') {
-    Object.values(node as Record<string, unknown>).forEach(value => collectSeatNames(value, out));
-  }
-  return out;
-};
-
-const TEACHMATE_URL = 'https://teachermate.org.cn';
-
-function TeachMateEntryBar() {
-  return (
-    <a
-      href={TEACHMATE_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center gap-2 py-3 px-4 bg-gradient-to-r from-primary/95 via-primary to-primary/95 text-primary-foreground text-sm font-medium shadow-[0_-4px_20px_rgba(0,0,0,0.12)] backdrop-blur-sm active:opacity-90 transition-opacity"
-    >
-      <Sparkles className="w-4 h-4 animate-pulse" />
-      <span>AI助力教学创新入口</span>
-    </a>
-  );
-}
 
 export default function SeatCheckinPage() {
   const { sessionId: rawSessionId } = useParams<{ sessionId: string }>();
@@ -309,103 +65,9 @@ export default function SeatCheckinPage() {
   const [displaySeatData, setDisplaySeatData] = useState<unknown | null>(null);
   const [isGuestAssigned, setIsGuestAssigned] = useState(false);
   const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
-  const [recenterSignal, setRecenterSignal] = useState(0);
-  const [neighbor, setNeighbor] = useState<SeatNeighbor | null>(null);
-  const [friendName, setFriendName] = useState<string | null>(null);
-
-  const handleRecenter = useCallback(() => {
-    setRecenterSignal(s => s + 1);
-  }, []);
-
-  // Poll the neighbouring seats (front / back / left / right) so we can tell the
-  // student "您在 XX 的后面" as soon as one of them has checked in.
-  const neighborSeatData = displaySeatData ?? session?.seat_data ?? null;
-  const checkedName = checkedIn ? normalizeStudentName(name) : '';
-  useEffect(() => {
-    if (!sessionId || !session || !checkedName) { setNeighbor(null); return; }
-    const candidates = getSeatNeighbors(session.scene_type, neighborSeatData, checkedName).slice(0, 8);
-    if (candidates.length === 0) { setNeighbor(null); return; }
-    let cancelled = false;
-    const load = async () => {
-      const { data, error } = await (supabase.rpc as any)('get_seat_checkin_neighbor_status', {
-        p_session_id: sessionId,
-        p_names: candidates.map(c => c.name),
-      });
-      if (cancelled || error) return;
-      setNeighbor(pickCheckedInNeighbor(candidates, (data as string[]) || []));
-    };
-    load();
-    const timer = window.setInterval(load, 15000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [sessionId, session, neighborSeatData, checkedName]);
 
 
-  const resolveSeatDataForName = async (sessionData: {
-    seat_data: unknown;
-    student_names: string[];
-    scene_type: string;
-    scene_config?: Record<string, unknown>;
-  }, targetName: string, includeCurrentAsGuest: boolean) => {
-    const normalized = normalizeStudentName(targetName);
-    const registeredSet = new Set(sessionData.student_names.map(normalizeStudentName).filter(Boolean));
-    const isRegistered = registeredSet.has(normalized);
 
-    if (isRegistered) {
-      return {
-        seatData: sessionData.seat_data,
-        guestAssigned: false,
-        hint: buildSeatHint(sessionData.scene_type, sessionData.seat_data, normalized, sessionData.scene_config),
-      };
-    }
-
-    const { data, error } = await supabase.rpc('get_seat_checkin_guest_records', {
-      p_session_id: sessionId,
-    } as any);
-
-    if (error) throw error;
-
-    const guestNames: string[] = [];
-    const seen = new Set<string>();
-    for (const row of (data || []) as Array<{ student_name: string }>) {
-      const studentName = normalizeStudentName(row.student_name);
-      if (!studentName || registeredSet.has(studentName) || seen.has(studentName)) continue;
-      seen.add(studentName);
-      guestNames.push(studentName);
-    }
-
-    if (includeCurrentAsGuest && !seen.has(normalized)) {
-      guestNames.push(normalized);
-      seen.add(normalized);
-    }
-
-    const disabledSeats = Array.isArray(sessionData.scene_config?.disabledSeats)
-      ? (sessionData.scene_config!.disabledSeats as string[])
-      : [];
-
-    // For classroom, capacity excludes disabled seats.
-    let capacity = countEmptySeatSlots(sessionData.seat_data);
-    if (sessionData.scene_type === 'classroom' && Array.isArray(sessionData.seat_data)) {
-      const disabledKeys = new Set(disabledSeats);
-      const grid = sessionData.seat_data as (string | null)[][];
-      capacity = 0;
-      for (let r = 0; r < grid.length; r++) {
-        for (let c = 0; c < grid[r].length; c++) {
-          if (disabledKeys.has(`${r}-${c}`)) continue;
-          if (isSeatEmptyValue(grid[r][c])) capacity += 1;
-        }
-      }
-    }
-    if (includeCurrentAsGuest && guestNames.length > capacity) {
-      throw new Error('NO_SEAT_FOR_GUEST');
-    }
-
-    const assignedSeatData = cloneSeatDataWithGuestAssignments(sessionData.seat_data, guestNames, {
-      sceneType: sessionData.scene_type,
-      disabledSeats,
-    });
-    const hint = buildSeatHint(sessionData.scene_type, assignedSeatData, normalized, sessionData.scene_config);
-    return { seatData: assignedSeatData, guestAssigned: true, hint };
-  };
 
   useEffect(() => {
     if (!sessionId) { setLoading(false); return; }
@@ -413,9 +75,12 @@ export default function SeatCheckinPage() {
     setLoadFailed(false);
     loadScanSession('get_seat_checkin_session_for_student', sessionId)
       .then(async (res) => {
-        if (res.diag) reportScanDiag('seat-checkin', sessionId, res.kind === 'ok', res.diag);
+        // 诊断上报放到页面显示之后再下载，不拖慢首屏
+        const diag = res.diag;
+        const diagMod = () => import('@/lib/scan-diag');
+        if (diag) void diagMod().then((m) => m.reportScanDiag('seat-checkin', sessionId, res.kind === 'ok', diag), () => undefined);
         if (res.kind !== 'ok') {
-          if (res.kind === 'network') { setLoadFailed(true); setDiagText(formatScanDiag(res.diag)); }
+          if (res.kind === 'network') { setLoadFailed(true); void diagMod().then((m) => setDiagText(m.formatScanDiag(res.diag)), () => undefined); }
           else toast({ title: t('seatCheckin.sessionNotFound'), variant: 'destructive' });
           setLoading(false);
           return;
@@ -428,7 +93,8 @@ export default function SeatCheckinPage() {
           scene_type: (d.scene_type as string) || 'classroom',
           status: (d.status as string) || 'active',
           otp_enabled: d.otp_enabled === true,
-          custom_fields: normalizeCustomFields(d.scene_config),
+          // 只有老师设置了自定义填写项时，才下载解析工具
+          custom_fields: hasCustomFields(d.scene_config) ? (await import('@/lib/seat-checkin-fields-core')).normalizeCustomFields(d.scene_config) : [],
         };
         setSession(nextSession);
 
@@ -436,9 +102,9 @@ export default function SeatCheckinPage() {
         if (storedName) {
           setName(storedName);
           try {
-            const exists = await hasExistingSeatCheckinRecord(sessionId, storedName);
+            const exists = await (await submitMod()).hasExistingSeatCheckinRecord(sessionId, storedName);
             if (exists) {
-              const resolved = await resolveSeatDataForName(nextSession, storedName, false);
+              const resolved = await (await submitMod()).resolveSeatDataForName(sessionId, nextSession, storedName, false);
               setDisplaySeatData(resolved.seatData);
               setIsGuestAssigned(resolved.guestAssigned);
               setAssignedSeatHint(resolved.hint);
@@ -481,9 +147,9 @@ export default function SeatCheckinPage() {
     const isRegistered = session.student_names.some(n => normalizeStudentName(n) === trimmedName);
     setSubmitting(true);
     try {
-      const exists = await hasExistingSeatCheckinRecord(sessionId, trimmedName);
+      const exists = await (await submitMod()).hasExistingSeatCheckinRecord(sessionId, trimmedName);
       if (exists) {
-        const resolved = await resolveSeatDataForName(session, trimmedName, false);
+        const resolved = await (await submitMod()).resolveSeatDataForName(sessionId, session, trimmedName, false);
         setDisplaySeatData(resolved.seatData);
         setIsGuestAssigned(resolved.guestAssigned);
         setAssignedSeatHint(resolved.hint);
@@ -505,14 +171,14 @@ export default function SeatCheckinPage() {
         return;
       }
 
-      const submitted = splitFieldValues(session.custom_fields, fieldValues);
-      await submitSeatCheckinRecord(sessionId, trimmedName, session.otp_enabled ? otpCode : undefined, {
+      const submitted = (await submitMod()).splitFieldValues(session.custom_fields, fieldValues);
+      await (await submitMod()).submitSeatCheckinRecord(sessionId, trimmedName, session.otp_enabled ? otpCode : undefined, {
         org: submitted.org || undefined,
         phone: submitted.phone || undefined,
         extra: submitted.extra,
       });
 
-      const resolved = await resolveSeatDataForName(session, trimmedName, !isRegistered);
+      const resolved = await (await submitMod()).resolveSeatDataForName(sessionId, session, trimmedName, !isRegistered);
       setDisplaySeatData(resolved.seatData);
       setIsGuestAssigned(resolved.guestAssigned);
       setAssignedSeatHint(resolved.hint);
@@ -608,51 +274,10 @@ export default function SeatCheckinPage() {
                 </div>
               )}
             </div>
-            {session.custom_fields.map(field => (
-              <div key={field.id} className="space-y-2">
-                <label className="block text-xs font-medium text-muted-foreground">
-                  {field.label}
-                  {field.required && <span className="text-destructive"> *</span>}
-                </label>
-                <Input
-                  value={fieldValues[field.id] || ''}
-                  onChange={e => {
-                    const raw = e.target.value;
-                    const v = field.type === 'tel'
-                      ? raw.replace(/[^\d+\-\s]/g, '').slice(0, 20)
-                      : field.type === 'number'
-                        ? raw.replace(/[^\d.]/g, '').slice(0, 20)
-                        : raw.slice(0, 100);
-                    setFieldValues(prev => ({ ...prev, [field.id]: v }));
-                  }}
-                  placeholder={`请填写${field.label}`}
-                  className={`text-center text-base h-14 rounded-xl border-2 focus-visible:border-primary${field.type === 'text' ? '' : ' tabular-nums'}`}
-                  inputMode={field.type === 'tel' ? 'tel' : field.type === 'number' ? 'numeric' : 'text'}
-                  enterKeyHint="next"
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                />
-              </div>
-            ))}
-            {session.otp_enabled && (
-              <div className="space-y-2">
-                <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  大屏上的 6 位签到口令
-                </label>
-                <Input
-                  value={otpInput}
-                  onChange={e => setOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="6 位数字"
-                  className="text-center text-2xl tracking-[0.4em] h-14 rounded-xl border-2 focus-visible:border-primary tabular-nums"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  enterKeyHint="done"
-                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                />
-                <p className="text-[11px] text-muted-foreground/80 leading-relaxed">
-                  该口令每隔数十秒自动更换，请以教室大屏当前显示的数字为准。
-                </p>
-              </div>
+            {(session.custom_fields.length > 0 || session.otp_enabled) && (
+              <Suspense fallback={null}>
+                <SeatCheckinExtraFields fields={session.custom_fields} values={fieldValues} setValues={setFieldValues} otpEnabled={session.otp_enabled} otp={otpInput} setOtp={setOtpInput} onEnter={handleSubmit} />
+              </Suspense>
             )}
             <Button
               onClick={handleSubmit}
@@ -675,155 +300,9 @@ export default function SeatCheckinPage() {
     );
   }
 
-  const sceneType = session.scene_type;
-  const studentName = name.trim();
-  const effectiveSeatData = displaySeatData ?? session.seat_data;
-  // Resolve a clean seat-position label even if the assignedSeatHint is missing
-  const seatLabel = assignedSeatHint
-    || buildSeatHint(sceneType, effectiveSeatData, studentName, session.scene_config)
-    || t('seatCheckin.viewOnMap');
-
-  const checkinOnlyMode = session.scene_config?.checkinOnlyMode === true;
-  const seatChartImageUrl = typeof session.scene_config?.seatChartImageUrl === 'string'
-    ? (session.scene_config.seatChartImageUrl as string)
-    : '';
-  const seatChartMarkers = prepareMarkers(session.scene_config?.seatChartMarkers).markers;
-
-  if (checkinOnlyMode) {
-    return (
-      <div className="min-h-[100dvh] bg-background overflow-auto px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-primary/5 border border-primary/25 px-4 py-4 shadow-sm flex items-center gap-3">
-            <div className="shrink-0 w-11 h-11 rounded-full bg-primary/20 text-primary flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] font-medium text-primary/80 uppercase tracking-wide">
-                {t('seatCheckin.success')}
-                {alreadyCheckedIn && (
-                  <span className="ml-1.5 text-[10px] bg-primary/15 text-primary/90 px-1.5 py-0.5 rounded normal-case">{t('seatCheckin.checkInBadge')}</span>
-                )}
-              </div>
-              <div className="text-base font-bold text-foreground truncate">{studentName}</div>
-            </div>
-          </div>
-
-          {seatChartImageUrl ? (
-            <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">座次图加载中…</div>}>
-              <SeatChartImageView
-                imageUrl={seatChartImageUrl}
-                recenterSignal={recenterSignal}
-                markers={seatChartMarkers}
-                selfName={studentName}
-                friendName={friendName}
-              />
-              {seatChartMarkers.length > 0
-                && (session.scene_config as Record<string, unknown> | null)?.findFriendEnabled !== false && (
-                <FindFriendPanel
-                  names={markerNamePool(seatChartMarkers)}
-                  selfName={studentName}
-                  resolveLabel={(n) => describeMarker(findMarkerByName(seatChartMarkers, n)) || '已在座次表上标出'}
-                  selected={friendName}
-                  onSelect={setFriendName}
-                />
-              )}
-            </Suspense>
-          ) : (
-            <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
-              签到已完成，请按现场安排入座。
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-
   return (
-    <div className="min-h-[100dvh] bg-background overflow-auto pb-[max(9rem,env(safe-area-inset-bottom))]">
-      {/* Sticky "我的座位" info card */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border/60 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
-        <div className="max-w-2xl mx-auto">
-          <div className="rounded-2xl bg-gradient-to-br from-primary/15 via-primary/8 to-primary/5 border border-primary/25 px-4 py-3 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className="shrink-0 w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary/80 uppercase tracking-wide">
-                    <span>{t('seatCheckin.success')}</span>
-                    {alreadyCheckedIn && (
-                      <span className="text-[10px] bg-primary/15 text-primary/90 px-1.5 py-0.5 rounded normal-case">{t('seatCheckin.checkInBadge')}</span>
-                    )}
-                  </div>
-                  <div className="text-base font-bold text-foreground truncate">
-                    {studentName} <span className="text-primary">·</span> <span className="text-primary">{seatLabel}</span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={handleRecenter}
-                className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 hover:bg-primary/15 active:bg-primary/20 px-3 py-2 rounded-lg border border-primary/20 transition-colors"
-                aria-label={t('seatCheckin.backToMySeat')}
-              >
-                <Crosshair className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{t('seatCheckin.backToMySeat')}</span>
-                <span className="inline sm:hidden">{t('seatCheckin.center')}</span>
-              </button>
-            </div>
-            {isGuestAssigned && (
-              <div className="mt-2 text-xs text-foreground/80 bg-card/60 rounded-lg px-2.5 py-1.5 border border-primary/15">
-                💡 {t('seatCheckin.guestAssignedHint')}
-              </div>
-            )}
-            {neighbor && (
-              <div className="mt-2 text-xs font-medium text-foreground bg-card/70 rounded-lg px-2.5 py-1.5 border border-primary/20">
-                🧭 {describeNeighbor(neighbor)}（{neighbor.name} 已签到）
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
-        <Suspense fallback={<div className="py-10 text-center text-sm text-muted-foreground">座位图加载中…</div>}>
-        {sceneType === 'classroom' && (
-          <ClassroomCheckinView seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} neighborName={neighbor?.name} friendName={friendName ?? undefined} />
-
-        )}
-        {(sceneType === 'smartClassroom' || sceneType === 'banquet') && (
-          <RoundTableCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} sceneType={sceneType} recenterSignal={recenterSignal} />
-        )}
-        {sceneType === 'conference' && (
-          <ConferenceCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
-        )}
-        {sceneType === 'concertHall' && (
-          <ConcertCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
-        )}
-        {sceneType === 'artStudio' && (
-          <ArtStudioCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
-        )}
-        {sceneType === 'computerLab' && (
-          <ComputerLabCheckinView friendName={friendName ?? undefined} seatData={effectiveSeatData} sceneConfig={session.scene_config} studentName={studentName} recenterSignal={recenterSignal} />
-        )}
-        </Suspense>
-        {(session.scene_config as any)?.findFriendEnabled !== false && (
-        <FindFriendPanel
-          names={collectSeatNames(effectiveSeatData).concat(session.student_names)}
-          selfName={studentName}
-          resolveLabel={(n) => buildSeatHint(sceneType, effectiveSeatData, n, session.scene_config)}
-          selected={friendName}
-          onSelect={setFriendName}
-        />
-        )}
-        {!['classroom', 'smartClassroom', 'banquet', 'conference', 'concertHall', 'artStudio', 'computerLab'].includes(sceneType) && (
-          <div className="text-center text-sm text-muted-foreground bg-muted/40 border border-border rounded-xl px-4 py-6">
-            暂不支持该座位场景的可视化展示，请按提示「{seatLabel}」入座。
-          </div>
-        )}
-      </div>
-      <TeachMateEntryBar />
-    </div>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{t('seatCheckin.loading')}</div>}>
+      <SeatCheckinResult sessionId={sessionId} session={session} name={name} displaySeatData={displaySeatData} assignedSeatHint={assignedSeatHint} alreadyCheckedIn={alreadyCheckedIn} isGuestAssigned={isGuestAssigned} />
+    </Suspense>
   );
 }
