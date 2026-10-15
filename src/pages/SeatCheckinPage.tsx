@@ -55,6 +55,7 @@ export default function SeatCheckinPage() {
     custom_fields: CheckinCustomField[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState(0);
   const [name, setName] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -73,7 +74,7 @@ export default function SeatCheckinPage() {
     if (!sessionId) { setLoading(false); return; }
     setLoading(true);
     setLoadFailed(false);
-    loadScanSession('get_seat_checkin_session_for_student', sessionId)
+    loadScanSession('get_seat_checkin_session_for_student', sessionId, 60000, setAttempt)
       .then(async (res) => {
         // 诊断上报放到页面显示之后再下载，不拖慢首屏
         const diag = res.diag;
@@ -208,7 +209,7 @@ export default function SeatCheckinPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{t('seatCheckin.loading')}</div>;
+    return <div className="flex flex-col items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{t('seatCheckin.loading')}{attempt > 1 ? <div className="text-xs mt-2">正在连接… 第 {attempt} 次</div> : null}</div>;
   }
 
   if (!session) {
