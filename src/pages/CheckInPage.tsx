@@ -28,6 +28,7 @@ export default function CheckInPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
   const [studentNames, setStudentNames] = useState<string[]>([]);
+  const [attempt, setAttempt] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +38,7 @@ export default function CheckInPage() {
     if (!sessionId) { setSessionValid(false); return; }
     setSessionValid(null);
     setLoadFailed(false);
-    loadScanSession('get_checkin_session_for_student', sessionId)
+    loadScanSession('get_checkin_session_for_student', sessionId, 60000, setAttempt)
       .then((res) => {
         // 诊断上报放到页面显示之后再下载，不拖慢首屏
         const diag = res.diag;
@@ -119,7 +120,7 @@ export default function CheckInPage() {
   if (sessionValid === null) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
-        <div className="text-muted-foreground">{t('checkinPage.loading')}</div>
+        <div className="text-muted-foreground text-center">{t('checkinPage.loading')}{attempt > 1 ? <div className="text-xs mt-2">正在连接… 第 {attempt} 次</div> : null}</div>
       </div>
     );
   }
