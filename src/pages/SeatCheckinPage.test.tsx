@@ -28,6 +28,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 vi.mock('@/lib/student-supabase', () => ({
   studentSupabase: {
     rpc: (...args: any[]) => rpcMock(...args),
+    get: (...args: any[]) => rpcMock(...args),
     from: (...args: any[]) => fromMock(...args),
   },
 }));
