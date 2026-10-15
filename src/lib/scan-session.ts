@@ -49,35 +49,106 @@ function classify(e: unknown): { stage: string; error: string } {
   return { stage: 'parse', error: `${name}: ${msg}` };
 }
 
+type R = { data: any; error: { message: string; code?: string; name?: string } | null };
+
+/** 双路并发：一路 6 秒没回应就再发一路，谁先成功用谁 */
+function hedged(rpcName: string, sessionId: string): Promise<R> {
+  return new Promise((resolve) => {
+    let done = false; let pending = 0; let lastErr: R | null = null;
+    const fire = () => {
+      pending++;
+      supabase.get(rpcName, { p_session_id: sessionId }).then((r) => {
+        pending--;
+        if (done) return;
+        if (!r.error || r.error.code) { done = true; resolve(r); return; }
+        lastErr = r;
+        if (pending === 0) { done = true; resolve(r); }
+      });
+    };
+    fire();
+    setTimeout(() => { if (!done) fire(); }, 6000);
+    setTimeout(() => { if (!done) { done = true; resolve(lastErr || { data: null, error: { name: 'AbortError', message: 'AbortError: budget' } }); } }, 25000);
+  });
+}
+
+const cacheKey = (id: string) => `tm-scan-session-${id}`;
+function readCache(id: string) { try { const v = localStorage.getItem(cacheKey(id)); return v ? JSON.parse(v) : null; } catch { return null; } }
+function writeCache(id: string, d: unknown) { try { localStorage.setItem(cacheKey(id), JSON.stringify(d)); } catch { /* full */ } }
+
+/** 首页内联脚本抢先发起的请求（页面代码下载期间已在取数据） */
+function takePrefetch(rpcName: string, sessionId: string): Promise<any> | null {
+  const w = window as unknown as { __TM_PREFETCH__?: { id: string; fn: string; p: Promise<any> } };
+  const pf = w.__TM_PREFETCH__;
+  if (!pf || pf.id !== sessionId || pf.fn !== rpcName) return null;
+  w.__TM_PREFETCH__ = undefined;
+  return pf.p;
+}
+
+/**
+ * 在约 60 秒总时长内持续重试：快速失败后 0.5–1.5 秒再试；
+ * 手机网络恢复或切回页面时立即再试。onAttempt 用于显示「正在连接… 第 N 次」。
+ */
 export async function loadScanSession<T = any>(
   rpcName: string,
   sessionId: string | null,
-  attempts = 4,
+  budgetMs = 60000,
+  onAttempt?: (n: number) => void,
 ): Promise<ScanLoadResult<T>> {
   const dev = deviceInfo();
   const start = now();
+  const log: string[] = [];
   const mk = (stage: string, error: string, n: number): ScanDiag => ({
-    stage, error, elapsedMs: now() - start, attempts: n, ...dev,
+    stage, error: (log.length ? `[${log.join(',')}] ` : '') + error, elapsedMs: now() - start, attempts: n, ...dev,
   });
   if (!sessionId) return { kind: 'not_found' };
+
+  const pf = takePrefetch(rpcName, sessionId);
+  if (pf) {
+    const data = await pf.catch(() => null);
+    if (data) { writeCache(sessionId, data); log.push(`pf:${Math.round(now() - start)}`); return { kind: 'ok', data, diag: mk('ok', 'prefetch', 0) }; }
+    log.push('pf:fail');
+  }
+
+  let wake: (() => void) | null = null;
+  const onWake = () => { if (wake) wake(); };
+  const onVis = () => { if (document.visibilityState === 'visible') onWake(); };
+  window.addEventListener('online', onWake);
+  document.addEventListener('visibilitychange', onVis);
+  const pause = (ms: number) => new Promise<void>((r) => { const t = setTimeout(r, ms); wake = () => { clearTimeout(t); r(); }; });
+
   let last = { stage: 'fetch', error: '' };
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const { data, error } = await (supabase.rpc as any)(rpcName, { p_session_id: sessionId });
+  let n = 0;
+  try {
+    while (n === 0 || now() - start < budgetMs) {
+      n++;
+      onAttempt?.(n);
+      const t0 = now();
+      let res: R;
+      try { res = await hedged(rpcName, sessionId); } catch (e) { res = { data: null, error: { message: String(e) } }; }
+      const { data, error } = res;
       if (!error) {
-        const diag = mk('ok', '', i + 1);
+        log.push(`${n}:ok:${Math.round(now() - t0)}`);
+        if (data) writeCache(sessionId, data);
+        const diag = mk('ok', '', n);
         return data ? { kind: 'ok', data: data as T, diag } : { kind: 'not_found', diag };
       }
-      // 非法 UUID 等参数错误属于「不存在」，无需重试
       if (error.code === '22P02') return { kind: 'not_found' };
-      const cls = error.message && /fetch|network|load failed|abort/i.test(error.message)
-        ? classify({ name: (error as any).name || 'FetchError', message: error.message })
-        : { stage: 'server', error: `${error.code || ''} ${error.message || ''} ${(error as any).hint || ''}`.trim().slice(0, 300) };
-      last = cls;
-    } catch (e) {
-      last = classify(e);
+      last = error.code
+        ? { stage: 'server', error: `${error.code} ${error.message || ''}`.trim().slice(0, 300) }
+        : classify({ name: error.name || 'FetchError', message: error.message });
+      log.push(`${n}:${last.stage}:${Math.round(now() - t0)}`);
+      if (log.length > 12) log.shift();
+      await pause(500 + Math.random() * 1000);
     }
-    if (i < attempts - 1) await sleep(Math.min(800 * 2 ** i, 5000));
+  } finally {
+    window.removeEventListener('online', onWake);
+    document.removeEventListener('visibilitychange', onVis);
   }
-  return { kind: 'network', diag: mk(last.stage, last.error, attempts) };
+  // 全部失败时，若本机存过这场签到，先用本机副本显示表单
+  const cached = readCache(sessionId);
+  if (cached) return { kind: 'ok', data: cached as T, diag: mk('cache', last.error, n) };
+  return { kind: 'network', diag: mk(last.stage, last.error, n) };
 }
+
+/** 重扫时立即可用的本机副本 */
+export const getCachedScanSession = (id: string | null) => (id ? readCache(id) : null);
