@@ -617,7 +617,29 @@ export default function BoardPanel() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Polling safety net: the realtime socket silently drops on unstable
+    // networks, so re-sync cards every 4s while the board is open.
+    const boardId = activeBoard.id;
+    let busy = false;
+    const poll = async () => {
+      if (busy || document.hidden) return;
+      busy = true;
+      try {
+        const { data, error } = await supabase.from('board_cards').select('id, board_id, author_nickname, content, card_type, media_url, url, color, column_id, position_x, position_y, sort_order, is_pinned, is_approved, likes_count, created_at').eq('board_id', boardId).order('sort_order', { ascending: true });
+        if (!error && data) {
+          setCards(prev => {
+            const next = data as any[] as BoardCard[];
+            if (prev.length === next.length && prev.every((c, i) => c.id === next[i].id && c.likes_count === next[i].likes_count && c.is_pinned === next[i].is_pinned && c.is_approved === next[i].is_approved && c.column_id === next[i].column_id && c.content === next[i].content)) return prev;
+            return next;
+          });
+        }
+      } finally { busy = false; }
+    };
+    const timer = window.setInterval(poll, 4000);
+    const onVis = () => { if (!document.hidden) void poll(); };
+    document.addEventListener('visibilitychange', onVis);
+
+    return () => { supabase.removeChannel(channel); window.clearInterval(timer); document.removeEventListener('visibilitychange', onVis); };
   }, [isCloud, activeBoard?.id]);
 
   // 加载班级库用于白板历史过滤（登录用户）
