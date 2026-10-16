@@ -66,8 +66,8 @@ function hedged(rpcName: string, sessionId: string): Promise<R> {
       });
     };
     fire();
-    setTimeout(() => { if (!done) fire(); }, 6000);
-    setTimeout(() => { if (!done) { done = true; resolve(lastErr || { data: null, error: { name: 'AbortError', message: 'AbortError: budget' } }); } }, 25000);
+    setTimeout(() => { if (!done) fire(); }, 2500);
+    setTimeout(() => { if (!done) { done = true; resolve(lastErr || { data: null, error: { name: 'AbortError', message: 'AbortError: budget' } }); } }, 15000);
   });
 }
 
@@ -104,7 +104,7 @@ export async function loadScanSession<T = any>(
 
   const pf = takePrefetch(rpcName, sessionId);
   if (pf) {
-    const data = await pf.catch(() => null);
+    const data = await Promise.race([pf.catch(() => null), sleep(3000).then(() => null)]);
     if (data) { writeCache(sessionId, data); log.push(`pf:${Math.round(now() - start)}`); return { kind: 'ok', data, diag: mk('ok', 'prefetch', 0) }; }
     log.push('pf:fail');
   }
