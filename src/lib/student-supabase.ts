@@ -45,10 +45,11 @@ async function post<T>(path: string, body: unknown, prefer?: string): Promise<Re
   return r;
 }
 
-/** 读取：简单 GET 请求（无预检），单次最长 timeoutMs */
-function get<T>(fn: string, args: Record<string, string>, timeoutMs = 20000): Promise<Result<T>> {
+/** 读取：简单 GET 请求（无预检），单次最长 timeoutMs；每次带唯一参数，避免 iOS 复用已失效的连接 */
+function get<T>(fn: string, args: Record<string, string>, timeoutMs = 12000): Promise<Result<T>> {
   const q = Object.keys(args).map((k) => `${k}=${encodeURIComponent(args[k])}`).join('&');
-  return once<T>(`${URL_}/rest/v1/rpc/${fn}?${q}&apikey=${KEY}`, { method: 'GET', cache: 'no-store' }, timeoutMs);
+  const nonce = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  return once<T>(`${URL_}/rest/v1/rpc/${fn}?${q}&apikey=${KEY}&_t=${nonce}`, { method: 'GET', cache: 'no-store' }, timeoutMs);
 }
 
 export const studentSupabase = {
