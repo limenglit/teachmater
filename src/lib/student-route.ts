@@ -7,7 +7,7 @@ export function isStudentScanRoute(pathname?: string): boolean {
 /** 其它学生扫码页（测验/投票/讨论/任务）：仍用完整应用，但跳过登录检查与配置读取，减少首屏请求。 */
 export function isStudentLiteRoute(pathname?: string): boolean {
   const p = (pathname ?? (typeof window !== 'undefined' ? window.location.pathname : '')).toLowerCase();
-  return p.startsWith('/quiz/') || p.startsWith('/poll/') || p.startsWith('/discuss/') || p.startsWith('/task/');
+  return p.startsWith('/quiz/') || p.startsWith('/poll/') || p.startsWith('/discuss/') || p.startsWith('/task/') || /^\/board\/[^/]+\/submit/.test(p);
 }
 
 /** 学生读请求重试：iOS 跨境连接偶发 Load failed，指数退避+抖动，约 30 秒预算。 */

@@ -17,6 +17,7 @@ import { uploadBoardMediaFile } from '@/lib/board-media-upload';
 import BoardCardItem from '@/components/board/BoardCardItem';
 import { getBoardAuthorTokenHash } from '@/lib/board-author-token';
 import { useUploadProgress, UploadProgressPanel } from '@/components/board/UploadProgressPanel';
+import { prefetchOr, retryRead } from '@/lib/student-route';
 
 const CARD_COLORS = ['#ffffff', '#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#f3e8ff', '#fed7aa'];
 const RECORDING_MAX_SECONDS = 60;
@@ -35,6 +36,9 @@ export default function BoardSubmitPage() {
   /* ── board & auth state ── */
   const [board, setBoard] = useState<Board | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [reloadKey, setReloadKey] = useState(0);
   const [nickname, setNickname] = useState('');
   const [nicknameConfirmed, setNicknameConfirmed] = useState(false);
   const [nameSearch, setNameSearch] = useState('');
@@ -88,24 +92,36 @@ export default function BoardSubmitPage() {
   /* ── Load board ── */
   useEffect(() => {
     if (!boardId) return;
+    let alive = true;
+    setLoading(true);
+    setLoadFailed(false);
+    setLoadAttempt(0);
     // Use security-definer RPC so anonymous students never receive
     // sensitive columns (creator_token, user_id) from the boards row.
-    supabase.rpc('get_board_for_student', { p_board_id: boardId })
-      .then(({ data }) => {
+    // 首帧预取 + 断网自动重试：避免手机网络抖动被误判为"没有白板"。
+    prefetchOr('get_board_for_student', boardId, () => retryRead(async () => {
+      if (alive) setLoadAttempt(n => n + 1);
+      return await supabase.rpc('get_board_for_student', { p_board_id: boardId });
+    }, 45000))
+      .then(({ data, error }) => {
+        if (!alive) return;
         if (data) {
           setBoard(data as any);
           const cols = (data as any).columns;
           if (Array.isArray(cols) && cols.length > 0) setColumnId(cols[0]);
+        } else if (error) {
+          setLoadFailed(true);
         }
         setLoading(false);
-      });
+      }, () => { if (alive) { setLoadFailed(true); setLoading(false); } });
 
     const saved = localStorage.getItem(`board-nick-${boardId}`);
     if (saved) {
       setNickname(saved);
       setNicknameConfirmed(true);
     }
-  }, [boardId]);
+    return () => { alive = false; };
+  }, [boardId, reloadKey]);
 
   /* ── Load cards once nickname confirmed ── */
   const loadCards = useCallback(async () => {
@@ -669,7 +685,19 @@ export default function BoardSubmitPage() {
   };
 
   /* ── Loading / Not Found / Locked ── */
-  if (loading) return <div className="min-h-[100dvh] flex items-center justify-center text-muted-foreground">{t('common.loading')}</div>;
+  if (loading) return (
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-2 text-muted-foreground">
+      <div>正在连接白板…</div>
+      {loadAttempt > 1 && <div className="text-xs">网络不稳定，正在自动重试 第 {loadAttempt} 次</div>}
+    </div>
+  );
+  if (!board && loadFailed) return (
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
+      <div>网络不稳定，暂时没连上白板（白板本身没问题）。</div>
+      <Button onClick={() => setReloadKey(k => k + 1)}>重新连接</Button>
+      <div className="text-xs">仍打不开：切换 4G/5G 与 Wi-Fi 后再试</div>
+    </div>
+  );
   if (!board) return <div className="min-h-[100dvh] flex items-center justify-center text-muted-foreground">{t('board.noBoards')}</div>;
   if (board.is_locked) {
     return (
