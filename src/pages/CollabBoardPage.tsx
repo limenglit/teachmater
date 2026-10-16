@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import CollaborativeCanvas from '@/components/board/CollaborativeCanvas';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Board } from '@/components/BoardPanel';
+import { retryRead } from '@/lib/student-route';
 
 function getCreatorToken(boardId: string): string | null {
   try {
@@ -34,7 +35,7 @@ export default function CollabBoardPage() {
     const loadBoard = async () => {
       // Use security-definer RPC so anonymous students never receive
       // sensitive columns (creator_token, user_id).
-      const { data } = await supabase.rpc('get_board_for_student', { p_board_id: boardId });
+      const { data } = await retryRead(async () => await supabase.rpc('get_board_for_student', { p_board_id: boardId }), 45000);
       if (mounted && data) setBoard(data as any);
       if (mounted) setLoading(false);
     };
