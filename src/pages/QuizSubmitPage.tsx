@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import MathText from '@/components/quiz/MathText';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { prefetchOr } from '@/lib/student-route';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -101,10 +102,10 @@ export default function QuizSubmitPage() {
     if (!sessionId) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await runQuizCall(
+      const { data, error } = await prefetchOr('get_quiz_session_for_student', sessionId, () => runQuizCall(
         () => supabase.rpc('get_quiz_session_for_student', { p_session_id: sessionId }),
         { timeoutMs: 8000, retries: 2 },
-      );
+      ) as any) as any;
       if (cancelled) return;
       if (error) {
         toast({ title: '加载测验失败', description: error.message, variant: 'destructive' });

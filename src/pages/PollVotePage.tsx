@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { prefetchOr } from '@/lib/student-route';
 import { retryRead } from '@/lib/student-route';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +35,7 @@ export default function PollVotePage() {
 
   useEffect(() => {
     if (!pollId) return;
-    retryRead(() => (supabase as any).rpc('get_poll_for_voter', { p_poll_id: pollId }))
+    prefetchOr('get_poll_for_voter', pollId, () => retryRead(() => (supabase as any).rpc('get_poll_for_voter', { p_poll_id: pollId })))
       .then(({ data }: any) => {
         if (data) setPoll(data as any);
         setLoading(false);

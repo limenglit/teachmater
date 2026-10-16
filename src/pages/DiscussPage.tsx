@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
+import { prefetchOr } from '@/lib/student-route';
 import { retryRead } from '@/lib/student-route';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,8 +35,8 @@ export default function DiscussPage() {
 
   useEffect(() => {
     if (!topicId) return;
-    retryRead(() => (supabase as any)
-      .rpc('get_discussion_topic_for_student', { p_topic_id: topicId }))
+    prefetchOr('get_discussion_topic_for_student', topicId, () => retryRead(() => (supabase as any)
+      .rpc('get_discussion_topic_for_student', { p_topic_id: topicId })))
       .then(({ data, error }: any) => {
         if (data) setTopic(data as any);
         if (error || !data) setError(t('discuss.topicNotFound'));
