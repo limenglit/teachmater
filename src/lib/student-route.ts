@@ -26,3 +26,19 @@ export async function retryRead<T extends { data: unknown; error: unknown }>(fn:
     await new Promise((r) => setTimeout(r, Math.min(4000, 500 * 2 ** i) + Math.random() * 500));
   }
 }
+
+/** 取 index.html 首帧预取的数据（只用一次，最多等 3 秒）；拿不到返回 null，交给正常请求。 */
+export async function takePagePrefetch(fn: string, id: string): Promise<unknown | null> {
+  const w = window as unknown as { __TM_PREFETCH__?: { id: string; fn: string; p: Promise<unknown> } | null };
+  const pf = w.__TM_PREFETCH__;
+  if (!pf || pf.fn !== fn || pf.id.toLowerCase() !== String(id).toLowerCase()) return null;
+  w.__TM_PREFETCH__ = null;
+  return Promise.race([pf.p.catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 3000))]);
+}
+
+/** 先用预取结果，没有再走带重试的正常请求。 */
+export async function prefetchOr<T extends { data: unknown; error: unknown }>(fn: string, id: string, call: () => PromiseLike<T>): Promise<T> {
+  const d = await takePagePrefetch(fn, id);
+  if (d) return { data: d, error: null } as T;
+  return call();
+}
