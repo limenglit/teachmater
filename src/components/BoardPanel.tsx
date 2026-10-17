@@ -586,47 +586,19 @@ export default function BoardPanel() {
   // Realtime subscription for cloud boards
   useEffect(() => {
     if (!isCloud || !activeBoard) return;
-    const channel = supabase
-      .channel(`board-cards-${activeBoard.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'board_cards',
-        filter: `board_id=eq.${activeBoard.id}`,
-      }, (payload) => {
-        setCards(prev => {
-          if (prev.find(c => c.id === (payload.new as any).id)) return prev;
-          return [...prev, payload.new as any as BoardCard];
-        });
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'board_cards',
-        filter: `board_id=eq.${activeBoard.id}`,
-      }, (payload) => {
-        setCards(prev => prev.map(c => c.id === (payload.new as any).id ? payload.new as any as BoardCard : c));
-      })
-      .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'board_cards',
-        filter: `board_id=eq.${activeBoard.id}`,
-      }, (payload) => {
-        setCards(prev => prev.filter(c => c.id !== (payload.old as any).id));
-      })
-      .subscribe();
-
-    // Polling safety net: the realtime socket silently drops on unstable
-    // networks, so re-sync cards every 4s while the board is open.
     const boardId = activeBoard.id;
+    let disposed = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let reconnectTimer: number | undefined;
+    let retry = 0;
     let busy = false;
+
     const poll = async () => {
-      if (busy || document.hidden) return;
+      if (busy || document.hidden || disposed) return;
       busy = true;
       try {
         const { data, error } = await supabase.from('board_cards').select('id, board_id, author_nickname, content, card_type, media_url, url, color, column_id, position_x, position_y, sort_order, is_pinned, is_approved, likes_count, created_at').eq('board_id', boardId).order('sort_order', { ascending: true });
-        if (!error && data) {
+        if (!error && data && !disposed) {
           setCards(prev => {
             const next = data as any[] as BoardCard[];
             if (prev.length === next.length && prev.every((c, i) => c.id === next[i].id && c.likes_count === next[i].likes_count && c.is_pinned === next[i].is_pinned && c.is_approved === next[i].is_approved && c.column_id === next[i].column_id && c.content === next[i].content)) return prev;
@@ -635,11 +607,67 @@ export default function BoardPanel() {
         }
       } finally { busy = false; }
     };
-    const timer = window.setInterval(poll, 4000);
-    const onVis = () => { if (!document.hidden) void poll(); };
-    document.addEventListener('visibilitychange', onVis);
 
-    return () => { supabase.removeChannel(channel); window.clearInterval(timer); document.removeEventListener('visibilitychange', onVis); };
+    const scheduleReconnect = () => {
+      if (disposed || reconnectTimer) return;
+      // Exponential backoff with jitter, capped at 15s.
+      const delay = Math.min(15000, 1000 * 2 ** retry) + Math.random() * 500;
+      retry += 1;
+      reconnectTimer = window.setTimeout(() => { reconnectTimer = undefined; connect(); }, delay);
+    };
+
+    const connect = () => {
+      if (disposed) return;
+      if (channel) { void supabase.removeChannel(channel); channel = null; }
+      const ch = supabase
+        .channel(`board-cards-${boardId}-${Date.now()}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'board_cards', filter: `board_id=eq.${boardId}` }, (payload) => {
+          setCards(prev => {
+            if (prev.find(c => c.id === (payload.new as any).id)) return prev;
+            return [...prev, payload.new as any as BoardCard];
+          });
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'board_cards', filter: `board_id=eq.${boardId}` }, (payload) => {
+          setCards(prev => prev.map(c => c.id === (payload.new as any).id ? payload.new as any as BoardCard : c));
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'board_cards', filter: `board_id=eq.${boardId}` }, (payload) => {
+          setCards(prev => prev.filter(c => c.id !== (payload.old as any).id));
+        })
+        .subscribe((status) => {
+          if (disposed || ch !== channel) return;
+          if (status === 'SUBSCRIBED') {
+            // Catch up on anything missed while disconnected.
+            if (retry > 0) void poll();
+            retry = 0;
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            scheduleReconnect();
+          }
+        });
+      channel = ch;
+    };
+
+    connect();
+
+    // Polling safety net in case the socket silently stalls.
+    const timer = window.setInterval(poll, 4000);
+    const wake = () => {
+      if (document.hidden) return;
+      void poll();
+      if (channel && (channel as any).state !== 'joined') { retry = 0; connect(); }
+    };
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('online', wake);
+    window.addEventListener('focus', wake);
+
+    return () => {
+      disposed = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (channel) void supabase.removeChannel(channel);
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('online', wake);
+      window.removeEventListener('focus', wake);
+    };
   }, [isCloud, activeBoard?.id]);
 
   // 加载班级库用于白板历史过滤（登录用户）
