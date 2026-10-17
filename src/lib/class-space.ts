@@ -1,4 +1,4 @@
-// Per-class data space for signed-in teachers.
+// Per-class data space helpers (no global switcher; pages filter locally).
 // The active class is chosen in the top bar; whiteboards, quizzes and
 // check-ins are tagged with it on create and filtered by it on load.
 // null = "未分班" (unassigned / legacy content).
