@@ -1,4 +1,4 @@
-// Per-class data space for signed-in teachers.
+// Per-class data space helpers (no global switcher; pages filter locally).
 // The active class is chosen in the top bar; whiteboards, quizzes and
 // check-ins are tagged with it on create and filtered by it on load.
 // null = "未分班" (unassigned / legacy content).
@@ -16,8 +16,11 @@ const TABLE: Record<ClassKind, string> = {
   seat_checkin: 'seat_checkin_sessions',
 };
 
+// The top-bar class switcher was removed; per-page "按班级筛选" is the only
+// class filter now, so there is never a global active class.
+try { localStorage.removeItem(KEY); } catch { /* ignore */ }
 export function getActiveClassId(): string | null {
-  try { return localStorage.getItem(KEY) || null; } catch { return null; }
+  return null;
 }
 
 export function setActiveClassId(id: string | null) {
@@ -66,7 +69,8 @@ export async function moveToClass(kind: ClassKind, id: string, classId: string |
  * (legacy / guest) only appear in 未分班. Guests are not filtered.
  */
 export async function filterByActiveClass<T extends { id: string }>(kind: ClassKind, rows: T[]): Promise<T[]> {
-  if (rows.length === 0) return rows;
+  // No global class lock anymore: always show everything; pages filter below.
+  if (rows.length === 0 || getActiveClassId() === null) return rows;
   if (!(await signedInUserId())) return rows;
   const active = getActiveClassId();
   const ids = rows.map(r => r.id);

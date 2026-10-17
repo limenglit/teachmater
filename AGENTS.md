@@ -1,5 +1,5 @@
 
-- Class data spaces: boards/quiz_sessions/checkin_sessions/seat_checkin_sessions carry class_id; tag on create via set_content_class RPC and filter on load via src/lib/class-space.ts — keeps classes isolated without changing create RPCs.
+- (superseded) Class data spaces: boards/quiz_sessions/checkin_sessions/seat_checkin_sessions carry class_id; tag on create via set_content_class RPC and filter on load via src/lib/class-space.ts — keeps classes isolated without changing create RPCs.
 - Seat chart exports restore only the outer room zoom, keep child transforms, and fit PDF onto one appropriately sized page — this prevents displaced labels and split seats in large rooms.
 - Shared exports never generate or embed check-in QR codes; check-in codes belong to the separate check-in dialog, keeping every seat chart format QR-free.
 - Student quiz and practice content uses the shared MathText renderer for questions, options, answers and explanations; bounded formula-only scrolling preserves KaTeX geometry without clipping or overflowing the page.
@@ -9,3 +9,5 @@
 - Seat check-in first screen holds only the name form; submit logic (seat-checkin-submit), custom fields/OTP (SeatCheckinExtraFields), scan diagnostics (scan-diag) and the post-check-in seat view (SeatCheckinResult with its own CSS and seatResult dict) are dynamic imports, and shared student modules are merged into the student-core manual chunk — keeps the first download near 60KB gzip.
 - index.html boot watchdog auto-reloads once with a ?_r= cache-buster when the entry module 404s or never runs (polyfills sets __TM_ENTRY_RAN__), and index.html must never modulepreload /src/main.tsx — stale cached HTML from WeChat WebViews otherwise leaves the whole site blank.
 - Student scan reads use preflight-free GET rpc (apikey in query), an index.html inline prefetch (window.__TM_PREFETCH__), hedged requests and a ~60s retry budget with localStorage fallback — iOS WebKit drops cross-border connections fast and intermittently.
+
+- Class filtering is per-page only ("按班级筛选"); there is no global top-bar class switcher and getActiveClassId() is always null — two filters conflicted and hid content.

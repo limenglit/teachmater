@@ -670,7 +670,11 @@ export default function BoardPanel() {
         boards.map(b => ({ board: b, class_name: b.title, student_names: (b.student_names || []) as string[] })),
         filterClasses,
         { collegeId: filterCollegeId === 'all' ? undefined : filterCollegeId, classId: filterClassId === 'all' ? undefined : filterClassId },
-      ).map(x => x.board);
+      ).map(x => x.board)
+      .concat(filterClassId !== 'all'
+        ? boards.filter(b => (b as any).class_id === filterClassId)
+        : [])
+      .filter((b, i, arr) => arr.findIndex(x => x.id === b.id) === i);
 
   // 白板历史分页：超过10条自动分页，每页数量可选
   const pagedBoards = paginate(filteredBoards, boardPage, boardPageSize);
