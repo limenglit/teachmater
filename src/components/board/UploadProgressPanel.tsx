@@ -108,6 +108,10 @@ export function useUploadProgress() {
           eta: 0,
           result,
         });
+        // 上传完成后短暂显示"完成"，随后自动消失，避免遮挡发布按钮
+        window.setTimeout(() => {
+          setItems(prev => prev.filter(it => !(it.id === id && it.status === 'success')));
+        }, 1200);
         return result;
       } catch (err) {
         throw err;
