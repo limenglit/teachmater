@@ -2,6 +2,8 @@ import '@/student-seat-result.css';
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useLanguage, LanguageCoreContext } from '@/contexts/language-core';
 import { cachedDict, loadDict } from '@/lib/student-i18n-loader';
+// 中文内置在结果页里：网络再差也能显示可读文字
+import seatResultZh from '@/lib/student-i18n/seatResult-zh';
 import { getSeatNeighbors, pickCheckedInNeighbor, describeNeighbor, type SeatNeighbor } from '@/lib/seat-neighbors';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
 import { buildSeatHint } from '@/lib/seat-hint';
@@ -248,13 +250,14 @@ function SeatCheckinResultView({ sessionId, session, name, displaySeatData, assi
 /** 先补齐座位展示用的小词典（与签到表单词典合并），再显示座位图。 */
 export default function SeatCheckinResult(props: SeatCheckinResultProps) {
   const core = useLanguage();
-  const [extra, setExtra] = useState<Record<string, string> | null>(() => cachedDict('seatResult', core.lang));
+  const [extra, setExtra] = useState<Record<string, string> | null>(() => core.lang === 'zh' ? seatResultZh : cachedDict('seatResult', core.lang));
   useEffect(() => {
+    if (core.lang === 'zh') { setExtra(seatResultZh); return; }
     let alive = true;
-    loadDict('seatResult', core.lang).then((d) => { if (alive) setExtra(d); }, () => { if (alive) setExtra((x) => x || {}); });
+    loadDict('seatResult', core.lang).then((d) => { if (alive) setExtra(d); }, () => { if (alive) setExtra((x) => x || seatResultZh); });
     return () => { alive = false; };
   }, [core.lang]);
-  const t = useCallback((k: string) => (extra && extra[k]) ?? core.t(k), [extra, core]);
+  const t = useCallback((k: string) => (extra && extra[k]) ?? seatResultZh[k] ?? core.t(k), [extra, core]);
   if (!extra) return <div className="flex items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{core.t('seatCheckin.loading')}</div>;
   return (
     <LanguageCoreContext.Provider value={{ ...core, t }}>
