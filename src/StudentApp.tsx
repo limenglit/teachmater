@@ -27,7 +27,7 @@ export default function StudentApp() {
     return () => { alive = false; };
   }, [lang]);
   const setLang = useCallback((c: LangCode) => setLangState(c), []);
-  const t = useCallback((k: string) => (dict && dict[k]) ?? k, [dict]);
+  const t = useCallback((k: string) => (dict && dict[k]) ?? (lang === 'zh' ? k : (cachedDict(GROUP, 'zh') || {})[k] ?? k), [dict, lang]);
   if (!dict) return <Loading />;
   return (
     <LanguageCoreContext.Provider value={{ lang, setLang, t }}>
