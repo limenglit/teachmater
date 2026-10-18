@@ -1,4 +1,6 @@
 import type { LangCode } from '@/contexts/language-core';
+import checkinZh from './student-i18n/checkin-zh';
+import seatZh from './student-i18n/seat-zh';
 
 /**
  * 学生扫码页按需语种：按「页面 × 语言」只下载命中的一个小词典文件（1–3KB），
@@ -50,9 +52,25 @@ const loaders: Record<string, () => Promise<{ default: Dict }>> = {
   'seatResult-es': () => import('./student-i18n/seatResult-es'),
 };
 
+/** 内置中文兜底（各约 1KB）：词典下载全部失败时也不会显示代码名。 */
+const BUILTIN: Partial<Record<DictGroup, Dict>> = { checkin: checkinZh, seat: seatZh };
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export async function loadDict(group: DictGroup, lang: LangCode): Promise<Dict> {
-  const load = loaders[`${group}-${lang}`] || loaders[`${group}-zh`];
-  const d = (await load()).default;
-  try { localStorage.setItem(`${CACHE}:${group}:${lang}`, JSON.stringify(d)); } catch { /* ignore */ }
-  return d;
+  const keys = [`${group}-${lang}`, `${group}-zh`].filter((k, i, a) => loaders[k] && a.indexOf(k) === i);
+  let lastErr: unknown;
+  for (const key of keys) {
+    for (let i = 0; i < 3; i++) {
+      try {
+        const d = (await loaders[key]()).default;
+        try { localStorage.setItem(`${CACHE}:${group}:${lang}`, JSON.stringify(d)); } catch { /* ignore */ }
+        return d;
+      } catch (e) { lastErr = e; await wait(600 * (i + 1)); }
+    }
+  }
+  const zhCached = cachedDict(group, 'zh');
+  if (zhCached) return zhCached;
+  if (BUILTIN[group]) return BUILTIN[group]!;
+  throw lastErr;
 }
