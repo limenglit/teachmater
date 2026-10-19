@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Users, LayoutGrid, ListOrdered, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
 import { snapSeatState, pushSeatUndo, popSeatUndo, popSeatRedo, type SeatSnap } from '@/lib/seat-undo';
 import ExportButtons from '@/components/ExportButtons';
+import { buildClassroomSeatIndex } from '@/lib/seat-index';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SmartClassroom from '@/components/seating/SmartClassroom';
 import ConferenceRoom from '@/components/seating/ConferenceRoom';
@@ -1630,6 +1631,8 @@ export default function SeatChart() {
                   titleValue={recordName}
                   onTitleChange={setRecordName}
                   hideTitleInput
+                  getSeatIndex={() => buildClassroomSeatIndex(seats, disabledSeats, windowOnLeft,
+                    new Map(students.map(s => [s.name, s.studentNumber])))}
                 />
               )}
               {seats.length > 0 && (
