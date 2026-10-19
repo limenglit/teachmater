@@ -3,6 +3,7 @@ import { FileImage, FileText, FileCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { exportToPNG, exportToPDF, exportToSVG } from '@/lib/export';
+import type { SeatIndexEntry } from '@/lib/seat-index';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
@@ -13,9 +14,11 @@ interface Props {
   titleValue?: string;
   onTitleChange?: (value: string) => void;
   hideTitleInput?: boolean;
+  /** Seat list for the PDF's second page (学生座位快速索引表). */
+  getSeatIndex?: () => SeatIndexEntry[];
 }
 
-export default function ExportButtons({ targetRef, filename, titleValue, onTitleChange, hideTitleInput = false }: Props) {
+export default function ExportButtons({ targetRef, filename, titleValue, onTitleChange, hideTitleInput = false, getSeatIndex }: Props) {
   const [customTitle, setCustomTitle] = useState('');
   const isControlled = typeof titleValue === 'string' && typeof onTitleChange === 'function';
   const currentTitle = isControlled ? titleValue : customTitle;
@@ -32,7 +35,9 @@ export default function ExportButtons({ targetRef, filename, titleValue, onTitle
       if (type === 'png') {
         await exportToPNG(targetRef.current, exportTitle, exportTitle);
       } else if (type === 'pdf') {
-        await exportToPDF(targetRef.current, exportTitle, exportTitle);
+        const index = getSeatIndex?.();
+        if (index?.length) await exportToPDF(targetRef.current, exportTitle, exportTitle, index);
+        else await exportToPDF(targetRef.current, exportTitle, exportTitle);
       } else {
         await exportToSVG(targetRef.current, exportTitle, exportTitle);
       }

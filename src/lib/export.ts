@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { sortSeatIndex, type SeatIndexEntry } from './seat-index';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -165,7 +166,7 @@ export async function exportToPNG(element: HTMLElement, filename: string, title?
   link.click();
 }
 
-export async function exportToPDF(element: HTMLElement, filename: string, title?: string) {
+export async function exportToPDF(element: HTMLElement, filename: string, title?: string, seatIndex?: SeatIndexEntry[]) {
   const { canvas, scale: canvasScale } = await captureWithHeaderFooter(element, title || filename);
   const imgData = canvas.toDataURL('image/png');
   const imgW = canvas.width;
@@ -205,7 +206,58 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
   const scaledW = imgW * scale;
   pdf.addImage(imgData, 'PNG', (pageW - scaledW) / 2, (pageH - scaledTotalH) / 2, scaledW, scaledTotalH);
 
+  if (seatIndex && seatIndex.length > 0) {
+    const { sortBy, entries } = sortSeatIndex(seatIndex);
+    const perPage = 105; // 3 columns x 35 lines on A4 portrait
+    const pages = Math.ceil(entries.length / perPage);
+    for (let p = 0; p < pages; p++) {
+      const chunk = entries.slice(p * perPage, (p + 1) * perPage);
+      const idxCanvas = await renderIndexPage(chunk, `${title || filename} · 学生座位快速索引`,
+        `按${sortBy === 'number' ? '学号' : '姓名拼音'}排序 · 共 ${entries.length} 人${pages > 1 ? ` · 第 ${p + 1}/${pages} 页` : ''}`);
+      pdf.addPage('a4', 'portrait');
+      const s = Math.min(198 / idxCanvas.width, 285 / idxCanvas.height);
+      pdf.addImage(idxCanvas.toDataURL('image/png'), 'PNG', (210 - idxCanvas.width * s) / 2, 6, idxCanvas.width * s, idxCanvas.height * s);
+    }
+  }
+
   pdf.save(`${filename}.pdf`);
+}
+
+async function renderIndexPage(entries: SeatIndexEntry[], heading: string, sub: string) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;left:0;top:0;width:794px;padding:28px 32px;box-sizing:border-box;background:#fff;color:#000;font-family:SimHei,"Microsoft YaHei","PingFang SC",sans-serif;';
+  const h = document.createElement('div');
+  h.textContent = heading;
+  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.3;';
+  const s = document.createElement('div');
+  s.textContent = sub;
+  s.style.cssText = 'text-align:center;font-size:11px;color:#444;margin:6px 0 14px;';
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);grid-auto-flow:column;grid-template-rows:repeat(' +
+    Math.min(35, Math.ceil(entries.length / 3)) + ',auto);column-gap:18px;';
+  for (const e of entries) {
+    const line = document.createElement('div');
+    line.style.cssText = 'display:flex;justify-content:space-between;gap:6px;font-size:12.5px;line-height:1.85;border-bottom:1px solid #ddd;white-space:nowrap;';
+    const n = document.createElement('span');
+    n.textContent = e.studentNumber ? `${e.studentNumber} ${e.name}` : e.name;
+    n.style.cssText = 'overflow:hidden;text-overflow:ellipsis;';
+    const seat = document.createElement('span');
+    seat.textContent = `第${e.row}排${e.col}座`;
+    seat.style.fontWeight = '700';
+    line.append(n, seat);
+    grid.appendChild(line);
+  }
+  const foot = document.createElement('div');
+  foot.textContent = COPYRIGHT_TEXT;
+  foot.style.cssText = 'text-align:center;font-size:9px;color:#555;margin-top:16px;';
+  wrap.append(h, s, grid, foot);
+  document.body.appendChild(wrap);
+  try {
+    if (document.fonts?.ready) await document.fonts.ready;
+    return await html2canvas(wrap, { backgroundColor: '#ffffff', scale: 2, x: 0, y: 0, scrollX: 0, scrollY: 0 });
+  } finally {
+    document.body.removeChild(wrap);
+  }
 }
 
 export async function exportToSVG(element: HTMLElement, filename: string, title?: string) {
