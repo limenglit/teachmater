@@ -86,8 +86,10 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   wrapper.style.top = '0';
   wrapper.style.visibility = 'hidden';
   wrapper.style.background = '#ffffff';
-  wrapper.style.width = `${width + 24}px`;
-  wrapper.style.padding = '12px 12px 10px';
+  wrapper.style.width = `${width + 48}px`;
+  // Safe clearance so podium/door markers at the room edge never touch the
+  // title or copyright line.
+  wrapper.style.padding = '20px 24px 16px';
   wrapper.style.boxSizing = 'border-box';
 
   const heading = document.createElement('div');
@@ -98,7 +100,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   heading.style.fontWeight = '700';
   heading.style.fontFamily = 'SimHei, "Microsoft YaHei", sans-serif';
   heading.style.lineHeight = '1.2';
-  heading.style.marginBottom = '8px';
+  heading.style.marginBottom = "16px";
 
   const content = document.createElement('div');
   content.style.display = 'flex';
@@ -114,7 +116,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const footer = document.createElement('div');
   footer.textContent = COPYRIGHT_TEXT;
-  footer.style.marginTop = '8px';
+  footer.style.marginTop = "16px";
   footer.style.textAlign = 'center';
   footer.style.color = '#333333';
   footer.style.fontSize = '10px';
@@ -130,7 +132,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
     if (document.fonts?.ready) await document.fonts.ready;
     // Use the post-layout extent: absolutely positioned room details and long
     // rows can extend past the initial scrollWidth measured in the sizer.
-    wrapper.style.width = `${Math.max(wrapper.scrollWidth, width + 24)}px`;
+    wrapper.style.width = `${Math.max(wrapper.scrollWidth, width + 48)}px`;
     const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
     const scale = Math.min(3, 12000 / maxDimension, Math.sqrt(36_000_000 / (wrapper.scrollWidth * wrapper.scrollHeight)));
     wrapper.style.visibility = 'visible';
@@ -140,6 +142,12 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       // canvases on mobile browsers while preserving the entire chart.
       scale,
       useCORS: true,
+      // Lock offsets: page scroll otherwise shifts the capture and clips the
+      // podium row or footer.
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0,
       windowWidth: Math.max(document.documentElement.clientWidth, wrapper.scrollWidth),
       windowHeight: Math.max(document.documentElement.clientHeight, wrapper.scrollHeight),
     });
