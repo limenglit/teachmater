@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { sortSeatIndex, type SeatIndexEntry } from './seat-index';
+import { sortSeatIndex, planSeatIndexLayout, fitIndexName, INDEX_PAGE, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -208,53 +208,92 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
   if (seatIndex && seatIndex.length > 0) {
     const { sortBy, entries } = sortSeatIndex(seatIndex);
-    const perPage = 105; // 3 columns x 35 lines on A4 portrait
-    const pages = Math.ceil(entries.length / perPage);
+    const layout = planSeatIndexLayout(entries);
+    const pages = Math.ceil(entries.length / layout.perPage);
     for (let p = 0; p < pages; p++) {
-      const chunk = entries.slice(p * perPage, (p + 1) * perPage);
-      const idxCanvas = await renderIndexPage(chunk, `${title || filename} · 学生座位快速索引`,
+      const chunk = entries.slice(p * layout.perPage, (p + 1) * layout.perPage);
+      const idxCanvas = await renderIndexPage(chunk, layout, `${title || filename} · 学生座位快速索引`,
         `按${sortBy === 'number' ? '学号' : '姓名拼音'}排序 · 共 ${entries.length} 人${pages > 1 ? ` · 第 ${p + 1}/${pages} 页` : ''}`);
       pdf.addPage('a4', 'portrait');
-      const s = Math.min(198 / idxCanvas.width, 285 / idxCanvas.height);
-      pdf.addImage(idxCanvas.toDataURL('image/png'), 'PNG', (210 - idxCanvas.width * s) / 2, 6, idxCanvas.width * s, idxCanvas.height * s);
+      // The index canvas is a fixed A4-shaped page, so every page maps onto
+      // the full sheet at the same scale and font sizes stay identical.
+      pdf.addImage(idxCanvas.toDataURL('image/png'), 'PNG', 0, 0, 210, 297);
     }
   }
 
   pdf.save(`${filename}.pdf`);
 }
 
-async function renderIndexPage(entries: SeatIndexEntry[], heading: string, sub: string) {
+export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatIndexLayout, heading: string, sub: string) {
+  const P = INDEX_PAGE;
+  const font = '"Microsoft YaHei","PingFang SC","Noto Sans SC","Hiragino Sans GB",SimHei,sans-serif';
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'position:fixed;left:0;top:0;width:794px;padding:28px 32px;box-sizing:border-box;background:#fff;color:#000;font-family:SimHei,"Microsoft YaHei","PingFang SC",sans-serif;';
+  wrap.style.cssText = `position:fixed;left:0;top:0;width:${P.width}px;height:${P.height}px;overflow:hidden;padding:28px ${P.padX}px 0;box-sizing:border-box;background:#fff;color:#111;font-family:${font};`;
   const h = document.createElement('div');
   h.textContent = heading;
-  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.3;';
+  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.4;white-space:nowrap;';
   const s = document.createElement('div');
   s.textContent = sub;
-  s.style.cssText = 'text-align:center;font-size:11px;color:#444;margin:6px 0 14px;';
-  const grid = document.createElement('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);grid-auto-flow:column;grid-template-rows:repeat(' +
-    Math.min(35, Math.ceil(entries.length / 3)) + ',auto);column-gap:18px;';
-  for (const e of entries) {
+  s.style.cssText = 'text-align:center;font-size:12px;color:#555;line-height:1.4;margin:4px 0 14px;';
+
+  const hasNumber = layout.numberWidth > 0;
+  const cols = hasNumber
+    ? `${layout.numberWidth}px minmax(0,1fr) ${P.seatWidth}px`
+    : `minmax(0,1fr) ${P.seatWidth}px`;
+  const cellGap = 8;
+  const makeLine = (cells: string[], isHeader: boolean, idx = 0) => {
     const line = document.createElement('div');
-    line.style.cssText = 'display:flex;justify-content:space-between;gap:6px;font-size:12.5px;line-height:1.85;border-bottom:1px solid #ddd;white-space:nowrap;';
-    const n = document.createElement('span');
-    n.textContent = e.studentNumber ? `${e.studentNumber} ${e.name}` : e.name;
-    n.style.cssText = 'overflow:hidden;text-overflow:ellipsis;';
-    const seat = document.createElement('span');
-    seat.textContent = `第${e.row}排${e.col}座`;
-    seat.style.fontWeight = '700';
-    line.append(n, seat);
-    grid.appendChild(line);
+    const border = isHeader ? '1.5px solid #111' : `1px solid ${(idx + 1) % 5 === 0 ? '#9a9a9a' : '#e2e2e2'}`;
+    line.style.cssText = `display:grid;grid-template-columns:${cols};column-gap:${cellGap}px;align-items:center;height:${P.rowHeight}px;border-bottom:${border};box-sizing:border-box;white-space:nowrap;`;
+    cells.forEach((text, i) => {
+      const span = document.createElement('span');
+      span.textContent = text;
+      const isNum = hasNumber && i === 0;
+      const isSeat = i === cells.length - 1;
+      // No overflow clipping or tall line-height: html2canvas draws text lower
+      // than the browser in those cases, cutting glyphs on the row divider.
+      let css = 'display:block;line-height:1.25;padding-bottom:6px;';
+      if (isHeader) css += 'font-size:11.5px;font-weight:700;color:#444;';
+      else if (isNum) css += 'font-size:12px;color:#444;font-variant-numeric:tabular-nums;';
+      else if (isSeat) css += 'font-size:12.5px;font-weight:700;color:#111;';
+      else css += `font-size:${P.nameFont}px;color:#111;`;
+      if (isSeat) css += 'text-align:right;';
+      span.style.cssText = css;
+      line.appendChild(span);
+    });
+    return line;
+  };
+
+  const grid = document.createElement('div');
+  grid.style.cssText = `display:grid;grid-template-columns:repeat(${layout.columns},minmax(0,1fr));column-gap:${P.columnGap}px;align-items:start;`;
+  // Balance a short last page across all columns instead of one long column.
+  const rowsUsed = Math.min(layout.rowsPerPage, Math.ceil(entries.length / layout.columns));
+  for (let c = 0; c < layout.columns; c++) {
+    const colEntries = entries.slice(c * rowsUsed, (c + 1) * rowsUsed);
+    const col = document.createElement('div');
+    if (colEntries.length > 0) {
+      col.appendChild(makeLine(hasNumber ? ['学号', '姓名', '座位'] : ['姓名', '座位'], true));
+      colEntries.forEach((e, i) => {
+        const name = fitIndexName(e.name, layout.nameChars);
+        const seat = `第${e.row}排${e.col}座`;
+        col.appendChild(makeLine(hasNumber ? [e.studentNumber?.trim() || '—', name, seat] : [name, seat], false, i));
+      });
+    }
+    grid.appendChild(col);
   }
+
   const foot = document.createElement('div');
   foot.textContent = COPYRIGHT_TEXT;
-  foot.style.cssText = 'text-align:center;font-size:9px;color:#555;margin-top:16px;';
+  foot.style.cssText = `position:absolute;left:0;right:0;bottom:18px;text-align:center;font-size:9px;line-height:12px;color:#666;`;
   wrap.append(h, s, grid, foot);
   document.body.appendChild(wrap);
   try {
     if (document.fonts?.ready) await document.fonts.ready;
-    return await html2canvas(wrap, { backgroundColor: '#ffffff', scale: 2, x: 0, y: 0, scrollX: 0, scrollY: 0 });
+    return await html2canvas(wrap, {
+      backgroundColor: '#ffffff', scale: 2, x: 0, y: 0, scrollX: 0, scrollY: 0,
+      width: P.width, height: P.height, windowWidth: Math.max(document.documentElement.clientWidth, P.width),
+      windowHeight: Math.max(document.documentElement.clientHeight, P.height),
+    });
   } finally {
     document.body.removeChild(wrap);
   }
