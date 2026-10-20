@@ -252,7 +252,7 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
       const isSeat = i === cells.length - 1;
       // No overflow clipping or tall line-height: html2canvas draws text lower
       // than the browser in those cases, cutting glyphs on the row divider.
-      let css = 'display:block;line-height:1.25;';
+      let css = 'display:block;line-height:1.25;padding-bottom:6px;';
       if (isHeader) css += 'font-size:11.5px;font-weight:700;color:#444;';
       else if (isNum) css += 'font-size:12px;color:#444;font-variant-numeric:tabular-nums;';
       else if (isSeat) css += 'font-size:12.5px;font-weight:700;color:#111;';
