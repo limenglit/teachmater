@@ -1,5 +1,3 @@
-import { openColumnNumber, openRowNumber } from './seat-number';
-
 export interface SeatIndexEntry {
   name: string;
   studentNumber?: string;
@@ -19,7 +17,11 @@ export function sortSeatIndex(entries: SeatIndexEntry[]): { sortBy: 'number' | '
   return { sortBy: byNumber ? 'number' : 'pinyin', entries: sorted };
 }
 
-/** Build index entries from a classroom grid (第X排第Y座, door side = 第1座). */
+/**
+ * Build index entries from a classroom grid (第X排第Y座, door side = 第1座).
+ * Numbering matches the exported chart's 第N排 / 第N列 labels exactly: closed
+ * seats and closed rows still count, so the index never contradicts page 1.
+ */
 export function buildClassroomSeatIndex(
   seats: (string | null)[][],
   disabledSeats: Iterable<string>,
@@ -27,16 +29,14 @@ export function buildClassroomSeatIndex(
   numberByName?: Map<string, string | undefined>,
 ): SeatIndexEntry[] {
   const disabled = new Set(disabledSeats);
-  const rowWidths = seats.map(r => r.length);
+  const cols = seats.reduce((m, r) => Math.max(m, r.length), 0);
   const out: SeatIndexEntry[] = [];
   seats.forEach((rowArr, r) => {
     rowArr.forEach((name, c) => {
-      if (!name) return;
-      const opts = { rowWidth: rowArr.length, disabledSeats: disabled, rowWidths, doorOnRight };
-      const col = openColumnNumber(r, c, opts);
-      if (col == null) return;
-      out.push({ name, studentNumber: numberByName?.get(name), row: openRowNumber(r, opts), col });
+      if (!name || disabled.has(`${r}-${c}`)) return;
+      out.push({ name, studentNumber: numberByName?.get(name), row: r + 1, col: doorOnRight ? cols - c : c + 1 });
     });
   });
   return out;
 }
+
