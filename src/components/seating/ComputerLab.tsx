@@ -1014,7 +1014,7 @@ export default function ComputerLab({ students }: Props) {
                           <g key={`tc-${tci}`}>
                             {/* Table bar */}
                             <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
-                              className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
+                              className="fill-primary/10 stroke-primary/30" strokeWidth={1.5} />
                             <text x={tableX + tableW / 2} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-[10px]">
                               {/* Row number on the first bar lets the PDF index (第N排…) be matched on the chart. */}
                               {tci === 0 ? `${tFormat(t('seat.editor.lab.rowNum'), rowIdx + 1)} · ` : ''}
