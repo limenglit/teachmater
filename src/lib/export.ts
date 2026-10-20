@@ -231,10 +231,10 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
   wrap.style.cssText = `position:fixed;left:0;top:0;width:${P.width}px;height:${P.height}px;overflow:hidden;padding:28px ${P.padX}px 0;box-sizing:border-box;background:#fff;color:#111;font-family:${font};`;
   const h = document.createElement('div');
   h.textContent = heading;
-  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;height:28px;line-height:28px;white-space:nowrap;overflow:hidden;';
+  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.4;white-space:nowrap;';
   const s = document.createElement('div');
   s.textContent = sub;
-  s.style.cssText = 'text-align:center;font-size:12px;color:#555;height:18px;line-height:18px;margin:4px 0 14px;';
+  s.style.cssText = 'text-align:center;font-size:12px;color:#555;line-height:1.4;margin:4px 0 14px;';
 
   const hasNumber = layout.numberWidth > 0;
   const cols = hasNumber
@@ -244,13 +244,15 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
   const makeLine = (cells: string[], isHeader: boolean, idx = 0) => {
     const line = document.createElement('div');
     const border = isHeader ? '1.5px solid #111' : `1px solid ${(idx + 1) % 5 === 0 ? '#9a9a9a' : '#e2e2e2'}`;
-    line.style.cssText = `display:grid;grid-template-columns:${cols};column-gap:${cellGap}px;align-items:center;height:${P.rowHeight}px;line-height:${P.rowHeight}px;border-bottom:${border};box-sizing:border-box;white-space:nowrap;`;
+    line.style.cssText = `display:grid;grid-template-columns:${cols};column-gap:${cellGap}px;align-items:center;height:${P.rowHeight}px;border-bottom:${border};box-sizing:border-box;white-space:nowrap;`;
     cells.forEach((text, i) => {
       const span = document.createElement('span');
       span.textContent = text;
       const isNum = hasNumber && i === 0;
       const isSeat = i === cells.length - 1;
-      let css = 'overflow:hidden;';
+      // No overflow clipping or tall line-height: html2canvas draws text lower
+      // than the browser in those cases, cutting glyphs on the row divider.
+      let css = 'display:block;line-height:1.25;';
       if (isHeader) css += 'font-size:11.5px;font-weight:700;color:#444;';
       else if (isNum) css += 'font-size:12px;color:#444;font-variant-numeric:tabular-nums;';
       else if (isSeat) css += 'font-size:12.5px;font-weight:700;color:#111;';
@@ -264,8 +266,10 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
 
   const grid = document.createElement('div');
   grid.style.cssText = `display:grid;grid-template-columns:repeat(${layout.columns},minmax(0,1fr));column-gap:${P.columnGap}px;align-items:start;`;
+  // Balance a short last page across all columns instead of one long column.
+  const rowsUsed = Math.min(layout.rowsPerPage, Math.ceil(entries.length / layout.columns));
   for (let c = 0; c < layout.columns; c++) {
-    const colEntries = entries.slice(c * layout.rowsPerPage, (c + 1) * layout.rowsPerPage);
+    const colEntries = entries.slice(c * rowsUsed, (c + 1) * rowsUsed);
     const col = document.createElement('div');
     if (colEntries.length > 0) {
       col.appendChild(makeLine(hasNumber ? ['学号', '姓名', '座位'] : ['姓名', '座位'], true));
