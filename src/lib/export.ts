@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { sortSeatIndex, planSeatIndexLayout, fitIndexName, INDEX_PAGE, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
+import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -166,7 +166,7 @@ export async function exportToPNG(element: HTMLElement, filename: string, title?
   link.click();
 }
 
-export async function exportToPDF(element: HTMLElement, filename: string, title?: string, seatIndex?: SeatIndexEntry[]) {
+export async function exportToPDF(element: HTMLElement, filename: string, title?: string, seatIndex?: SeatIndexEntry[], seatIndexNote?: string) {
   const { canvas, scale: canvasScale } = await captureWithHeaderFooter(element, title || filename);
   const imgData = canvas.toDataURL('image/png');
   const imgW = canvas.width;
@@ -213,7 +213,7 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
     for (let p = 0; p < pages; p++) {
       const chunk = entries.slice(p * layout.perPage, (p + 1) * layout.perPage);
       const idxCanvas = await renderIndexPage(chunk, layout, `${title || filename} · 学生座位快速索引`,
-        `按${sortBy === 'number' ? '学号' : '姓名拼音'}排序 · 共 ${entries.length} 人${pages > 1 ? ` · 第 ${p + 1}/${pages} 页` : ''}`);
+        `按${sortBy === 'number' ? '学号' : '姓名拼音'}排序 · 共 ${entries.length} 人${seatIndexNote ? ` · ${seatIndexNote}` : ''}${pages > 1 ? ` · 第 ${p + 1}/${pages} 页` : ''}`);
       pdf.addPage('a4', 'portrait');
       // The index canvas is a fixed A4-shaped page, so every page maps onto
       // the full sheet at the same scale and font sizes stay identical.
@@ -238,8 +238,8 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
 
   const hasNumber = layout.numberWidth > 0;
   const cols = hasNumber
-    ? `${layout.numberWidth}px minmax(0,1fr) ${P.seatWidth}px`
-    : `minmax(0,1fr) ${P.seatWidth}px`;
+    ? `${layout.numberWidth}px minmax(0,1fr) ${layout.seatWidth}px`
+    : `minmax(0,1fr) ${layout.seatWidth}px`;
   const cellGap = 8;
   const makeLine = (cells: string[], isHeader: boolean, idx = 0) => {
     const line = document.createElement('div');
@@ -275,7 +275,7 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
       col.appendChild(makeLine(hasNumber ? ['学号', '姓名', '座位'] : ['姓名', '座位'], true));
       colEntries.forEach((e, i) => {
         const name = fitIndexName(e.name, layout.nameChars);
-        const seat = `第${e.row}排${e.col}座`;
+        const seat = seatIndexLabel(e);
         col.appendChild(makeLine(hasNumber ? [e.studentNumber?.trim() || '—', name, seat] : [name, seat], false, i));
       });
     }

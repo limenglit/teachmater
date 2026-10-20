@@ -11,4 +11,4 @@
 - Student scan reads use preflight-free GET rpc (apikey in query), an index.html inline prefetch (window.__TM_PREFETCH__), hedged requests and a ~60s retry budget with localStorage fallback — iOS WebKit drops cross-border connections fast and intermittently.
 
 - Class filtering is per-page only ("按班级筛选"); there is no global top-bar class switcher and getActiveClassId() is always null — two filters conflicted and hid content.
-- PDF seat index pages render at a fixed A4-sized canvas mapped to the full sheet, with separate number/name/seat slots, JS name truncation and no overflow clipping on text — html2canvas ignores ellipsis and shifts clipped text, which caused overlap and inconsistent sizes.
+- PDF seat index entries use the seat name printed on that room's chart (排/座 grid, table name, lab row bar); index pages render at a fixed A4-sized canvas mapped to the full sheet, with separate number/name/seat slots, JS name truncation and no overflow clipping on text — html2canvas ignores ellipsis and shifts clipped text, which caused overlap and inconsistent sizes.

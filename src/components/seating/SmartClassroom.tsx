@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRightLeft } from 'lucide-react';
 import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users, Trash2, Pencil } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { buildTableSeatIndex } from '@/lib/seat-index';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
@@ -1367,6 +1368,8 @@ export default function SmartClassroom({
             titleValue={recordName}
             onTitleChange={setRecordName}
             hideTitleInput
+            getSeatIndex={() => buildTableSeatIndex(assignment, closedSeats, i => `第${i + 1}桌`)}
+            seatIndexNote="按桌号就座"
           />
         )}
         {assignment.length > 0 && (
