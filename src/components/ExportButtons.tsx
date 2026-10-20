@@ -16,9 +16,11 @@ interface Props {
   hideTitleInput?: boolean;
   /** Seat list for the PDF's second page (学生座位快速索引表). */
   getSeatIndex?: () => SeatIndexEntry[];
+  /** Short reading hint shown under the index title, e.g. how seats are counted. */
+  seatIndexNote?: string;
 }
 
-export default function ExportButtons({ targetRef, filename, titleValue, onTitleChange, hideTitleInput = false, getSeatIndex }: Props) {
+export default function ExportButtons({ targetRef, filename, titleValue, onTitleChange, hideTitleInput = false, getSeatIndex, seatIndexNote }: Props) {
   const [customTitle, setCustomTitle] = useState('');
   const isControlled = typeof titleValue === 'string' && typeof onTitleChange === 'function';
   const currentTitle = isControlled ? titleValue : customTitle;
@@ -36,7 +38,7 @@ export default function ExportButtons({ targetRef, filename, titleValue, onTitle
         await exportToPNG(targetRef.current, exportTitle, exportTitle);
       } else if (type === 'pdf') {
         const index = getSeatIndex?.();
-        if (index?.length) await exportToPDF(targetRef.current, exportTitle, exportTitle, index);
+        if (index?.length) await exportToPDF(targetRef.current, exportTitle, exportTitle, index, seatIndexNote);
         else await exportToPDF(targetRef.current, exportTitle, exportTitle);
       } else {
         await exportToSVG(targetRef.current, exportTitle, exportTitle);

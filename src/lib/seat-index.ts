@@ -3,6 +3,55 @@ export interface SeatIndexEntry {
   studentNumber?: string;
   row: number;
   col: number;
+  /** Seat text shown in the index; defaults to 第{row}排{col}座. */
+  label?: string;
+}
+
+export const seatIndexLabel = (e: SeatIndexEntry) => e.label ?? `第${e.row}排${e.col}座`;
+
+/**
+ * Table rooms (智慧教室, 宴会厅): the chart prints only the table name and
+ * each student's name on a seat, so the index points to the table.
+ */
+export function buildTableSeatIndex(
+  tables: string[][],
+  closedSeats: Iterable<string>,
+  tableLabel: (tableIndex: number) => string,
+): SeatIndexEntry[] {
+  const closed = new Set(closedSeats);
+  const out: SeatIndexEntry[] = [];
+  tables.forEach((people, t) => {
+    (people ?? []).forEach((raw, s) => {
+      const name = (raw || '').trim();
+      if (!name || closed.has(`${t}-${s}`)) return;
+      out.push({ name, row: t + 1, col: s + 1, label: tableLabel(t) });
+    });
+  });
+  return out;
+}
+
+/**
+ * Computer lab: rows numbered from the front board (第1排 is printed on the
+ * chart's table bar), seats counted left to right along each side.
+ */
+export function buildLabSeatIndex(
+  groups: { rowIndex: number; side: 'top' | 'bottom'; students?: string[] }[],
+  closedSeats: Iterable<string>,
+  opts: { seatsPerRow: number; showTop: boolean; showBottom: boolean },
+): SeatIndexEntry[] {
+  const closed = new Set(closedSeats);
+  const dual = opts.showTop && opts.showBottom;
+  const out: SeatIndexEntry[] = [];
+  for (const g of groups) {
+    if (g.side === 'top' ? !opts.showTop : !opts.showBottom) continue;
+    (g.students ?? []).slice(0, opts.seatsPerRow).forEach((raw, c) => {
+      const name = (raw || '').trim();
+      if (!name || closed.has(`${g.rowIndex}-${g.side}-${c}`)) return;
+      const side = dual ? (g.side === 'top' ? '上' : '下') : '';
+      out.push({ name, row: g.rowIndex + 1, col: c + 1, label: `第${g.rowIndex + 1}排${side}${c + 1}号` });
+    });
+  }
+  return out;
 }
 
 /** Sort: by student number when every entry has one, else by pinyin. */
@@ -51,7 +100,12 @@ export interface SeatIndexLayout {
   numberWidth: number;
   /** Max name characters that fit the name slot at the fixed font size. */
   nameChars: number;
+  /** Width of the seat slot, sized to the longest seat text. */
+  seatWidth: number;
 }
+
+const textWidth = (text: string, cjkPx: number) =>
+  Array.from(text).reduce((w, ch) => w + (/[\u2e80-\uffef]/.test(ch) ? cjkPx : cjkPx * 0.6), 0);
 
 /**
  * Pick a column count so number, name and seat each keep their own slot at a
@@ -63,11 +117,12 @@ export function planSeatIndexLayout(entries: SeatIndexEntry[]): SeatIndexLayout 
   const numberWidth = maxNum > 0 ? Math.ceil(maxNum * 7.4 + 6) : 0;
   const usable = INDEX_PAGE.width - INDEX_PAGE.padX * 2;
   const colWidth = (n: number) => (usable - INDEX_PAGE.columnGap * (n - 1)) / n;
+  const seatWidth = Math.max(INDEX_PAGE.seatWidth, ...entries.map(e => Math.ceil(textWidth(seatIndexLabel(e), 12.5) + 6)));
   const gaps = numberWidth > 0 ? 16 : 8;
-  const nameSlot = (n: number) => colWidth(n) - numberWidth - INDEX_PAGE.seatWidth - gaps;
+  const nameSlot = (n: number) => colWidth(n) - numberWidth - seatWidth - gaps;
   const columns: 2 | 3 = nameSlot(3) >= INDEX_PAGE.nameFont * 4 ? 3 : 2;
   const nameChars = Math.max(2, Math.floor(nameSlot(columns) / INDEX_PAGE.nameFont));
-  return { columns, rowsPerPage: INDEX_PAGE.rows, perPage: columns * INDEX_PAGE.rows, numberWidth, nameChars };
+  return { columns, rowsPerPage: INDEX_PAGE.rows, perPage: columns * INDEX_PAGE.rows, numberWidth, nameChars, seatWidth };
 }
 
 /** Truncate in JS: html2canvas does not render CSS text-overflow ellipsis. */
