@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildClassroomSeatIndex, sortSeatIndex, planSeatIndexLayout, fitIndexName } from './seat-index';
+import { buildClassroomSeatIndex, sortSeatIndex, planSeatIndexLayout, fitIndexName, buildTableSeatIndex, buildLabSeatIndex, seatIndexLabel } from './seat-index';
 
 describe('seat index', () => {
   it('gives row/seat numbers with door side as seat 1', () => {
@@ -36,5 +36,23 @@ describe('seat index', () => {
   it('truncates names that exceed the name slot instead of overflowing', () => {
     expect(fitIndexName('诸葛孔明', 4)).toBe('诸葛孔明');
     expect(fitIndexName('阿卜杜热合曼', 4)).toBe('阿卜杜…');
+  });
+  it('points table rooms to the table name printed on the chart, skipping closed seats', () => {
+    const e = buildTableSeatIndex([['张伟', '李娜'], ['', '安琪']], ['0-1'], i => `T${i + 1}桌`);
+    expect(e.map(x => [x.name, seatIndexLabel(x)])).toEqual([['张伟', 'T1桌'], ['安琪', 'T2桌']]);
+  });
+  it('labels computer lab seats by row, side and left-to-right number', () => {
+    const groups = [
+      { rowIndex: 0, side: 'top' as const, students: ['张伟', '李娜', '王五'] },
+      { rowIndex: 1, side: 'bottom' as const, students: ['安琪', ''] },
+    ];
+    const both = buildLabSeatIndex(groups, ['0-top-1'], { seatsPerRow: 2, showTop: true, showBottom: true });
+    // 王五 sits beyond the visible seats; 李娜's seat is closed
+    expect(both.map(seatIndexLabel)).toEqual(['第1排上1号', '第2排下1号']);
+    const topOnly = buildLabSeatIndex(groups, [], { seatsPerRow: 3, showTop: true, showBottom: false });
+    expect(topOnly.map(seatIndexLabel)).toEqual(['第1排1号', '第1排2号', '第1排3号']);
+  });
+  it('keeps the default 第N排M座 label for ordinary classrooms', () => {
+    expect(seatIndexLabel({ name: '张伟', row: 3, col: 4 })).toBe('第3排4座');
   });
 });

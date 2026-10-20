@@ -1075,7 +1075,6 @@ export default function BanquetHall({ students }: Props) {
             titleValue={recordName}
             onTitleChange={setRecordName}
             hideTitleInput
-            // The chart labels banquet tables T1, T2 …; the index uses the same name.
             getSeatIndex={() => buildTableSeatIndex(assignment, closedSeats, i => `T${i + 1}桌`)}
             seatIndexNote="桌号与座位图 T1、T2… 对应"
           />
