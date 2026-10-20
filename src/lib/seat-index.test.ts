@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildClassroomSeatIndex, sortSeatIndex } from './seat-index';
+import { buildClassroomSeatIndex, sortSeatIndex, planSeatIndexLayout, fitIndexName } from './seat-index';
 
 describe('seat index', () => {
   it('gives row/seat numbers with door side as seat 1', () => {
@@ -22,5 +22,19 @@ describe('seat index', () => {
     const r = sortSeatIndex(num);
     expect(r.sortBy).toBe('number');
     expect(r.entries.map(e => e.name)).toEqual(['李娜', '张伟', '安琪']);
+  });
+  it('uses 3 columns for short or no student numbers and 2 columns for long ones', () => {
+    const plain = [{ name: '张伟', row: 1, col: 1 }];
+    expect(planSeatIndexLayout(plain)).toMatchObject({ columns: 3, numberWidth: 0, perPage: 114 });
+    expect(planSeatIndexLayout([{ ...plain[0], studentNumber: '2301' }]).columns).toBe(3);
+    const long = planSeatIndexLayout([{ ...plain[0], studentNumber: '202301040123' }]);
+    expect(long.columns).toBe(2);
+    expect(long.perPage).toBe(76);
+    // the name slot always holds at least a 4-character name
+    expect(long.nameChars).toBeGreaterThanOrEqual(4);
+  });
+  it('truncates names that exceed the name slot instead of overflowing', () => {
+    expect(fitIndexName('诸葛孔明', 4)).toBe('诸葛孔明');
+    expect(fitIndexName('阿卜杜热合曼', 4)).toBe('阿卜杜…');
   });
 });
