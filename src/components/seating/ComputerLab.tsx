@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Trash2, Pencil } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { buildLabSeatIndex } from '@/lib/seat-index';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import { useSeatExportQr } from './useSeatExportQr';
 import { acceptStudentDragOver, readDraggedStudentName, handleStudentDragLeave, clearStudentDropHint } from '@/lib/seat-name-drop';
@@ -919,6 +920,8 @@ export default function ComputerLab({ students }: Props) {
             titleValue={recordName}
             onTitleChange={setRecordName}
             hideTitleInput
+            getSeatIndex={() => buildLabSeatIndex(assignment, closedSeats, { seatsPerRow: totalSeatsPerSide, showTop, showBottom })}
+            seatIndexNote={dualSide ? '第1排靠前方屏幕 · 上/下为长桌两侧 · 座号从左往右数' : '第1排靠前方屏幕 · 座号从左往右数'}
           />
         )}
         {seated && (
@@ -1013,6 +1016,8 @@ export default function ComputerLab({ students }: Props) {
                             <rect x={tableX} y={baseY} width={tableW} height={24} rx={6}
                               className="fill-primary/8 stroke-primary/30" strokeWidth={1.5} />
                             <text x={tableX + tableW / 2} y={baseY + 12} textAnchor="middle" dominantBaseline="middle" className="fill-primary/50 text-[10px]">
+                              {/* Row number on the first bar lets the PDF index (第N排…) be matched on the chart. */}
+                              {tci === 0 ? `${tFormat(t('seat.editor.lab.rowNum'), rowIdx + 1)} · ` : ''}
                               {tableCols > 1 ? tFormat(t('seat.editor.lab.longTableNumbered'), tci + 1) : t('seat.editor.lab.longTable')}
                             </text>
 

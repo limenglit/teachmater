@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, Shuffle, QrCode, Save, RotateCcw, Users, Trash2, Pencil } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
+import { buildTableSeatIndex } from '@/lib/seat-index';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import TitleRankConfigDialog from './TitleRankConfigDialog';
 import { useRoundTableDrag } from './useRoundTableDrag';
@@ -1074,6 +1075,9 @@ export default function BanquetHall({ students }: Props) {
             titleValue={recordName}
             onTitleChange={setRecordName}
             hideTitleInput
+            // The chart labels banquet tables T1, T2 …; the index uses the same name.
+            getSeatIndex={() => buildTableSeatIndex(assignment, closedSeats, i => `T${i + 1}桌`)}
+            seatIndexNote="桌号与座位图 T1、T2… 对应"
           />
         )}
         {assignment.length > 0 && (
