@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Users, LayoutGrid, ListOrdered, ArrowDownUp, ArrowLeftRight, Columns, Rows, Grid3X3, Shuffle, BookOpen, X, ArrowRightLeft, Plus, Minus, PanelLeft, QrCode, ClipboardCheck, Save, RotateCcw, Trash2, Pencil, Lock, Undo2, Redo2 } from 'lucide-react';
 import { snapSeatState, pushSeatUndo, popSeatUndo, popSeatRedo, type SeatSnap } from '@/lib/seat-undo';
 import ExportButtons from '@/components/ExportButtons';
-import { buildClassroomSeatIndex } from '@/lib/seat-index';
+import { buildClassroomSeatIndex, normalizeClassroomIndexLabelMode, CLASSROOM_INDEX_NOTES, type ClassroomIndexLabelMode } from '@/lib/seat-index';
+
+const INDEX_LABEL_MODE_KEY = 'seat-index-label-mode';
 import SeatCheckinDialog from '@/components/SeatCheckinDialog';
 import SmartClassroom from '@/components/seating/SmartClassroom';
 import ConferenceRoom from '@/components/seating/ConferenceRoom';
@@ -106,6 +108,9 @@ export default function SeatChart() {
   const [cols, setCols] = useState(8);
   const [seats, setSeats] = useState<(string | null)[][]>([]);
   const [recordName, setRecordName] = useState('');
+  const [indexLabelMode, setIndexLabelMode] = useState<ClassroomIndexLabelMode>(() => {
+    try { return normalizeClassroomIndexLabelMode(localStorage.getItem(INDEX_LABEL_MODE_KEY)); } catch { return 'rowcol'; }
+  });
   const [historyItems, setHistoryItems] = useState<ClassroomHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [activeClassContext, setActiveClassContextState] = useState<ActiveClassContext>(() => getActiveClassContext());
@@ -1624,6 +1629,35 @@ export default function SeatChart() {
               </Button>
 
               {seats.length > 0 && (
+                <div
+                  className="flex items-center gap-1 rounded-md border border-border bg-card px-1.5 py-1 text-xs"
+                  title="导出 PDF 时，第二页「学生座位快速索引表」里座位的写法"
+                >
+                  <span className="text-muted-foreground">索引表：</span>
+                  {([
+                    { value: 'rowcol', label: '第几行第几列' },
+                    { value: 'rowno', label: '第几排第几号' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      aria-pressed={indexLabelMode === opt.value}
+                      onClick={() => {
+                        setIndexLabelMode(opt.value);
+                        try { localStorage.setItem(INDEX_LABEL_MODE_KEY, opt.value); } catch { /* ignore */ }
+                      }}
+                      className={`px-2 py-0.5 rounded-full border transition-colors ${
+                        indexLabelMode === opt.value
+                          ? 'border-primary/50 bg-primary/10 text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {seats.length > 0 && (
                 <ExportButtons
                   targetRef={printRef}
                   filename={recordName.trim() || t('seat.exportName')}
@@ -1632,7 +1666,8 @@ export default function SeatChart() {
                   onTitleChange={setRecordName}
                   hideTitleInput
                   getSeatIndex={() => buildClassroomSeatIndex(seats, disabledSeats, windowOnLeft,
-                    new Map(students.map(s => [s.name, s.studentNumber])))}
+                    new Map(students.map(s => [s.name, s.studentNumber])), indexLabelMode)}
+                  seatIndexNote={CLASSROOM_INDEX_NOTES[indexLabelMode]}
                 />
               )}
               {seats.length > 0 && (
