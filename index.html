@@ -91,9 +91,30 @@
       // 启动看门狗：iOS/鸿蒙 WebView 在弱网或跨境线路下脚本可能卡住或加载失败，
       // 这里给出明确提示与重试，而不是一直转圈/白屏。
       (function(){
-        var shown=false;
+        var shown=false,jsErr=false;
+        var path=location.pathname.toLowerCase();
+        var scanPage=path.indexOf('/seat-checkin/')===0?'seat-checkin':(path.indexOf('/checkin/')===0?'checkin':'');
+        // 启动诊断：页面代码还没跑起来时也能记一笔（先存手机上，再尽量发出；签到页打开后会自动补发）。
+        function diag(stage,msg){
+          if(!scanPage)return;
+          try{
+            var ua=navigator.userAgent||'';var m=path.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
+            var row={p_session_id:m?m[0]:null,p_page:'boot-'+scanPage,p_ok:false,p_stage:stage,
+              p_error:String(msg).slice(0,300)+' | js='+(window.__TM_ENTRY_RAN__?1:0)+' r='+(/[?&]_r=\d+/.test(location.search)?1:0)+' net='+(navigator.onLine===false?0:1),
+              p_elapsed_ms:Math.round(window.performance&&performance.now?performance.now():0),p_attempts:0,p_ua:ua.slice(0,400),
+              p_ios_version:((ua.match(/OS (\d+[_.]\d+(?:[_.]\d+)?) like Mac OS X/)||[])[1]||'').replace(/_/g,'.'),
+              p_wechat_version:(ua.match(/MicroMessenger\/([\d.]+)/i)||[])[1]||''};
+            var s=JSON.stringify(row),QK='tm-diag-queue',q=[];
+            try{q=JSON.parse(localStorage.getItem(QK)||'[]');q.push(row);localStorage.setItem(QK,JSON.stringify(q.slice(-20)));}catch(_){}
+            if(!window.fetch)return;
+            fetch('https://vtlecaojupfsawcobbid.supabase.co/rest/v1/rpc/log_scan_diagnostic',{method:'POST',keepalive:true,
+              headers:{'Content-Type':'application/json',apikey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0bGVjYW9qdXBmc2F3Y29iYmlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4ODMxMDQsImV4cCI6MjA4NzQ1OTEwNH0.GWhtdBqi8EDMDSZtwmTRz9pi_wXryzEPkKlkT_Jurmo'},body:s})
+              .then(function(r){if(r.status>=500)return;try{var a=JSON.parse(localStorage.getItem(QK)||'[]'),b=[];for(var i=0;i<a.length;i++)if(JSON.stringify(a[i])!==s)b.push(a[i]);if(b.length)localStorage.setItem(QK,JSON.stringify(b));else localStorage.removeItem(QK);}catch(_){}})['catch'](function(){});
+          }catch(e){}
+        }
         function show(msg){
           if(shown||window.__TM_APP_MOUNTED__)return;shown=true;
+          diag('boot-fail',msg);
           var r=document.getElementById('root');if(!r)return;
           r.innerHTML='<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;font-size:15px;line-height:1.7">'+
             '<div>'+msg+'</div>'+
@@ -106,22 +127,36 @@
         }
         // 自动自愈：浏览器缓存了旧版首页（指向已不存在的旧文件）时，
         // 自动带防缓存参数重新打开一次最新版本，用户无需手动操作。
-        function heal(msg){
+        function heal(msg,why){
           if(window.__TM_APP_MOUNTED__)return;
           var k='tm-auto-heal',done=false;
           try{done=sessionStorage.getItem(k)==='1';if(!done)sessionStorage.setItem(k,'1');}catch(_){done=/[?&]_r=\d+/.test(location.search);}
           if(done){show(msg);return;}
+          diag('boot-heal',why||msg);
           var u=location.href.replace(/([?&])_r=\d+&?/,'$1').replace(/[?&]$/,'');
           location.replace(u+(u.indexOf('?')>-1?'&':'?')+'_r='+Date.now());
+        }
+        // 入口脚本下载状态：done=已下载完（却没运行，多半是旧缓存）；loading=还在下载（弱网，刷新反而从头再下）
+        function entryState(){
+          try{var s=document.querySelector('script[type="module"][src]');if(!s||!window.performance||!performance.getEntriesByName)return '?';
+            return performance.getEntriesByName(s.src).length?'done':'loading';}catch(_){return '?';}
         }
         window.__TM_BOOT_FAIL__=show;
         window.addEventListener('error',function(e){
           var t=e&&e.target;
-          if(t&&t.tagName==='SCRIPT'&&t.type==='module')heal('页面资源加载失败（网络不稳定）。');
+          if(t&&t.tagName==='SCRIPT'&&t.type==='module'){heal('页面资源加载失败（网络不稳定）。','entry-script-error');return;}
+          if(!jsErr&&!window.__TM_APP_MOUNTED__&&e&&e.message){jsErr=true;diag('boot-js',e.message+' @'+String(e.filename||'').split('/').pop()+':'+(e.lineno||0));}
         },true);
-        // 15 秒内启动脚本一行都没运行，多半是拿到了旧版缓存，自动刷新一次。
-        setTimeout(function(){if(!window.__TM_ENTRY_RAN__)heal('页面资源加载失败（网络不稳定）。');},15000);
-        setTimeout(function(){show('页面加载较慢，可能是网络不稳定。');},45000);
+        // 25 秒入口脚本还没运行：已下载完 → 多半是旧缓存，自动刷新一次；还在下载 → 弱网，继续等，不打断下载。
+        setTimeout(function(){
+          if(window.__TM_ENTRY_RAN__)return;
+          var st=entryState();
+          if(st==='loading')diag('boot-slow','entry-loading-25s');
+          else heal('页面资源加载失败（网络不稳定）。','no-entry-25s:'+st);
+        },25000);
+        // 40 秒仍没运行：连接可能卡死，自动刷新一次（已刷新过则显示提示与「重新加载」按钮）。
+        setTimeout(function(){if(!window.__TM_ENTRY_RAN__)heal('页面资源加载失败（网络不稳定）。','no-entry-40s:'+entryState());},40000);
+        setTimeout(function(){show('页面加载较慢，可能是网络不稳定。');},50000);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>

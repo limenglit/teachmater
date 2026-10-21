@@ -13,6 +13,47 @@ const versionedAppEntryPlugin = () => ({
   },
 });
 
+/**
+ * 学生扫码页「打平下载」：构建时把签到页要用到的分块文件名写进首页一小段脚本，
+ * 扫码打开时与入口脚本同时开始下载，不再「入口 → 精简应用 → 签到页」一层层等。
+ * 不支持 modulepreload 的旧 iOS 用普通请求先把文件放进缓存（分块文件长期缓存）。
+ * 只预载哈希分块（绝不预载入口 /src/main.tsx）；开发环境没有打包信息时不注入。
+ */
+const studentScanPreloadPlugin = () => ({
+  name: 'teachmate-student-scan-preload',
+  enforce: 'post' as const,
+  transformIndexHtml: {
+    order: 'post' as const,
+    handler(html: string, ctx: { bundle?: Record<string, any> }) {
+      const bundle = ctx.bundle;
+      if (!bundle) return html;
+      const chunks = Object.values(bundle).filter((c: any) => c && c.type === 'chunk');
+      const byFile = new Map<string, any>(chunks.map((c: any) => [c.fileName, c]));
+      const hasModule = (c: any, re: RegExp) =>
+        (c.moduleIds || Object.keys(c.modules || {})).some((id: string) => re.test(id));
+      const collect = (res: RegExp[]) => {
+        const js: string[] = []; const css: string[] = [];
+        const walk = (c: any) => {
+          if (!c || c.isEntry || js.includes(c.fileName)) return;
+          js.push(c.fileName);
+          for (const f of c.viteMetadata?.importedCss || []) if (!css.includes(f)) css.push(f);
+          for (const f of c.imports || []) walk(byFile.get(f));
+        };
+        for (const re of res) chunks.filter((c: any) => hasModule(c, re)).forEach(walk);
+        return { j: js, c: css };
+      };
+      const app = /src\/StudentApp\.tsx$/;
+      const map = {
+        s: collect([app, /src\/pages\/SeatCheckinPage\.tsx$/]),
+        c: collect([app, /src\/pages\/CheckInPage\.tsx$/]),
+      };
+      if (!map.s.j.length && !map.c.j.length) return html;
+      const code = `(function(){try{var p=location.pathname.toLowerCase();var k=p.indexOf('/seat-checkin/')===0?'s':(p.indexOf('/checkin/')===0?'c':'');if(!k)return;var M=${JSON.stringify(map)}[k];var h=document.head;var t=document.createElement('link');var mp=!!(t.relList&&t.relList.supports&&t.relList.supports('modulepreload'));var i,l;for(i=0;i<M.j.length;i++){if(mp){l=document.createElement('link');l.rel='modulepreload';l.crossOrigin='';l.href='/'+M.j[i];h.appendChild(l);}else if(window.fetch){fetch('/'+M.j[i],{credentials:'same-origin'})['catch'](function(){});}}for(i=0;i<M.c.length;i++){l=document.createElement('link');l.rel='preload';l.as='style';l.crossOrigin='';l.href='/'+M.c[i];h.appendChild(l);}}catch(e){}})();`;
+      return { html, tags: [{ tag: 'script', children: code, injectTo: 'head' as const }] };
+    },
+  },
+});
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -168,6 +209,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     versionedAppEntryPlugin(),
+    studentScanPreloadPlugin(),
     react({ devTarget: 'es2020' }),
     mode === "development" && componentTagger({ jsxSource: false }),
   ].filter(Boolean),
