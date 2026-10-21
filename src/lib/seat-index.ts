@@ -1,3 +1,5 @@
+import { formatClassroomSeatLabel } from './seat-number';
+
 export interface SeatIndexEntry {
   name: string;
   studentNumber?: string;
@@ -67,23 +69,43 @@ export function sortSeatIndex(entries: SeatIndexEntry[]): { sortBy: 'number' | '
 }
 
 /**
- * Build index entries from a classroom grid (第X排第Y座, door side = 第1座).
- * Numbering matches the exported chart's 第N排 / 第N列 labels exactly: closed
- * seats and closed rows still count, so the index never contradicts page 1.
+ * How an ordinary classroom's index phrases a seat:
+ * - 'rowcol' (default): 第X行第Y列, matching the chart's 第N排 / 第N列 labels
+ *   (closed seats and rows still count, door side = 第1列).
+ * - 'rowno': 第X排第Y号, the same centre-out numbering students see after
+ *   scanning the check-in QR code.
  */
+export type ClassroomIndexLabelMode = 'rowcol' | 'rowno';
+
+export const normalizeClassroomIndexLabelMode = (v: unknown): ClassroomIndexLabelMode =>
+  v === 'rowno' ? 'rowno' : 'rowcol';
+
+export const CLASSROOM_INDEX_NOTES: Record<ClassroomIndexLabelMode, string> = {
+  rowcol: '第1行在讲台一侧，第1列在前门一侧',
+  rowno: '每排正中为1号，向左双号、向右单号（与扫码签到一致）',
+};
+
+/** Build index entries from a classroom grid. */
 export function buildClassroomSeatIndex(
   seats: (string | null)[][],
   disabledSeats: Iterable<string>,
   doorOnRight: boolean,
   numberByName?: Map<string, string | undefined>,
+  mode: ClassroomIndexLabelMode = 'rowcol',
 ): SeatIndexEntry[] {
   const disabled = new Set(disabledSeats);
   const cols = seats.reduce((m, r) => Math.max(m, r.length), 0);
+  const rowWidths = seats.map(r => r?.length ?? 0);
   const out: SeatIndexEntry[] = [];
   seats.forEach((rowArr, r) => {
     rowArr.forEach((name, c) => {
       if (!name || disabled.has(`${r}-${c}`)) return;
-      out.push({ name, studentNumber: numberByName?.get(name), row: r + 1, col: doorOnRight ? cols - c : c + 1 });
+      const row = r + 1;
+      const col = doorOnRight ? cols - c : c + 1;
+      const label = mode === 'rowno'
+        ? formatClassroomSeatLabel(r, c, { rowWidth: rowArr.length, disabledSeats: disabled, rowWidths, doorOnRight }, 'no')
+        : `第${row}行第${col}列`;
+      out.push({ name, studentNumber: numberByName?.get(name), row, col, label });
     });
   });
   return out;
