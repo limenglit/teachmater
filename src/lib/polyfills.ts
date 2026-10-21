@@ -4,7 +4,11 @@
 const g: any = typeof globalThis !== 'undefined' ? globalThis : window;
 
 // 告诉首页看门狗：启动脚本已经开始运行（不是旧缓存或下载失败）。
-try { g.__TM_ENTRY_RAN__ = true; } catch { /* ignore */ }
+try {
+  g.__TM_ENTRY_RAN__ = true;
+  // 记下入口脚本开始运行的时刻（毫秒，自打开页面算起），写进扫码诊断，便于看出弱网下载用了多久。
+  g.__TM_ENTRY_AT__ = typeof performance !== 'undefined' && performance.now ? Math.round(performance.now()) : 0;
+} catch { /* ignore */ }
 
 // crypto.randomUUID: Safari 15.4+, Chrome 92+. Also missing on non-secure contexts.
 try {

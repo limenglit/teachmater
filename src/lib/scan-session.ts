@@ -97,6 +97,12 @@ export async function loadScanSession<T = any>(
   const dev = deviceInfo();
   const start = now();
   const log: string[] = [];
+  // 启动信息：入口脚本几毫秒后开始运行（js:），是否经过看门狗自动刷新（r）
+  try {
+    const at = (window as unknown as { __TM_ENTRY_AT__?: number }).__TM_ENTRY_AT__;
+    if (typeof at === 'number' && at > 0) log.push(`js:${at}`);
+    if (/[?&]_r=\d+/.test(window.location.search)) log.push('r');
+  } catch { /* ignore */ }
   const mk = (stage: string, error: string, n: number): ScanDiag => ({
     stage, error: (log.length ? `[${log.join(',')}] ` : '') + error, elapsedMs: now() - start, attempts: n, ...dev,
   });
