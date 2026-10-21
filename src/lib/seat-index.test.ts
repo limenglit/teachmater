@@ -4,7 +4,10 @@ import { buildClassroomSeatIndex, sortSeatIndex, planSeatIndexLayout, fitIndexNa
 describe('seat index', () => {
   it('gives row/seat numbers with door side as seat 1', () => {
     const e = buildClassroomSeatIndex([[null, '李娜'], ['张伟', null]], [], false);
-    expect(e).toEqual([{ name: '李娜', studentNumber: undefined, row: 1, col: 2 }, { name: '张伟', studentNumber: undefined, row: 2, col: 1 }]);
+    expect(e).toEqual([
+      { name: '李娜', studentNumber: undefined, row: 1, col: 2, label: '第1行第2列' },
+      { name: '张伟', studentNumber: undefined, row: 2, col: 1, label: '第2行第1列' },
+    ]);
     expect(buildClassroomSeatIndex([[null, '李娜']], [], true)[0].col).toBe(1);
   });
   it('matches the chart labels when a column or row is closed', () => {
@@ -51,6 +54,14 @@ describe('seat index', () => {
     expect(both.map(seatIndexLabel)).toEqual(['第1排上1号', '第2排下1号']);
     const topOnly = buildLabSeatIndex(groups, [], { seatsPerRow: 3, showTop: true, showBottom: false });
     expect(topOnly.map(seatIndexLabel)).toEqual(['第1排1号', '第1排2号', '第1排3号']);
+  });
+  it('defaults classroom labels to 第X行第Y列 counted from the front door', () => {
+    const e = buildClassroomSeatIndex([['张伟', '李娜', '王五']], [], true);
+    expect(e.map(seatIndexLabel)).toEqual(['第1行第3列', '第1行第2列', '第1行第1列']);
+  });
+  it('can label classroom seats 第X排第Y号 like the check-in page (centre = 1号, left even, right odd)', () => {
+    const e = buildClassroomSeatIndex([['张伟', '李娜', '王五']], [], false, undefined, 'rowno');
+    expect(e.map(seatIndexLabel)).toEqual(['第1排第2号', '第1排第1号', '第1排第3号']);
   });
   it('keeps the default 第N排M座 label for ordinary classrooms', () => {
     expect(seatIndexLabel({ name: '张伟', row: 3, col: 4 })).toBe('第3排4座');
