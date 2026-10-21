@@ -15,9 +15,14 @@ installWeChatCompat();
 const rootElement = document.getElementById("root");
 
 // 学生扫码签到页走精简应用，只下载签到所需代码；其余页面加载完整应用。
+// 签到页本身与精简应用同时开始下载（不等精简应用运行后再去取），弱网下少等一轮。
+const startStudentPage = () => {
+  const seat = window.location.pathname.toLowerCase().indexOf("/seat-checkin/") === 0;
+  (seat ? import("./pages/SeatCheckinPage") : import("./pages/CheckInPage")).catch(() => undefined);
+};
 const loadApp = (): Promise<{ default: ComponentType }> =>
   isStudentScanRoute()
-    ? import("./StudentApp")
+    ? (startStudentPage(), import("./StudentApp"))
     : Promise.all([import("./App.tsx"), import("./lib/touch-drag-shim"), import("./lib/safe-area")]).then(([app, drag, safe]) => {
         // 拖拽与安全区辅助只在教师端需要，学生扫码页不下载。
         drag.installTouchDragShim();
