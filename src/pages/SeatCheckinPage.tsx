@@ -4,7 +4,7 @@ import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
 import { normalizeStudentName } from '@/lib/student-name';
 
-import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
+import { normalizeSessionId, loadScanSession, deviceInfo } from '@/lib/scan-session';
 import type { CheckinCustomField } from '@/lib/seat-checkin-fields';
 import { Button, Input, toast } from '@/components/student-ui';
 import { MapPin, ScanLine, User2 } from '@/components/student-icons';
@@ -208,8 +208,7 @@ export default function SeatCheckinPage() {
         toast({ title: t('seatCheckin.failed'), description: '网络不稳定，请稍后再点一次「确认」，或请老师现场补签。', variant: 'destructive' });
         // 提交失败也留一条诊断（断网时先存手机上，之后补发），方便查是哪台手机卡在提交环节
         const e = err as { message?: string; code?: string; name?: string } | null;
-        void import('@/lib/scan-diag').then(async (m) => {
-          const { deviceInfo } = await import('@/lib/scan-session');
+        void import('@/lib/scan-diag').then((m) => {
           m.reportScanDiag('seat-submit', sessionId, false, {
             stage: e?.code ? 'server' : 'fetch',
             error: `${e?.code || e?.name || ''} ${e?.message || String(err)}`.trim().slice(0, 300),
