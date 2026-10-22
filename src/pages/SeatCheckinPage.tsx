@@ -63,6 +63,7 @@ export default function SeatCheckinPage() {
   const [checkedIn, setCheckedIn] = useState(false);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [slowSubmit, setSlowSubmit] = useState(false);
   const [displaySeatData, setDisplaySeatData] = useState<unknown | null>(null);
   const [isGuestAssigned, setIsGuestAssigned] = useState(false);
   const [assignedSeatHint, setAssignedSeatHint] = useState<string | null>(null);
@@ -147,6 +148,9 @@ export default function SeatCheckinPage() {
     }
     const isRegistered = session.student_names.some(n => normalizeStudentName(n) === trimmedName);
     setSubmitting(true);
+    // 提交本身遇到断流会在 30 秒内自动重发；超过 3 秒就告诉学生「正在重发」，别走开
+    const submitStart = Date.now();
+    const slowTimer = setTimeout(() => setSlowSubmit(true), 3000);
     try {
       const exists = await (await submitMod()).hasExistingSeatCheckinRecord(sessionId, trimmedName);
       if (exists) {
@@ -201,15 +205,27 @@ export default function SeatCheckinPage() {
       } else if (code === 'NO_SEAT_FOR_GUEST') {
         toast({ title: t('seatCheckin.allSeatsFull'), variant: 'destructive' });
       } else {
-        toast({ title: t('seatCheckin.failed'), variant: 'destructive' });
+        toast({ title: t('seatCheckin.failed'), description: '网络不稳定，请稍后再点一次「确认」，或请老师现场补签。', variant: 'destructive' });
+        // 提交失败也留一条诊断（断网时先存手机上，之后补发），方便查是哪台手机卡在提交环节
+        const e = err as { message?: string; code?: string; name?: string } | null;
+        void import('@/lib/scan-diag').then(async (m) => {
+          const { deviceInfo } = await import('@/lib/scan-session');
+          m.reportScanDiag('seat-submit', sessionId, false, {
+            stage: e?.code ? 'server' : 'fetch',
+            error: `${e?.code || e?.name || ''} ${e?.message || String(err)}`.trim().slice(0, 300),
+            elapsedMs: Date.now() - submitStart, attempts: 1, ...deviceInfo(),
+          });
+        }, () => undefined);
       }
     } finally {
+      clearTimeout(slowTimer);
+      setSlowSubmit(false);
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="flex flex-col items-center justify-center min-h-[100dvh] px-4 text-muted-foreground">{t('seatCheckin.loading')}{attempt > 1 ? <div className="text-xs mt-2">正在连接… 第 {attempt} 次</div> : null}</div>;
+    return <div className="flex flex-col items-center justify-center min-h-[100dvh] px-4 text-center text-muted-foreground">{t('seatCheckin.loading')}{attempt > 1 ? <div className="text-xs mt-2 leading-5">正在连接… 第 {attempt} 次<br />教室网络较慢，请勿关闭页面，系统正在自动重试</div> : null}</div>;
   }
 
   if (!session) {
@@ -290,7 +306,7 @@ export default function SeatCheckinPage() {
 
               className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"
             >
-              {submitting ? t('seatCheckin.checking') : t('seatCheckin.confirm')}
+              {submitting ? (slowSubmit ? '网络较慢，正在自动重发…' : t('seatCheckin.checking')) : t('seatCheckin.confirm')}
             </Button>
             <p className="text-[11px] text-center text-muted-foreground/70 leading-relaxed">
               💡 {t('seatCheckin.autoMatchHint')}
