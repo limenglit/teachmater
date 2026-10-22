@@ -2016,6 +2016,11 @@ export default function SeatCheckinDialog({
                               #{records.length - idx}
                             </span>
                             <span className="text-xs font-medium text-foreground truncate flex-1">{trimmed}</span>
+                            {(record.extra_fields as Record<string, unknown> | null)?.["签到方式"] === "教师补签" && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border bg-muted text-muted-foreground whitespace-nowrap shrink-0">
+                                补签
+                              </span>
+                            )}
                             <span
                               className={`text-[10px] px-1.5 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${
                                 isInList
@@ -2035,6 +2040,36 @@ export default function SeatCheckinDialog({
                 )}
               </div>
 
+              {/* 未签到名单：点名字即可现场补签 */}
+              {uncheckedNames.length > 0 && (
+                <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
+                  <p className="font-medium text-foreground flex items-center gap-1.5 flex-wrap">
+                    <UserCheck className="w-4 h-4 shrink-0" />
+                    {t("seatCheckinDialog.statsUnchecked")} · {uncheckedNames.length} {t("seatCheckinDialog.people")}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+                    学生手机没信号或没电时，确认人在教室后点名字即可补签
+                  </p>
+                  <div className="max-h-40 overflow-auto flex flex-wrap gap-1.5 pr-1">
+                    {uncheckedNames.map((n) => {
+                      const nm = n.trim();
+                      return (
+                        <button
+                          key={nm}
+                          type="button"
+                          disabled={!!manualAdding}
+                          onClick={() => void handleManualCheckin(nm)}
+                          className="text-xs px-2.5 py-1 rounded-full border border-border bg-background text-foreground hover:border-primary hover:text-primary active:bg-primary/10 disabled:opacity-50 transition-colors"
+                          title="点击补签"
+                        >
+                          {manualAdding === nm ? "补签中…" : nm}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {currentSession.status === "ended" && (
                 <div className="w-full rounded-lg border border-border bg-card p-3 text-sm">
                   <p className="font-medium text-foreground">{t("seatCheckinDialog.stats")}</p>
@@ -2044,13 +2079,6 @@ export default function SeatCheckinDialog({
                   <p className="text-muted-foreground">
                     {t("seatCheckinDialog.statsUnchecked")}：{uncheckedNames.length} {t("seatCheckinDialog.people")}
                   </p>
-                  {uncheckedNames.length > 0 && (
-                    <div className="mt-2">
-                      <div className="max-h-32 overflow-auto text-xs text-muted-foreground leading-relaxed">
-                        {uncheckedNames.map((n) => n.trim()).join("、")}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
