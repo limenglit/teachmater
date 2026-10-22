@@ -118,7 +118,7 @@
           try{var mm=p.match(/^\/(quiz|poll|discuss|board)\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
             if(mm){var F={quiz:['get_quiz_session_for_student','p_session_id'],poll:['get_poll_for_voter','p_poll_id'],discuss:['get_discussion_topic_for_student','p_topic_id'],board:['get_board_for_student','p_board_id']}[mm[1]];pf(mm[2],F[0],F[1]);}}catch(e3){}
           var r2=document.getElementById('root');
-          if(r2&&!r2.firstChild)r2.innerHTML='<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:-apple-system,\'PingFang SC\',sans-serif"><div id="tm-boot-tip" style="opacity:.65">正在打开… Loading</div></div>';
+          if(r2)r2.innerHTML='<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:-apple-system,\'PingFang SC\',sans-serif"><div id="tm-boot-tip" style="opacity:.65">正在打开… Loading</div></div>';
           tick('正在打开…');
         }
       }catch(e){}})();
