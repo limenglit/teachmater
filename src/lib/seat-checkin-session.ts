@@ -468,6 +468,21 @@ export async function loadSeatCheckinRecords(sessionId: string) {
   return data as SeatCheckinRecord[];
 }
 
+/** 教师现场补签：不需要口令，签到结束后也可补录；同名已签到则直接返回原记录。 */
+export async function addSeatCheckinRecordByTeacher(sessionId: string, studentName: string) {
+  const token = getSeatCheckinSessionToken(sessionId) || '';
+  const { data, error } = await (supabase.rpc as any)('teacher_add_seat_checkin_record', {
+    p_session_id: sessionId,
+    p_token: token,
+    p_student_name: studentName,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('NO_RECORD_CREATED');
+  return row as SeatCheckinRecord;
+}
+
+
 export async function endSeatCheckinSession(sessionId: string) {
   const token = getSeatCheckinSessionToken(sessionId);
   const { data: authData } = await supabase.auth.getUser();

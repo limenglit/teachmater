@@ -120,7 +120,7 @@ export default function CheckInPage() {
   if (sessionValid === null) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
-        <div className="text-muted-foreground text-center">{t('checkinPage.loading')}{attempt > 1 ? <div className="text-xs mt-2">正在连接… 第 {attempt} 次</div> : null}</div>
+        <div className="text-muted-foreground text-center">{t('checkinPage.loading')}{attempt > 1 ? <div className="text-xs mt-2 leading-5">正在连接… 第 {attempt} 次<br />教室网络较慢，请勿关闭页面，系统正在自动重试</div> : null}</div>
       </div>
     );
   }
