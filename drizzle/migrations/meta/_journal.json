@@ -8,6 +8,13 @@
       "when": 1791596811197,
       "tag": "0000_scan_diagnostics",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792641836109,
+      "tag": "0001_teacher_add_seat_checkin_record",
+      "breakpoints": true
     }
   ]
 }

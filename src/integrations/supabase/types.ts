@@ -2455,6 +2455,24 @@ export type Database = {
         }[]
       }
       submit_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
+      teacher_add_seat_checkin_record: {
+        Args: { p_session_id: string; p_student_name: string; p_token: string }
+        Returns: {
+          checked_in_at: string
+          extra_fields: Json
+          id: string
+          org: string
+          phone: string
+          session_id: string
+          student_name: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "seat_checkin_records"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       topic_exists: { Args: { p_topic_id: string }; Returns: boolean }
       update_board: {
         Args: {
