@@ -45,6 +45,7 @@ import {
   deleteSeatCheckinSession,
   endSeatCheckinSession,
   getSeatCheckinSessionToken,
+  addSeatCheckinRecordByTeacher,
   loadSeatCheckinRecords,
   loadSeatCheckinSessionHistory,
   type SeatCheckinRecord,
@@ -913,6 +914,24 @@ export default function SeatCheckinDialog({
   );
   const currentStudentNames = currentSession?.student_names ?? studentNames;
   const uncheckedNames = currentStudentNames.filter((name) => !checkedInNames.includes(name.trim()));
+
+  // 教师现场补签：学生手机没信号/没电时，老师点名字直接记为已签到。
+  const [manualAdding, setManualAdding] = useState<string | null>(null);
+  const handleManualCheckin = async (rawName: string) => {
+    const studentName = rawName.trim();
+    if (!currentSession || !studentName || manualAdding) return;
+    if (!window.confirm(`确认为「${studentName}」补签？\n补签记录会标注为「教师补签」。`)) return;
+    setManualAdding(studentName);
+    try {
+      const row = await addSeatCheckinRecordByTeacher(currentSession.id, studentName);
+      setRecords((prev) => (prev.some((item) => item.id === row.id) ? prev : [...prev, row]));
+      toast({ title: `已为 ${studentName} 补签` });
+    } catch {
+      toast({ title: "补签失败，请检查网络后重试", variant: "destructive" });
+    } finally {
+      setManualAdding(null);
+    }
+  };
 
   // Manual override state for guest students
   const [guestRotateOffsets, setGuestRotateOffsets] = useState<Record<string, number>>({});
