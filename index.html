@@ -86,14 +86,14 @@
         var p=location.pathname.toLowerCase();
         var K='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ0bGVjYW9qdXBmc2F3Y29iYmlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4ODMxMDQsImV4cCI6MjA4NzQ1OTEwNH0.GWhtdBqi8EDMDSZtwmTRz9pi_wXryzEPkKlkT_Jurmo';
         var B='https://vtlecaojupfsawcobbid.supabase.co/rest/v1/rpc/';
-        // 双路对冲预取：第一路 350ms 没回来就并发第二路；某一路很快失败就再补一路（最多 3 路，9 秒封顶）。谁先拿到数据用谁。
+        // 双路对冲预取：第一路 350ms 没回来就并发第二路；没有在途请求时失败就再补一路（最多 3 路，9 秒封顶）。谁先拿到数据用谁。
         function hp(u){return new Promise(function(res){
           var n=0,live=0,done=false;
           function fin(v){if(!done){done=true;res(v);}}
           function go(){n++;live++;
             fetch(u,{cache:'no-store'}).then(function(r){return r.ok?r.json():null})['catch'](function(){return null})
               .then(function(j){live--;if(done)return;if(j){fin(j);return;}
-                if(n<3)setTimeout(function(){if(!done)go();},250);else if(live===0)fin(null);});
+                if(live>0)return;if(n<3)setTimeout(function(){if(!done&&live===0)go();},250);else fin(null);});
           }
           go();
           setTimeout(function(){if(!done&&n<2)go();},350);
