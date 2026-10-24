@@ -9,10 +9,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Clock, QrCode, StopCircle, Download, CheckCircle2, XCircle, UserX } from 'lucide-react';
 import ExportButtons from '@/components/ExportButtons';
 import { toast } from '@/hooks/use-toast';
-import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
+import { formatTime, formatDuration as formatDur, computeCheckinStats, generateCheckinCSV, buildHistoryEntry, isTeacherCheckin, checkinMethodLabel, type CheckinRecord, type SessionData } from '@/lib/checkin-utils';
 import { downloadQrFromContainer } from '@/lib/qr-download';
 import { tagWithActiveClass, getActiveClassId, useActiveClassId } from '@/lib/class-space';
-import { getCurrentUserId, fetchCloudCheckinHistory, mergeCheckinHistory, type CheckinHistoryEntry } from '@/lib/checkin-history-cloud';
+import { getCurrentUserId, fetchCloudCheckinHistory, mergeCheckinHistory, addCheckinRecordByTeacher, type CheckinHistoryEntry } from '@/lib/checkin-history-cloud';
 import { getShareOrigin } from '@/lib/share-origin';
 
 const HISTORY_KEY = 'teachmate_checkin_history';
@@ -46,6 +46,29 @@ function saveHistory(session: SessionData, records: CheckinRecord[], studentName
     });
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
   } catch { }
+}
+
+/** 结束后补签：同步更新本机历史里这一场的记录。 */
+function updateHistoryRecords(sessionId: string, records: CheckinRecord[], studentNames: string[]) {
+  try {
+    const history = loadHistory();
+    const idx = history.findIndex((h: any) => h?.session?.id === sessionId);
+    if (idx < 0) return;
+    history[idx] = {
+      ...history[idx],
+      records,
+      unchecked: studentNames.filter(n => !records.some(r => r.student_name === n && r.status === 'matched')),
+    };
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch { }
+}
+
+function TeacherBadge() {
+  return (
+    <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-border bg-muted text-muted-foreground whitespace-nowrap shrink-0">
+      补签
+    </span>
+  );
 }
 
 export default function CheckInPanel() {
@@ -216,6 +239,36 @@ export default function CheckInPanel() {
   };
 
 
+  // 教师现场补签：学生手机没信号/没电时，老师点名字直接记为已签到（进行中和结束后都可用）。
+  const [manualAdding, setManualAdding] = useState<string | null>(null);
+  const handleManualCheckin = async (rawName: string) => {
+    const studentName = rawName.trim();
+    if (!session || !studentName || manualAdding) return;
+    if (!window.confirm(`确认为「${studentName}」补签？\n补签记录会标注为「补签」。`)) return;
+    setManualAdding(studentName);
+    try {
+      const row = await addCheckinRecordByTeacher(session.id, (session as any).creator_token || '', studentName);
+      // 以花名册上的写法记入，保证名单能对上
+      const rec: CheckinRecord = { ...row, student_name: rawName, status: 'matched' };
+      setRecords(prev => {
+        const next = prev.some(r => r.id === rec.id) ? prev.map(r => (r.id === rec.id ? rec : r)) : [...prev, rec];
+        if (session.status === 'ended') updateHistoryRecords(session.id, next, studentNames);
+        return next;
+      });
+      setLeaveSet(prev => {
+        if (!prev.has(rawName)) return prev;
+        const next = new Set(prev);
+        next.delete(rawName);
+        return next;
+      });
+      toast({ title: `已为 ${studentName} 补签` });
+    } catch {
+      toast({ title: '补签失败，请检查网络后重试', variant: 'destructive' });
+    } finally {
+      setManualAdding(null);
+    }
+  };
+
   const toggleLeave = (name: string) => {
     setLeaveSet(prev => {
       const next = new Set(prev);
@@ -240,9 +293,9 @@ export default function CheckInPanel() {
     : '';
 
   const exportCSV = () => {
-    const lines = [`${t('checkin.csvName')},${t('checkin.csvStatus')},${t('checkin.csvTime')}`];
+    const lines = [`${t('checkin.csvName')},${t('checkin.csvStatus')},${t('checkin.csvTime')},签到方式`];
     records.filter(r => r.status === 'matched').forEach(r => {
-      lines.push(`${r.student_name},${t('checkin.csvChecked')},${new Date(r.checked_in_at).toLocaleString()}`);
+      lines.push(`${r.student_name},${t('checkin.csvChecked')},${new Date(r.checked_in_at).toLocaleString()},${checkinMethodLabel(r)}`);
     });
     uncheckedStudents.forEach(n => {
       lines.push(`${n},${leaveSet.has(n) ? t('checkin.csvLeave') : t('checkin.csvUnchecked')},`);
@@ -411,8 +464,11 @@ export default function CheckInPanel() {
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-primary flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {t('checkin.checkedIn')} ({matchedRecords.length})</p>
                     {matchedRecords.map(r => (
-                      <div key={r.id} className="flex items-center justify-between text-sm pl-4">
-                        <span className="text-foreground">{r.student_name}</span>
+                      <div key={r.id} className="flex items-center justify-between gap-2 text-sm pl-4">
+                        <span className="text-foreground flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">{r.student_name}</span>
+                          {isTeacherCheckin(r) && <TeacherBadge />}
+                        </span>
                         <span className="text-xs text-muted-foreground">{new Date(r.checked_in_at).toLocaleTimeString()}</span>
                       </div>
                     ))}
@@ -421,8 +477,19 @@ export default function CheckInPanel() {
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-destructive flex items-center gap-1"><XCircle className="w-3 h-3" /> {t('checkin.unchecked')} ({uncheckedStudents.length})</p>
                       {uncheckedStudents.map(n => (
-                        <div key={n} className="text-sm pl-4 text-muted-foreground">
-                          {n}{leaveSet.has(n) ? <span className="text-xs ml-1 bg-accent text-accent-foreground px-1 py-0.5 rounded">{t('checkin.leave')}</span> : ''}
+                        <div key={n} className="flex items-center justify-between gap-2 text-sm pl-4 text-muted-foreground">
+                          <span className="min-w-0 truncate">
+                            {n}{leaveSet.has(n) ? <span className="text-xs ml-1 bg-accent text-accent-foreground px-1 py-0.5 rounded">{t('checkin.leave')}</span> : ''}
+                          </span>
+                          <button
+                            type="button"
+                            data-html2canvas-ignore="true"
+                            disabled={!!manualAdding}
+                            onClick={() => void handleManualCheckin(n)}
+                            className="text-xs px-2 py-0.5 rounded-full border border-border bg-background text-foreground hover:border-primary hover:text-primary disabled:opacity-50 transition-colors shrink-0"
+                          >
+                            {manualAdding === n.trim() ? '补签中…' : '补签'}
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -520,6 +587,11 @@ export default function CheckInPanel() {
             <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
               <XCircle className="w-4 h-4 text-destructive" /> {t('checkin.unchecked')} ({uncheckedStudents.length})
             </h3>
+            {uncheckedStudents.length > 0 && (
+              <p className="text-[11px] text-muted-foreground -mt-1 mb-2" data-html2canvas-ignore="true">
+                学生手机没信号或没电时，确认人在教室后点「补签」
+              </p>
+            )}
             <div className="space-y-1">
               {uncheckedStudents.map(name => (
                 <div key={name} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -533,6 +605,16 @@ export default function CheckInPanel() {
                   {leaveSet.has(name) && (
                     <span className="text-xs bg-accent text-accent-foreground px-1.5 py-0.5 rounded">{t('checkin.leave')}</span>
                   )}
+                  <button
+                    type="button"
+                    data-html2canvas-ignore="true"
+                    disabled={!!manualAdding}
+                    onClick={() => void handleManualCheckin(name)}
+                    className="ml-auto text-xs px-2 py-0.5 rounded-full border border-border bg-background text-foreground hover:border-primary hover:text-primary disabled:opacity-50 transition-colors shrink-0"
+                    title="学生手机没信号或没电时，确认人在教室后点此补签"
+                  >
+                    {manualAdding === name.trim() ? '补签中…' : '补签'}
+                  </button>
                 </div>
               ))}
             </div>
@@ -561,8 +643,11 @@ export default function CheckInPanel() {
             </h3>
             <div className="space-y-1">
               {records.filter(r => r.status === 'matched').map(r => (
-                <div key={r.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-primary/5">
-                  <span className="text-sm font-medium text-foreground">{r.student_name}</span>
+                <div key={r.id} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-primary/5">
+                  <span className="text-sm font-medium text-foreground flex items-center gap-1.5 min-w-0">
+                    <span className="truncate">{r.student_name}</span>
+                    {isTeacherCheckin(r) && <TeacherBadge />}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     {new Date(r.checked_in_at).toLocaleTimeString()}
                   </span>
