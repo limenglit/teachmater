@@ -274,3 +274,17 @@ describe('edge cases', () => {
     expect(typeof result).toBe('string');
   });
 });
+
+import { isTeacherCheckin as _isTeacher, checkinMethodLabel as _methodLabel } from './checkin-utils';
+
+describe('教师现场补签标记', () => {
+  it('补签记录标为教师补签', () => {
+    expect(_isTeacher({ checkin_method: 'teacher' })).toBe(true);
+    expect(_methodLabel({ checkin_method: 'teacher' })).toBe('教师补签');
+  });
+  it('学生扫码和旧记录不算补签', () => {
+    expect(_isTeacher({ checkin_method: 'scan' })).toBe(false);
+    expect(_isTeacher({})).toBe(false);
+    expect(_methodLabel({ checkin_method: null })).toBe('扫码签到');
+  });
+});

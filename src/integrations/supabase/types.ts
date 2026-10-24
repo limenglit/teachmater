@@ -466,6 +466,7 @@ export type Database = {
       checkin_records: {
         Row: {
           checked_in_at: string
+          checkin_method: string
           id: string
           session_id: string
           status: string
@@ -473,6 +474,7 @@ export type Database = {
         }
         Insert: {
           checked_in_at?: string
+          checkin_method?: string
           id?: string
           session_id: string
           status?: string
@@ -480,6 +482,7 @@ export type Database = {
         }
         Update: {
           checked_in_at?: string
+          checkin_method?: string
           id?: string
           session_id?: string
           status?: string
@@ -2072,6 +2075,7 @@ export type Database = {
         Args: { p_session_id: string; p_token: string }
         Returns: {
           checked_in_at: string
+          checkin_method: string
           id: string
           session_id: string
           status: string
@@ -2455,6 +2459,23 @@ export type Database = {
         }[]
       }
       submit_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
+      teacher_add_checkin_record: {
+        Args: { p_session_id: string; p_student_name: string; p_token: string }
+        Returns: {
+          checked_in_at: string
+          checkin_method: string
+          id: string
+          session_id: string
+          status: string
+          student_name: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "checkin_records"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       teacher_add_seat_checkin_record: {
         Args: { p_session_id: string; p_student_name: string; p_token: string }
         Returns: {

@@ -15,6 +15,20 @@
       "when": 1792641836109,
       "tag": "0001_teacher_add_seat_checkin_record",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792800650924,
+      "tag": "0002_teacher_add_checkin_record",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792800673200,
+      "tag": "0003_teacher_add_checkin_record_exact_dedupe",
+      "breakpoints": true
     }
   ]
 }
