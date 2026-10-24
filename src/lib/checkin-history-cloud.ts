@@ -38,7 +38,7 @@ export async function fetchCloudCheckinHistory(limit = 100): Promise<CheckinHist
   const ids = sessions.map(s => s.id);
   const { data: records } = await supabase
     .from('checkin_records')
-    .select('id, session_id, student_name, checked_in_at, status')
+    .select('id, session_id, student_name, checked_in_at, status, checkin_method')
     .in('session_id', ids)
     .order('checked_in_at', { ascending: true });
 
@@ -50,6 +50,7 @@ export async function fetchCloudCheckinHistory(limit = 100): Promise<CheckinHist
       student_name: r.student_name,
       checked_in_at: r.checked_in_at,
       status: r.status,
+      checkin_method: r.checkin_method ?? 'scan',
     });
     bySession.set(r.session_id, list);
   });
@@ -87,4 +88,17 @@ export function mergeCheckinHistory(
   return [...cloud, ...localEntries].sort(
     (a, b) => new Date(b.savedAt || b.session.created_at).getTime() - new Date(a.savedAt || a.session.created_at).getTime(),
   );
+}
+
+/** 教师现场补签（普通签到）：签到进行中和结束后都可用；同名已签到则返回原记录。 */
+export async function addCheckinRecordByTeacher(sessionId: string, token: string, studentName: string): Promise<CheckinRecord> {
+  const { data, error } = await (supabase.rpc as any)('teacher_add_checkin_record', {
+    p_session_id: sessionId,
+    p_token: token || '',
+    p_student_name: studentName,
+  });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error('NO_RECORD_CREATED');
+  return row as CheckinRecord;
 }

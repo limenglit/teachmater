@@ -8,6 +8,18 @@ export interface CheckinRecord {
   student_name: string;
   checked_in_at: string;
   status: string; // 'matched' | 'unknown' | 'pending'
+  /** 'scan' = 学生扫码签到；'teacher' = 教师现场补签 */
+  checkin_method?: string | null;
+}
+
+/** 是否为教师现场补签的记录 */
+export function isTeacherCheckin(record: Pick<CheckinRecord, 'checkin_method'>): boolean {
+  return record.checkin_method === 'teacher';
+}
+
+/** 签到方式的中文标注（导出表格用） */
+export function checkinMethodLabel(record: Pick<CheckinRecord, 'checkin_method'>): string {
+  return isTeacherCheckin(record) ? '教师补签' : '扫码签到';
 }
 
 export interface SessionData {
