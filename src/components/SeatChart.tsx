@@ -1113,7 +1113,7 @@ export default function SeatChart() {
       elements.push(
         <div key={`col-label-${ci}`} style={{ gridRow: 1, gridColumn: toGridCol(visualCol) }} className="w-16 h-12 flex items-center justify-center">
           <button type="button" onClick={() => toggleColDisabled(ci)}
-            className={`h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
             title={colDisabled ? t('seat.enableCol') : t('seat.disableCol')}
           >
             {t('seat.colLabel').replace('{0}', String(displayCol))}
@@ -1159,7 +1159,7 @@ export default function SeatChart() {
           >
             {isDisabled ? <X className="w-4 h-4" /> : formatSeatLabel(name)}
             {isLocked && !isDisabled && (
-              <Lock className="absolute top-0.5 right-0.5 w-3 h-3 text-amber-600 dark:text-amber-400" aria-label="locked" />
+              <Lock className="absolute top-[2px] right-[2px] w-2.5 h-2.5 text-amber-600 dark:text-amber-400" aria-label="locked" />
             )}
           </div>
         );
@@ -1169,7 +1169,7 @@ export default function SeatChart() {
       elements.push(
         <div key={`row-label-${ri}`} style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: rowLabelCol }} className="w-16 h-12 flex items-center justify-center">
           <button type="button" onClick={() => toggleRowDisabled(ri)}
-            className={`h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
             title={rowDisabled ? t('seat.enableRow') : t('seat.disableRow')}
           >
             {t('seat.rowLabel').replace('{0}', String(ri + 1))}
