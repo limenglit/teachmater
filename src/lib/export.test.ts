@@ -191,10 +191,10 @@ describe('export – seating layout', () => {
     const index = Array.from({ length: 130 }, (_, i) => ({ name: `学生${i}`, studentNumber: `2023010401${String(i).padStart(2, '0')}`, row: 1 + (i % 10), col: 1 + Math.floor(i / 10) }));
     await exportToPDF(root, 'seatmap', '座位图', index);
     const pdf = vi.mocked(jsPDF).mock.results.at(-1)?.value;
-    // 130 long-number students → 2 columns × 38 rows → 2 index pages
-    expect(pdf.addPage).toHaveBeenCalledTimes(2);
+    // 130 long-number students → 2 columns × 32 rows → 3 index pages
+    expect(pdf.addPage).toHaveBeenCalledTimes(3);
     const indexCalls = pdf.addImage.mock.calls.slice(1);
-    expect(indexCalls).toHaveLength(2);
+    expect(indexCalls).toHaveLength(3);
     for (const call of indexCalls) expect(call.slice(2, 6)).toEqual([0, 0, 210, 297]);
   });
 

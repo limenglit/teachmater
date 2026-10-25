@@ -1,10 +1,23 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
+import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, INDEX_LETTER_SPACING, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
 export const BASELINE_FIX_ATTR = 'data-export-baseline-fix';
+
+/** System CJK fonts first: they exist for both the page and the canvas. */
+export const EXPORT_FONT = '"Microsoft YaHei","PingFang SC","Noto Sans SC","Hiragino Sans GB",SimHei,sans-serif';
+
+/**
+ * Text written by the exporter (title, footer, index table). A non-zero
+ * letter-spacing makes html2canvas place every character at its own measured
+ * position instead of drawing whole word runs, whose canvas width can exceed
+ * the page width and push glyphs into each other. Kerning and ligatures are
+ * off so the page advances match the canvas's per-character advances.
+ */
+export const exportTextCss = (letterSpacingPx: number) =>
+  `font-family:${EXPORT_FONT};letter-spacing:${letterSpacingPx}px;font-kerning:none;font-variant-ligatures:none;font-feature-settings:normal;white-space:nowrap;`;
 
 /**
  * html2canvas measures each font's baseline in the live page with a 1x1 <img>
@@ -125,13 +138,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const heading = document.createElement('div');
   heading.textContent = title;
-  heading.style.textAlign = 'center';
-  heading.style.color = '#000000';
-  heading.style.fontSize = '22px';
-  heading.style.fontWeight = '700';
-  heading.style.fontFamily = 'SimHei, "Microsoft YaHei", sans-serif';
-  heading.style.lineHeight = '1.2';
-  heading.style.marginBottom = "16px";
+  heading.style.cssText = `${exportTextCss(1)}text-align:center;color:#000000;font-size:22px;font-weight:700;line-height:1.4;margin-bottom:16px;white-space:normal;word-break:break-all;`;
 
   const content = document.createElement('div');
   content.style.display = 'flex';
@@ -147,12 +154,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const footer = document.createElement('div');
   footer.textContent = COPYRIGHT_TEXT;
-  footer.style.marginTop = "16px";
-  footer.style.textAlign = 'center';
-  footer.style.color = '#333333';
-  footer.style.fontSize = '10px';
-  footer.style.fontFamily = '"Microsoft YaHei", sans-serif';
-  footer.style.lineHeight = '1.2';
+  footer.style.cssText = `${exportTextCss(0.5)}margin-top:16px;text-align:center;color:#333333;font-size:11px;line-height:1.5;white-space:normal;word-break:break-all;`;
 
   wrapper.appendChild(heading);
   wrapper.appendChild(content);
@@ -256,15 +258,16 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
 export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatIndexLayout, heading: string, sub: string) {
   const P = INDEX_PAGE;
-  const font = '"Microsoft YaHei","PingFang SC","Noto Sans SC","Hiragino Sans GB",SimHei,sans-serif';
   const wrap = document.createElement('div');
-  wrap.style.cssText = `position:fixed;left:0;top:0;width:${P.width}px;height:${P.height}px;overflow:hidden;padding:28px ${P.padX}px 0;box-sizing:border-box;background:#fff;color:#111;font-family:${font};`;
+  // Letter-spacing is inherited by every cell, so all index text is placed
+  // character by character (see exportTextCss).
+  wrap.style.cssText = `${exportTextCss(INDEX_LETTER_SPACING)}position:fixed;left:0;top:0;width:${P.width}px;height:${P.height}px;overflow:hidden;padding:28px ${P.padX}px 0;box-sizing:border-box;background:#fff;color:#111;`;
   const h = document.createElement('div');
   h.textContent = heading;
-  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.4;white-space:nowrap;';
+  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.4;letter-spacing:1px;white-space:normal;word-break:break-all;';
   const s = document.createElement('div');
   s.textContent = sub;
-  s.style.cssText = 'text-align:center;font-size:12px;color:#555;line-height:1.4;margin:4px 0 14px;';
+  s.style.cssText = 'text-align:center;font-size:12px;color:#555;line-height:1.5;margin:4px 0 14px;white-space:normal;';
 
   const hasNumber = layout.numberWidth > 0;
   const cols = hasNumber
