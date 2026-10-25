@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import MathText from '@/components/quiz/MathText';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -683,7 +683,7 @@ export default function QuizSubmitPage() {
                 aria-selected={isCurrent}
                 aria-label={`${tr('quiz.jumpToQuestion', '跳转到第')} ${i + 1} ${tr('quiz.questionUnit', '题')}${isAnswered ? `（${tr('quiz.answered', '已作答')}）` : ''}`}
                 onClick={() => setCurrentQ(i)}
-                className={`h-2 flex-1 min-w-[8px] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                className={`h-2 flex-1 min-w-[8px] rounded-full transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                   isCurrent ? 'bg-primary' : isAnswered ? 'bg-green-500' : 'bg-muted hover:bg-muted-foreground/30'
                 }`}
               />
@@ -711,7 +711,7 @@ export default function QuizSubmitPage() {
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  className={`w-full text-left p-3 sm:p-4 min-h-[44px] rounded-xl border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                  className={`w-full text-left p-3 sm:p-4 min-h-[44px] rounded-xl border-2 transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                     selected ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'
                   }`}
                   onClick={() => setAnswer(currentQ, letter)}
@@ -735,7 +735,7 @@ export default function QuizSubmitPage() {
                   type="button"
                   role="checkbox"
                   aria-checked={selected}
-                  className={`w-full text-left p-3 sm:p-4 min-h-[44px] rounded-xl border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+                  className={`w-full text-left p-3 sm:p-4 min-h-[44px] rounded-xl border-2 transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                     selected ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/30'
                   }`}
                   onClick={() => toggleMultiAnswer(currentQ, letter)}
@@ -757,7 +757,7 @@ export default function QuizSubmitPage() {
               role="radio"
               aria-checked={answer === 'A'}
               aria-label={t('quiz.true')}
-              className={`p-6 min-h-[88px] rounded-xl border-2 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+              className={`p-6 min-h-[88px] rounded-xl border-2 text-center transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                 answer === 'A' ? 'border-green-600 bg-green-50' : 'border-border hover:border-muted-foreground/30'
               }`}
               onClick={() => setAnswer(currentQ, 'A')}
@@ -770,7 +770,7 @@ export default function QuizSubmitPage() {
               role="radio"
               aria-checked={answer === 'B'}
               aria-label={t('quiz.false')}
-              className={`p-6 min-h-[88px] rounded-xl border-2 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
+              className={`p-6 min-h-[88px] rounded-xl border-2 text-center transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
                 answer === 'B' ? 'border-red-600 bg-red-50' : 'border-border hover:border-muted-foreground/30'
               }`}
               onClick={() => setAnswer(currentQ, 'B')}

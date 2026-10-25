@@ -397,7 +397,7 @@ export default function AchievementPanel() {
                   {t(`achieve.source_${p.source}`)}
                 </span>
                 <span className="text-xs text-muted-foreground flex-1 truncate">{p.description}</span>
-                <span className="text-xs text-muted-foreground flex-shrink-0">
+                <span className="text-xs text-muted-foreground shrink-0">
                   {new Date(p.created_at).toLocaleString()}
                 </span>
               </div>
@@ -429,7 +429,7 @@ export default function AchievementPanel() {
                     key={badge.id}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="p-4 rounded-xl border border-border bg-card hover:shadow-sm transition-shadow"
+                    className="p-4 rounded-xl border border-border bg-card hover:shadow-xs transition-shadow"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">

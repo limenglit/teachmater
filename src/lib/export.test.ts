@@ -79,10 +79,8 @@ beforeEach(() => {
     return el;
   });
   // URL.createObjectURL used by SVG export
-  // @ts-ignore
-  URL.createObjectURL = vi.fn(() => 'blob:mock');
-  // @ts-ignore
-  URL.revokeObjectURL = vi.fn();
+  URL.createObjectURL = vi.fn(() => 'blob:mock') as unknown as typeof URL.createObjectURL;
+  URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
 });
 
 describe('export – disabled seats', () => {

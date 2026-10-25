@@ -681,7 +681,7 @@ export default function FlashCard({ cards: rawCards, onError }: FlashCardProps) 
         onClick={() => setShowBack(s => !s)}
       >
         <motion.div
-          className="relative w-full rounded-xl border-2 shadow-sm"
+          className="relative w-full rounded-xl border-2 shadow-xs"
           style={{
             minHeight: settings.cardHeight,
             transformStyle: 'preserve-3d',

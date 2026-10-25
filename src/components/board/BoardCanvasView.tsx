@@ -54,7 +54,7 @@ export default function BoardCanvasView({ cards, onManage, onLike, isCreator }: 
         return (
           <div
             key={card.id}
-            className="absolute w-52 rounded-xl border border-border shadow-sm p-3 cursor-move select-none touch-none transition-shadow hover:shadow-md"
+            className="absolute w-52 rounded-xl border border-border shadow-xs p-3 cursor-move select-none touch-none transition-shadow hover:shadow-md"
             style={{
               left: pos.x,
               top: pos.y,

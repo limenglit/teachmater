@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -61,7 +61,7 @@ export default function TaskSubmitPage() {
       p_student_name: name,
     } as any);
     if (data) {
-      setCompletedTasks(new Set(data.map(d => d.task_index)));
+      setCompletedTasks(new Set(data.map((d: { task_index: number }) => d.task_index)));
     }
     setJoined(true);
   };

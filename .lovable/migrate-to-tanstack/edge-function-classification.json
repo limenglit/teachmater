@@ -1,0 +1,19 @@
+{"functions": [
+  {"name": "analyze-barrage", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin /api/public/sb/functions/v1 relay", "outcome": "left"},
+  {"name": "analyze-board", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "analyze-text", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "auto-match-ai-orders", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-courseware-outline", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-ppt-image", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-ppt-outline", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-quiz-questions", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-storyboard", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-visual-image", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-visual-video", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "generate-vocab-cards", "classification": "internal-only", "signal": "called from 2 src/ files; has Deno tests; now reached via same-origin relay", "outcome": "left"},
+  {"name": "parse-seat-chart-markers", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "parse-seat-layout-image", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "recommend-learning", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "recommend-quiz-learning", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"},
+  {"name": "remove-background", "classification": "internal-only", "signal": "called from 1 src/ file; now reached via same-origin relay", "outcome": "left"}
+]}

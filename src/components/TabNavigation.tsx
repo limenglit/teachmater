@@ -98,7 +98,7 @@ export default function TabNavigation({ activeTab, onTabChange, isLoggedIn, user
           className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium transition-all whitespace-nowrap shrink-0
             ${
               activeTab === tab.id
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             }`}
         >

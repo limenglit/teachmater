@@ -536,7 +536,7 @@ export default function SeatCheckinDialog({
 
   const refreshHistory = async () => {
     const next = await loadSeatCheckinSessionHistory(sceneType);
-    setHistorySessions(next);
+    setHistorySessions(next.map((s) => ({ ...s, ended_at: s.ended_at ?? null })));
   };
 
   useEffect(() => {

@@ -202,7 +202,7 @@ export default function BanquetHall({ students }: Props) {
     sceneType: 'banquet',
   });
 
-  const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-sm cursor-move select-none inline-flex items-center gap-1.5';
+  const refBadgeClass = 'absolute h-8 pl-2 pr-2.5 rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-xs cursor-move select-none inline-flex items-center gap-1.5';
   const refIconClass = 'inline-flex items-center justify-center w-5 h-5 rounded-md border border-primary/30 bg-background/80 text-[11px] leading-none';
   const refTextClass = 'text-[11px] font-medium leading-none tracking-wide';
 
@@ -1124,7 +1124,7 @@ export default function BanquetHall({ students }: Props) {
               {hasTStage && (
                 <>
                   <div
-                    className="absolute rounded-xl border border-primary/35 bg-primary/12 shadow-sm pointer-events-none"
+                    className="absolute rounded-xl border border-primary/35 bg-primary/12 shadow-xs pointer-events-none"
                     style={{
                       left: `calc(50% - ${tStageTopWidth / 2}px)`,
                       top: tStageTopY,
@@ -1133,7 +1133,7 @@ export default function BanquetHall({ students }: Props) {
                     }}
                   />
                   <div
-                    className="absolute rounded-xl border border-primary/35 bg-primary/12 shadow-sm pointer-events-none"
+                    className="absolute rounded-xl border border-primary/35 bg-primary/12 shadow-xs pointer-events-none"
                     style={{
                       left: `calc(50% - ${tStageRunwayWidth / 2}px)`,
                       top: tStageRunwayTop,

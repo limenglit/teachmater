@@ -636,9 +636,9 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                 onClick={() => { setSelectedCollege(college.id); setSelectedClass(null); toggleExpand(college.id); }}
                 title="拖动可调整顺序"
               >
-                <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
-                {expandedColleges.has(college.id) ? <ChevronDown className="w-3 h-3 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 flex-shrink-0" />}
-                <Building2 className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground" />
+                <GripVertical className="w-3 h-3 shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
+                {expandedColleges.has(college.id) ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+                <Building2 className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
                 {editingCollege === college.id ? (
                   <Input value={editName} onChange={e => setEditName(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') saveCollegeEdit(college.id); if (e.key === 'Escape') setEditingCollege(null); }}
@@ -673,8 +673,8 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                       onClick={() => { setSelectedCollege(college.id); setSelectedClass(cls.id); }}
                       title="拖动可调整顺序"
                     >
-                      <GripVertical className="w-3 h-3 flex-shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
-                      <GraduationCap className="w-3.5 h-3.5 flex-shrink-0" />
+                      <GripVertical className="w-3 h-3 shrink-0 text-muted-foreground/60 cursor-grab active:cursor-grabbing" onClick={e => e.stopPropagation()} />
+                      <GraduationCap className="w-3.5 h-3.5 shrink-0" />
                       {editingClass === cls.id ? (
                         <Input value={editName} onChange={e => setEditName(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') saveClassEdit(cls.id); if (e.key === 'Escape') setEditingClass(null); }}
@@ -758,7 +758,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
                     </>
                   ) : (
                     <>
-                      <Users className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <Users className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                       {s.student_number && <span className="text-xs text-muted-foreground w-16 truncate">{s.student_number}</span>}
                       <span className="flex-1 text-sm text-foreground">{s.name}</span>
                       <div className="opacity-0 group-hover:opacity-100 flex gap-0.5">

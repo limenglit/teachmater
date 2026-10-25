@@ -16,8 +16,9 @@ vi.mock('@/components/ui/select', async () => {
       if (child.type === SelectItem) {
         items.push(child as React.ReactElement<{ value: string }>);
       }
-      if (child.props?.children) {
-        items.push(...collectItems(child.props.children));
+      const childProps = child.props as { children?: React.ReactNode };
+      if (childProps?.children) {
+        items.push(...collectItems(childProps.children));
       }
     });
     return items;

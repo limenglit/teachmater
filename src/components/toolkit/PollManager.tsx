@@ -405,10 +405,10 @@ export default function PollManager() {
                 {poll.poll_type === 'single' ? t('poll.typeSingle') : t('poll.typeMultiple')} · {(poll.options as any as PollOption[]).length} {t('poll.optionsCount')}
               </p>
             </div>
-            <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${poll.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${poll.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
               {poll.status === 'active' ? t('poll.active') : t('poll.ended')}
             </span>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 flex-shrink-0" onClick={e => { e.stopPropagation(); deletePoll(poll); }}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" onClick={e => { e.stopPropagation(); deletePoll(poll); }}>
               <Trash2 className="w-3 h-3 text-destructive" />
             </Button>
           </div>
@@ -439,7 +439,7 @@ export default function PollManager() {
               <p className="text-sm font-medium text-foreground">{t('poll.optionsLabel')}</p>
               {newOptions.map((opt, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: POLL_COLORS[idx % POLL_COLORS.length] }} />
+                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: POLL_COLORS[idx % POLL_COLORS.length] }} />
                   <Input
                     value={opt}
                     onChange={e => {
@@ -535,7 +535,7 @@ function PieChartView({ optionCounts, totalVotes }: { optionCounts: { label: str
       <div className="flex flex-wrap gap-3 justify-center">
         {optionCounts.map((opt, i) => (
           <div key={i} className="flex items-center gap-1.5 text-sm">
-            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: opt.color }} />
+            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: opt.color }} />
             <span className="text-foreground">{opt.label}</span>
             <span className="text-muted-foreground">({opt.count})</span>
           </div>

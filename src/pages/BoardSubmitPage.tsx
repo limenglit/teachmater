@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -734,7 +734,7 @@ export default function BoardSubmitPage() {
               <div className="max-h-[40vh] overflow-y-auto space-y-1 border border-border rounded-lg p-2">
                 {studentNames.filter(n => !nameSearch || n.toLowerCase().includes(nameSearch.toLowerCase())).map(name => (
                   <button key={name} onClick={() => selectName(name)} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-sm flex items-center gap-2">
-                    <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />{name}
+                    <User className="w-4 h-4 text-muted-foreground shrink-0" />{name}
                   </button>
                 ))}
                 {studentNames.filter(n => !nameSearch || n.toLowerCase().includes(nameSearch.toLowerCase())).length === 0 && (
@@ -788,7 +788,7 @@ export default function BoardSubmitPage() {
           <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
             <button
               onClick={() => setFilterColumn('')}
-              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${!filterColumn ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+              className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${!filterColumn ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
             >
               {t('board.clear') === '清除' ? '全部' : 'All'}
             </button>
@@ -796,7 +796,7 @@ export default function BoardSubmitPage() {
               <button
                 key={col}
                 onClick={() => setFilterColumn(col)}
-                className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${filterColumn === col ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+                className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-colors ${filterColumn === col ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
               >
                 {col}
               </button>
@@ -858,7 +858,7 @@ export default function BoardSubmitPage() {
                       </div>
                     </div>
                     {mc.media_url && mc.card_type === 'image' && (
-                      <img src={mc.media_url} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                      <img src={mc.media_url} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -1025,7 +1025,7 @@ export default function BoardSubmitPage() {
               <div className="flex gap-2">
                 <Input value={url} onChange={e => setUrl(e.target.value)} placeholder={t('board.cardUrl')} className="flex-1" />
                 <input ref={fileRef} type="file" accept={ACCEPT_ALL_MEDIA} onChange={handleUpload} className="hidden" />
-                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-1 flex-shrink-0">
+                <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-1 shrink-0">
                   <Paperclip className="w-4 h-4" />
                   {uploading ? t('board.uploading') : t('board.uploadFile')}
                 </Button>

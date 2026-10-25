@@ -126,7 +126,7 @@ export default function LayerPanel({
                   {layer.visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </button>
                 <input
-                  className="flex-1 min-w-0 text-xs bg-transparent border-none outline-none truncate text-foreground"
+                  className="flex-1 min-w-0 text-xs bg-transparent border-none outline-hidden truncate text-foreground"
                   value={layer.name}
                   onChange={(e) => onRename(layer.id, e.target.value)}
                   onClick={(e) => e.stopPropagation()}

@@ -78,7 +78,7 @@ function QRActionPanel({
       <div
         ref={qrContainerRef}
         data-qr-ready={pngUrl ? 'true' : 'false'}
-        className="p-4 rounded-xl border border-border shadow-sm"
+        className="p-4 rounded-xl border border-border shadow-xs"
         style={{ backgroundColor: '#FFFFFF' }}
       >
         {/* 离屏 canvas：用于生成 PNG 与下载 */}

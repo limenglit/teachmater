@@ -7,7 +7,7 @@ import type { SeatIndexEntry } from '@/lib/seat-index';
 import { toast } from '@/hooks/use-toast';
 
 interface Props {
-  targetRef: React.RefObject<HTMLElement>;
+  targetRef: React.RefObject<HTMLElement | null>;
   filename: string;
   // Accepted for existing seat scenes; exporting never creates or embeds a check-in QR.
   resolveQrCode?: () => Promise<{ value: string; className?: string } | null>;

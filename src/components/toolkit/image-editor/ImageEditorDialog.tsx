@@ -1470,7 +1470,7 @@ export default function ImageEditorDialog({ open, onClose }: Props) {
               ref={canvasRef}
               width={canvasW}
               height={canvasH}
-              className="border border-border rounded-lg shadow-sm max-w-full max-h-full"
+              className="border border-border rounded-lg shadow-xs max-w-full max-h-full"
               style={{
                 cursor: tool === 'move' ? (movingActionIndex !== null ? 'grabbing' : 'grab')
                   : tool === 'eraser' ? 'none'

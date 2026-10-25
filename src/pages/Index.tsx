@@ -25,7 +25,7 @@ const PPTPanel = lazyRetry(() => import('@/components/PPTPanel'));
 const VisualizationPanel = lazyRetry(() => import('@/components/VisualizationPanel'));
 const VocabPanel = lazyRetry(() => import('@/components/VocabPanel'));
 import { LogIn } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useAIQuota } from '@/hooks/useAIQuota';
 import { useAIOrderNotifier } from '@/hooks/useAIOrderNotifier';
 import RechargeDialog from '@/components/RechargeDialog';

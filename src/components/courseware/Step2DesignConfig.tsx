@@ -58,7 +58,7 @@ export function Step2DesignConfig() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="rounded-2xl border bg-card/70 backdrop-blur p-6 shadow-sm space-y-6">
+      <div className="rounded-2xl border bg-card/70 backdrop-blur p-6 shadow-xs space-y-6">
         {/* Ratio */}
         <section className="space-y-3">
           <Label className="text-base">{t('cw.s2.ratio')}</Label>

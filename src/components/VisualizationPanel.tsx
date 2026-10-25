@@ -132,7 +132,7 @@ export default function VisualizationPanel() {
           </div>
           <div className="flex gap-1 bg-muted rounded-lg p-1">
             <button onClick={() => setMode('structured')} className="px-3 py-1.5 text-xs rounded-md font-medium text-muted-foreground">结构化图示</button>
-            <button className="px-3 py-1.5 text-xs rounded-md font-medium bg-background shadow-sm">AI 生图</button>
+            <button className="px-3 py-1.5 text-xs rounded-md font-medium bg-background shadow-xs">AI 生图</button>
           </div>
         </div>
         <AIImageStudio />
@@ -152,7 +152,7 @@ export default function VisualizationPanel() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex gap-1 bg-muted rounded-lg p-1">
-            <button className="px-3 py-1.5 text-xs rounded-md font-medium bg-background shadow-sm">结构化图示</button>
+            <button className="px-3 py-1.5 text-xs rounded-md font-medium bg-background shadow-xs">结构化图示</button>
             <button onClick={() => setMode('ai')} className="px-3 py-1.5 text-xs rounded-md font-medium text-muted-foreground">AI 生图</button>
           </div>
           <Button variant="outline" size="sm" onClick={() => setShowHistory(!showHistory)} className="gap-1.5">

@@ -23,7 +23,7 @@ export default function BoardTimelineView({ cards, onManage, onLike, isCreator, 
         {sorted.map(card => (
           <div key={card.id} className="relative flex gap-4 pl-12">
             <div className="absolute left-3.5 top-4 w-3 h-3 rounded-full bg-primary border-2 border-background" />
-            <div className="flex-shrink-0 text-xs text-muted-foreground pt-3 w-20">
+            <div className="shrink-0 text-xs text-muted-foreground pt-3 w-20">
               {new Date(card.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
             <div className="flex-1">

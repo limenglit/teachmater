@@ -289,7 +289,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
             title={`拖拽 ${student.name} 到座位`}
             className="group flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted transition-colors cursor-grab active:cursor-grabbing"
           >
-            <User className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden="true" />
+            <User className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <span className="flex-1 text-sm text-foreground truncate">{student.name}</span>
             <button
               onClick={() => removeStudent(student.id)}
@@ -309,7 +309,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       </div>
 
       {/* Bottom Actions - no longer sticky, just a normal bottom section */}
-      <div className="flex-shrink-0 p-3 border-t border-border bg-card space-y-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div className="shrink-0 p-3 border-t border-border bg-card space-y-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
         {/* Add student row */}
         <div className="flex gap-1.5">
           <Input
@@ -326,12 +326,12 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
         {/* Action buttons row */}
         <div className="flex gap-1 flex-wrap">
           <Button variant="outline" size="sm" onClick={handlePasteFromClipboard} className="flex-1 h-8 text-xs font-medium min-w-0" title={t('sidebar.paste')}>
-            <ClipboardPaste className="w-3 h-3 mr-1 flex-shrink-0" /> {t('sidebar.paste')}
+            <ClipboardPaste className="w-3 h-3 mr-1 shrink-0" /> {t('sidebar.paste')}
           </Button>
           <Dialog open={importOpen} onOpenChange={setImportOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="flex-1 h-8 text-xs font-medium min-w-0">
-                <Upload className="w-3 h-3 mr-1 flex-shrink-0" /> {t('sidebar.import')}
+                <Upload className="w-3 h-3 mr-1 shrink-0" /> {t('sidebar.import')}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
@@ -383,13 +383,13 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
                     <>
                       {preview.dupCount > 0 && (
                         <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-md px-3 py-2">
-                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                           <span>{t('sidebar.fixHintDup')}</span>
                         </div>
                       )}
                       {preview.skipped > 0 && (
                         <div className="flex items-start gap-2 text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-md px-3 py-2">
-                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                          <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                           <span>{t('sidebar.fixHintHeader')}</span>
                         </div>
                       )}

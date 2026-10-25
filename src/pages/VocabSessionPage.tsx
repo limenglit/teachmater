@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, QrCode } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { toast } from 'sonner';
 
 import VocabPlayer from '@/components/vocab/VocabPlayer';

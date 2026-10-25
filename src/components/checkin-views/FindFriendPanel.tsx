@@ -46,7 +46,7 @@ export default function FindFriendPanel({ names, selfName, resolveLabel, selecte
   const selectedLabel = selected ? resolveLabel(selected) : null;
 
   return (
-    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-2">
         <UserSearch className="w-4 h-4 text-primary shrink-0" />
         <span className="text-sm font-semibold text-foreground">找朋友</span>

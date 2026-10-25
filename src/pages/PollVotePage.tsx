@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@/lib/router-compat';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { prefetchOr } from '@/lib/student-route';
@@ -167,7 +167,7 @@ export default function PollVotePage() {
               onClick={() => toggleOption(idx)}
               className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
                 selected.includes(idx)
-                  ? 'border-primary bg-primary/5 shadow-sm'
+                  ? 'border-primary bg-primary/5 shadow-xs'
                   : 'border-border hover:border-primary/30 hover:bg-accent/50'
               }`}
             >

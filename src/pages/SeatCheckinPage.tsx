@@ -264,7 +264,7 @@ export default function SeatCheckinPage() {
           </div>
 
           {/* Form card */}
-          <div className="bg-card border border-border rounded-2xl shadow-sm p-5 space-y-4">
+          <div className="bg-card border border-border rounded-2xl shadow-xs p-5 space-y-4">
             <label className="block text-xs font-medium text-muted-foreground flex items-center gap-1.5">
               <User2 className="w-3.5 h-3.5" />
               {t('seatCheckin.yourName')}
@@ -303,7 +303,7 @@ export default function SeatCheckinPage() {
                 || !!findMissingRequiredField(session.custom_fields, fieldValues)
               }
 
-              className="w-full h-14 text-base font-semibold rounded-xl shadow-sm"
+              className="w-full h-14 text-base font-semibold rounded-xl shadow-xs"
             >
               {submitting ? (slowSubmit ? '网络较慢，正在自动重发…' : t('seatCheckin.checking')) : t('seatCheckin.confirm')}
             </Button>

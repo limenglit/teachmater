@@ -1,4 +1,9 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
+
+Object.defineProperty(window, "scrollTo", {
+  writable: true,
+  value: () => {},
+});
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
@@ -14,24 +19,29 @@ Object.defineProperty(window, "matchMedia", {
   }),
 });
 
-// Polyfill ResizeObserver for Radix UI components
+// Project polyfills carried over from the pre-migration setup (Radix UI, TTS).
 class ResizeObserverMock {
   observe() {}
   unobserve() {}
   disconnect() {}
 }
-window.ResizeObserver = ResizeObserverMock as any;
+window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
-// Polyfill SpeechSynthesisUtterance
-if (typeof window.SpeechSynthesisUtterance === 'undefined') {
-  (window as any).SpeechSynthesisUtterance = class {
-    text = '';
-    lang = '';
+if (typeof window.SpeechSynthesisUtterance === "undefined") {
+  (window as unknown as { SpeechSynthesisUtterance: unknown }).SpeechSynthesisUtterance = class {
+    text = "";
+    lang = "";
     rate = 1;
     volume = 1;
-    constructor(text?: string) { this.text = text || ''; }
+    constructor(text?: string) {
+      this.text = text || "";
+    }
   };
 }
-if (typeof window.speechSynthesis === 'undefined') {
-  (window as any).speechSynthesis = { speak: () => {}, cancel: () => {}, getVoices: () => [] };
+if (typeof window.speechSynthesis === "undefined") {
+  (window as unknown as { speechSynthesis: unknown }).speechSynthesis = {
+    speak: () => {},
+    cancel: () => {},
+    getVoices: () => [],
+  };
 }

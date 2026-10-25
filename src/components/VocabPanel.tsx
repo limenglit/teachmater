@@ -5,7 +5,7 @@ import {
   BookOpen, Plus, Loader2, LogIn, Edit2, Trash2, Send, Undo2, Play, Search, Globe2, FolderHeart, QrCode,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { toast } from 'sonner';
 import {
   listMySets, listPlatformSets, deleteSet, submitSet, withdrawSet, audienceLabel,
@@ -207,7 +207,7 @@ function VocabSetCard({ set, isMine, canPublish, onPlay, onPublish, onEdit, onDe
   const canWithdraw = set.status === 'pending';
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-2 hover:shadow-sm transition-shadow">
+    <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-2 hover:shadow-xs transition-shadow">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-sm text-foreground truncate">{set.title || '未命名'}</h3>

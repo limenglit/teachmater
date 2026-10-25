@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useState, useCallback } from 'react';
 import {
   type AnalysisResult, type TemplateStyle, type StructureNode, type VisualSettings,
@@ -252,7 +253,7 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
           borderLeft: `4px solid ${scheme.colors[i % scheme.colors.length]}`,
           boxShadow: shadow,
         }}>
-          <span className="text-lg font-bold flex-shrink-0" style={{ color: scheme.colors[i % scheme.colors.length] }}>
+          <span className="text-lg font-bold shrink-0" style={{ color: scheme.colors[i % scheme.colors.length] }}>
             {getNodeIcon(settings.iconStyle, i) || String(i + 1)}
           </span>
           <div>
@@ -271,7 +272,7 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     <div className="space-y-1" style={{ fontFamily }}>
       {nodes.map((node, i) => (
         <div key={i} className="flex items-center gap-2" style={{ paddingLeft: `${Math.min(i, 3) * 20}px` }}>
-          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: scheme.colors[i % scheme.colors.length], boxShadow: shadow }} />
+          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: scheme.colors[i % scheme.colors.length], boxShadow: shadow }} />
           <span className="text-sm font-medium" style={{ color: textColor }}>{icon(i)}{renderNodeLabel(node, i)}</span>
           {settings.showDescription && node.description && <span className="text-xs" style={{ color: textColor, opacity: 0.5 }}>— {renderNodeDesc(node, i)}</span>}
         </div>
