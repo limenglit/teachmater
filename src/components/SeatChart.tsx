@@ -1776,7 +1776,7 @@ export default function SeatChart() {
                   {organizationLegend.map(([organization, colorClass]) => (
                     <span key={organization} className="inline-flex items-center gap-1 text-[11px] leading-normal">
                       {/* A text dot: html2canvas cannot paint bg-current (currentColor) fills. */}
-                      <span className={`text-[9px] ${colorClass}`}>●</span>
+                      <span className={`text-[10px] ${colorClass}`}>●</span>
                       <span className={colorClass}>{organization}</span>
                     </span>
                   ))}
