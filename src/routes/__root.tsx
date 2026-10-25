@@ -149,6 +149,10 @@ function RootComponent() {
       window.addEventListener("unhandledrejection", handleRuntimeError);
       installWeChatCompat();
     }
+    // 学生签到页：页面代码与精简外壳同时开始下载，弱网下少等一轮。
+    const p = window.location.pathname.toLowerCase();
+    if (p.indexOf("/seat-checkin/") === 0) void import("@/pages/SeatCheckinPage").catch(() => undefined);
+    else if (p.indexOf("/checkin/") === 0) void import("@/pages/CheckInPage").catch(() => undefined);
     setReady(true);
   }, []);
 
