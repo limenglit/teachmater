@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
+import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, INDEX_LETTER_SPACING, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -258,15 +258,16 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 
 export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatIndexLayout, heading: string, sub: string) {
   const P = INDEX_PAGE;
-  const font = '"Microsoft YaHei","PingFang SC","Noto Sans SC","Hiragino Sans GB",SimHei,sans-serif';
   const wrap = document.createElement('div');
-  wrap.style.cssText = `position:fixed;left:0;top:0;width:${P.width}px;height:${P.height}px;overflow:hidden;padding:28px ${P.padX}px 0;box-sizing:border-box;background:#fff;color:#111;font-family:${font};`;
+  // Letter-spacing is inherited by every cell, so all index text is placed
+  // character by character (see exportTextCss).
+  wrap.style.cssText = `${exportTextCss(INDEX_LETTER_SPACING)}position:fixed;left:0;top:0;width:${P.width}px;height:${P.height}px;overflow:hidden;padding:28px ${P.padX}px 0;box-sizing:border-box;background:#fff;color:#111;`;
   const h = document.createElement('div');
   h.textContent = heading;
-  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.4;white-space:nowrap;';
+  h.style.cssText = 'text-align:center;font-size:20px;font-weight:700;line-height:1.4;letter-spacing:1px;white-space:normal;word-break:break-all;';
   const s = document.createElement('div');
   s.textContent = sub;
-  s.style.cssText = 'text-align:center;font-size:12px;color:#555;line-height:1.4;margin:4px 0 14px;';
+  s.style.cssText = 'text-align:center;font-size:12px;color:#555;line-height:1.5;margin:4px 0 14px;white-space:normal;';
 
   const hasNumber = layout.numberWidth > 0;
   const cols = hasNumber
