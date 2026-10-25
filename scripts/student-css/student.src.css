@@ -1,0 +1,103 @@
+@config "../../tailwind.student.config.cjs";
+/* Noto Sans SC is loaded non-blocking from index.html to avoid blocking FCP */
+
+@tailwind base;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 220 18% 18%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 18% 18%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 18% 18%;
+
+    --primary: 210 45% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 220 18% 18%;
+
+    --muted: 210 15% 96%;
+    --muted-foreground: 215 12% 55%;
+
+    --accent: 210 30% 92%;
+    --accent-foreground: 210 45% 40%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 18% 90%;
+    --input: 210 18% 90%;
+    --ring: 210 45% 55%;
+
+    --radius: 0.625rem;
+
+    --surface: 210 15% 98%;
+    --surface-foreground: 220 18% 18%;
+
+    --highlight: 210 45% 55%;
+    --highlight-soft: 210 40% 95%;
+
+    --success: 150 35% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 80% 55%;
+    --warning-foreground: 0 0% 100%;
+
+
+    --shadow-soft: 0 2px 12px -2px hsl(210 20% 50% / 0.08);
+    --shadow-card: 0 1px 3px 0 hsl(210 20% 50% / 0.06), 0 1px 2px -1px hsl(210 20% 50% / 0.06);
+    --shadow-elevated: 0 4px 24px -4px hsl(210 20% 50% / 0.12);
+  }
+
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Noto Sans SC', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Normalize form elements across browsers */
+  input, button, textarea, select {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  /* Fix iOS tap highlight */
+  button, a, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Prevent iOS text size inflation */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Smooth scroll with reduced-motion respect */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Fix Firefox button inner focus */
+  button::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+  }
+}
