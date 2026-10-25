@@ -26,7 +26,7 @@ export function isModuleLoadError(error: unknown) {
   return MODULE_LOAD_ERROR_MESSAGES.some((pattern) => message.includes(pattern));
 }
 
-function getErrorText(error: unknown) {
+function getErrorText(error: unknown): string {
   if (error instanceof Error) {
     return `${error.message}\n${error.stack ?? ''}`;
   }
@@ -34,7 +34,7 @@ function getErrorText(error: unknown) {
   if (typeof error === 'object' && error !== null) {
     const maybeErrorEvent = error as { message?: unknown; error?: unknown; reason?: unknown };
     return [maybeErrorEvent.message, maybeErrorEvent.error, maybeErrorEvent.reason]
-      .map((part) => getErrorText(part))
+      .map((part): string => getErrorText(part))
       .filter(Boolean)
       .join('\n');
   }
@@ -97,20 +97,20 @@ export class ReactRuntimeRecoveryBoundary extends Component<
   ReactRuntimeRecoveryBoundaryProps,
   ReactRuntimeRecoveryBoundaryState
 > {
-  state: ReactRuntimeRecoveryBoundaryState = { error: null };
+  override state: ReactRuntimeRecoveryBoundaryState = { error: null };
 
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const text = `${getErrorText(error)}\n${errorInfo.componentStack ?? ''}`;
     if (isReactRuntimeMismatchError(text)) {
       tryReloadForReactRuntimeMismatch();
     }
   }
 
-  render() {
+  override render() {
     const { error } = this.state;
     if (error) {
       return createElement(

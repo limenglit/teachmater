@@ -61,7 +61,7 @@ export default function TaskSubmitPage() {
       p_student_name: name,
     } as any);
     if (data) {
-      setCompletedTasks(new Set(data.map(d => d.task_index)));
+      setCompletedTasks(new Set(data.map((d: { task_index: number }) => d.task_index)));
     }
     setJoined(true);
   };

@@ -15,7 +15,7 @@ export default function LotteryDrawer() {
   const [customItems, setCustomItems] = useState('');
   const [drawnItem, setDrawnItem] = useState<string | null>(null);
   const [mode, setMode] = useState<'number' | 'lottery'>('number');
-  const rollTimer = useRef<ReturnType<typeof setInterval>>();
+  const rollTimer = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const rollNumber = useCallback(() => {
     if (rolling) return;

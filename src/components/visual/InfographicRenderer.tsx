@@ -369,7 +369,7 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     );
   };
 
-  const structureMap: Record<string, () => JSX.Element> = {
+  const structureMap: Record<string, () => React.JSX.Element> = {
     flow: renderFlow, pyramid: renderPyramid, funnel: renderFunnel,
     timeline: renderTimeline, comparison: renderComparison, cycle: renderCycle,
     list: renderList, hierarchy: renderHierarchy, quadrant: renderComparison,

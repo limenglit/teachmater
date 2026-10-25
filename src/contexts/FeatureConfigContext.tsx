@@ -141,7 +141,7 @@ export function FeatureConfigProvider({ children }: { children: ReactNode }) {
 
   const isFeatureVisible = (tabId: TabId): boolean => {
     const flags = config[userType];
-    return flags[tabId] !== false;
+    return (flags as unknown as Record<string, boolean | undefined>)[tabId] !== false;
   };
 
   const getAIDailyLimit = (): number => {

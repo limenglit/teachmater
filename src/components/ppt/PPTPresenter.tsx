@@ -91,7 +91,7 @@ export default function PPTPresenter({ outline, colorSchemeId, startIndex = 0, o
 
   // Auto-hide cursor
   const [cursorHidden, setCursorHidden] = useState(false);
-  const cursorTimer = useRef<ReturnType<typeof setTimeout>>();
+  const cursorTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleMouseMove = () => {
     setCursorHidden(false);
     clearTimeout(cursorTimer.current);

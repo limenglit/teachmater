@@ -45,7 +45,7 @@ export function useSceneZoom({ contentWidth, contentHeight, min = 0.3, max = 2, 
 
 interface UseZoomGesturesOptions {
   setScale: Dispatch<SetStateAction<number>>;
-  targetRef: React.RefObject<HTMLElement>;
+  targetRef: React.RefObject<HTMLElement | null>;
   min?: number;
   max?: number;
   enabled?: boolean;

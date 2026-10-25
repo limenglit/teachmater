@@ -20,7 +20,7 @@ interface Props {
   text: string;
   textStyle?: TextStyle;
   position?: TextBlockPosition;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   defaultColor?: string;
   isTitle?: boolean;
   onChange: (text: string) => void;

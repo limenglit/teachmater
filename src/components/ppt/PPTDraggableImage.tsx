@@ -11,7 +11,7 @@ interface ImagePosition {
 interface Props {
   src: string;
   position: ImagePosition;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   onChange: (pos: ImagePosition) => void;
 }
 

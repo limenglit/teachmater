@@ -1797,9 +1797,9 @@ export default function SeatChart() {
                   const raw = e.dataTransfer.getData('text/plain');
                   const name = raw.startsWith('student:') ? raw.slice('student:'.length) : e.dataTransfer.getData('application/x-student-name');
                   if (!name) return;
-                  let found: { r: number; c: number } | null = null;
-                  seatsRef.current.forEach((row, r) => row?.forEach((cell, c) => { if (!found && cell === name) found = { r, c }; }));
-                  if (found) moveToLeavePool(found.r, found.c, name);
+                  const found = { r: -1, c: -1 };
+                  seatsRef.current.forEach((row, r) => row?.forEach((cell, c) => { if (found.r < 0 && cell === name) { found.r = r; found.c = c; } }));
+                  if (found.r >= 0) moveToLeavePool(found.r, found.c, name);
                 }}
               >
                 <div className="flex items-center justify-between gap-2 mb-2">

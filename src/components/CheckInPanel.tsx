@@ -85,7 +85,7 @@ export default function CheckInPanel() {
   const exportRef = useRef<HTMLDivElement>(null);
   const resultExportRef = useRef<HTMLDivElement>(null);
   const qrPreviewRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const studentNames = students.map(s => s.name);
   const activeClassId = useActiveClassId();

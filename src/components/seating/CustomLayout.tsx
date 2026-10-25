@@ -203,7 +203,7 @@ export default function CustomLayout({ students }: Props) {
   };
 
   const totalSeats = useMemo(
-    () => rowCols.reduce((s, n, r) => s + n - Array.from({ length: n }, (_, c) => disabled.has(seatKey(r, c)) ? 1 : 0).reduce((a, b) => a + b, 0), 0),
+    () => rowCols.reduce((s: number, n: number, r: number) => s + n - Array.from({ length: n }, (_, c) => disabled.has(seatKey(r, c)) ? 1 : 0).reduce((a, b) => a + b, 0), 0),
     [rowCols, disabled]
   );
   const maxCols = useMemo(() => Math.max(0, ...rowCols), [rowCols]);

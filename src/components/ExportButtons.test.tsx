@@ -44,7 +44,7 @@ describe('ExportButtons', () => {
   });
 
   it('does not call export when ref is null', async () => {
-    const nullRef = { current: null } as React.RefObject<HTMLElement>;
+    const nullRef = { current: null } as React.RefObject<HTMLElement | null>;
     render(<ExportButtons targetRef={nullRef} filename="test" />);
     fireEvent.click(screen.getByText('PNG'));
     // Should not throw, and should not call exportToPNG
