@@ -1,8 +1,8 @@
 /* Noto Sans SC is loaded non-blocking from the document head to avoid blocking FCP */
 @import "tailwindcss" source(none);
+@import "tw-animate-css";
 @source "../src";
 @config "../tailwind.config.cjs";
-@import "tw-animate-css";
 
 /* Tailwind v4 preflight resets button cursors to default; keep the v3 pointer cursor. */
 @layer base {
