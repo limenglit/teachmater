@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import QuizPanel from './QuizPanel';
 
 const rpcMock = vi.fn();
+// Mirrors the backend: once deleted, later reloads no longer return the session.
+let quizRows: any[] = [];
 const toastMock = vi.fn();
 
 const endedSession = {
@@ -80,7 +82,7 @@ vi.mock('@/components/qr/QRActionPanel', () => ({
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: (table: string) => {
-      if (table === 'quiz_sessions') return buildQueryResult([endedSession]);
+      if (table === 'quiz_sessions') return buildQueryResult(quizRows);
       if (table === 'quiz_questions') return buildQueryResult([]);
       if (table === 'quiz_categories') return buildQueryResult([]);
       if (table === 'quiz_papers') return buildQueryResult([]);
@@ -96,7 +98,11 @@ describe('QuizPanel delete ended session', () => {
     vi.clearAllMocks();
     localStorage.clear();
     localStorage.setItem('quiz-session-tokens', JSON.stringify({ 'session-ended-1': 'token-ended-1' }));
-    rpcMock.mockResolvedValue({ error: null });
+    quizRows = [endedSession];
+    rpcMock.mockImplementation(async (fn: string) => {
+      if (fn === 'delete_quiz_session') quizRows = [];
+      return { error: null };
+    });
   });
 
   it('removes ended session from session list after delete confirmation', async () => {
