@@ -1,6 +1,9 @@
 // ported from main.tsx — polyfills and the same-origin backend relay must run before anything else.
 import "../lib/polyfills";
-import "../lib/backend-proxy";
+import { installBackendProxy } from "../lib/backend-proxy";
+
+// 显式调用：即使打包器剔除了无引用的模块，转发也一定会装上（重复调用无副作用）。
+installBackendProxy();
 
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import {

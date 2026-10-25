@@ -14,6 +14,16 @@ export function toProxyUrl(url: string, backendBase: string, origin: string): st
   return origin.replace(/\/+$/, "") + PROXY_PREFIX + rest;
 }
 
+/** 本站转发单次最多转送的上传大小；更大的文件仍直连后台，避免超出转发服务器的请求体上限。 */
+export const PROXY_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+
+/** 上传（XMLHttpRequest 不经过 fetch 拦截）用：不超过上限时返回本站转发地址，否则原样返回。 */
+export function backendUploadUrl(url: string, size: number): string {
+  if (typeof window === "undefined" || !(size <= PROXY_UPLOAD_MAX_BYTES)) return url;
+  const base = String(import.meta.env.VITE_SUPABASE_URL ?? "");
+  return toProxyUrl(url, base, window.location.origin) ?? url;
+}
+
 export function installBackendProxy() {
   if (typeof window === "undefined" || typeof window.fetch !== "function") return;
   const w = window as typeof window & { __backendProxyInstalled?: boolean };
