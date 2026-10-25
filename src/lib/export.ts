@@ -1,6 +1,6 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
+import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -37,6 +37,15 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       if (s.zoom) s.zoom = '';
     }
     root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
+    // Print-only content (e.g. the unit color legend): reveal it at the chart's
+    // width without letting a long single-line legend widen the exported room.
+    root.querySelectorAll<HTMLElement>('[data-export-only]').forEach(el => {
+      el.classList.remove('hidden');
+      el.style.display = 'flex';
+      el.style.width = '0';
+      el.style.minWidth = '100%';
+      el.style.boxSizing = 'border-box';
+    });
     // Classroom grid zoom has no frame; its natural grid width is already
     // unscaled, so drop only this screen-level transform, not seat positions.
     root.querySelectorAll<HTMLElement>('[data-export-unscale]').forEach(el => {
@@ -261,7 +270,7 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
   const cols = hasNumber
     ? `${layout.numberWidth}px minmax(0,1fr) ${layout.seatWidth}px`
     : `minmax(0,1fr) ${layout.seatWidth}px`;
-  const cellGap = 8;
+  const cellGap = INDEX_CELL_GAP;
   const makeLine = (cells: string[], isHeader: boolean, idx = 0) => {
     const line = document.createElement('div');
     const border = isHeader ? '1.5px solid #111' : `1px solid ${(idx + 1) % 5 === 0 ? '#9a9a9a' : '#e2e2e2'}`;
@@ -271,9 +280,9 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
       span.textContent = text;
       const isNum = hasNumber && i === 0;
       const isSeat = i === cells.length - 1;
-      // No overflow clipping or tall line-height: html2canvas draws text lower
-      // than the browser in those cases, cutting glyphs on the row divider.
-      let css = 'display:block;line-height:1.25;padding-bottom:6px;';
+      // Centred by the row's flex/grid alignment; renderCanvas keeps the
+      // html2canvas baseline probe inline, so no padding offset is needed.
+      let css = 'display:block;line-height:1.25;min-width:0;';
       if (isHeader) css += 'font-size:11.5px;font-weight:700;color:#444;';
       else if (isNum) css += 'font-size:12px;color:#444;font-variant-numeric:tabular-nums;';
       else if (isSeat) css += 'font-size:12.5px;font-weight:700;color:#111;';

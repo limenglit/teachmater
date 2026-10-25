@@ -113,6 +113,8 @@ export function buildClassroomSeatIndex(
 
 /** Fixed A4 index page geometry (CSS px at 96dpi). Every page maps 1:1 onto A4. */
 export const INDEX_PAGE = { width: 794, height: 1123, padX: 32, rowHeight: 24, rows: 38, columnGap: 20, seatWidth: 84, nameFont: 13 } as const;
+/** Space between number, name and seat slots; keeps long names off the seat text. */
+export const INDEX_CELL_GAP = 12;
 
 export interface SeatIndexLayout {
   columns: 2 | 3;
@@ -140,7 +142,7 @@ export function planSeatIndexLayout(entries: SeatIndexEntry[]): SeatIndexLayout 
   const usable = INDEX_PAGE.width - INDEX_PAGE.padX * 2;
   const colWidth = (n: number) => (usable - INDEX_PAGE.columnGap * (n - 1)) / n;
   const seatWidth = Math.max(INDEX_PAGE.seatWidth, ...entries.map(e => Math.ceil(textWidth(seatIndexLabel(e), 12.5) + 6)));
-  const gaps = numberWidth > 0 ? 16 : 8;
+  const gaps = INDEX_CELL_GAP * (numberWidth > 0 ? 2 : 1);
   const nameSlot = (n: number) => colWidth(n) - numberWidth - seatWidth - gaps;
   const columns: 2 | 3 = nameSlot(3) >= INDEX_PAGE.nameFont * 4 ? 3 : 2;
   const nameChars = Math.max(2, Math.floor(nameSlot(columns) / INDEX_PAGE.nameFont));
