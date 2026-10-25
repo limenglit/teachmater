@@ -4,6 +4,27 @@ import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
+export const BASELINE_FIX_ATTR = 'data-export-baseline-fix';
+
+/**
+ * html2canvas measures each font's baseline in the live page with a 1x1 <img>
+ * placed after sample text. Tailwind's preflight makes every img display:block,
+ * which drops that probe onto its own line, so every glyph is drawn several
+ * pixels too low: row/column pills, seat names and index rows sink onto their
+ * borders. Keep the probe inline only for the duration of the capture.
+ */
+async function renderCanvas(el: HTMLElement, opts: Parameters<typeof html2canvas>[1]) {
+  const fix = document.createElement('style');
+  fix.setAttribute(BASELINE_FIX_ATTR, '');
+  fix.textContent = 'img[width="1"][height="1"]{display:inline !important;vertical-align:baseline;}';
+  document.head.appendChild(fix);
+  try {
+    return await html2canvas(el, opts);
+  } finally {
+    fix.remove();
+  }
+}
+
 async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   const clone = element.cloneNode(true) as HTMLElement;
 
@@ -137,7 +158,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
     const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
     const scale = Math.min(3, 12000 / maxDimension, Math.sqrt(36_000_000 / (wrapper.scrollWidth * wrapper.scrollHeight)));
     wrapper.style.visibility = 'visible';
-    const canvas = await html2canvas(wrapper, {
+    const canvas = await renderCanvas(wrapper, {
       backgroundColor: '#ffffff',
       // 3x improves name legibility; cap extreme rooms to avoid oversized
       // canvases on mobile browsers while preserving the entire chart.
@@ -289,7 +310,7 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
   document.body.appendChild(wrap);
   try {
     if (document.fonts?.ready) await document.fonts.ready;
-    return await html2canvas(wrap, {
+    return await renderCanvas(wrap, {
       backgroundColor: '#ffffff', scale: 2, x: 0, y: 0, scrollX: 0, scrollY: 0,
       width: P.width, height: P.height, windowWidth: Math.max(document.documentElement.clientWidth, P.width),
       windowHeight: Math.max(document.documentElement.clientHeight, P.height),
