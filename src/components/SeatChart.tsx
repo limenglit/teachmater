@@ -380,11 +380,14 @@ export default function SeatChart() {
     const organization = organizationByName.get(name) ?? '未分单位';
     const organizationColorClass = organizationColorMap.get(organization) ?? 'text-foreground';
 
+    // Name and marker are separate spans and the font shrinks for long names,
+    // so a wrapped emoji never stacks on top of the name inside the 64px seat.
+    const fontPx = seatLabelFontPx(name);
     if (genderMarkerStyle === 'badge') {
       return (
-        <span className={`inline-flex items-center justify-center gap-1 w-full px-0.5 ${organizationColorClass}`} title={organization}>
-          <span className="text-[11px] leading-tight whitespace-normal break-all text-center">{name}</span>
-          <span className="inline-flex items-center justify-center rounded px-1 py-0.5 text-[10px] leading-none bg-muted border border-border/70 text-muted-foreground">
+        <span className={`inline-flex items-center justify-center gap-0.5 w-full px-0.5 ${organizationColorClass}`} title={organization}>
+          <span className="leading-tight whitespace-normal break-all text-center" style={{ fontSize: fontPx }}>{name}</span>
+          <span className="inline-flex shrink-0 items-center justify-center rounded px-0.5 py-0.5 text-[9px] leading-none bg-muted border border-border/70 text-muted-foreground">
             {marker}
           </span>
         </span>
@@ -393,10 +396,12 @@ export default function SeatChart() {
 
     return (
       <span
-        className={`${organizationColorClass} block w-full px-0.5 text-center text-[11px] leading-tight whitespace-normal break-all`}
+        className={`${organizationColorClass} block w-full px-0.5 text-center leading-tight whitespace-normal break-all`}
+        style={{ fontSize: fontPx }}
         title={organization}
       >
-        {`${name}${marker}`}
+        <span>{name}</span>
+        <span className="whitespace-nowrap" style={{ fontSize: fontPx - 1 }}>{marker}</span>
       </span>
     );
   }, [genderByName, genderMarkerStyle, organizationByName, organizationColorMap, t]);
