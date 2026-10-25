@@ -1,6 +1,7 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, INDEX_LETTER_SPACING, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
+import { get2d, drawTextBlock, drawIndexPage } from './canvas-text';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -138,7 +139,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const heading = document.createElement('div');
   heading.textContent = title;
-  heading.style.cssText = `${exportTextCss(1)}text-align:center;color:#000000;font-size:22px;font-weight:700;line-height:1.4;margin-bottom:16px;white-space:normal;word-break:break-all;`;
+  heading.style.cssText = `${exportTextCss(2)}text-align:center;color:#000000;font-size:22px;font-weight:700;line-height:1.4;margin-bottom:16px;white-space:normal;word-break:break-all;`;
 
   const content = document.createElement('div');
   content.style.display = 'flex';
@@ -154,7 +155,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const footer = document.createElement('div');
   footer.textContent = COPYRIGHT_TEXT;
-  footer.style.cssText = `${exportTextCss(0.5)}margin-top:16px;text-align:center;color:#333333;font-size:11px;line-height:1.5;white-space:normal;word-break:break-all;`;
+  footer.style.cssText = `${exportTextCss(1)}margin-top:16px;text-align:center;color:#333333;font-size:11px;line-height:1.5;white-space:normal;word-break:break-all;`;
 
   wrapper.appendChild(heading);
   wrapper.appendChild(content);
@@ -184,6 +185,22 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       windowWidth: Math.max(document.documentElement.clientWidth, wrapper.scrollWidth),
       windowHeight: Math.max(document.documentElement.clientHeight, wrapper.scrollHeight),
     });
+    // Repaint title and footer with native canvas text: html2canvas places
+    // glyphs from page measurements, which overlap whenever the canvas font
+    // is wider (system font substitution, browser zoom).
+    const ctx = get2d(canvas);
+    if (ctx) {
+      const base = wrapper.getBoundingClientRect();
+      const boxOf = (el: HTMLElement) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height };
+      };
+      ctx.save();
+      ctx.setTransform(scale, 0, 0, scale, 0, 0);
+      drawTextBlock(ctx, title, boxOf(heading), { size: 22, weight: 700, color: '#000000', spacing: 2, lineHeight: 1.4, minSize: 14 });
+      drawTextBlock(ctx, COPYRIGHT_TEXT, boxOf(footer), { size: 11, weight: 400, color: '#333333', spacing: 1, lineHeight: 1.5, minSize: 8 });
+      ctx.restore();
+    }
     return { canvas, scale };
   } finally {
     document.body.removeChild(wrapper);
@@ -257,6 +274,11 @@ export async function exportToPDF(element: HTMLElement, filename: string, title?
 }
 
 export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatIndexLayout, heading: string, sub: string) {
+  if (document.fonts?.ready) await document.fonts.ready;
+  // Native canvas text: the canvas measures what it draws, so names and seat
+  // text keep their spacing on every system font. DOM capture is the fallback.
+  const native = drawIndexPage(entries, layout, heading, sub, COPYRIGHT_TEXT);
+  if (native) return native;
   const P = INDEX_PAGE;
   const wrap = document.createElement('div');
   // Letter-spacing is inherited by every cell, so all index text is placed

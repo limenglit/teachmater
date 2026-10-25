@@ -113,13 +113,13 @@ export function buildClassroomSeatIndex(
 
 /**
  * Fixed A4 index page geometry (CSS px at 96dpi). Every page maps 1:1 onto A4.
- * 28px rows leave clear space between names; 32 rows still fit above the footer.
+ * 30px rows leave clear space between names; 30 rows still fit above the footer.
  */
-export const INDEX_PAGE = { width: 794, height: 1123, padX: 32, rowHeight: 28, rows: 32, columnGap: 20, seatWidth: 92, nameFont: 13 } as const;
+export const INDEX_PAGE = { width: 794, height: 1123, padX: 32, rowHeight: 30, rows: 30, columnGap: 20, seatWidth: 100, nameFont: 13 } as const;
 /** Space between number, name and seat slots; keeps long names off the seat text. */
 export const INDEX_CELL_GAP = 12;
 /** Per-character spacing on index text; widths below include it. */
-export const INDEX_LETTER_SPACING = 0.3;
+export const INDEX_LETTER_SPACING = 1;
 
 export interface SeatIndexLayout {
   columns: 2 | 3;
