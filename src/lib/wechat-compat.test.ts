@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-const css = readFileSync(path.resolve(__dirname, '../index.css'), 'utf8');
+const css = readFileSync(path.resolve(__dirname, '../styles.css'), 'utf8');
 
 function setWeChatUA(on: boolean) {
   Object.defineProperty(window.navigator, 'userAgent', {

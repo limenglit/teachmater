@@ -19,11 +19,13 @@ vi.mock('html2canvas', () => ({
 }));
 
 vi.mock('jspdf', () => ({
-  jsPDF: vi.fn().mockImplementation(() => ({
-    addImage: vi.fn(),
-    addPage: vi.fn(),
-    save: vi.fn(),
-  })),
+  jsPDF: vi.fn().mockImplementation(function () {
+    return {
+      addImage: vi.fn(),
+      addPage: vi.fn(),
+      save: vi.fn(),
+    };
+  }),
 }));
 
 vi.mock('react-dom/client', () => ({
