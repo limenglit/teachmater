@@ -28,11 +28,11 @@ describe('seat index', () => {
   });
   it('uses 3 columns for short or no student numbers and 2 columns for long ones', () => {
     const plain = [{ name: '张伟', row: 1, col: 1 }];
-    expect(planSeatIndexLayout(plain)).toMatchObject({ columns: 3, numberWidth: 0, perPage: 96 });
+    expect(planSeatIndexLayout(plain)).toMatchObject({ columns: 3, numberWidth: 0, perPage: 90 });
     expect(planSeatIndexLayout([{ ...plain[0], studentNumber: '2301' }]).columns).toBe(3);
     const long = planSeatIndexLayout([{ ...plain[0], studentNumber: '202301040123' }]);
     expect(long.columns).toBe(2);
-    expect(long.perPage).toBe(64);
+    expect(long.perPage).toBe(60);
     // the name slot always holds at least a 4-character name
     expect(long.nameChars).toBeGreaterThanOrEqual(4);
   });
