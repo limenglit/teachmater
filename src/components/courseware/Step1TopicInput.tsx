@@ -22,7 +22,7 @@ export function Step1TopicInput() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="rounded-2xl border bg-card/70 backdrop-blur p-6 sm:p-8 shadow-sm space-y-5">
+      <div className="rounded-2xl border bg-card/70 backdrop-blur p-6 sm:p-8 shadow-xs space-y-5">
         <div className="flex items-center gap-3">
           <div className="rounded-xl bg-primary/10 p-2.5 text-primary">
             <Sparkles className="h-5 w-5" />

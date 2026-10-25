@@ -885,7 +885,7 @@ export default function SeatChart() {
     sceneType: 'classroom',
   });
 
-  const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-sm';
+  const sideIconClass = 'inline-flex items-center justify-center w-8 h-8 rounded-lg border border-primary/30 bg-primary/10 text-base leading-none shadow-xs';
   const sideMarkerIconClass = 'inline-flex items-center justify-center w-6 h-6 rounded-md border border-primary/30 bg-primary/10 text-sm leading-none';
 
   const sanitizeClassroomSeats = (
@@ -1114,7 +1114,7 @@ export default function SeatChart() {
       elements.push(
         <div key={`col-label-${ci}`} style={{ gridRow: 1, gridColumn: toGridCol(visualCol) }} className="w-16 h-12 flex items-center justify-center">
           <button type="button" onClick={() => toggleColDisabled(ci)}
-            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-xs transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
             title={colDisabled ? t('seat.enableCol') : t('seat.disableCol')}
           >
             {t('seat.colLabel').replace('{0}', String(displayCol))}
@@ -1170,7 +1170,7 @@ export default function SeatChart() {
       elements.push(
         <div key={`row-label-${ri}`} style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: rowLabelCol }} className="w-16 h-12 flex items-center justify-center">
           <button type="button" onClick={() => toggleRowDisabled(ri)}
-            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-xs transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
             title={rowDisabled ? t('seat.enableRow') : t('seat.disableRow')}
           >
             {t('seat.rowLabel').replace('{0}', String(ri + 1))}
@@ -1265,7 +1265,7 @@ export default function SeatChart() {
             {/* 2. 教室结构设置卡片（可折叠） */}
             <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
               <button
-                className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-hidden select-none hover:bg-muted/30 transition-colors"
                 onClick={() => setStructureOpen(v => !v)}
                 aria-expanded={structureOpen}
                 type="button"
@@ -1365,7 +1365,7 @@ export default function SeatChart() {
             {/* 3. 排座策略设置卡片（可折叠） */}
             <div className="mb-4 p-0 rounded-xl border border-border/60 bg-muted/10 overflow-hidden">
               <button
-                className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-none select-none hover:bg-muted/30 transition-colors"
+                className="w-full flex items-center justify-between px-4 py-2 font-semibold text-base focus:outline-hidden select-none hover:bg-muted/30 transition-colors"
                 onClick={() => setStrategyOpen(v => !v)}
                 aria-expanded={strategyOpen}
                 type="button"
@@ -1827,7 +1827,7 @@ export default function SeatChart() {
                         }}
                         onDoubleClick={() => restoreFromLeavePool(entry)}
                         title={`原座位：${entry.r + 1}排${entry.c + 1}列 · 双击或拖到座位恢复`}
-                        className="px-2.5 py-1 rounded-md border border-amber-400/60 bg-background text-xs text-foreground shadow-sm cursor-grab active:cursor-grabbing hover:border-primary/60"
+                        className="px-2.5 py-1 rounded-md border border-amber-400/60 bg-background text-xs text-foreground shadow-xs cursor-grab active:cursor-grabbing hover:border-primary/60"
                       >
                         {entry.name}
                         <span className="ml-1 text-[10px] text-muted-foreground">{entry.r + 1}-{entry.c + 1}</span>

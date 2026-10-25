@@ -186,7 +186,7 @@ export default function PPTPresenter({ outline, colorSchemeId, startIndex = 0, o
                     }}
                   >
                     <span
-                      className="mt-2 w-2 h-2 rounded-full flex-shrink-0"
+                      className="mt-2 w-2 h-2 rounded-full shrink-0"
                       style={{ backgroundColor: colors.accent }}
                     />
                     <span>{b}</span>

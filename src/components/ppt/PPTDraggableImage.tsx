@@ -126,12 +126,12 @@ export default function PPTDraggableImage({ src, position, containerRef, onChang
         <>
           <div className="absolute inset-0 border-2 border-primary rounded pointer-events-none" />
           {/* Move handle */}
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-0.5 shadow-sm">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-0.5 shadow-xs">
             <Move className="w-3 h-3" />
           </div>
           {/* Resize handle */}
           <div
-            className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-primary rounded-sm cursor-se-resize shadow-sm"
+            className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-primary rounded-sm cursor-se-resize shadow-xs"
             onMouseDown={handleResizeDown}
           />
           {/* Corner dots */}

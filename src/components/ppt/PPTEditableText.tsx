@@ -229,7 +229,7 @@ export default function PPTEditableText({
           value={text}
           onChange={(e) => onChange(e.target.value)}
           onBlur={() => setIsEditing(false)}
-          className="w-full bg-transparent border-none outline-none resize-none p-0"
+          className="w-full bg-transparent border-none outline-hidden resize-none p-0"
           style={{
             fontFamily: effectiveStyle.fontFamily,
             fontSize: `${effectiveStyle.fontSize}px`,
@@ -260,12 +260,12 @@ export default function PPTEditableText({
         <>
           <div className="absolute inset-0 border-2 border-primary/50 rounded pointer-events-none" />
           {/* Move handle */}
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-0.5 shadow-sm pointer-events-none">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground rounded-full p-0.5 shadow-xs pointer-events-none">
             <Move className="w-3 h-3" />
           </div>
           {/* Width resize handle (right edge) */}
           <div
-            className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-8 bg-primary rounded-sm cursor-ew-resize shadow-sm"
+            className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-8 bg-primary rounded-sm cursor-ew-resize shadow-xs"
             onMouseDown={handleWidthResize}
           />
         </>

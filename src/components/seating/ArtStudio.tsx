@@ -624,7 +624,7 @@ export default function ArtStudio({ students }: Props) {
           <div className="absolute left-3 top-3 rounded-md bg-primary/10 border border-primary/20 px-2 py-1 text-xs text-primary font-medium">{t('seat.editor.art.areaCenter')}</div>
 
           <div
-            className="absolute inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-100/90 px-2 py-1 text-[11px] text-sky-800 font-medium shadow-sm cursor-grab active:cursor-grabbing select-none"
+            className="absolute inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-100/90 px-2 py-1 text-[11px] text-sky-800 font-medium shadow-xs cursor-grab active:cursor-grabbing select-none"
             style={{ left: markers.window.x - 26, top: markers.window.y - 12 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'marker', key: 'window' }); }}
             title={t('seat.editor.art.dragMoveWindow')}
@@ -634,7 +634,7 @@ export default function ArtStudio({ students }: Props) {
           </div>
 
           <div
-            className="absolute inline-flex items-center gap-1 rounded-md border border-amber-600/35 bg-amber-100/90 px-2 py-1 text-[11px] text-amber-800 font-medium shadow-sm cursor-grab active:cursor-grabbing select-none"
+            className="absolute inline-flex items-center gap-1 rounded-md border border-amber-600/35 bg-amber-100/90 px-2 py-1 text-[11px] text-amber-800 font-medium shadow-xs cursor-grab active:cursor-grabbing select-none"
             style={{ left: markers.door.x - 26, top: markers.door.y - 12 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'marker', key: 'door' }); }}
             title={t('seat.editor.art.dragMoveDoor')}
@@ -653,7 +653,7 @@ export default function ArtStudio({ students }: Props) {
           </div>
 
           <div
-            className="absolute w-24 h-24 rounded-full border-2 border-primary/50 bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shadow-sm cursor-grab active:cursor-grabbing select-none"
+            className="absolute w-24 h-24 rounded-full border-2 border-primary/50 bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shadow-xs cursor-grab active:cursor-grabbing select-none"
             style={{ left: platforms.model.x - 48, top: platforms.model.y - 48 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'platform', key: 'model' }); }}
             title={t('seat.editor.art.dragMoveModel')}
@@ -662,7 +662,7 @@ export default function ArtStudio({ students }: Props) {
           </div>
 
           <div
-            className="absolute w-20 h-20 rounded-full border-2 border-amber-500/50 bg-amber-100/70 flex items-center justify-center text-[11px] font-semibold text-amber-700 shadow-sm cursor-grab active:cursor-grabbing select-none"
+            className="absolute w-20 h-20 rounded-full border-2 border-amber-500/50 bg-amber-100/70 flex items-center justify-center text-[11px] font-semibold text-amber-700 shadow-xs cursor-grab active:cursor-grabbing select-none"
             style={{ left: platforms.stillLife.x - 40, top: platforms.stillLife.y - 40 }}
             onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'platform', key: 'stillLife' }); }}
             title={t('seat.editor.art.dragMoveStill')}
@@ -678,7 +678,7 @@ export default function ArtStudio({ students }: Props) {
             return (
               <div
                 key={`seat-${node.key}`}
-                className={`absolute rounded-md border text-[10px] flex items-center justify-center px-1 text-center leading-tight cursor-grab active:cursor-grabbing select-none ${name ? 'bg-white border-primary/40 text-foreground shadow-sm' : 'bg-muted/60 border-border text-muted-foreground'}`}
+                className={`absolute rounded-md border text-[10px] flex items-center justify-center px-1 text-center leading-tight cursor-grab active:cursor-grabbing select-none ${name ? 'bg-white border-primary/40 text-foreground shadow-xs' : 'bg-muted/60 border-border text-muted-foreground'}`}
                 style={{ left: pos.x - SEAT_W / 2, top: pos.y - SEAT_H / 2, width: `${SEAT_W}px`, height: `${SEAT_H}px` }}
                 onPointerDown={e => { e.preventDefault(); setDragging({ kind: 'seat', key: node.key }); }}
                 onDragOver={(e) => acceptStudentDragOver(e, { occupant: name })}

@@ -420,7 +420,7 @@ export default function TeacherCommunity() {
               const tags = Array.isArray(p.tags) ? p.tags : [];
               const kps = Array.isArray(p.knowledge_points) ? p.knowledge_points : [];
               return (
-                <div key={p.id} className="border border-border rounded-2xl p-6 bg-card shadow-sm hover:shadow-md transition-all">
+                <div key={p.id} className="border border-border rounded-2xl p-6 bg-card shadow-xs hover:shadow-md transition-all">
                   {/* Status & admin actions */}
                   <div className="flex justify-between items-center mb-3">
                     <div className="flex items-center gap-2">

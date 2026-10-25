@@ -803,7 +803,7 @@ export default function BoardPanel() {
               else if (e.key === 'Escape') { e.preventDefault(); cancelEditTitle(); }
             }}
             maxLength={80}
-            className="h-7 text-sm font-semibold bg-background border border-input rounded px-2 focus:outline-none focus:ring-2 focus:ring-primary min-w-0 w-40 sm:w-56"
+            className="h-7 text-sm font-semibold bg-background border border-input rounded px-2 focus:outline-hidden focus:ring-2 focus:ring-primary min-w-0 w-40 sm:w-56"
           />
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={commitEditTitle} title="保存">
             <Check className="w-3.5 h-3.5" />

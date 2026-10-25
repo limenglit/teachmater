@@ -71,7 +71,7 @@ export default function LeavePoolPanel({ entries, onRestore, onDropName, classNa
                   }}
                   onDoubleClick={() => onRestore(entry)}
                   title={`原座位：${entry.label} · 双击或拖到座位恢复`}
-                  className="px-2.5 py-1 rounded-md border border-amber-400/60 bg-background text-xs text-foreground shadow-sm cursor-grab active:cursor-grabbing hover:border-primary/60"
+                  className="px-2.5 py-1 rounded-md border border-amber-400/60 bg-background text-xs text-foreground shadow-xs cursor-grab active:cursor-grabbing hover:border-primary/60"
                 >
                   {entry.name}
                   <span className="ml-1 text-[10px] text-muted-foreground">{entry.label}</span>

@@ -141,7 +141,7 @@ export default function LotteryDrawer() {
             value={customItems}
             onChange={e => setCustomItems(e.target.value)}
             placeholder={t('lottery.itemsPlaceholder')}
-            className="w-full h-24 text-sm bg-muted border border-border rounded-lg p-2 resize-none mb-3 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full h-24 text-sm bg-muted border border-border rounded-lg p-2 resize-none mb-3 focus:outline-hidden focus:ring-1 focus:ring-primary"
           />
 
           {/* Result display */}

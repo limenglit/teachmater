@@ -207,7 +207,7 @@ function VocabSetCard({ set, isMine, canPublish, onPlay, onPublish, onEdit, onDe
   const canWithdraw = set.status === 'pending';
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-2 hover:shadow-sm transition-shadow">
+    <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-2 hover:shadow-xs transition-shadow">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-sm text-foreground truncate">{set.title || '未命名'}</h3>

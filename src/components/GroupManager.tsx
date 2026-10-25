@@ -388,7 +388,7 @@ export default function GroupManager() {
                             className={`flex items-center gap-1 py-1.5 px-2 rounded-lg hover:bg-muted transition-all cursor-grab active:cursor-grabbing group
                               ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
                           >
-                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
+                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleLeader(group.id, member.id)}
                               title={member.isLeader ? '组长 → 点击设为副组长' : member.isViceLeader ? '副组长 → 点击取消' : '点击设为组长'}

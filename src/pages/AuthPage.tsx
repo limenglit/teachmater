@@ -185,7 +185,7 @@ export default function AuthPage() {
           <p className="text-sm text-muted-foreground">{modeLabels[mode]}</p>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-6 space-y-4 shadow-sm">
+        <div className="bg-card border border-border rounded-xl p-6 space-y-4 shadow-xs">
           {mode === 'forgot' ? (
             <>
               <div className="relative">

@@ -322,7 +322,7 @@ export default function StudentAnalytics({ studentNames }: Props) {
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.02 }}
-                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:shadow-sm ${
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer hover:shadow-xs ${
                     idx === 0 ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/10 dark:border-yellow-800/30' :
                     idx === 1 ? 'bg-slate-50 border-slate-200 dark:bg-slate-800/20 dark:border-slate-700/30' :
                     idx === 2 ? 'bg-orange-50 border-orange-200 dark:bg-orange-900/10 dark:border-orange-800/30' :

@@ -231,7 +231,7 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
       className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm flex flex-col items-center p-4"
     >
       {/* Header */}
-      <div className="w-full max-w-3xl flex items-center justify-between mb-4 pt-2 flex-shrink-0">
+      <div className="w-full max-w-3xl flex items-center justify-between mb-4 pt-2 shrink-0">
         <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
           <FileText className="w-5 h-5" /> {t('board.smartReport')}
         </h2>

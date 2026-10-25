@@ -379,7 +379,7 @@ export default function TeamBuilder() {
                             className={`flex items-center gap-1 py-1.5 px-2 rounded-lg hover:bg-muted transition-all cursor-grab active:cursor-grabbing group
                               ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
                           >
-                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
+                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleCaptain(team.id, member.id)}
                               title={member.isCaptain ? '队长 → 点击设为副队长' : member.isViceCaptain ? '副队长 → 点击取消' : '点击设为队长'}

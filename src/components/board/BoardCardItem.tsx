@@ -204,7 +204,7 @@ function BoardCardItem({ card, onManage, onLike, isCreator, isCloud }: Props) {
       data-card-id={card.id}
       data-card-pinned={card.is_pinned}
       data-card-likes={card.likes_count}
-      className="rounded-xl border border-border shadow-sm p-4 transition-all hover:shadow-md group relative"
+      className="rounded-xl border border-border shadow-xs p-4 transition-all hover:shadow-md group relative"
       style={{ backgroundColor: card.color || '#ffffff' }}
     >
       {card.is_pinned && (

@@ -122,7 +122,7 @@ export default function DiscussPage() {
                       setShowDropdown(true);
                     }}
                     placeholder={t('discuss.selectName') || '请选择或搜索姓名'}
-                    className="flex-1 bg-transparent px-2 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                    className="flex-1 bg-transparent px-2 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-hidden"
                     onFocus={() => setShowDropdown(true)}
                     onKeyDown={e => e.key === 'Enter' && handleConfirmNickname()}
                   />
@@ -199,7 +199,7 @@ export default function DiscussPage() {
             value={content}
             onChange={e => setContent(e.target.value.slice(0, 50))}
             placeholder={t('discuss.inputBarrage')}
-            className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-base text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-primary resize-none"
             maxLength={50}
           />
           <div className="flex items-center justify-between">
