@@ -45,3 +45,7 @@ if (typeof window.speechSynthesis === "undefined") {
     getVoices: () => [],
   };
 }
+
+// Pages lazy-load their views; under a full parallel run the default 1s async wait is too short.
+import { configure } from "@testing-library/react";
+configure({ asyncUtilTimeout: 5000 });
