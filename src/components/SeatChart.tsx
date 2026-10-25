@@ -46,6 +46,7 @@ import MultiClassRosterLoader from '@/components/seating/MultiClassRosterLoader'
 import { toSnapshotRoster, missingFromRoster, allowedSeatNames, type SnapshotStudent } from '@/lib/seat-roster-merge';
 import { getActiveClassContext, getActiveClassName, ACTIVE_CLASS_CHANGED_EVENT, type ActiveClassContext } from '@/lib/class-context';
 import { withActiveClassContext, filterHistoryByClass, historyClassLabel } from '@/lib/seat-history-class';
+import { seatLabelFontPx } from '@/lib/seat-label-size';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
 type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -1765,6 +1766,19 @@ export default function SeatChart() {
                 <div className="text-center py-20 text-muted-foreground">
                   <p className="text-lg mb-2">{t('seat.emptyTitle')}</p>
                   <p className="text-sm">{t('seat.emptyDesc')}</p>
+                </div>
+              )}
+              {/* Printed copy of the unit color legend: hidden on screen (the
+                  live legend sits above the toolbar), revealed by export. */}
+              {seats.length > 0 && organizationLegend.length > 0 && (
+                <div data-export-only className="hidden mt-4 flex-wrap justify-center gap-x-2 gap-y-1.5 rounded-md border border-border/60 px-3 py-2">
+                  <span className="text-[11px] font-medium text-muted-foreground">单位配色：</span>
+                  {organizationLegend.map(([organization, colorClass]) => (
+                    <span key={organization} className="inline-flex items-center gap-1 text-[11px] leading-normal">
+                      <span className={`inline-block w-2 h-2 rounded-full bg-current ${colorClass}`} />
+                      <span className={colorClass}>{organization}</span>
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
