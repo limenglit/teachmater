@@ -2,6 +2,7 @@
 @import "tailwindcss" source(none);
 @source "../src";
 @config "../tailwind.config.cjs";
+@import "tw-animate-css";
 
 /* Tailwind v4 preflight resets button cursors to default; keep the v3 pointer cursor. */
 @layer base {
