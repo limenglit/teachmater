@@ -1,3 +1,4 @@
+import { backendUploadUrl } from '@/lib/backend-proxy';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -92,7 +93,7 @@ function xhrUpload(
   const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${baseUrl}/storage/v1/object/board-media/${path}`);
+    xhr.open('POST', backendUploadUrl(`${baseUrl}/storage/v1/object/board-media/${path}`, body.size));
     xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
     xhr.setRequestHeader('apikey', apiKey);
     xhr.setRequestHeader('x-upsert', 'false');

@@ -1,3 +1,4 @@
+import { backendUploadUrl } from '@/lib/backend-proxy';
 import { supabase } from '@/integrations/supabase/client';
 
 const BOARD_MEDIA_CONTENT_TYPES: Record<string, string> = {
@@ -179,7 +180,7 @@ function xhrUpload(
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${baseUrl}/storage/v1/object/board-media/${path}`);
+    xhr.open('POST', backendUploadUrl(`${baseUrl}/storage/v1/object/board-media/${path}`, body.size));
     xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
     xhr.setRequestHeader('apikey', apiKey);
     xhr.setRequestHeader('x-upsert', 'false');
