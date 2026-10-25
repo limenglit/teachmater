@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { Mail, Lock, User, ArrowLeft, Clock, Shield } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { useDocumentHead } from '@/hooks/useDocumentHead';
 
 /** True when the request never reached the server (blocked / DNS / offline). */

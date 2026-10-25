@@ -39,7 +39,7 @@ const buildQueryResult = (rows: any[]) => ({
   order: async () => ({ data: rows }),
 });
 
-vi.mock('react-router-dom', () => ({
+vi.mock('@/lib/router-compat', () => ({
   useParams: () => ({ sessionId: 'session-1' }),
 }));
 

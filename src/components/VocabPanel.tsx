@@ -5,7 +5,7 @@ import {
   BookOpen, Plus, Loader2, LogIn, Edit2, Trash2, Send, Undo2, Play, Search, Globe2, FolderHeart, QrCode,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import { toast } from 'sonner';
 import {
   listMySets, listPlatformSets, deleteSet, submitSet, withdrawSet, audienceLabel,

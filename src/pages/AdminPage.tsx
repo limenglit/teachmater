@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/hooks/use-toast';
 import { CheckCircle2, XCircle, Clock, ArrowLeft, Shield, Loader2, Search, Users, Settings2, Cpu, BookOpen, FileText, Wallet } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@/lib/router-compat';
 import AdminConfigPanel from '@/components/AdminConfigPanel';
 import AdminAIQuotaPanel from '@/components/AdminAIQuotaPanel';
 import AdminPagesQuotaPanel from '@/components/AdminPagesQuotaPanel';

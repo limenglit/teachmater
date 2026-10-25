@@ -3,7 +3,7 @@ import QuizSubmitPage from './QuizSubmitPage';
 
 const rpcMock = vi.fn();
 
-vi.mock('react-router-dom', () => ({
+vi.mock('@/lib/router-compat', () => ({
   useParams: () => ({ sessionId: 'session-1' }),
 }));
 
