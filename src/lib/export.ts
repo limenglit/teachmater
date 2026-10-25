@@ -1,8 +1,29 @@
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
+import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
+
+export const BASELINE_FIX_ATTR = 'data-export-baseline-fix';
+
+/**
+ * html2canvas measures each font's baseline in the live page with a 1x1 <img>
+ * placed after sample text. Tailwind's preflight makes every img display:block,
+ * which drops that probe onto its own line, so every glyph is drawn several
+ * pixels too low: row/column pills, seat names and index rows sink onto their
+ * borders. Keep the probe inline only for the duration of the capture.
+ */
+async function renderCanvas(el: HTMLElement, opts: Parameters<typeof html2canvas>[1]) {
+  const fix = document.createElement('style');
+  fix.setAttribute(BASELINE_FIX_ATTR, '');
+  fix.textContent = 'img[width="1"][height="1"]{display:inline !important;vertical-align:baseline;}';
+  document.head.appendChild(fix);
+  try {
+    return await html2canvas(el, opts);
+  } finally {
+    fix.remove();
+  }
+}
 
 async function captureWithHeaderFooter(element: HTMLElement, title: string) {
   const clone = element.cloneNode(true) as HTMLElement;
@@ -16,6 +37,15 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       if (s.zoom) s.zoom = '';
     }
     root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
+    // Print-only content (e.g. the unit color legend): reveal it at the chart's
+    // width without letting a long single-line legend widen the exported room.
+    root.querySelectorAll<HTMLElement>('[data-export-only]').forEach(el => {
+      el.classList.remove('hidden');
+      el.style.display = 'flex';
+      el.style.width = '0';
+      el.style.minWidth = '100%';
+      el.style.boxSizing = 'border-box';
+    });
     // Classroom grid zoom has no frame; its natural grid width is already
     // unscaled, so drop only this screen-level transform, not seat positions.
     root.querySelectorAll<HTMLElement>('[data-export-unscale]').forEach(el => {
@@ -137,7 +167,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
     const maxDimension = Math.max(wrapper.scrollWidth, wrapper.scrollHeight);
     const scale = Math.min(3, 12000 / maxDimension, Math.sqrt(36_000_000 / (wrapper.scrollWidth * wrapper.scrollHeight)));
     wrapper.style.visibility = 'visible';
-    const canvas = await html2canvas(wrapper, {
+    const canvas = await renderCanvas(wrapper, {
       backgroundColor: '#ffffff',
       // 3x improves name legibility; cap extreme rooms to avoid oversized
       // canvases on mobile browsers while preserving the entire chart.
@@ -240,7 +270,7 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
   const cols = hasNumber
     ? `${layout.numberWidth}px minmax(0,1fr) ${layout.seatWidth}px`
     : `minmax(0,1fr) ${layout.seatWidth}px`;
-  const cellGap = 8;
+  const cellGap = INDEX_CELL_GAP;
   const makeLine = (cells: string[], isHeader: boolean, idx = 0) => {
     const line = document.createElement('div');
     const border = isHeader ? '1.5px solid #111' : `1px solid ${(idx + 1) % 5 === 0 ? '#9a9a9a' : '#e2e2e2'}`;
@@ -250,9 +280,9 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
       span.textContent = text;
       const isNum = hasNumber && i === 0;
       const isSeat = i === cells.length - 1;
-      // No overflow clipping or tall line-height: html2canvas draws text lower
-      // than the browser in those cases, cutting glyphs on the row divider.
-      let css = 'display:block;line-height:1.25;padding-bottom:6px;';
+      // Centred by the row's flex/grid alignment; renderCanvas keeps the
+      // html2canvas baseline probe inline, so no padding offset is needed.
+      let css = 'display:block;line-height:1.25;min-width:0;';
       if (isHeader) css += 'font-size:11.5px;font-weight:700;color:#444;';
       else if (isNum) css += 'font-size:12px;color:#444;font-variant-numeric:tabular-nums;';
       else if (isSeat) css += 'font-size:12.5px;font-weight:700;color:#111;';
@@ -289,7 +319,7 @@ export async function renderIndexPage(entries: SeatIndexEntry[], layout: SeatInd
   document.body.appendChild(wrap);
   try {
     if (document.fonts?.ready) await document.fonts.ready;
-    return await html2canvas(wrap, {
+    return await renderCanvas(wrap, {
       backgroundColor: '#ffffff', scale: 2, x: 0, y: 0, scrollX: 0, scrollY: 0,
       width: P.width, height: P.height, windowWidth: Math.max(document.documentElement.clientWidth, P.width),
       windowHeight: Math.max(document.documentElement.clientHeight, P.height),

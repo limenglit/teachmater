@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Capture the wrapper that html2canvas receives so we can assert on the
 // neutralized DOM used for PNG/SVG/PDF exports.
 const html2canvasCalls: HTMLElement[] = [];
+const baselineFixDuringCapture: boolean[] = [];
 
 vi.mock('html2canvas', () => ({
   default: vi.fn(async (el: HTMLElement) => {
     // Clone at call time — export code removes the wrapper right after.
     html2canvasCalls.push(el.cloneNode(true) as HTMLElement);
+    baselineFixDuringCapture.push(!!document.head.querySelector('style[data-export-baseline-fix]'));
     return {
       width: 100,
       height: 100,
@@ -30,7 +32,7 @@ vi.mock('react-dom/client', () => ({
 
 vi.mock('qrcode.react', () => ({ QRCodeSVG: () => null }));
 
-import { exportToPNG, exportToPDF, exportToSVG } from './export';
+import { exportToPNG, exportToPDF, exportToSVG, BASELINE_FIX_ATTR } from './export';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -248,5 +250,29 @@ describe('export – seating layout', () => {
     expect(capturedSeat?.style.height).toBe('44px');
     expect(html2canvasCalls[0].textContent).toContain('最后一排 张同学');
     expect(vi.mocked(html2canvas).mock.lastCall?.[1]?.scale).toBe(3);
+  });
+});
+
+describe('export – text placement and legend', () => {
+  it('keeps html2canvas baseline probe inline only while capturing', async () => {
+    baselineFixDuringCapture.length = 0;
+    await exportToPDF(buildSeatGrid(), 'seatmap', '座位图', [{ name: '张伟', row: 1, col: 1 }]);
+    expect(baselineFixDuringCapture).toEqual([true, true]);
+    expect(document.head.querySelector(`style[${BASELINE_FIX_ATTR}]`)).toBeNull();
+  });
+
+  it('prints the unit color legend that is hidden on screen', async () => {
+    const root = buildSeatGrid();
+    const legend = document.createElement('div');
+    legend.setAttribute('data-export-only', '');
+    legend.className = 'hidden flex-wrap';
+    legend.textContent = '护理学院';
+    root.appendChild(legend);
+    await exportToPNG(root, 'seatmap');
+    const printed = html2canvasCalls[0].querySelector<HTMLElement>('[data-export-only]');
+    expect(printed?.classList.contains('hidden')).toBe(false);
+    expect(printed?.style.display).toBe('flex');
+    expect(printed?.style.minWidth).toBe('100%');
+    expect(legend.classList.contains('hidden')).toBe(true);
   });
 });

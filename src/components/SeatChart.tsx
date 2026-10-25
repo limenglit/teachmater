@@ -46,6 +46,7 @@ import MultiClassRosterLoader from '@/components/seating/MultiClassRosterLoader'
 import { toSnapshotRoster, missingFromRoster, allowedSeatNames, type SnapshotStudent } from '@/lib/seat-roster-merge';
 import { getActiveClassContext, getActiveClassName, ACTIVE_CLASS_CHANGED_EVENT, type ActiveClassContext } from '@/lib/class-context';
 import { withActiveClassContext, filterHistoryByClass, historyClassLabel } from '@/lib/seat-history-class';
+import { seatLabelFontPx } from '@/lib/seat-label-size';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
 type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -380,11 +381,14 @@ export default function SeatChart() {
     const organization = organizationByName.get(name) ?? '未分单位';
     const organizationColorClass = organizationColorMap.get(organization) ?? 'text-foreground';
 
+    // Name and marker are separate spans and the font shrinks for long names,
+    // so a wrapped emoji never stacks on top of the name inside the 64px seat.
+    const fontPx = seatLabelFontPx(name);
     if (genderMarkerStyle === 'badge') {
       return (
-        <span className={`inline-flex items-center justify-center gap-1 w-full px-0.5 ${organizationColorClass}`} title={organization}>
-          <span className="text-[11px] leading-tight whitespace-normal break-all text-center">{name}</span>
-          <span className="inline-flex items-center justify-center rounded px-1 py-0.5 text-[10px] leading-none bg-muted border border-border/70 text-muted-foreground">
+        <span className={`inline-flex items-center justify-center gap-0.5 w-full px-0.5 ${organizationColorClass}`} title={organization}>
+          <span className="leading-tight whitespace-normal break-all text-center" style={{ fontSize: fontPx }}>{name}</span>
+          <span className="inline-flex shrink-0 items-center justify-center rounded px-0.5 py-0.5 text-[9px] leading-none bg-muted border border-border/70 text-muted-foreground">
             {marker}
           </span>
         </span>
@@ -393,10 +397,12 @@ export default function SeatChart() {
 
     return (
       <span
-        className={`${organizationColorClass} block w-full px-0.5 text-center text-[11px] leading-tight whitespace-normal break-all`}
+        className={`${organizationColorClass} block w-full px-0.5 text-center leading-tight whitespace-normal break-all`}
+        style={{ fontSize: fontPx }}
         title={organization}
       >
-        {`${name}${marker}`}
+        <span>{name}</span>
+        <span className="whitespace-nowrap" style={{ fontSize: fontPx - 1 }}>{marker}</span>
       </span>
     );
   }, [genderByName, genderMarkerStyle, organizationByName, organizationColorMap, t]);
@@ -1108,7 +1114,7 @@ export default function SeatChart() {
       elements.push(
         <div key={`col-label-${ci}`} style={{ gridRow: 1, gridColumn: toGridCol(visualCol) }} className="w-16 h-12 flex items-center justify-center">
           <button type="button" onClick={() => toggleColDisabled(ci)}
-            className={`h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${colDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
             title={colDisabled ? t('seat.enableCol') : t('seat.disableCol')}
           >
             {t('seat.colLabel').replace('{0}', String(displayCol))}
@@ -1154,7 +1160,7 @@ export default function SeatChart() {
           >
             {isDisabled ? <X className="w-4 h-4" /> : formatSeatLabel(name)}
             {isLocked && !isDisabled && (
-              <Lock className="absolute top-0.5 right-0.5 w-3 h-3 text-amber-600 dark:text-amber-400" aria-label="locked" />
+              <Lock className="absolute top-[2px] right-[2px] w-2.5 h-2.5 text-amber-600 dark:text-amber-400" aria-label="locked" />
             )}
           </div>
         );
@@ -1164,7 +1170,7 @@ export default function SeatChart() {
       elements.push(
         <div key={`row-label-${ri}`} style={{ gridRow: getVisualRow(ri, rowAisles) + seatAreaStartRow, gridColumn: rowLabelCol }} className="w-16 h-12 flex items-center justify-center">
           <button type="button" onClick={() => toggleRowDisabled(ri)}
-            className={`h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
+            className={`inline-flex items-center justify-center h-5 px-2 rounded-full text-[10px] leading-none whitespace-nowrap select-none border shadow-sm transition-colors ${rowDisabled ? 'bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/20' : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'}`}
             title={rowDisabled ? t('seat.enableRow') : t('seat.disableRow')}
           >
             {t('seat.rowLabel').replace('{0}', String(ri + 1))}
@@ -1760,6 +1766,20 @@ export default function SeatChart() {
                 <div className="text-center py-20 text-muted-foreground">
                   <p className="text-lg mb-2">{t('seat.emptyTitle')}</p>
                   <p className="text-sm">{t('seat.emptyDesc')}</p>
+                </div>
+              )}
+              {/* Printed copy of the unit color legend: hidden on screen (the
+                  live legend sits above the toolbar), revealed by export. */}
+              {seats.length > 0 && organizationLegend.length > 0 && (
+                <div data-export-only className="hidden mt-4 flex-wrap justify-center gap-x-2 gap-y-1.5 rounded-md border border-border/60 px-3 py-2">
+                  <span className="text-[11px] font-medium text-muted-foreground">单位配色：</span>
+                  {organizationLegend.map(([organization, colorClass]) => (
+                    <span key={organization} className="inline-flex items-center gap-1 text-[11px] leading-normal">
+                      {/* A text dot: html2canvas cannot paint bg-current (currentColor) fills. */}
+                      <span className={`text-[10px] ${colorClass}`}>●</span>
+                      <span className={colorClass}>{organization}</span>
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
