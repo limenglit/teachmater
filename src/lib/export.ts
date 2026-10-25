@@ -6,6 +6,19 @@ const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛�
 
 export const BASELINE_FIX_ATTR = 'data-export-baseline-fix';
 
+/** System CJK fonts first: they exist for both the page and the canvas. */
+export const EXPORT_FONT = '"Microsoft YaHei","PingFang SC","Noto Sans SC","Hiragino Sans GB",SimHei,sans-serif';
+
+/**
+ * Text written by the exporter (title, footer, index table). A non-zero
+ * letter-spacing makes html2canvas place every character at its own measured
+ * position instead of drawing whole word runs, whose canvas width can exceed
+ * the page width and push glyphs into each other. Kerning and ligatures are
+ * off so the page advances match the canvas's per-character advances.
+ */
+export const exportTextCss = (letterSpacingPx: number) =>
+  `font-family:${EXPORT_FONT};letter-spacing:${letterSpacingPx}px;font-kerning:none;font-variant-ligatures:none;font-feature-settings:normal;white-space:nowrap;`;
+
 /**
  * html2canvas measures each font's baseline in the live page with a 1x1 <img>
  * placed after sample text. Tailwind's preflight makes every img display:block,
@@ -125,13 +138,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const heading = document.createElement('div');
   heading.textContent = title;
-  heading.style.textAlign = 'center';
-  heading.style.color = '#000000';
-  heading.style.fontSize = '22px';
-  heading.style.fontWeight = '700';
-  heading.style.fontFamily = 'SimHei, "Microsoft YaHei", sans-serif';
-  heading.style.lineHeight = '1.2';
-  heading.style.marginBottom = "16px";
+  heading.style.cssText = `${exportTextCss(1)}text-align:center;color:#000000;font-size:22px;font-weight:700;line-height:1.4;margin-bottom:16px;white-space:normal;word-break:break-all;`;
 
   const content = document.createElement('div');
   content.style.display = 'flex';
@@ -147,12 +154,7 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
 
   const footer = document.createElement('div');
   footer.textContent = COPYRIGHT_TEXT;
-  footer.style.marginTop = "16px";
-  footer.style.textAlign = 'center';
-  footer.style.color = '#333333';
-  footer.style.fontSize = '10px';
-  footer.style.fontFamily = '"Microsoft YaHei", sans-serif';
-  footer.style.lineHeight = '1.2';
+  footer.style.cssText = `${exportTextCss(0.5)}margin-top:16px;text-align:center;color:#333333;font-size:11px;line-height:1.5;white-space:normal;word-break:break-all;`;
 
   wrapper.appendChild(heading);
   wrapper.appendChild(content);
