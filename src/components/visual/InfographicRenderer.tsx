@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { useState, useCallback } from 'react';
 import {
   type AnalysisResult, type TemplateStyle, type StructureNode, type VisualSettings,
@@ -369,7 +370,7 @@ export default function InfographicRenderer({ analysis, colorSchemeId, template,
     );
   };
 
-  const structureMap: Record<string, () => React.JSX.Element> = {
+  const structureMap: Record<string, () => JSX.Element> = {
     flow: renderFlow, pyramid: renderPyramid, funnel: renderFunnel,
     timeline: renderTimeline, comparison: renderComparison, cycle: renderCycle,
     list: renderList, hierarchy: renderHierarchy, quadrant: renderComparison,
