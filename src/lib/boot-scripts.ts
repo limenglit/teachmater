@@ -32,17 +32,21 @@ function tick(base){
     if(s>=3)el.innerHTML=base+'（第 '+s+' 秒）'+(s>=5?'<div style="margin-top:6px;font-size:12px;line-height:1.6;opacity:.85">教室网络较慢，请勿关闭页面<br>系统正在自动重试</div>':'');
   },1000);
 }
+// 占位元素出现后立刻换成骨架（头部脚本先于页面内容运行，这里短间隔等它出现）。
+function apply(){var t0=Date.now();(function f(){var e=document.getElementById('tm-boot');
+  if(e&&window.__TM_BOOT_HTML__){if(e.innerHTML!==window.__TM_BOOT_HTML__)e.innerHTML=window.__TM_BOOT_HTML__;return;}
+  if(Date.now()-t0<15000)setTimeout(f,16);})();}
 var seat=p.indexOf('/seat-checkin/')===0;
 if(p.indexOf('/checkin/')===0||seat){
   try{var m=p.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
     if(m)pf(m[0],seat?'get_seat_checkin_session_for_student':'get_checkin_session_for_student','p_session_id');}catch(e2){}
   window.__TM_BOOT_HTML__='<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,\\'PingFang SC\\',\\'Microsoft YaHei\\',sans-serif"><div style="font-size:40px">📋</div><div style="font-size:18px;font-weight:600">签到 · Check-in</div><div style="width:100%;max-width:320px;height:48px;border-radius:10px;border:2px solid rgba(100,116,139,.25)"></div><div style="width:100%;max-width:320px;height:48px;border-radius:10px;background:rgba(37,99,235,.35)"></div><div id="tm-boot-tip" style="font-size:13px;opacity:.65">正在连接签到… Loading</div></div>';
-  tick('正在连接签到…');
+  apply();tick('正在连接签到…');
 }else if(/^\\/(quiz|poll|discuss|task)\\//.test(p)||/^\\/board\\/[^/]+\\/submit/.test(p)){
   try{var mm=p.match(/^\\/(quiz|poll|discuss|board)\\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/);
     if(mm){var F={quiz:['get_quiz_session_for_student','p_session_id'],poll:['get_poll_for_voter','p_poll_id'],discuss:['get_discussion_topic_for_student','p_topic_id'],board:['get_board_for_student','p_board_id']}[mm[1]];pf(mm[2],F[0],F[1]);}}catch(e3){}
   window.__TM_BOOT_HTML__='<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:-apple-system,\\'PingFang SC\\',sans-serif"><div id="tm-boot-tip" style="opacity:.65">正在打开… Loading</div></div>';
-  tick('正在打开…');
+  apply();tick('正在打开…');
 }
 }catch(e){}})();`;
 
