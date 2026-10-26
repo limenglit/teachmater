@@ -87,7 +87,7 @@ export default function GroupManager() {
     const newGroups: Group[] = Array.from({ length: groupCount }, (_, i) => ({
       id: `g_${i}`,
       name: t('group.namePrefix').replace('{0}', GROUP_NAMES_ZH[i] || String(i + 1)),
-      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isLeader: false, isViceLeader: false })) ?? [],
+      members: buckets[i]?.map((s, mi) => ({ id: s.id, name: s.name, isLeader: mi === 0, isViceLeader: false })) ?? [],
     }));
     setGroups(newGroups);
   }, [students, groupCount, groupStrategy, customPrimaryDimension, customBalanceDimensions, t]);
@@ -388,10 +388,11 @@ export default function GroupManager() {
                             className={`flex items-center gap-1 py-1.5 px-2 rounded-lg hover:bg-muted transition-all cursor-grab active:cursor-grabbing group
                               ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
                           >
-                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                            <GripVertical data-export-exclude className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleLeader(group.id, member.id)}
                               title={member.isLeader ? '组长 → 点击设为副组长' : member.isViceLeader ? '副组长 → 点击取消' : '点击设为组长'}
+                              aria-label={member.isLeader ? '组长' : member.isViceLeader ? '副组长' : '设为组长'}
                               className={`relative transition-all ${
                                 member.isLeader
                                   ? 'text-warning opacity-100'
@@ -399,7 +400,8 @@ export default function GroupManager() {
                                     ? 'text-blue-500 opacity-100'
                                     : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'
                               }`}>
-                              <Star className="w-4 h-4" fill={member.isLeader || member.isViceLeader ? 'currentColor' : 'none'} />
+                              {/* Text glyph (not SVG) so the star also prints in PNG/PDF exports */}
+                              <span className="inline-block w-4 text-base leading-4 text-center">{member.isLeader || member.isViceLeader ? '★' : '☆'}</span>
                               {member.isViceLeader && <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold">副</span>}
                             </button>
                           </div>
