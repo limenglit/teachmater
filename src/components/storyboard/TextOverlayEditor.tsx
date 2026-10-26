@@ -8,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { X, Plus, Download, Trash2, Move } from 'lucide-react';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
+import { withLegacyColors } from '@/lib/html2canvas-colors';
 import { TextOverlay } from './types';
 
 interface TextLayer {
@@ -191,12 +192,13 @@ export default function TextOverlayEditor({ imageUrl, onClose, initialKeywords }
 
       await new Promise(r => setTimeout(r, 100));
 
-      const canvas = await html2canvas(canvasRef.current, {
+      const target = canvasRef.current;
+      const canvas = await withLegacyColors(() => html2canvas(target, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: null,
-      });
+      }));
 
       const link = document.createElement('a');
       link.download = `storyboard-edited-${Date.now()}.png`;

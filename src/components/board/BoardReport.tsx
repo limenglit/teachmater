@@ -193,7 +193,8 @@ export default function BoardReport({ cards, boardTitle, onClose }: Props) {
     const el = contentRef.current;
     if (!el) return;
     const { default: html2canvas } = await import('html2canvas');
-    const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 2 });
+    const { withLegacyColors } = await import('@/lib/html2canvas-colors');
+    const canvas = await withLegacyColors(() => html2canvas(el, { backgroundColor: '#ffffff', scale: 2 }));
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
     a.download = `report-${boardTitle || 'board'}.png`;

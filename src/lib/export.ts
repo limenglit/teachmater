@@ -2,6 +2,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { sortSeatIndex, planSeatIndexLayout, fitIndexName, seatIndexLabel, INDEX_PAGE, INDEX_CELL_GAP, INDEX_LETTER_SPACING, type SeatIndexEntry, type SeatIndexLayout } from './seat-index';
 import { get2d, drawTextBlock, drawIndexPage } from './canvas-text';
+import { withLegacyColors } from './html2canvas-colors';
 
 const COPYRIGHT_TEXT = '教创搭子出品 |https://teachmater.lovable.app|洛阳理工学院|limeng@lit.edu.cn';
 
@@ -33,7 +34,7 @@ async function renderCanvas(el: HTMLElement, opts: Parameters<typeof html2canvas
   fix.textContent = 'img[width="1"][height="1"]{display:inline !important;vertical-align:baseline;}';
   document.head.appendChild(fix);
   try {
-    return await html2canvas(el, opts);
+    return await withLegacyColors(() => html2canvas(el, opts));
   } finally {
     fix.remove();
   }
