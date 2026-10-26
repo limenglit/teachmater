@@ -3,7 +3,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Shuffle, Crown, GripVertical, Save } from 'lucide-react';
+import { Shuffle, GripVertical, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -86,7 +86,7 @@ export default function TeamBuilder() {
     const newTeams: Team[] = Array.from({ length: teamCount }, (_, i) => ({
       id: `t_${i}`,
       name: t('team.namePrefix').replace('{0}', TEAM_NAMES_ZH[i] || String(i + 1)),
-      members: buckets[i]?.map(s => ({ id: s.id, name: s.name, isCaptain: false, isViceCaptain: false })) ?? [],
+      members: buckets[i]?.map((s, mi) => ({ id: s.id, name: s.name, isCaptain: mi === 0, isViceCaptain: false })) ?? [],
     }));
     setTeams(newTeams);
   }, [students, membersPerTeam, teamStrategy, customPrimaryDimension, customBalanceDimensions, t]);
@@ -379,10 +379,11 @@ export default function TeamBuilder() {
                             className={`flex items-center gap-1 py-1.5 px-2 rounded-lg hover:bg-muted transition-all cursor-grab active:cursor-grabbing group
                               ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
                           >
-                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                            <GripVertical data-export-exclude className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
                             <span className="flex-1 text-sm text-foreground">{member.name}</span>
                             <button onClick={() => toggleCaptain(team.id, member.id)}
                               title={member.isCaptain ? '队长 → 点击设为副队长' : member.isViceCaptain ? '副队长 → 点击取消' : '点击设为队长'}
+                              aria-label={member.isCaptain ? '队长' : member.isViceCaptain ? '副队长' : '设为队长'}
                               className={`relative transition-all ${
                                 member.isCaptain
                                   ? 'text-warning opacity-100'
@@ -390,7 +391,7 @@ export default function TeamBuilder() {
                                     ? 'text-blue-500 opacity-100'
                                     : 'text-muted-foreground/30 opacity-0 group-hover:opacity-100'
                               }`}>
-                              <Crown className="w-4 h-4" fill={member.isCaptain || member.isViceCaptain ? 'currentColor' : 'none'} />
+                              <span className="inline-block w-4 text-base leading-4 text-center">{member.isCaptain || member.isViceCaptain ? '★' : '☆'}</span>
                               {member.isViceCaptain && <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold">副</span>}
                             </button>
                           </div>

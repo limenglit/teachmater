@@ -52,6 +52,22 @@ async function captureWithHeaderFooter(element: HTMLElement, title: string) {
       if (s.zoom) s.zoom = '';
     }
     root.querySelectorAll<HTMLElement>('[data-export-exclude]').forEach(el => el.remove());
+    // html2canvas clips text inside <input> (e.g. editable group names); print
+    // them as plain text with the live value instead.
+    const liveInputs = element.querySelectorAll('input');
+    root.querySelectorAll('input').forEach((inp, i) => {
+      const live = liveInputs[i] as HTMLInputElement | undefined;
+      const value = live?.value ?? (inp as HTMLInputElement).value;
+      if ((inp as HTMLInputElement).type === 'hidden' || !value) return;
+      const span = document.createElement('span');
+      span.textContent = value;
+      span.className = inp.className.replace(/\bh-\d+\b/g, '');
+      span.style.display = 'inline-block';
+      span.style.whiteSpace = 'nowrap';
+      span.style.lineHeight = '1.75rem';
+      span.style.flex = '1 1 auto';
+      inp.replaceWith(span);
+    });
     // Print-only content (e.g. the unit color legend): reveal it at the chart's
     // width without letting a long single-line legend widen the exported room.
     root.querySelectorAll<HTMLElement>('[data-export-only]').forEach(el => {
