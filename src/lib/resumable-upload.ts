@@ -123,43 +123,38 @@ export async function resumableUpload(o: ResumableUploadOptions): Promise<void> 
   const uploadUrl = proxiedResumableLocation(location, origin);
 
   let offset = 0;
+  let failures = 0;
   o.onProgress?.(0, total);
   while (offset < total) {
     if (cancelled) throw new UploadError("Upload cancelled", -1);
     const chunk = o.file.slice(offset, Math.min(offset + RESUMABLE_CHUNK_BYTES, total));
-    let attempt = 0;
-    for (;;) {
-      try {
-        const res = await request(
-          "PATCH",
-          uploadUrl,
-          { ...base, "upload-offset": String(offset), "content-type": "application/offset+octet-stream" },
-          chunk,
-          track,
-          (loaded) => o.onProgress?.(Math.min(total, offset + loaded), total),
-        );
-        if (res.status === 204 || res.status === 200) {
-          const next = Number(res.getResponseHeader("upload-offset"));
-          offset = Number.isFinite(next) && next > offset ? next : offset + chunk.size;
-          break;
-        }
+    try {
+      const res = await request(
+        "PATCH",
+        uploadUrl,
+        { ...base, "upload-offset": String(offset), "content-type": "application/offset+octet-stream" },
+        chunk,
+        track,
+        (loaded) => o.onProgress?.(Math.min(total, offset + loaded), total),
+      );
+      if (res.status !== 204 && res.status !== 200) {
         throw new UploadError(readMessage(res, `上传失败（${res.status}）`), res.status);
-      } catch (error) {
-        const status = error instanceof UploadError ? error.status : 0;
-        // 4xx（权限、文件已存在、过大）不重试；取消立即结束。
-        if (status === -1 || (status >= 400 && status < 500 && status !== 409) || ++attempt > MAX_CHUNK_RETRIES) throw error;
-        await new Promise((r) => setTimeout(r, 800 * attempt));
-        // 断网续传：问清后台已经收到多少，再从那里继续。
-        try {
-          const head = await request("HEAD", uploadUrl, base, null, track);
-          const got = Number(head.getResponseHeader("upload-offset"));
-          if (Number.isFinite(got) && got >= 0) offset = got;
-        } catch {
-          /* 下一轮重试 */
-        }
-        if (offset >= total) break;
-        if (cancelled) throw new UploadError("Upload cancelled", -1);
-        break;
+      }
+      const next = Number(res.getResponseHeader("upload-offset"));
+      offset = Number.isFinite(next) && next > offset ? next : offset + chunk.size;
+      failures = 0;
+    } catch (error) {
+      const status = error instanceof UploadError ? error.status : 0;
+      // 4xx（权限、文件已存在、过大）不重试（409 为分片位置不一致，可续传）；取消立即结束。
+      if (status === -1 || (status >= 400 && status < 500 && status !== 409) || ++failures > MAX_CHUNK_RETRIES) throw error;
+      await new Promise((r) => setTimeout(r, 800 * failures));
+      // 断网续传：问清后台已经收到多少，再从那里继续。
+      try {
+        const head = await request("HEAD", uploadUrl, base, null, track);
+        const got = Number(head.getResponseHeader("upload-offset"));
+        if (Number.isFinite(got) && got >= 0) offset = got;
+      } catch {
+        /* 下一轮重试 */
       }
     }
   }
