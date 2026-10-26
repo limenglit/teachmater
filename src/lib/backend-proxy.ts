@@ -72,12 +72,13 @@ async function largeUploadViaResumable(
   if (typeof Blob !== "undefined" && body instanceof Blob) file = body;
   else if (typeof FormData !== "undefined" && body instanceof FormData) {
     const files: Blob[] = [];
+    let unsupported = false;
     body.forEach((v, k) => {
       if (typeof v !== "string") files.push(v);
       else if (k === "cacheControl") cacheControl = v;
-      else if (k === "metadata" || k === "contentEncoding") files.push(new Blob()); // 不支持的选项：保持原样上传
+      else unsupported = true; // 自定义元数据等选项：保持原样上传
     });
-    if (files.length === 1) file = files[0];
+    if (files.length === 1 && !unsupported) file = files[0];
   }
   if (!file || file.size <= PROXY_UPLOAD_MAX_BYTES) return null;
   const headers = new Headers(init.headers);
