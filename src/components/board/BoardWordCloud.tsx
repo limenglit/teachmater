@@ -37,7 +37,8 @@ export default function BoardWordCloud({ cards, onClose }: Props) {
     const el = containerRef.current?.querySelector('.word-cloud-canvas') as HTMLElement;
     if (!el) return;
     const { default: html2canvas } = await import('html2canvas');
-    const canvas = await html2canvas(el, { backgroundColor: theme.bg, scale: 2 });
+    const { withLegacyColors } = await import('@/lib/html2canvas-colors');
+    const canvas = await withLegacyColors(() => html2canvas(el, { backgroundColor: theme.bg, scale: 2 }));
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
     a.download = 'word-cloud.png';

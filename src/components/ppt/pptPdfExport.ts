@@ -1,5 +1,6 @@
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { withLegacyColors } from '@/lib/html2canvas-colors';
 import { PPTOutline, PPT_COLOR_SCHEMES, type PPTFontSize, type PPTSlide } from './pptTypes';
 
 const SLIDE_WIDTH = 1600;
@@ -501,11 +502,11 @@ async function waitForImages(root: HTMLElement) {
 
 async function captureSlide(node: HTMLElement) {
   await waitForImages(node);
-  return html2canvas(node, {
+  return withLegacyColors(() => html2canvas(node, {
     backgroundColor: '#ffffff',
     scale: 2,
     useCORS: true,
-  });
+  }));
 }
 
 export async function exportPDF(
