@@ -7,6 +7,34 @@ type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
 
+// 实时推送（白板、签到大屏等）的 WebSocket 连接经本站转发到后台，国内无需直连境外地址。
+const REALTIME_PREFIX = "/api/public/sb/realtime/v1/";
+const WS_DROP = new Set(["host", "cookie", "origin", "referer", "true-client-ip", "cdn-loop", "x-real-ip"]);
+
+function backendBase(): string {
+  const fromEnv = typeof process !== "undefined" ? process.env["SUPABASE_URL"] : undefined;
+  return String(fromEnv || import.meta.env.VITE_SUPABASE_URL || "").replace(/\/+$/, "");
+}
+
+async function proxyRealtime(request: Request): Promise<Response> {
+  const base = backendBase();
+  const url = new URL(request.url);
+  if (!base) return new Response("Backend not configured", { status: 500 });
+  const headers = new Headers();
+  request.headers.forEach((value, key) => {
+    const k = key.toLowerCase();
+    if (WS_DROP.has(k) || k.startsWith("cf-") || k.startsWith("x-forwarded-")) return;
+    headers.set(key, value);
+  });
+  try {
+    // 转发运行环境会把升级后的连接原样交还给浏览器。
+    return await fetch(base + url.pathname.slice("/api/public/sb".length) + url.search, { headers });
+  } catch (error) {
+    console.error("[realtime-proxy] upstream failed", error);
+    return new Response("realtime unreachable", { status: 502 });
+  }
+}
+
 let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
@@ -46,6 +74,12 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    if (
+      request.headers.get("upgrade")?.toLowerCase() === "websocket" &&
+      new URL(request.url).pathname.startsWith(REALTIME_PREFIX)
+    ) {
+      return proxyRealtime(request);
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
