@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
+import { withLegacyColors } from '@/lib/html2canvas-colors';
 import { jsPDF } from 'jspdf';
 import {
   ArrowUpRight,
@@ -1377,7 +1378,7 @@ export default function ScreenCaptureTool() {
   const captureCurrentPageLong = async () => {
     try {
       const root = document.documentElement;
-      const canvas = await html2canvas(root, {
+      const canvas = await withLegacyColors(() => html2canvas(root, {
         backgroundColor: '#ffffff',
         scale: Math.min((window.devicePixelRatio || 1) * (selectedDpi / 360), 6),
         useCORS: true,
@@ -1387,7 +1388,7 @@ export default function ScreenCaptureTool() {
         windowHeight: root.scrollHeight,
         scrollX: 0,
         scrollY: 0,
-      });
+      }));
       await applyCapturedImage(canvas.toDataURL('image/png'), { notice: t('capture.longPageCaptured') });
     } catch {
       toast({ title: t('capture.longPageFailed'), variant: 'destructive' });
