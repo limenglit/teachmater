@@ -1,5 +1,6 @@
 // 自动生成：bun scripts/gen-student-i18n.ts
 const d: Record<string, string> = {
+ "common.reset": "Reset",
  "seat.custom.aisle": "Aisle",
  "seat.editor.common.off": "Off",
  "seat.nav.backDoor": "Back door",
