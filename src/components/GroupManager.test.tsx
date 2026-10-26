@@ -59,5 +59,11 @@ describe('GroupManager', () => {
     for (let i = 1; i <= 10; i++) {
       expect(screen.getAllByText(`学生${i}`)).toHaveLength(1);
     }
+
+  it('marks the first member of every group as leader with a star', () => {
+    render(<GroupManager />, { wrapper });
+    fireEvent.click(screen.getByText('自动分组'));
+    expect(screen.getAllByLabelText('组长')).toHaveLength(4);
   });
+});
 });
