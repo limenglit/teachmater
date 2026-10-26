@@ -1,7 +1,6 @@
 // 让浏览器的登录、数据、文件、后台服务、实时推送和图片/视频链接全部走本站同源地址
 // （/api/public/sb/...），由本站服务器转发到后台：国内用户不再直连境外接口，无需 VPN。
 // 必须在创建后台连接之前安装（后台连接创建时会记住当时的 fetch 和 WebSocket）。
-import { resumableUpload } from "./resumable-upload";
 
 export const PROXY_PREFIX = "/api/public/sb";
 export const PROXIED_PATHS = ["/auth/v1/", "/rest/v1/", "/storage/v1/", "/functions/v1/"];
@@ -84,6 +83,8 @@ async function largeUploadViaResumable(
   const headers = new Headers(init.headers);
   if (headers.get("cache-control")) cacheControl = headers.get("cache-control")!.replace(/^max-age=/, "");
   try {
+    // 仅大文件时才下载分片上传模块，学生扫码页首屏不受影响。
+    const { resumableUpload } = await import("./resumable-upload");
     await resumableUpload({
       bucket: target.bucket,
       objectName: target.objectName,

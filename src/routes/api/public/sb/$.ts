@@ -84,6 +84,9 @@ async function forward(request: Request): Promise<Response> {
   upstream.headers.forEach((value, key) => {
     if (!DROP_RESPONSE.has(key.toLowerCase())) out.set(key, value);
   });
+  // 未压缩的文件（图片、视频）保留长度，浏览器可显示下载进度、视频可拖动。
+  const length = upstream.headers.get("content-length");
+  if (length && !upstream.headers.get("content-encoding")) out.set("content-length", length);
   if (!out.has("cache-control")) out.set("cache-control", "no-store");
   // 大文件分片上传：后台返回的续传地址改写为本站地址，后续分片同样经本站转发。
   const location = out.get("location");
