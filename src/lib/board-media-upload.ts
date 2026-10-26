@@ -1,4 +1,5 @@
-import { backendUploadUrl } from '@/lib/backend-proxy';
+import { backendUploadUrl, PROXY_UPLOAD_MAX_BYTES } from '@/lib/backend-proxy';
+import { resumableUpload } from '@/lib/resumable-upload';
 import { supabase } from '@/integrations/supabase/client';
 
 const BOARD_MEDIA_CONTENT_TYPES: Record<string, string> = {
@@ -177,6 +178,14 @@ function xhrUpload(
 ): Promise<void> {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
   const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+  // 大于本站单次转发上限的视频等大文件：6MB 分片续传，同样经本站转发。
+  if (body.size > PROXY_UPLOAD_MAX_BYTES) {
+    return resumableUpload({
+      bucket: 'board-media', objectName: path, file: body, contentType, cacheControl: '3600', upsert: false,
+      authorization: `Bearer ${accessToken}`, apiKey, onProgress, onAbortHandle,
+    });
+  }
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

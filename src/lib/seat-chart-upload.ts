@@ -1,4 +1,5 @@
-import { backendUploadUrl } from '@/lib/backend-proxy';
+import { backendUploadUrl, PROXY_UPLOAD_MAX_BYTES } from '@/lib/backend-proxy';
+import { resumableUpload } from '@/lib/resumable-upload';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -91,6 +92,13 @@ function xhrUpload(
 ): Promise<void> {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
   const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+  if (body.size > PROXY_UPLOAD_MAX_BYTES) {
+    return resumableUpload({
+      bucket: 'board-media', objectName: path, file: body, contentType, cacheControl: '3600', upsert: false,
+      authorization: `Bearer ${accessToken}`, apiKey,
+      onProgress: (loaded, total) => onProgress?.(Math.round((loaded / Math.max(1, total)) * 100)),
+    });
+  }
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', backendUploadUrl(`${baseUrl}/storage/v1/object/board-media/${path}`, body.size));
