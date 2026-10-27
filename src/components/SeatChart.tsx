@@ -47,6 +47,8 @@ import { toSnapshotRoster, missingFromRoster, allowedSeatNames, type SnapshotStu
 import { getActiveClassContext, getActiveClassName, ACTIVE_CLASS_CHANGED_EVENT, type ActiveClassContext } from '@/lib/class-context';
 import { withActiveClassContext, filterHistoryByClass, historyClassLabel } from '@/lib/seat-history-class';
 import { seatLabelFontPx } from '@/lib/seat-label-size';
+import { diffRoster, applyRosterDiffToNames, findUnseated, fillEmptySeats, describeRosterSync, type RosterRef } from '@/lib/roster-sync';
+import PendingMembersPanel from '@/components/teamwork/PendingMembersPanel';
 
 type SceneType = 'classroom' | 'smartClassroom' | 'conference' | 'concertHall' | 'banquet' | 'computerLab' | 'artStudio' | 'customLayout';
 type SeatMode = 'verticalS' | 'studentNo' | 'horizontalS' | 'groupCol' | 'groupRow' | 'smartCluster' | 'random' | 'exam';
@@ -152,6 +154,8 @@ export default function SeatChart() {
   const restoredClassroomRef = useRef(false);
   // 请假池：双击座位把学生移入，座位空出且不计入签到名单
   const [leavePool, setLeavePool] = useState<{ name: string; r: number; c: number }[]>([]);
+  const leavePoolRef = useRef(leavePool);
+  leavePoolRef.current = leavePool;
 
   const seatKey = (r: number, c: number) => `${r}-${c}`;
 
@@ -857,6 +861,55 @@ export default function SeatChart() {
     seats.forEach(row => row?.forEach(cell => push(cell as string | null)));
     return names;
   }, [students, seats, leaveNames]);
+
+  // Roster edits flow into the seat chart: renames replace the name in place,
+  // removed students free their seat (or leave the leave pool), and new
+  // students wait in the "未就座" list until the teacher seats them.
+  const syncedRosterRef = useRef<RosterRef[]>([]);
+  useEffect(() => {
+    const prev = syncedRosterRef.current;
+    const next = students.map(s => ({ id: s.id, name: s.name }));
+    syncedRosterRef.current = next;
+    if (seatsRef.current.length === 0) return;
+    const diff = diffRoster(prev, next);
+    if (diff.mismatched || (diff.renamed.length === 0 && diff.removed.length === 0)) return;
+    const grid = seatsRef.current;
+    const width = grid.map(row => row?.length ?? 0);
+    const flat: (string | null)[] = grid.flatMap(row => row ?? []);
+    const seatCount = flat.length;
+    const pool = leavePoolRef.current;
+    const res = applyRosterDiffToNames([...flat, ...pool.map(p => p.name)], diff, next);
+    if (!res.changed) return;
+    pushHistory();
+    let k = 0;
+    setSeats(width.map(w => { const row = res.cells.slice(k, k + w); k += w; return row; }));
+    setLeavePool(pool
+      .map((p, i) => ({ ...p, name: res.cells[seatCount + i] as string | null }))
+      .filter((p): p is { name: string; r: number; c: number } => !!p.name));
+    const summary = describeRosterSync(diff.renamed.length, res.cleared, res.cleared.length > 0 ? '对应座位已空出' : undefined);
+    if (summary) toast.info(`名单变动已同步到座位图：${summary}`);
+  }, [students, pushHistory]);
+
+  const unseatedStudents = useMemo(() => {
+    if (seats.length === 0) return [];
+    return findUnseated(students, [...seats.flat(), ...leavePool.map(p => p.name)]);
+  }, [students, seats, leavePool]);
+
+  const fillUnseated = useCallback(() => {
+    if (unseatedStudents.length === 0) return;
+    const names = unseatedStudents.map(s => s.name);
+    const { grid, placed } = fillEmptySeats(
+      seatsRef.current,
+      names,
+      (r, c) => !disabledRef.current.has(seatKey(r, c)) && !lockedRef.current.has(seatKey(r, c)),
+      getColOrder(),
+    );
+    if (placed === 0) { toast.error('没有空座位了，请先增加行或列'); return; }
+    pushHistory();
+    setSeats(grid);
+    if (placed < names.length) toast.warning(`已安排 ${placed} 人，还有 ${names.length - placed} 人没有空位`);
+    else toast.success(`已为 ${placed} 位新同学安排空座`);
+  }, [unseatedStudents, getColOrder, pushHistory]);
   // Roster totals before name de-duplication so the check-in dialog can explain
   // why "656 seated" can become 654 check-in entries (duplicate names collapse).
   const checkinRosterStats = useMemo(() => {
