@@ -29,6 +29,13 @@
       "when": 1792800673200,
       "tag": "0003_teacher_add_checkin_record_exact_dedupe",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793081380361,
+      "tag": "0004_discussion_topic_history",
+      "breakpoints": true
     }
   ]
 }

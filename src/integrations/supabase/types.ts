@@ -764,6 +764,7 @@ export type Database = {
           id: string
           student_names: Json | null
           title: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -771,6 +772,7 @@ export type Database = {
           id?: string
           student_names?: Json | null
           title: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -778,6 +780,7 @@ export type Database = {
           id?: string
           student_names?: Json | null
           title?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -2160,6 +2163,17 @@ export type Database = {
           is_approved: boolean
           media_url: string
           url: string
+        }[]
+      }
+      get_my_discussion_topics: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          created_at: string
+          creator_token: string
+          id: string
+          message_count: number
+          student_count: number
+          title: string
         }[]
       }
       get_my_status: { Args: never; Returns: string }
