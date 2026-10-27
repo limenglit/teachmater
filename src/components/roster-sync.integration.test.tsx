@@ -52,3 +52,32 @@ describe('roster edits after grouping', () => {
     expect(screen.getAllByText('新队员')).toHaveLength(1);
   });
 });
+
+describe('roster edits after seating', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('teachmate_students', JSON.stringify(
+      Array.from({ length: 6 }, (_, i) => ({ id: `s_${i}`, name: `学生${i + 1}` })),
+    ));
+  });
+
+  it('seat chart: rename in place, removal frees the seat, new student waits for one-click seat fill', async () => {
+    const { default: SeatChart } = await import('./SeatChart');
+    render(<SeatChart />, { wrapper });
+    fireEvent.click(screen.getByText('自动排座'));
+    expect(screen.getAllByText('学生1').length).toBeGreaterThan(0);
+
+    act(() => api.updateStudent('s_0', '改名同学'));
+    expect(screen.queryAllByText('学生1')).toHaveLength(0);
+    expect(screen.getAllByText('改名同学').length).toBeGreaterThan(0);
+
+    act(() => api.removeStudent('s_1'));
+    expect(screen.queryAllByText('学生2')).toHaveLength(0);
+
+    act(() => api.addStudent('新来的'));
+    expect(screen.getByText('有 1 位同学未就座')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('一键补座'));
+    expect(screen.queryByText(/位同学未就座/)).toBeNull();
+    expect(screen.getAllByText('新来的').length).toBeGreaterThan(0);
+  });
+});
