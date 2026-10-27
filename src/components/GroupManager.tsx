@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import PendingMembersPanel from '@/components/teamwork/PendingMembersPanel';
-import { syncBucketMembers, findUnassigned, fillSmallestBuckets, describeRosterSync } from '@/lib/roster-sync';
+import { syncBucketMembers, findUnassigned, fillSmallestBuckets, describeRosterSync, type LeaderOps } from '@/lib/roster-sync';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,9 +28,9 @@ interface Group { id: string; name: string; members: GroupMember[] }
 
 const GROUP_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','十'];
 const POOL_ID = '__pending__';
-const LEADER_OPS = {
+const LEADER_OPS: LeaderOps<GroupMember> = {
   isLeader: (m: GroupMember) => m.isLeader,
-  makeLeader: (m: GroupMember) => ({ ...m, isLeader: true, isViceLeader: false }),
+  makeLeader: (m: GroupMember): GroupMember => ({ ...m, isLeader: true, isViceLeader: false }),
 };
 
 export default function GroupManager() {
