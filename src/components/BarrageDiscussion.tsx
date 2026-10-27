@@ -126,6 +126,26 @@ function WordCloudCanvas({ words }: { words: WordCloudItem[] }) {
   );
 }
 
+interface HistoryTopic {
+  id: string;
+  title: string;
+  created_at: string;
+  creator_token: string;
+  student_count: number;
+  message_count: number;
+}
+
+const TOPIC_TOKENS_KEY = 'barrage-creator-tokens';
+function getTopicTokens(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(TOPIC_TOKENS_KEY) || '{}'); } catch { return {}; }
+}
+function saveTopicToken(id: string, token: string) {
+  try { const m = getTopicTokens(); m[id] = token; localStorage.setItem(TOPIC_TOKENS_KEY, JSON.stringify(m)); } catch { /* ignore */ }
+}
+function removeTopicToken(id: string) {
+  try { const m = getTopicTokens(); delete m[id]; localStorage.setItem(TOPIC_TOKENS_KEY, JSON.stringify(m)); } catch { /* ignore */ }
+}
+
 export default function BarrageDiscussion() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -151,10 +171,51 @@ export default function BarrageDiscussion() {
   const qrPreviewRef = useRef<HTMLDivElement>(null);
 
   const discussUrl = topicId ? `${getShareOrigin()}/discuss/${topicId}` : '';
+  const [history, setHistory] = useState<HistoryTopic[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const tokens = Object.values(getTopicTokens());
+      const { data, error } = await (supabase as any).rpc('get_my_discussion_topics', { p_tokens: tokens });
+      if (!error && Array.isArray(data)) {
+        setHistory(data as HistoryTopic[]);
+        for (const row of data as HistoryTopic[]) if (row.creator_token) saveTopicToken(row.id, row.creator_token);
+      }
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { if (!topicId) loadHistory(); }, [topicId, user?.id, loadHistory]);
+
+  const openHistoryTopic = (row: HistoryTopic) => {
+    setTopicTitle(row.title);
+    setCreatorToken(row.creator_token);
+    setMessages([]);
+    setVisibleMessages([]);
+    setReportContent('');
+    setWordCloudData([]);
+    setView('barrage');
+    setTopicId(row.id);
+  };
+
+  const deleteHistoryTopic = async (row: HistoryTopic) => {
+    if (!confirm(t('barrage.deleteConfirm'))) return;
+    const { error } = await supabase.rpc('delete_topic', { p_topic_id: row.id, p_token: row.creator_token } as any);
+    if (error) {
+      toast({ title: t('barrage.deleteFailed'), description: error.message, variant: 'destructive' });
+      return;
+    }
+    removeTopicToken(row.id);
+    setHistory(prev => prev.filter(h => h.id !== row.id));
+    toast({ title: t('barrage.topicDeleted') });
+  };
 
   useEffect(() => {
     if (!topicId || creatorToken) return;
-    const storedToken = sessionStorage.getItem(`topic_token_${topicId}`);
+    const storedToken = getTopicTokens()[topicId] || sessionStorage.getItem(`topic_token_${topicId}`);
     if (storedToken) {
       setCreatorToken(storedToken);
     }
@@ -185,6 +246,7 @@ export default function BarrageDiscussion() {
     setTopicId(id);
     setCreatorToken(token);
     sessionStorage.setItem(`topic_token_${id}`, token);
+    saveTopicToken(id, token);
     setMessages([]);
     setVisibleMessages([]);
     toast({ title: t('barrage.topicCreated'), description: t('barrage.topicCreatedDesc') });
@@ -217,6 +279,7 @@ export default function BarrageDiscussion() {
       } as any);
       if (error) throw error;
       sessionStorage.removeItem(`topic_token_${topicId}`);
+      removeTopicToken(topicId);
       handleReset();
       toast({ title: t('barrage.topicDeleted') });
     } catch (e: any) {
@@ -262,7 +325,7 @@ export default function BarrageDiscussion() {
   const aiQuota = useAIQuota();
 
   const handleReport = async () => {
-    const resolvedCreatorToken = creatorToken ?? (topicId ? sessionStorage.getItem(`topic_token_${topicId}`) : null);
+    const resolvedCreatorToken = creatorToken ?? (topicId ? (getTopicTokens()[topicId] || sessionStorage.getItem(`topic_token_${topicId}`)) : null);
     if (messages.length < 3) {
       toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成报告', variant: 'destructive' });
       return;
@@ -291,7 +354,7 @@ export default function BarrageDiscussion() {
   };
 
   const handleWordCloud = async () => {
-    const resolvedCreatorToken = creatorToken ?? (topicId ? sessionStorage.getItem(`topic_token_${topicId}`) : null);
+    const resolvedCreatorToken = creatorToken ?? (topicId ? (getTopicTokens()[topicId] || sessionStorage.getItem(`topic_token_${topicId}`)) : null);
     if (messages.length < 3) {
       toast({ title: t('barrage.tooFewMessages') || '消息太少，至少需要3条弹幕才能生成词云', variant: 'destructive' });
       return;
@@ -375,6 +438,32 @@ export default function BarrageDiscussion() {
           currentCount={linkedNames.length}
           onClear={() => setLinkedNames([])}
         />
+
+        <div className="mt-6 border-t border-border pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold text-foreground">历史讨论话题</h4>
+            <span className="text-xs text-muted-foreground">{historyLoading ? '加载中…' : `共 ${history.length} 个`}</span>
+          </div>
+          {history.length === 0 && !historyLoading ? (
+            <p className="text-xs text-muted-foreground">暂无历史话题</p>
+          ) : (
+            <ul className="space-y-2 max-h-80 overflow-y-auto">
+              {history.map(row => (
+                <li key={row.id} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 hover:bg-muted/50">
+                  <button type="button" className="flex-1 min-w-0 text-left" onClick={() => openHistoryTopic(row)}>
+                    <div className="text-sm font-medium text-foreground truncate">{row.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(row.created_at).toLocaleString('zh-CN', { hour12: false })} · {row.message_count} 条弹幕 · {row.student_count} 人
+                    </div>
+                  </button>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" aria-label="删除话题" onClick={() => deleteHistoryTopic(row)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     );
   }
@@ -411,6 +500,9 @@ export default function BarrageDiscussion() {
               <Trash2 className="w-3.5 h-3.5 mr-1" /> {t('barrage.deleteTopic')}
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={handleReset}>
+            返回话题列表
+          </Button>
           <Button variant="outline" size="sm" onClick={handleReset}>
             {t('barrage.end')}
           </Button>
