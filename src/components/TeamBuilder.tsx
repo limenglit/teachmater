@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import PendingMembersPanel from '@/components/teamwork/PendingMembersPanel';
+import { syncBucketMembers, findUnassigned, fillSmallestBuckets, describeRosterSync, type LeaderOps } from '@/lib/roster-sync';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +27,11 @@ interface TeamMember { id: string; name: string; isCaptain: boolean; isViceCapta
 interface Team { id: string; name: string; members: TeamMember[] }
 
 const TEAM_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','十'];
+const POOL_ID = '__pending__';
+const CAPTAIN_OPS: LeaderOps<TeamMember> = {
+  isLeader: (m: TeamMember) => m.isCaptain,
+  makeLeader: (m: TeamMember): TeamMember => ({ ...m, isCaptain: true, isViceCaptain: false }),
+};
 
 export default function TeamBuilder() {
   const { students } = useStudents();
@@ -73,6 +80,33 @@ export default function TeamBuilder() {
       );
     }
   }, [teams, user]);
+
+  // Roster edits flow into the teams: renames pass through, removed students
+  // leave their team (a lost captain is replaced by the first member), and new
+  // students wait in the pending list until the teacher places them.
+  const rosterSync = useMemo(() => syncBucketMembers(teams, students, CAPTAIN_OPS), [teams, students]);
+  useEffect(() => {
+    if (!rosterSync.changed) return;
+    setTeams(rosterSync.buckets);
+    const summary = describeRosterSync(
+      rosterSync.renamed.length,
+      rosterSync.removed,
+      rosterSync.promoted.length > 0 ? `新队长：${rosterSync.promoted.join('、')}` : undefined,
+    );
+    if (summary) toast.info(`名单变动已同步到建队：${summary}`);
+  }, [rosterSync]);
+  const pendingStudents = useMemo(
+    () => (rosterSync.mismatched ? [] : findUnassigned(rosterSync.buckets, students)),
+    [rosterSync, students],
+  );
+
+  const fillPending = () => {
+    if (pendingStudents.length === 0) return;
+    setTeams(prev => fillSmallestBuckets<TeamMember, Team>(prev, findUnassigned(prev, students).map((s): TeamMember => ({
+      id: s.id, name: s.name, isCaptain: false, isViceCaptain: false,
+    }))));
+    toast.success(`已把 ${pendingStudents.length} 位新同学补到人数较少的队伍`);
+  };
 
   const autoTeam = useCallback(() => {
     if (students.length === 0) return;
@@ -176,6 +210,20 @@ export default function TeamBuilder() {
   const handleDrop = (e: React.DragEvent, targetTeamId: string, targetIdx: number) => {
     e.preventDefault();
     if (!dragItem) return;
+    if (dragItem.teamId === POOL_ID) {
+      const student = pendingStudents[dragItem.memberIdx];
+      if (student) {
+        setTeams(prev => prev.map(tm => {
+          if (tm.id !== targetTeamId || tm.members.some(m => m.id === student.id)) return tm;
+          const members = [...tm.members];
+          members.splice(Math.min(targetIdx, members.length), 0, { id: student.id, name: student.name, isCaptain: false, isViceCaptain: false });
+          return { ...tm, members };
+        }));
+      }
+      setDragItem(null);
+      setDropTarget(null);
+      return;
+    }
     setTeams(prev => {
       const next = prev.map(t => ({ ...t, members: [...t.members] }));
       const srcTeam = next.find(t => t.id === dragItem.teamId)!;
@@ -338,6 +386,22 @@ export default function TeamBuilder() {
               </label>
             </div>
           </div>
+        )}
+
+        {teams.length > 0 && (
+          <PendingMembersPanel
+            title={`有 ${pendingStudents.length} 位新同学待分配`}
+            hint="可点击「一键补员」补到人数较少的队伍，或把名字拖进某个队伍"
+            fillLabel="一键补员"
+            people={pendingStudents}
+            onFill={fillPending}
+            onChipDragStart={(i, e) => {
+              e.dataTransfer.effectAllowed = 'move';
+              try { e.dataTransfer.setData('text/plain', pendingStudents[i]?.name ?? ''); } catch { /* ignore */ }
+              setDragItem({ teamId: POOL_ID, memberIdx: i });
+            }}
+            onChipDragEnd={handleDragEnd}
+          />
         )}
 
         {teams.length === 0 ? (

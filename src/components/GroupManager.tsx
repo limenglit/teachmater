@@ -104,7 +104,7 @@ export default function GroupManager() {
 
   const fillPending = () => {
     if (pendingStudents.length === 0) return;
-    setGroups(prev => fillSmallestBuckets(prev, findUnassigned(prev, students).map(s => ({
+    setGroups(prev => fillSmallestBuckets<GroupMember, Group>(prev, findUnassigned(prev, students).map((s): GroupMember => ({
       id: s.id, name: s.name, isLeader: false, isViceLeader: false,
     }))));
     toast.success(`已把 ${pendingStudents.length} 位新同学补到人数较少的小组`);
@@ -395,6 +395,22 @@ export default function GroupManager() {
               </label>
             </div>
           </div>
+        )}
+
+        {groups.length > 0 && (
+          <PendingMembersPanel
+            title={`有 ${pendingStudents.length} 位新同学待分配`}
+            hint="可点击「一键补员」补到人数较少的小组，或把名字拖进某个小组"
+            fillLabel="一键补员"
+            people={pendingStudents}
+            onFill={fillPending}
+            onChipDragStart={(i, e) => {
+              e.dataTransfer.effectAllowed = 'move';
+              try { e.dataTransfer.setData('text/plain', pendingStudents[i]?.name ?? ''); } catch { /* ignore */ }
+              setDragItem({ groupId: POOL_ID, memberIdx: i });
+            }}
+            onChipDragEnd={handleDragEnd}
+          />
         )}
 
         {groups.length === 0 ? (
