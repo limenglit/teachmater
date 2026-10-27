@@ -1837,6 +1837,26 @@ export default function SeatChart() {
               )}
             </div>
 
+            {/* 未就座：名单里新增、还没有座位的学生（不自动安排） */}
+            {seats.length > 0 && (
+              <div className="mt-4">
+                <PendingMembersPanel
+                  title={`有 ${unseatedStudents.length} 位同学未就座`}
+                  hint="可点击「一键补座」按前排优先补到空座位，或把名字拖到某个座位"
+                  fillLabel="一键补座"
+                  people={unseatedStudents}
+                  onFill={fillUnseated}
+                  onChipDragStart={(i, e) => {
+                    const name = unseatedStudents[i]?.name;
+                    if (!name) return;
+                    e.dataTransfer.setData('text/plain', `student:${name}`);
+                    e.dataTransfer.setData('application/x-student-name', name);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                />
+              </div>
+            )}
+
             {/* 请假池：双击座位移入，双击/拖出恢复 */}
             {seats.length > 0 && (
               <div
