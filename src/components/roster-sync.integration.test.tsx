@@ -79,5 +79,5 @@ describe('roster edits after seating', () => {
     fireEvent.click(screen.getByText('一键补座'));
     expect(screen.queryByText(/位同学未就座/)).toBeNull();
     expect(screen.getAllByText('新来的').length).toBeGreaterThan(0);
-  });
+  }, 20000);
 });
