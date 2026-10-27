@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import PendingMembersPanel from '@/components/teamwork/PendingMembersPanel';
+import { syncBucketMembers, findUnassigned, fillSmallestBuckets, describeRosterSync } from '@/lib/roster-sync';
 import { useStudents } from '@/contexts/StudentContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +27,11 @@ interface GroupMember { id: string; name: string; isLeader: boolean; isViceLeade
 interface Group { id: string; name: string; members: GroupMember[] }
 
 const GROUP_NAMES_ZH = ['一','二','三','四','五','六','七','八','九','十'];
+const POOL_ID = '__pending__';
+const LEADER_OPS = {
+  isLeader: (m: GroupMember) => m.isLeader,
+  makeLeader: (m: GroupMember) => ({ ...m, isLeader: true, isViceLeader: false }),
+};
 
 export default function GroupManager() {
   const { students } = useStudents();
@@ -75,6 +82,33 @@ export default function GroupManager() {
       );
     }
   }, [groups, user]);
+
+  // Roster edits flow into the groups: renames pass through, removed students
+  // leave their group (a lost leader is replaced by the first member), and new
+  // students wait in the pending list until the teacher places them.
+  const rosterSync = useMemo(() => syncBucketMembers(groups, students, LEADER_OPS), [groups, students]);
+  useEffect(() => {
+    if (!rosterSync.changed) return;
+    setGroups(rosterSync.buckets);
+    const summary = describeRosterSync(
+      rosterSync.renamed.length,
+      rosterSync.removed,
+      rosterSync.promoted.length > 0 ? `新组长：${rosterSync.promoted.join('、')}` : undefined,
+    );
+    if (summary) toast.info(`名单变动已同步到分组：${summary}`);
+  }, [rosterSync]);
+  const pendingStudents = useMemo(
+    () => (rosterSync.mismatched ? [] : findUnassigned(rosterSync.buckets, students)),
+    [rosterSync, students],
+  );
+
+  const fillPending = () => {
+    if (pendingStudents.length === 0) return;
+    setGroups(prev => fillSmallestBuckets(prev, findUnassigned(prev, students).map(s => ({
+      id: s.id, name: s.name, isLeader: false, isViceLeader: false,
+    }))));
+    toast.success(`已把 ${pendingStudents.length} 位新同学补到人数较少的小组`);
+  };
 
   const autoGroup = useCallback(() => {
     if (students.length === 0) return;
@@ -171,6 +205,20 @@ export default function GroupManager() {
   const handleDrop = (e: React.DragEvent, targetGroupId: string, targetIdx: number) => {
     e.preventDefault();
     if (!dragItem) return;
+    if (dragItem.groupId === POOL_ID) {
+      const student = pendingStudents[dragItem.memberIdx];
+      if (student) {
+        setGroups(prev => prev.map(g => {
+          if (g.id !== targetGroupId || g.members.some(m => m.id === student.id)) return g;
+          const members = [...g.members];
+          members.splice(Math.min(targetIdx, members.length), 0, { id: student.id, name: student.name, isLeader: false, isViceLeader: false });
+          return { ...g, members };
+        }));
+      }
+      setDragItem(null);
+      setDropTarget(null);
+      return;
+    }
     setGroups(prev => {
       const next = prev.map(g => ({ ...g, members: [...g.members] }));
       const srcGroup = next.find(g => g.id === dragItem.groupId)!;
