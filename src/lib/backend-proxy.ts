@@ -227,6 +227,8 @@ export function installBackendProxy() {
   w.__backendProxyInstalled = true;
 
   const originalFetch = window.fetch.bind(window);
+  // 学生扫码页在本站转发连不上时，用它直接连后台作为第二路。
+  (window as unknown as { __TM_NATIVE_FETCH__?: typeof fetch }).__TM_NATIVE_FETCH__ = originalFetch;
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     const method = init?.method ?? (input instanceof Request ? input.method : "GET");

@@ -52,12 +52,13 @@ function classify(e: unknown): { stage: string; error: string } {
 type R = { data: any; error: { message: string; code?: string; name?: string } | null };
 
 /** 双路并发：一路 6 秒没回应就再发一路，谁先成功用谁 */
-function hedged(rpcName: string, sessionId: string): Promise<R> {
+function hedged(rpcName: string, sessionId: string, round = 0): Promise<R> {
   return new Promise((resolve) => {
     let done = false; let pending = 0; let lastErr: R | null = null;
-    const fire = () => {
+    // 每轮两路：一路本站转发、一路直连，轮次交替先后，任何一条线路被掐断都还有另一条
+    const fire = (direct: boolean) => {
       pending++;
-      supabase.get(rpcName, { p_session_id: sessionId }).then((r) => {
+      supabase.get(rpcName, { p_session_id: sessionId }, 12000, direct).then((r) => {
         pending--;
         if (done) return;
         if (!r.error || r.error.code) { done = true; resolve(r); return; }
@@ -65,8 +66,9 @@ function hedged(rpcName: string, sessionId: string): Promise<R> {
         if (pending === 0) { done = true; resolve(r); }
       });
     };
-    fire();
-    setTimeout(() => { if (!done) fire(); }, 2500);
+    const first = round % 2 === 1;
+    fire(first);
+    setTimeout(() => { if (!done) fire(!first); }, round === 0 ? 2500 : 300);
     setTimeout(() => { if (!done) { done = true; resolve(lastErr || { data: null, error: { name: 'AbortError', message: 'AbortError: budget' } }); } }, 15000);
   });
 }

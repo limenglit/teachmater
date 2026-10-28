@@ -12,11 +12,14 @@ type Result<T = any> = { data: T | null; error: Err | null };
 const isNetErr = (e: Err | null) => !!e && !e.code && /fetch|network|load failed|abort|Error:/i.test(e.message);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function once<T>(url: string, init: RequestInit, timeoutMs: number): Promise<Result<T>> {
+async function once<T>(url: string, init: RequestInit, timeoutMs: number, direct = false): Promise<Result<T>> {
   const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+  // direct：绕过本站转发，直接连后台（本站转发连不上时的第二路）
+  const nativeFetch = (typeof window !== 'undefined' && (window as unknown as { __TM_NATIVE_FETCH__?: typeof fetch }).__TM_NATIVE_FETCH__) || fetch;
+  const f = direct ? nativeFetch : fetch;
   try {
-    const res = await fetch(url, { ...init, signal: ctrl ? ctrl.signal : undefined });
+    const res = await f(url, { ...init, signal: ctrl ? ctrl.signal : undefined });
     const text = await res.text();
     let json: any = null;
     try { json = text ? JSON.parse(text) : null; } catch { json = text; }
@@ -30,15 +33,17 @@ async function once<T>(url: string, init: RequestInit, timeoutMs: number): Promi
   }
 }
 
-/** 写入：网络被掐断时自动重发（服务器已返回的错误不重发） */
+/** 写入：网络被掐断时自动重发（服务器已返回的错误不重发），重发时本站转发与直连交替 */
 async function post<T>(path: string, body: unknown, prefer?: string): Promise<Result<T>> {
   const headers: Record<string, string> = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
   if (prefer) headers.Prefer = prefer;
   const init: RequestInit = { method: 'POST', headers, body: JSON.stringify(body ?? {}) };
   const deadline = Date.now() + 30000;
   let r: Result<T>;
+  let n = 0;
   do {
-    r = await once<T>(`${URL_}/rest/v1/${path}`, init, 20000);
+    r = await once<T>(`${URL_}/rest/v1/${path}`, init, 20000, n % 2 === 1);
+    n++;
     if (!isNetErr(r.error)) return r;
     await sleep(600 + Math.random() * 900);
   } while (Date.now() < deadline);
@@ -46,9 +51,9 @@ async function post<T>(path: string, body: unknown, prefer?: string): Promise<Re
 }
 
 /** 读取：简单 GET 请求（无预检），单次最长 timeoutMs */
-function get<T>(fn: string, args: Record<string, string>, timeoutMs = 12000): Promise<Result<T>> {
+function get<T>(fn: string, args: Record<string, string>, timeoutMs = 12000, direct = false): Promise<Result<T>> {
   const q = Object.keys(args).map((k) => `${k}=${encodeURIComponent(args[k])}`).join('&');
-  return once<T>(`${URL_}/rest/v1/rpc/${fn}?${q}&apikey=${KEY}`, { method: 'GET', cache: 'no-store' }, timeoutMs);
+  return once<T>(`${URL_}/rest/v1/rpc/${fn}?${q}&apikey=${KEY}`, { method: 'GET', cache: 'no-store' }, timeoutMs, direct);
 }
 
 export const studentSupabase = {
