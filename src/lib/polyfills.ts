@@ -67,4 +67,19 @@ if (!(Array.prototype as any).findLast) {
   });
 }
 
+// String.prototype.replaceAll: Safari 13.1+, Chrome 85+（安卓 11 旧内核学习通等缺失，曾导致签到页白屏）。
+if (!(String.prototype as any).replaceAll) {
+  Object.defineProperty(String.prototype, 'replaceAll', {
+    value: function (this: string, search: string | RegExp, replacement: any) {
+      if (search instanceof RegExp) {
+        if (!search.global) throw new TypeError('replaceAll must be called with a global RegExp');
+        return this.replace(search, replacement);
+      }
+      const s = String(search);
+      if (typeof replacement === 'function') return this.split(s).reduce((acc, part, i) => (i === 0 ? part : acc + replacement(s) + part), '');
+      return this.split(s).join(String(replacement));
+    }, writable: true, configurable: true,
+  });
+}
+
 export {};
