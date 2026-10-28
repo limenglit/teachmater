@@ -233,9 +233,9 @@ export default function RandomPicker() {
                 <div className="h-64 overflow-hidden relative" ref={rollerRef}>
                   <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-card to-transparent z-10 pointer-events-none" />
                   <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-card to-transparent z-10 pointer-events-none" />
-                  <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-14 bg-highlight-soft rounded-xl z-5 border border-primary/20" />
+                  <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-14 bg-highlight-soft rounded-xl z-0 border border-primary/20" />
 
-                  <div className="flex flex-col items-center justify-center h-full gap-1 py-4">
+                  <div className="relative z-10 flex flex-col items-center justify-center h-full gap-1 py-4">
                     <AnimatePresence mode="popLayout">
                       {isRolling ? (
                         <motion.div
