@@ -1,4 +1,15 @@
-import { studentSupabase as supabase } from '@/lib/student-supabase';
+import { studentSupabase as supabase, flipStudentRoute, studentRouteFlip } from '@/lib/student-supabase';
+
+let activeKick: (() => void) | null = null;
+/**
+ * 「扫码失败重试」按钮：换一条线路（本站转发 ↔ 直连后台）先发，
+ * 正在加载时立即放弃当前等待并重连；已失败时下一次加载从另一条线路开始。
+ */
+export function retryScanNow(): boolean {
+  flipStudentRoute();
+  if (activeKick) { activeKick(); return true; }
+  return false;
+}
 
 /**
  * 学生扫码进入页面时，统一「会话 ID 解析 + 读取重试 + 诊断记录」。
