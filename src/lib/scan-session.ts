@@ -124,15 +124,31 @@ export async function loadScanSession<T = any>(
   document.addEventListener('visibilitychange', onVis);
   const pause = (ms: number) => new Promise<void>((r) => { const t = setTimeout(r, ms); wake = () => { clearTimeout(t); r(); }; });
 
+  // 学生点「扫码失败重试」：放弃正在等的这次请求，换线路立即重连，并重新给满重试时长
+  let budgetStart = start;
+  let kicked = false;
+  let cancelAttempt: (() => void) | null = null;
+  const kick = () => { kicked = true; if (cancelAttempt) cancelAttempt(); onWake(); };
+  activeKick = kick;
+
   let last = { stage: 'fetch', error: '' };
   let n = 0;
   try {
-    while (n === 0 || now() - start < budgetMs) {
+    while (n === 0 || now() - budgetStart < budgetMs) {
       n++;
       onAttempt?.(n);
       const t0 = now();
       let res: R;
-      try { res = await hedged(rpcName, sessionId); } catch (e) { res = { data: null, error: { message: String(e) } }; }
+      kicked = false;
+      const userRetry = new Promise<R>((r) => { cancelAttempt = () => r({ data: null, error: { name: 'UserRetry', message: 'UserRetry' } }); });
+      try { res = await Promise.race([hedged(rpcName, sessionId, studentRouteFlip()), userRetry]); } catch (e) { res = { data: null, error: { message: String(e) } }; }
+      cancelAttempt = null;
+      if (kicked) {
+        log.push(`${n}:u:${Math.round(now() - t0)}`);
+        if (log.length > 12) log.shift();
+        budgetStart = now();
+        continue;
+      }
       const { data, error } = res;
       if (!error) {
         log.push(`${n}:ok:${Math.round(now() - t0)}`);
@@ -147,8 +163,10 @@ export async function loadScanSession<T = any>(
       log.push(`${n}:${last.stage}:${Math.round(now() - t0)}`);
       if (log.length > 12) log.shift();
       await pause(500 + Math.random() * 1000);
+      if (kicked) budgetStart = now();
     }
   } finally {
+    if (activeKick === kick) activeKick = null;
     window.removeEventListener('online', onWake);
     document.removeEventListener('visibilitychange', onVis);
   }
