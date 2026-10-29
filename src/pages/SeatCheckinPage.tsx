@@ -4,7 +4,7 @@ import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
 import { normalizeStudentName } from '@/lib/student-name';
 
-import { normalizeSessionId, loadScanSession, deviceInfo } from '@/lib/scan-session';
+import { normalizeSessionId, loadScanSession, deviceInfo, retryScanNow } from '@/lib/scan-session';
 import type { CheckinCustomField } from '@/lib/seat-checkin-fields';
 import { Button, Input, toast } from '@/components/student-ui';
 import { MapPin, ScanLine, User2 } from '@/components/student-icons';
@@ -56,6 +56,9 @@ export default function SeatCheckinPage() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  // 加载超过 5 秒就露出「扫码失败重试」按钮：点一次换线路立即重连，不必干等一分钟
+  const [showRetry, setShowRetry] = useState(false);
+  const [switched, setSwitched] = useState(0);
   const [name, setName] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -121,6 +124,17 @@ export default function SeatCheckinPage() {
         setLoading(false);
       });
   }, [sessionId, t, reloadKey]);
+
+  useEffect(() => {
+    if (!loading) { setShowRetry(false); return; }
+    const timer = setTimeout(() => setShowRetry(true), 5000);
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  const retryNow = () => {
+    setSwitched((k) => k + 1);
+    if (!retryScanNow()) setReloadKey((k) => k + 1);
+  };
 
   const handleNameInput = (val: string) => {
     setName(val);
@@ -224,14 +238,23 @@ export default function SeatCheckinPage() {
   };
 
   if (loading) {
-    return <div className="flex flex-col items-center justify-center min-h-[100dvh] px-4 text-center text-muted-foreground">{t('seatCheckin.loading')}{attempt > 1 ? <div className="text-xs mt-2 leading-5">正在连接… 第 {attempt} 次<br />教室网络较慢，请勿关闭页面，系统正在自动重试</div> : null}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[100dvh] px-4 text-center text-muted-foreground">{t('seatCheckin.loading')}{attempt > 1 ? <div className="text-xs mt-2 leading-5">正在连接… 第 {attempt} 次<br />教室网络较慢，请勿关闭页面，系统正在自动重试</div> : null}
+        {showRetry ? (
+          <div className="mt-4 space-y-2">
+            <Button variant="outline" onClick={retryNow}>扫码失败重试</Button>
+            <p className="text-xs leading-5">{switched > 0 ? '已换一条线路重新连接…' : '一直打不开？点一下换线路重连'}</p>
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   if (!session) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 min-h-[100dvh] px-4 text-center text-muted-foreground">
         <p>{loadFailed ? '签到页加载失败' : t('seatCheckin.notFound')}</p>
-        <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>重新加载</Button>
+        <Button variant="outline" onClick={retryNow}>扫码失败重试</Button>
         {loadFailed && diagText ? (
           <p className="max-w-xs break-all text-[11px] leading-4 text-muted-foreground/80 select-all">诊断：{diagText}</p>
         ) : null}

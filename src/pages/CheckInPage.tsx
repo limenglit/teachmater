@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams } from '@/lib/scan-params';
 import { useLanguage } from '@/contexts/language-core';
 import { studentSupabase as supabase } from '@/lib/student-supabase';
-import { normalizeSessionId, loadScanSession } from '@/lib/scan-session';
+import { normalizeSessionId, loadScanSession, retryScanNow } from '@/lib/scan-session';
 import { Button, Input } from '@/components/student-ui';
 
 // 极简内联图标：不加载图标库，学生手机少下载。
@@ -29,6 +29,9 @@ export default function CheckInPage() {
   const [sessionValid, setSessionValid] = useState<boolean | null>(null);
   const [studentNames, setStudentNames] = useState<string[]>([]);
   const [attempt, setAttempt] = useState(0);
+  // 加载超过 5 秒就露出「扫码失败重试」按钮：点一次换线路立即重连，不必干等一分钟
+  const [showRetry, setShowRetry] = useState(false);
+  const [switched, setSwitched] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,6 +63,17 @@ export default function CheckInPage() {
         }
       });
   }, [sessionId, reloadKey]);
+
+  useEffect(() => {
+    if (sessionValid !== null) { setShowRetry(false); return; }
+    const timer = setTimeout(() => setShowRetry(true), 5000);
+    return () => clearTimeout(timer);
+  }, [sessionValid]);
+
+  const retryNow = () => {
+    setSwitched((k) => k + 1);
+    if (!retryScanNow()) { setStatus('idle'); setReloadKey((k) => k + 1); }
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -120,7 +134,14 @@ export default function CheckInPage() {
   if (sessionValid === null) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4">
-        <div className="text-muted-foreground text-center">{t('checkinPage.loading')}{attempt > 1 ? <div className="text-xs mt-2 leading-5">正在连接… 第 {attempt} 次<br />教室网络较慢，请勿关闭页面，系统正在自动重试</div> : null}</div>
+        <div className="text-muted-foreground text-center">{t('checkinPage.loading')}{attempt > 1 ? <div className="text-xs mt-2 leading-5">正在连接… 第 {attempt} 次<br />教室网络较慢，请勿关闭页面，系统正在自动重试</div> : null}
+          {showRetry ? (
+            <div className="mt-4 space-y-2">
+              <Button variant="outline" onClick={retryNow}>扫码失败重试</Button>
+              <p className="text-xs leading-5">{switched > 0 ? '已换一条线路重新连接…' : '一直打不开？点一下换线路重连'}</p>
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -136,7 +157,7 @@ export default function CheckInPage() {
             <p className="max-w-xs mx-auto break-all text-[11px] leading-4 text-muted-foreground/80 select-all">诊断：{diagText}</p>
           ) : null}
           {status !== 'expired' ? (
-            <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>重新加载</Button>
+            <Button variant="outline" onClick={retryNow}>扫码失败重试</Button>
           ) : null}
         </div>
       </div>

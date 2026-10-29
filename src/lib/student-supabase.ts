@@ -33,6 +33,11 @@ async function once<T>(url: string, init: RequestInit, timeoutMs: number, direct
   }
 }
 
+// 学生点「扫码失败重试」后翻转线路偏好：下一次写入先走另一条线路
+let routeFlip = 0;
+export function flipStudentRoute() { routeFlip++; }
+export const studentRouteFlip = () => routeFlip;
+
 /** 写入：网络被掐断时自动重发（服务器已返回的错误不重发），重发时本站转发与直连交替 */
 async function post<T>(path: string, body: unknown, prefer?: string): Promise<Result<T>> {
   const headers: Record<string, string> = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
@@ -40,7 +45,7 @@ async function post<T>(path: string, body: unknown, prefer?: string): Promise<Re
   const init: RequestInit = { method: 'POST', headers, body: JSON.stringify(body ?? {}) };
   const deadline = Date.now() + 30000;
   let r: Result<T>;
-  let n = 0;
+  let n = routeFlip;
   do {
     r = await once<T>(`${URL_}/rest/v1/${path}`, init, 20000, n % 2 === 1);
     n++;

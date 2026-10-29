@@ -26,6 +26,8 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 vi.mock('@/lib/student-supabase', () => ({
+  flipStudentRoute: () => undefined,
+  studentRouteFlip: () => 0,
   studentSupabase: {
     rpc: (...args: any[]) => rpcMock(...args),
     get: (...args: any[]) => rpcMock(...args),
