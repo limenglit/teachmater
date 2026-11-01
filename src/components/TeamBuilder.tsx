@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ExportButtons from '@/components/ExportButtons';
 import TeamShareQR from '@/components/teamwork/TeamShareQR';
 import TeamworkHistory from '@/components/TeamworkHistory';
+import { getActiveClassContext } from '@/lib/class-context';
 import { toast } from 'sonner';
 import { loadLastTeams, saveLastTeams } from '@/lib/teamwork-local';
 import { migrateTeamworkLastOnce, saveLastTeamsCloud } from '@/lib/teamwork-cloud';
@@ -246,7 +247,8 @@ export default function TeamBuilder() {
     setSaving(true);
     try {
       const studentCount = teams.reduce((sum, t) => sum + t.members.length, 0);
-      const title = `${teams.length}${t('teamwork.teamsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      const classLabel = getActiveClassContext().label;
+      const title = `${classLabel ? `${classLabel} · ` : ''}${teams.length}${t('teamwork.teamsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
       const { error } = await supabase.from('teamwork_history').insert([{
         user_id: user.id, type: 'teams' as const, title, data: teams as any, student_count: studentCount,
       }]);

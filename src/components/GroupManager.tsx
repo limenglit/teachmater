@@ -14,6 +14,7 @@ import TeamShareQR from '@/components/teamwork/TeamShareQR';
 import TeamworkHistory from '@/components/TeamworkHistory';
 import { toast } from 'sonner';
 import { loadLastGroups, saveLastGroups } from '@/lib/teamwork-local';
+import { getActiveClassContext } from '@/lib/class-context';
 import { migrateTeamworkLastOnce, saveLastGroupsCloud } from '@/lib/teamwork-cloud';
 import { buildTeamBuckets, type TeamingDimension, type TeamingStrategy } from '@/lib/team-assignment';
 import {
@@ -241,7 +242,8 @@ export default function GroupManager() {
     setSaving(true);
     try {
       const studentCount = groups.reduce((sum, g) => sum + g.members.length, 0);
-      const title = `${groups.length}${t('teamwork.groupsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      const classLabel = getActiveClassContext().label;
+      const title = `${classLabel ? `${classLabel} · ` : ''}${groups.length}${t('teamwork.groupsCount')} · ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
       const { error } = await supabase.from('teamwork_history').insert([{
         user_id: user.id, type: 'groups' as const, title, data: groups as any, student_count: studentCount,
       }]);
