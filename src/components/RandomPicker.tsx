@@ -10,6 +10,7 @@ import SpinWheel from '@/components/SpinWheel';
 import { playTick, playCelebration } from '@/lib/sounds';
 import { speak as speakOut, unlockSpeech } from '@/lib/speech';
 import { loadLastGroups, loadLastTeams } from '@/lib/teamwork-local';
+import { buildDiceBuckets, diceCountFor, facesForNumber, formatBucketLabel, pickBucket, speechLabel } from '@/lib/dice-pick';
 
 export default function RandomPicker() {
   const { students } = useStudents();
@@ -306,7 +307,7 @@ export default function RandomPicker() {
         )}
 
         {/* Dice Panel */}
-        <DicePanel soundEnabled={soundEnabled} voiceEnabled={voiceEnabled} noRepeat={noRepeat} popupEnabled={popupEnabled} showPopup={showPopup} pickedNames={pickedNames} onPick={(name) => setPickedNames(prev => [...prev, name])} onShowList={() => setShowPickedList(true)} />
+        <DicePanel soundEnabled={soundEnabled} voiceEnabled={voiceEnabled} noRepeat={noRepeat} popupEnabled={popupEnabled} showPopup={showPopup} />
       </div>
 
       {/* Picked students list overlay */}
@@ -383,61 +384,28 @@ export default function RandomPicker() {
   );
 }
 
-// Dice sub-component
-function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPopup, pickedNames, onPick, onShowList }: { soundEnabled: boolean; voiceEnabled: boolean; noRepeat: boolean; popupEnabled: boolean; showPopup: (name: string) => void; pickedNames: string[]; onPick: (name: string) => void; onShowList: () => void }) {
+// Dice sub-component: picks a whole group/team, never a single student.
+function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPopup }: { soundEnabled: boolean; voiceEnabled: boolean; noRepeat: boolean; popupEnabled: boolean; showPopup: (name: string) => void }) {
   const { students } = useStudents();
   const { t } = useLanguage();
   const [isRolling, setIsRolling] = useState(false);
   const [diceValues, setDiceValues] = useState<number[]>([]);
   const [result, setResult] = useState<string | null>(null);
   const [mode, setMode] = useState<'group' | 'team'>('group');
-  const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
+  const [usedKeys, setUsedKeys] = useState<Record<'group' | 'team', string[]>>({ group: [], team: [] });
+  const [pickedLabels, setPickedLabels] = useState<Record<'group' | 'team', string[]>>({ group: [], team: [] });
+  const intervalRef = useRef<number>(0);
 
-  const availableStudents = noRepeat
-    ? students.filter(s => !usedIds.has(s.id))
-    : students;
+  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
 
-  const diceBuckets = useCallback(() => {
-    const availableIdSet = new Set(availableStudents.map(s => s.id));
-
-    if (mode === 'group') {
-      const groups = loadLastGroups()
-        .map(group => ({
-          name: group.name,
-          members: group.members.filter(member => availableIdSet.has(member.id)),
-        }))
-        .filter(group => group.members.length > 0);
-
-      if (groups.length > 0) return groups;
-    }
-
-    if (mode === 'team') {
-      const teams = loadLastTeams()
-        .map(team => ({
-          name: team.name,
-          members: team.members.filter(member => availableIdSet.has(member.id)),
-        }))
-        .filter(team => team.members.length > 0);
-
-      if (teams.length > 0) return teams;
-    }
-
-    const fallbackCount = Math.min(6, Math.max(1, Math.ceil(availableStudents.length / 4)));
-    const fallbackBuckets = Array.from({ length: fallbackCount }, (_, i) => ({
-      name: mode === 'group' ? `${i + 1}` : `${i + 1}`,
-      members: [] as { id: string; name: string }[],
-    }));
-
-    availableStudents.forEach((student, i) => {
-      fallbackBuckets[i % fallbackCount].members.push({ id: student.id, name: student.name });
-    });
-
-    return fallbackBuckets.filter(bucket => bucket.members.length > 0);
-  }, [availableStudents, mode]);
-
-  const buckets = diceBuckets();
-  const groupCount = Math.max(1, buckets.length);
-  const maxMembersInBucket = Math.max(1, ...buckets.map(bucket => bucket.members.length));
+  const rosterIds = new Set(students.map(s => s.id));
+  const buckets = buildDiceBuckets(mode === 'group' ? loadLastGroups() : loadLastTeams(), rosterIds);
+  const usedSet = new Set(usedKeys[mode]);
+  const remaining = noRepeat ? buckets.filter(b => !usedSet.has(b.key)).length : buckets.length;
+  const totalNumber = Math.max(1, ...buckets.map(b => b.number));
+  const diceCount = diceCountFor(totalNumber);
+  const prefix = t(mode === 'group' ? 'group.namePrefix' : 'team.namePrefix');
+  const unit = t(mode === 'group' ? 'dice.unitGroup' : 'dice.unitTeam');
 
   // Dot positions for each dice face (relative to a 100x100 viewBox)
   const dotPositions: Record<number, [number, number][]> = {
@@ -457,55 +425,57 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
     </svg>
   );
 
+  const switchMode = (next: 'group' | 'team') => {
+    if (isRolling) return;
+    setMode(next);
+    setResult(null);
+    setDiceValues([]);
+  };
+
   const rollDice = useCallback(() => {
-    if (availableStudents.length === 0 || isRolling) return;
+    if (isRolling) return;
+    const chosen = pickBucket(buckets, usedSet, noRepeat);
+    if (!chosen) return;
     if (voiceEnabled) unlockSpeech();
     setIsRolling(true);
     setResult(null);
 
-    const groupDiceCount = groupCount > 6 ? 2 : 1;
-    const memberDiceCount = maxMembersInBucket > 6 ? 2 : 1;
-    const totalDice = groupDiceCount + memberDiceCount;
-
+    const rollMode = mode;
+    const label = formatBucketLabel(chosen, prefix);
     let count = 0;
     const steps = 12;
-    const interval = setInterval(() => {
+    intervalRef.current = window.setInterval(() => {
       count++;
-      setDiceValues(Array.from({ length: totalDice }, () => Math.floor(Math.random() * 6) + 1));
+      setDiceValues(Array.from({ length: diceCount }, () => Math.floor(Math.random() * 6) + 1));
       if (soundEnabled) playTick();
       if (count >= steps) {
-        clearInterval(interval);
-
-        const finalValues = Array.from({ length: totalDice }, () => Math.floor(Math.random() * 6) + 1);
-        setDiceValues(finalValues);
-
-        const groupIndex = ((finalValues[0] - 1) % groupCount);
-        const chosenGroup = buckets[groupIndex];
-        const memberIndex = ((finalValues[groupDiceCount] - 1) % chosenGroup.members.length);
-        const chosen = chosenGroup.members[memberIndex];
-
-        const resultKey = mode === 'team' ? 'dice.teamResult' : 'dice.groupResult';
-        setResult(t(resultKey).replace('{0}', String(groupIndex + 1)).replace('{1}', String(memberIndex + 1)) + `: ${chosen.name}`);
+        clearInterval(intervalRef.current);
+        intervalRef.current = 0;
+        setDiceValues(facesForNumber(chosen.number, diceCount));
+        setResult(label);
         setIsRolling(false);
-        onPick(chosen.name);
-
+        setPickedLabels(prev => ({ ...prev, [rollMode]: [...prev[rollMode], label] }));
         if (noRepeat) {
-          setUsedIds(prev => new Set([...prev, chosen.id]));
+          setUsedKeys(prev => ({ ...prev, [rollMode]: [...prev[rollMode], chosen.key] }));
         }
-
         if (soundEnabled) playCelebration();
-        if (popupEnabled) showPopup(chosen.name);
-
-        if (voiceEnabled) {
-          speakOut(chosen.name, 'zh-CN', 0.9);
-        }
+        if (popupEnabled) showPopup(label);
+        if (voiceEnabled) speakOut(speechLabel(label), 'zh-CN', 0.9);
       }
     }, 80);
-  }, [availableStudents.length, isRolling, groupCount, maxMembersInBucket, soundEnabled, voiceEnabled, noRepeat, t, buckets, onPick, popupEnabled, showPopup]);
+  }, [isRolling, buckets, usedSet, noRepeat, voiceEnabled, mode, prefix, diceCount, soundEnabled, popupEnabled, showPopup]);
 
-  const diceLabels = groupCount > 6
-    ? [t('dice.groupTens'), t('dice.groupOnes'), t('dice.memberOnes')]
-    : [t('dice.group'), t('dice.member')];
+  const resetRound = () => {
+    setUsedKeys(prev => ({ ...prev, [mode]: [] }));
+    setPickedLabels(prev => ({ ...prev, [mode]: [] }));
+    setResult(null);
+  };
+
+  const diceLabels = diceCount === 2
+    ? [t(mode === 'group' ? 'dice.groupBlock' : 'dice.teamBlock'), t('dice.slot')]
+    : [t(mode === 'group' ? 'dice.group' : 'dice.unitTeam')];
+  const shownValues = diceValues.length === diceCount ? diceValues : Array.from({ length: diceCount }, () => 1);
+  const picked = pickedLabels[mode];
 
   return (
     <div className="w-full lg:flex-1 flex flex-col">
@@ -521,7 +491,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
         {/* Mode toggle */}
         <div className="flex gap-2 mb-5">
           <button
-            onClick={() => setMode('group')}
+            onClick={() => switchMode('group')}
             className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               mode === 'group' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted'
             }`}
@@ -529,7 +499,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
             {t('dice.basedOnGroup')}
           </button>
           <button
-            onClick={() => setMode('team')}
+            onClick={() => switchMode('team')}
             className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               mode === 'team' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:bg-muted'
             }`}
@@ -540,7 +510,7 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
 
         {/* Dice display */}
         <div className="flex justify-center gap-4 mb-4">
-          {(diceValues.length > 0 ? diceValues : [1, 1]).map((val, i) => (
+          {shownValues.map((val, i) => (
             <div key={i} className="text-center">
               <div className={`w-12 h-12 rounded-xl border-2 border-foreground bg-background flex items-center justify-center p-1
                 ${isRolling ? 'animate-dice-shake' : ''}`}>
@@ -555,10 +525,14 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
 
         {/* Roll button */}
         <div className="flex justify-center mb-3">
-          <Button onClick={rollDice} disabled={isRolling || availableStudents.length === 0} variant="outline" className="gap-2">
+          <Button onClick={rollDice} disabled={isRolling || remaining === 0} variant="outline" className="gap-2">
             {t('dice.throw')}
           </Button>
         </div>
+
+        {buckets.length === 0 && (
+          <p className="text-center text-sm text-muted-foreground">{t(mode === 'group' ? 'dice.noGroups' : 'dice.noTeams')}</p>
+        )}
 
         {/* Result */}
         {result && (
@@ -567,18 +541,40 @@ function DicePanel({ soundEnabled, voiceEnabled, noRepeat, popupEnabled, showPop
             animate={{ opacity: 1, y: 0 }}
             className="text-center"
           >
-            <p className="font-semibold text-foreground">{result}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {t('dice.groupDice').replace('{0}', String(groupCount)).replace('{1}', groupCount > 6 ? '2' : '1')}
-            </p>
+            <p className="text-xl font-semibold text-foreground" data-testid="dice-result">{result}</p>
           </motion.div>
         )}
-        {noRepeat && (
-          <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground mt-2">
-            <span>{t('random.remaining')} {availableStudents.length}/{students.length} {t('random.persons')}</span>
-            {usedIds.size > 0 && (
-              <button onClick={() => setUsedIds(new Set())} className="text-primary hover:underline">{t('random.reset')}</button>
+
+        {buckets.length > 0 && (
+          <p className="text-xs text-muted-foreground mt-1 text-center">
+            {t(diceCount === 2 ? 'dice.twoDiceHint' : 'dice.oneDieHint').replace('{0}', String(buckets.length)).replace('{1}', unit)}
+          </p>
+        )}
+
+        {picked.length > 0 && (
+          <div className="flex flex-wrap justify-center items-center gap-1.5 mt-3 text-xs">
+            <span className="text-muted-foreground">{t('dice.picked')}</span>
+            {picked.map((label, i) => (
+              <span key={i} className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">{label}</span>
+            ))}
+          </div>
+        )}
+
+        {noRepeat && buckets.length > 0 && (
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground mt-2">
+            <span>
+              {remaining === 0
+                ? t(mode === 'group' ? 'dice.allGroupsPicked' : 'dice.allTeamsPicked')
+                : t(mode === 'group' ? 'dice.remainingGroups' : 'dice.remainingTeams').replace('{0}', String(remaining)).replace('{1}', String(buckets.length))}
+            </span>
+            {usedKeys[mode].length > 0 && (
+              <button onClick={resetRound} className="text-primary hover:underline">{t('random.reset')}</button>
             )}
+          </div>
+        )}
+        {!noRepeat && picked.length > 0 && (
+          <div className="flex justify-center text-xs mt-2">
+            <button onClick={resetRound} className="text-primary hover:underline">{t('random.clearList')}</button>
           </div>
         )}
       </div>
