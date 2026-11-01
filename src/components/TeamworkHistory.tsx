@@ -112,7 +112,19 @@ export default function TeamworkHistory({ type, onRestore }: Props) {
                   className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{item.title}</div>
+                    {(() => {
+                      const parts = item.title.split(' · ');
+                      const hasClass = parts.length >= 3;
+                      return (
+                        <div className="font-medium text-sm truncate">
+                          {hasClass ? (
+                            <><span className="text-primary">{parts[0]}</span> · {parts.slice(1).join(' · ')}</>
+                          ) : (
+                            <>{item.title} <span className="text-xs text-muted-foreground font-normal">（未标注班级）</span></>
+                          )}
+                        </div>
+                      );
+                    })()}
                     <div className="text-xs text-muted-foreground">
                       {item.data.length} {type === 'groups' ? t('teamwork.groupsCount') : t('teamwork.teamsCount')} · {item.student_count} {t('common.persons')}
                     </div>
