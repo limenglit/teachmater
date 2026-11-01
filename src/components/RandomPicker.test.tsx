@@ -247,17 +247,45 @@ describe('RandomPicker', () => {
     const noRepeatSwitch = screen.getByText('不重复').closest('label')!.querySelector('button')!;
     fireEvent.click(noRepeatSwitch);
 
-    // 默认基于分组，首掷应选中分组中的学生5。
+    // 默认基于分组：结果是小组名，而不是某个学生。
     fireEvent.click(screen.getByRole('button', { name: '🎲 投掷' }));
     act(() => { vi.advanceTimersByTime(1200); });
-    expect(screen.getByText(/第1组 第1人: 学生5/)).toBeInTheDocument();
+    expect(screen.getByTestId('dice-result')).toHaveTextContent('第一组');
+    expect(screen.getByTestId('dice-result')).not.toHaveTextContent('学生5');
 
-    // 切换到基于建队，首掷应选中建队中的学生7。
+    // 切换到基于建队：结果是队名。
     fireEvent.click(screen.getByRole('button', { name: '基于建队' }));
     fireEvent.click(screen.getByRole('button', { name: '🎲 投掷' }));
     act(() => { vi.advanceTimersByTime(1200); });
-    expect(screen.getByText(/第1队 第1人: 学生7/)).toBeInTheDocument();
+    expect(screen.getByTestId('dice-result')).toHaveTextContent('第一队');
+    expect(screen.getByTestId('dice-result')).not.toHaveTextContent('学生7');
 
+    randomSpy.mockRestore();
+  });
+
+  it('smart dice with no-repeat never picks the same group twice in a round', () => {
+    const students = Array.from({ length: 4 }, (_, i) => ({ id: `s_${i}`, name: `学生${i + 1}` }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+    localStorage.setItem('teachmate_groups_last', JSON.stringify([
+      { id: 'g_0', name: '第一组', members: [{ id: 's_0', name: '学生1' }] },
+      { id: 'g_1', name: '飞鹰组', members: [{ id: 's_1', name: '学生2' }] },
+    ]));
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+    render(<StudentProvider><RandomPicker /></StudentProvider>);
+
+    expect(screen.getByText('剩余 2/2 组')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '🎲 投掷' }));
+    act(() => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByTestId('dice-result')).toHaveTextContent('第一组');
+    expect(screen.getByText('剩余 1/2 组')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '🎲 投掷' }));
+    act(() => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByTestId('dice-result')).toHaveTextContent('第2组（飞鹰组）');
+    expect(screen.getByRole('button', { name: '🎲 投掷' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '重置' }));
+    expect(screen.getByText('剩余 2/2 组')).toBeInTheDocument();
     randomSpy.mockRestore();
   });
 });
