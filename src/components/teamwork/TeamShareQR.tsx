@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { QrCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import QRActionPanel from '@/components/qr/QRActionPanel';
 import { downloadQrPng } from '@/lib/qr-download';
 import { getShareOrigin } from '@/lib/share-origin';
+import { getActiveClassContext } from '@/lib/class-context';
+import { buildTeamShareTitle } from '@/lib/team-lookup';
 
 interface GenericTeam {
   id: string;
@@ -25,6 +27,9 @@ export default function TeamShareQR({ teams, type }: TeamShareQRProps) {
   const [generating, setGenerating] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
   const label = type === 'teams' ? '建队' : '分组';
+  // A new arrangement (regroup, roster change) needs a fresh link with the current names.
+  const signature = JSON.stringify(teams.map(t => [t.name, t.members.map(m => m.name)]));
+  useEffect(() => { setUrl(''); }, [signature]);
 
   const handleOpen = async (isOpen: boolean) => {
     setOpen(isOpen);
@@ -32,7 +37,7 @@ export default function TeamShareQR({ teams, type }: TeamShareQRProps) {
       setGenerating(true);
       try {
         const studentCount = teams.reduce((s, t) => s + t.members.length, 0);
-        const title = `${teams.length}个${type === 'teams' ? '队' : '组'} · ${new Date().toLocaleDateString()}`;
+        const title = buildTeamShareTitle(getActiveClassContext().label, teams.length, type, new Date().toLocaleDateString());
         const normalized = teams.map(t => ({
           ...t,
           members: t.members.map(m => ({
@@ -84,7 +89,7 @@ export default function TeamShareQR({ teams, type }: TeamShareQRProps) {
             url={url}
             qrSize={220}
             qrContainerRef={qrRef}
-            scanTip="学生扫码后输入姓名，即可查看自己所在的组/队、组长/队长及全部成员"
+            scanTip="学生扫码后输入姓氏或点选自己的名字，即可查看自己所在的组/队、组长/队长及全部成员"
             actions={
               <Button variant="outline" size="sm" onClick={() => downloadQrPng(qrRef, `${label}二维码`)}>
                 下载二维码
