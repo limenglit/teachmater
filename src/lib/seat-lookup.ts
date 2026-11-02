@@ -22,13 +22,13 @@ export function buildSeatLookupPayload(opts: {
   doorOnRight: boolean;
   colAisles?: number[];
   rowAisles?: number[];
-  labels: { name: string; label: string }[];
+  labels: { name: string; label?: string }[];
 }): SeatLookupPayload {
   const closed = Array.from(opts.disabledSeats);
   const closedSet = new Set(closed);
   const rows = opts.seats.length;
   const cols = opts.seats.reduce((m, r) => Math.max(m, r?.length ?? 0), 0);
-  const labelByName = new Map(opts.labels.map(l => [l.name, l.label]));
+  const labelByName = new Map(opts.labels.map(l => [l.name, l.label || '']));
   const entries: SeatLookupEntry[] = [];
   const cells = opts.seats.map((row, r) => Array.from({ length: cols }, (_, c) => {
     const name = row?.[c];
