@@ -22,7 +22,7 @@ import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
-import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil } from '@/lib/seat-utils';
+import { splitIntoGroups, findNextFree, getVisualRow as getVisualRowUtil, placeGroupsInLines, columnLines, rowLines } from '@/lib/seat-utils';
 import { sortStudentsByStudentNo } from '@/lib/seat-student-no';
 import StudentNoPreview from '@/components/seating/StudentNoPreview';
 import SeatAlignmentPanel from '@/components/seating/SeatAlignmentPanel';
@@ -579,8 +579,8 @@ export default function SeatChart() {
       case 'studentNo': { let idx = 0; const ordered = names; for (let r = 0; r < rows && idx < ordered.length; r++) { for (let ci = 0; ci < cols && idx < ordered.length; ci++) { const c = colOrder[ci]; if (isAvailable(r, c)) grid[r][c] = ordered[idx++]; } } break; }
       case 'horizontalS': { let idx = 0; for (let r = 0; r < rows && idx < names.length; r++) { for (let ci = 0; ci < cols && idx < names.length; ci++) { const rawCol = r % 2 === 0 ? ci : cols - 1 - ci; const c = colOrder[rawCol]; if (isAvailable(r, c)) grid[r][c] = names[idx++]; } } break; }
       case 'exam': { let idx = 0; for (let ci = 0; ci < cols && idx < names.length; ci++) { const c = colOrder[ci]; if (examSkipCol && ci % 2 !== 0) continue; for (let r = 0; r < rows && idx < names.length; r++) { const row = ci % 2 === 0 ? r : rows - 1 - r; if (examSkipRow && row % 2 !== 0) continue; if (isAvailable(row, c)) grid[row][c] = names[idx++]; } } break; }
-      case 'groupCol': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const colIdx = gi % cols; const c = colOrder[colIdx]; const baseRow = Math.floor(gi / cols) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let r = 0; r < rows && placed < group.length; r++) { const row = r + baseRow; if (row < rows && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
-      case 'groupRow': { const groups = resolveGroupBuckets(); groups.forEach((group, gi) => { const row = gi % rows; const baseShift = Math.floor(gi / rows) * Math.ceil(names.length / Math.max(1, groups.length)); let placed = 0; for (let ci = 0; ci < cols && placed < group.length; ci++) { const c = colOrder[ci]; const colShift = ci + baseShift; if (row < rows && colShift < cols && isAvailable(row, c)) grid[row][c] = group[placed++]; } }); break; }
+      case 'groupCol': { placeGroupsInLines(grid, resolveGroupBuckets().map(g => g.filter(n => !lockedNamesSet.has(n))), columnLines(rows, colOrder), isAvailable); break; }
+      case 'groupRow': { placeGroupsInLines(grid, resolveGroupBuckets().map(g => g.filter(n => !lockedNamesSet.has(n))), rowLines(rows, colOrder), isAvailable); break; }
       case 'smartCluster': {
         if (smartClusterStrategy === 'orgFrontWeighted') {
           const orgByName = new Map(students.map(student => [student.name, (student.organization?.trim() || '未分单位')]));
