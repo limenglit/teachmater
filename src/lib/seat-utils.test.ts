@@ -206,6 +206,24 @@ describe('autoSeat – groupCol', () => {
     });
     expect(flatNames(grid).length).toBe(24);
   });
+  it('14 cols x 10 rows with 4 closed cols seats all 100 students, one group per column', () => {
+    const names = Array.from({ length: 100 }, (_, i) => `S${i}`);
+    const disabled = new Set<string>();
+    for (const c of [2, 5, 11, 12]) for (let r = 0; r < 10; r++) disabled.add(`${r}-${c}`);
+    const grid = autoSeat({ names, rows: 10, cols: 14, mode: 'groupCol', disabledSeats: disabled, colOrder: defaultColOrder(14), groupCount: 10 });
+    expect(flatNames(grid).length).toBe(100);
+    const groups = splitIntoGroups(names, 10);
+    for (const g of groups) {
+      const cols = new Set(g.map(n => grid.findIndex(row => row.includes(n)) >= 0 ? grid.find(row => row.includes(n))!.indexOf(n) : -1));
+      expect(cols.size).toBe(1);
+    }
+  });
+  it('groupRow with closed rows still seats everyone', () => {
+    const disabled = new Set<string>();
+    for (let c = 0; c < 8; c++) { disabled.add(`0-${c}`); disabled.add(`1-${c}`); }
+    const grid = autoSeat({ names: names24, rows: 6, cols: 8, mode: 'groupRow', disabledSeats: disabled, colOrder: defaultColOrder(8), groupCount: 4 });
+    expect(flatNames(grid).length).toBe(24);
+  });
 });
 
 // ── autoSeat: groupRow ──────────────────────────────────

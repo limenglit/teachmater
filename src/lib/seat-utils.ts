@@ -14,6 +14,48 @@ export function splitIntoGroups(names: string[], count: number): string[][] {
   return groups;
 }
 
+/**
+ * Place each group into its own line (column or row) of seats. Lines without any
+ * open seat (closed columns/rows) are skipped, so groups map onto open lines only;
+ * anyone who doesn't fit in their line overflows into the next free seats.
+ */
+export function placeGroupsInLines(
+  grid: (string | null)[][],
+  groups: string[][],
+  lines: [number, number][][],
+  isAvailable: (r: number, c: number) => boolean,
+): (string | null)[][] {
+  const free = (r: number, c: number) => isAvailable(r, c) && !grid[r]?.[c];
+  const open = lines.filter(l => l.some(([r, c]) => isAvailable(r, c)));
+  if (open.length === 0) return grid;
+  const overflow: string[] = [];
+  groups.forEach((group, gi) => {
+    const line = open[gi % open.length];
+    let i = 0;
+    for (const [r, c] of line) {
+      if (i >= group.length) break;
+      if (free(r, c)) grid[r][c] = group[i++];
+    }
+    overflow.push(...group.slice(i));
+  });
+  let k = 0;
+  for (const line of open) {
+    for (const [r, c] of line) {
+      if (k >= overflow.length) return grid;
+      if (free(r, c)) grid[r][c] = overflow[k++];
+    }
+  }
+  return grid;
+}
+
+export function columnLines(rows: number, colOrder: number[]): [number, number][][] {
+  return colOrder.map(c => Array.from({ length: rows }, (_, r) => [r, c] as [number, number]));
+}
+
+export function rowLines(rows: number, colOrder: number[]): [number, number][][] {
+  return Array.from({ length: rows }, (_, r) => colOrder.map(c => [r, c] as [number, number]));
+}
+
 /** Find next unused slot starting from `start`, wrapping around */
 export function findNextFree(start: number, max: number, existing: number[]): number | null {
   for (let i = start; i < max; i++) { if (!existing.includes(i)) return i; }
@@ -107,29 +149,11 @@ export function autoSeat(opts: {
       break;
     }
     case 'groupCol': {
-      const groups = splitIntoGroups(names, groupCount);
-      groups.forEach((group, gi) => {
-        const colIdx = gi % cols;
-        const c = colOrder[colIdx];
-        let placed = 0;
-        for (let r = 0; r < rows && placed < group.length; r++) {
-          const row = r + Math.floor(gi / cols) * Math.ceil(names.length / groupCount);
-          if (row < rows && isAvailable(row, c)) grid[row][c] = group[placed++];
-        }
-      });
+      placeGroupsInLines(grid, splitIntoGroups(names, groupCount), columnLines(rows, colOrder), isAvailable);
       break;
     }
     case 'groupRow': {
-      const groups = splitIntoGroups(names, groupCount);
-      groups.forEach((group, gi) => {
-        const row = gi % rows;
-        let placed = 0;
-        for (let ci = 0; ci < cols && placed < group.length; ci++) {
-          const c = colOrder[ci];
-          const colShift = ci + Math.floor(gi / rows) * Math.ceil(names.length / groupCount);
-          if (row < rows && colShift < cols && isAvailable(row, c)) grid[row][c] = group[placed++];
-        }
-      });
+      placeGroupsInLines(grid, splitIntoGroups(names, groupCount), rowLines(rows, colOrder), isAvailable);
       break;
     }
     case 'smartCluster': {
