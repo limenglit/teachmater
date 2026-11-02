@@ -26,6 +26,7 @@ import { Route as DiscussTopicIdRouteImport } from './routes/discuss/$topicId'
 import { Route as PollPollIdRouteImport } from './routes/poll/$pollId'
 import { Route as QuizSessionIdRouteImport } from './routes/quiz/$sessionId'
 import { Route as SeatCheckinSessionIdRouteImport } from './routes/seat-checkin/$sessionId'
+import { Route as SeatLookupSessionIdRouteImport } from './routes/seat-lookup/$sessionId'
 import { Route as TaskSessionIdRouteImport } from './routes/task/$sessionId'
 import { Route as TeamLookupSessionIdRouteImport } from './routes/team-lookup/$sessionId'
 import { Route as VocabSessionIdRouteImport } from './routes/vocab/$sessionId'
@@ -119,6 +120,11 @@ const SeatCheckinSessionIdRoute = SeatCheckinSessionIdRouteImport.update({
   path: '/seat-checkin/$sessionId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SeatLookupSessionIdRoute = SeatLookupSessionIdRouteImport.update({
+  id: '/seat-lookup/$sessionId',
+  path: '/seat-lookup/$sessionId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TaskSessionIdRoute = TaskSessionIdRouteImport.update({
   id: '/task/$sessionId',
   path: '/task/$sessionId',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/poll/$pollId': typeof PollPollIdRoute
   '/quiz/$sessionId': typeof QuizSessionIdRoute
   '/seat-checkin/$sessionId': typeof SeatCheckinSessionIdRoute
+  '/seat-lookup/$sessionId': typeof SeatLookupSessionIdRoute
   '/task/$sessionId': typeof TaskSessionIdRoute
   '/team-lookup/$sessionId': typeof TeamLookupSessionIdRoute
   '/vocab/$sessionId': typeof VocabSessionIdRoute
@@ -199,6 +206,7 @@ export interface FileRoutesByTo {
   '/poll/$pollId': typeof PollPollIdRoute
   '/quiz/$sessionId': typeof QuizSessionIdRoute
   '/seat-checkin/$sessionId': typeof SeatCheckinSessionIdRoute
+  '/seat-lookup/$sessionId': typeof SeatLookupSessionIdRoute
   '/task/$sessionId': typeof TaskSessionIdRoute
   '/team-lookup/$sessionId': typeof TeamLookupSessionIdRoute
   '/vocab/$sessionId': typeof VocabSessionIdRoute
@@ -226,6 +234,7 @@ export interface FileRoutesById {
   '/poll/$pollId': typeof PollPollIdRoute
   '/quiz/$sessionId': typeof QuizSessionIdRoute
   '/seat-checkin/$sessionId': typeof SeatCheckinSessionIdRoute
+  '/seat-lookup/$sessionId': typeof SeatLookupSessionIdRoute
   '/task/$sessionId': typeof TaskSessionIdRoute
   '/team-lookup/$sessionId': typeof TeamLookupSessionIdRoute
   '/vocab/$sessionId': typeof VocabSessionIdRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/poll/$pollId'
     | '/quiz/$sessionId'
     | '/seat-checkin/$sessionId'
+    | '/seat-lookup/$sessionId'
     | '/task/$sessionId'
     | '/team-lookup/$sessionId'
     | '/vocab/$sessionId'
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/poll/$pollId'
     | '/quiz/$sessionId'
     | '/seat-checkin/$sessionId'
+    | '/seat-lookup/$sessionId'
     | '/task/$sessionId'
     | '/team-lookup/$sessionId'
     | '/vocab/$sessionId'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/poll/$pollId'
     | '/quiz/$sessionId'
     | '/seat-checkin/$sessionId'
+    | '/seat-lookup/$sessionId'
     | '/task/$sessionId'
     | '/team-lookup/$sessionId'
     | '/vocab/$sessionId'
@@ -333,6 +345,7 @@ export interface RootRouteChildren {
   PollPollIdRoute: typeof PollPollIdRoute
   QuizSessionIdRoute: typeof QuizSessionIdRoute
   SeatCheckinSessionIdRoute: typeof SeatCheckinSessionIdRoute
+  SeatLookupSessionIdRoute: typeof SeatLookupSessionIdRoute
   TaskSessionIdRoute: typeof TaskSessionIdRoute
   TeamLookupSessionIdRoute: typeof TeamLookupSessionIdRoute
   VocabSessionIdRoute: typeof VocabSessionIdRoute
@@ -463,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SeatCheckinSessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/seat-lookup/$sessionId': {
+      id: '/seat-lookup/$sessionId'
+      path: '/seat-lookup/$sessionId'
+      fullPath: '/seat-lookup/$sessionId'
+      preLoaderRoute: typeof SeatLookupSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/task/$sessionId': {
       id: '/task/$sessionId'
       path: '/task/$sessionId'
@@ -533,6 +553,7 @@ const rootRouteChildren: RootRouteChildren = {
   PollPollIdRoute: PollPollIdRoute,
   QuizSessionIdRoute: QuizSessionIdRoute,
   SeatCheckinSessionIdRoute: SeatCheckinSessionIdRoute,
+  SeatLookupSessionIdRoute: SeatLookupSessionIdRoute,
   TaskSessionIdRoute: TaskSessionIdRoute,
   TeamLookupSessionIdRoute: TeamLookupSessionIdRoute,
   VocabSessionIdRoute: VocabSessionIdRoute,
