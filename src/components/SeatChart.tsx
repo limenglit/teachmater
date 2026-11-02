@@ -19,6 +19,8 @@ import ArtStudio from '@/components/seating/ArtStudio';
 import CustomLayout from '@/components/seating/CustomLayout';
 import SeatRuleComposer from '@/components/seating/SeatRuleComposer';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
+import SeatShareQR from '@/components/seating/SeatShareQR';
+import { buildSeatLookupPayload } from '@/lib/seat-lookup';
 import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 
 import ZoomControls, { useZoomGestures } from '@/components/seating/ZoomControls';
@@ -1727,6 +1729,16 @@ export default function SeatChart() {
                   getSeatIndex={() => buildClassroomSeatIndex(seats, disabledSeats, windowOnLeft,
                     new Map(students.map(s => [s.name, s.studentNumber])), indexLabelMode)}
                   seatIndexNote={CLASSROOM_INDEX_NOTES[indexLabelMode]}
+                />
+              )}
+              {seats.length > 0 && (
+                <SeatShareQR
+                  classLabel={activeClassContext.label || recordName.trim()}
+                  signature={JSON.stringify([seats, Array.from(disabledSeats), windowOnLeft, indexLabelMode, colAisles, rowAisles])}
+                  buildPayload={() => buildSeatLookupPayload({
+                    seats, disabledSeats, doorOnRight: windowOnLeft, colAisles, rowAisles,
+                    labels: buildClassroomSeatIndex(seats, disabledSeats, windowOnLeft, undefined, indexLabelMode),
+                  })}
                 />
               )}
               {seats.length > 0 && (
