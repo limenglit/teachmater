@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { buildNamePool, suggestNames, findTeamByName, normalizeLookupName } from '@/lib/team-lookup';
 import { useParams } from '@/lib/router-compat';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,21 @@ export default function TeamLookupPage() {
   const [name, setName] = useState('');
   const [searched, setSearched] = useState(false);
   const [myTeam, setMyTeam] = useState<Team | null>(null);
+  const [showSuggest, setShowSuggest] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  const namePool = useMemo(() => buildNamePool(teams), [teams]);
+  const suggestions = useMemo(() => suggestNames(namePool, name), [namePool, name]);
+
+  // Tap anywhere outside the name box closes the candidate list.
+  useEffect(() => {
+    if (!showSuggest) return;
+    const onDown = (e: PointerEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setShowSuggest(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [showSuggest]);
 
   useEffect(() => {
     const saved = localStorage.getItem('team_lookup_name');
@@ -42,13 +58,18 @@ export default function TeamLookupPage() {
     })();
   }, [sessionId]);
 
-  const handleSearch = () => {
-    if (!name.trim()) return;
-    localStorage.setItem('team_lookup_name', name.trim());
-    const trimmed = name.trim();
-    const found = teams.find(t => t.members.some(m => m.name === trimmed));
-    setMyTeam(found || null);
+  const runSearch = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    try { localStorage.setItem('team_lookup_name', trimmed); } catch { /* private mode */ }
+    setMyTeam(findTeamByName(teams, trimmed));
     setSearched(true);
+    setShowSuggest(false);
+  };
+  const handleSearch = () => runSearch(name);
+  const pickName = (picked: string) => {
+    setName(picked);
+    runSearch(picked);
   };
 
   const label = type === 'teams' ? '队' : '组';
@@ -76,20 +97,61 @@ export default function TeamLookupPage() {
           {title || `查询我的${label}`}
         </h1>
         <p className="text-sm text-muted-foreground text-center mb-6">
-          共 {teams.length} 个{label}，输入姓名查询
+          共 {teams.length} 个{label}{namePool.length > 0 ? `、${namePool.length} 人` : ''}，输入姓氏后点选你的名字
         </p>
 
-        <div className="flex gap-2 mb-6">
-          <Input
-            placeholder="请输入你的姓名"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            className="flex-1"
-          />
-          <Button onClick={handleSearch} className="gap-1.5">
-            <Search className="w-4 h-4" /> 查询
-          </Button>
+        <div ref={boxRef} className="relative mb-6">
+          <div className="flex gap-2">
+            <Input
+              placeholder="输入姓氏，如「李」"
+              value={name}
+              onChange={e => { setName(e.target.value); setShowSuggest(true); setSearched(false); }}
+              onFocus={() => setShowSuggest(true)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  // A single candidate left: Enter picks it directly.
+                  if (showSuggest && suggestions.length === 1) pickName(suggestions[0]);
+                  else handleSearch();
+                } else if (e.key === 'Escape') setShowSuggest(false);
+              }}
+              autoComplete="off"
+              className="flex-1"
+              aria-label="姓名"
+              aria-autocomplete="list"
+              aria-expanded={showSuggest && suggestions.length > 0}
+            />
+            <Button onClick={handleSearch} className="gap-1.5">
+              <Search className="w-4 h-4" /> 查询
+            </Button>
+          </div>
+
+          {showSuggest && suggestions.length > 0 && (
+            <div
+              role="listbox"
+              aria-label="候选姓名"
+              className="absolute left-0 right-0 top-full mt-1 z-20 max-h-64 overflow-y-auto rounded-lg border border-border bg-popover p-2 shadow-lg"
+            >
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions.map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    role="option"
+                    aria-selected={normalizeLookupName(n) === normalizeLookupName(name)}
+                    onClick={() => pickName(n)}
+                    className="px-3 py-1.5 rounded-full text-sm border border-border bg-muted text-foreground active:bg-primary active:text-primary-foreground hover:border-primary"
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {showSuggest && name.trim() && suggestions.length === 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-border bg-popover p-3 text-center text-sm text-muted-foreground shadow-lg">
+              名单里没有含「{name.trim()}」的名字
+            </div>
+          )}
         </div>
 
         {searched && !myTeam && (
@@ -140,7 +202,7 @@ export default function TeamLookupPage() {
                   <span
                     key={m.id}
                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm border ${
-                      m.name === name.trim()
+                      normalizeLookupName(m.name) === normalizeLookupName(name)
                         ? 'bg-primary text-primary-foreground border-primary font-semibold'
                         : m.isCaptain
                           ? 'bg-warning/10 text-warning border-warning/30'
