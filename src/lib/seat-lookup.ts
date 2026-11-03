@@ -14,6 +14,9 @@ export interface SeatLookupPayload {
   /** "r-c" keys of closed seats. */
   closed: string[];
   entries: SeatLookupEntry[];
+  /** Optional groups/teams so students also see their group. */
+  groups?: SeatLookupGroup[];
+  groupKind?: 'group' | 'team';
 }
 
 export function buildSeatLookupPayload(opts: {
@@ -50,4 +53,30 @@ export function findSeatByName(payload: Pick<SeatLookupPayload, 'entries'> | nul
 export function buildSeatShareTitle(classLabel: string, date: string): string {
   const label = (classLabel || '').trim();
   return `${label ? `${label} · ` : ''}座位表 · ${date}`;
+}
+
+export interface SeatLookupGroup { name: string; leader: string; members: string[] }
+
+/** Keep only groups/teams whose members are seated, so another class's groups never leak in. */
+export function buildSeatLookupGroups(
+  buckets: { name: string; members: { name: string; leader?: boolean }[] }[],
+  seatedNames: Iterable<string>,
+): SeatLookupGroup[] {
+  const seated = new Set(seatedNames);
+  const out = buckets
+    .map(b => {
+      const members = b.members.map(m => m.name).filter(n => seated.has(n));
+      const leader = b.members.find(m => m.leader && seated.has(m.name))?.name || '';
+      return { name: b.name, leader, members };
+    })
+    .filter(g => g.members.length > 0);
+  const covered = out.reduce((s, g) => s + g.members.length, 0);
+  const total = buckets.reduce((s, b) => s + b.members.length, 0);
+  return total > 0 && covered * 2 >= total ? out : [];
+}
+
+export function findGroupByName(groups: SeatLookupGroup[] | undefined, name: string): SeatLookupGroup | null {
+  const key = normalizeLookupName(name);
+  if (!key || !groups) return null;
+  return groups.find(g => g.members.some(m => normalizeLookupName(m) === key)) || null;
 }

@@ -3,7 +3,7 @@ import { useParams } from '@/lib/router-compat';
 import { supabase } from '@/integrations/supabase/client';
 import { retryRead } from '@/lib/student-route';
 import { suggestNames, normalizeLookupName } from '@/lib/team-lookup';
-import { findSeatByName, type SeatLookupPayload, type SeatLookupEntry } from '@/lib/seat-lookup';
+import { findSeatByName, findGroupByName, type SeatLookupPayload, type SeatLookupEntry } from '@/lib/seat-lookup';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, MapPin } from 'lucide-react';
@@ -159,6 +159,30 @@ export default function SeatLookupPage() {
             </button>
           </div>
         )}
+
+        {searched && mySeat && (() => {
+          const g = findGroupByName(payload.groups, mySeat.name);
+          if (!g) return null;
+          const unit = payload.groupKind === 'team' ? '队' : '组';
+          const leaderWord = payload.groupKind === 'team' ? '队长' : '组长';
+          return (
+            <div className="rounded-xl border border-border bg-card p-4 mb-4">
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-lg font-bold text-foreground">{g.name}</span>
+                <span className="text-xs text-muted-foreground">共 {g.members.length} 人</span>
+              </div>
+              {g.leader && <div className="text-sm text-muted-foreground mb-2">{leaderWord}：<span className="text-foreground font-medium">⭐ {g.leader}</span></div>}
+              <div className="text-xs text-muted-foreground mb-1.5">同{unit}成员</div>
+              <div className="flex flex-wrap gap-1.5">
+                {g.members.map(m => (
+                  <span key={m} className={`px-2.5 py-1 rounded-full text-sm border ${normalizeLookupName(m) === normalizeLookupName(mySeat.name) ? 'bg-primary text-primary-foreground border-primary font-semibold' : 'bg-muted text-foreground border-border'}`}>
+                    {m === g.leader ? '⭐ ' : ''}{m}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="rounded-xl border border-border bg-card p-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">

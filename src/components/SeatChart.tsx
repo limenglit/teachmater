@@ -20,6 +20,7 @@ import CustomLayout from '@/components/seating/CustomLayout';
 import SeatRuleComposer from '@/components/seating/SeatRuleComposer';
 import { useSeatExportQr } from '@/components/seating/useSeatExportQr';
 import SeatShareQR from '@/components/seating/SeatShareQR';
+import { buildSeatLookupGroups } from '@/lib/seat-lookup';
 import { buildSeatLookupPayload } from '@/lib/seat-lookup';
 import { evaluateSeatCheckinReadiness } from '@/lib/seat-checkin-policy';
 
@@ -1735,10 +1736,20 @@ export default function SeatChart() {
                 <SeatShareQR
                   classLabel={activeClassContext.label || recordName.trim()}
                   signature={JSON.stringify([seats, Array.from(disabledSeats), windowOnLeft, indexLabelMode, colAisles, rowAisles])}
-                  buildPayload={() => buildSeatLookupPayload({
-                    seats, disabledSeats, doorOnRight: windowOnLeft, colAisles, rowAisles,
-                    labels: buildClassroomSeatIndex(seats, disabledSeats, windowOnLeft, undefined, indexLabelMode),
-                  })}
+                  buildPayload={() => {
+                    const payload = buildSeatLookupPayload({
+                      seats, disabledSeats, doorOnRight: windowOnLeft, colAisles, rowAisles,
+                      labels: buildClassroomSeatIndex(seats, disabledSeats, windowOnLeft, undefined, indexLabelMode),
+                    });
+                    const seated = payload.entries.map(e => e.name);
+                    let groups = buildSeatLookupGroups(loadLastGroups().map(g => ({ name: g.name, members: g.members.map(m => ({ name: m.name, leader: m.isLeader })) })), seated);
+                    let groupKind: 'group' | 'team' = 'group';
+                    if (groups.length === 0) {
+                      groups = buildSeatLookupGroups(loadLastTeams().map(t => ({ name: t.name, members: t.members.map(m => ({ name: m.name, leader: m.isCaptain })) })), seated);
+                      groupKind = 'team';
+                    }
+                    return groups.length ? { ...payload, groups, groupKind } : payload;
+                  }}
                 />
               )}
               {seats.length > 0 && (

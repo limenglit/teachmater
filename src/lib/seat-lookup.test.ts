@@ -24,3 +24,14 @@ describe('seat lookup', () => {
     expect(buildSeatShareTitle('智能科学与技术1班', '2026/11/2')).toBe('智能科学与技术1班 · 座位表 · 2026/11/2');
   });
 });
+
+import { buildSeatLookupGroups, findGroupByName } from './seat-lookup';
+describe('seat lookup groups', () => {
+  it('finds a seated student group with its leader', () => {
+    const g = buildSeatLookupGroups([{ name: '第一组', members: [{ name: '张三', leader: true }, { name: '李四' }] }], ['张三', '李四']);
+    expect(findGroupByName(g, ' 李四 ')).toEqual({ name: '第一组', leader: '张三', members: ['张三', '李四'] });
+  });
+  it('drops groups from another class', () => {
+    expect(buildSeatLookupGroups([{ name: '甲', members: [{ name: '王五' }, { name: '赵六' }] }], ['张三'])).toEqual([]);
+  });
+});
