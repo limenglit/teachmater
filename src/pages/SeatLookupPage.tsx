@@ -66,11 +66,25 @@ export default function SeatLookupPage() {
     const trimmed = value.trim();
     if (!trimmed) return;
     try { localStorage.setItem('team_lookup_name', trimmed); } catch { /* private mode */ }
-    setMySeat(findSeatByName(payload, trimmed));
+    const found = findSeatByName(payload, trimmed);
+    setMySeat(found);
     setSearched(true);
     setShowSuggest(false);
+    if (found) speakSeat(found.label);
   };
   const pickName = (picked: string) => { setName(picked); runSearch(picked); };
+  // Must run inside the tap handler: iOS/WeChat only allow speech from a user gesture.
+  const speakSeat = (label: string) => {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(`你的座位是，${label}`);
+      u.lang = 'zh-CN';
+      u.rate = 0.9;
+      synth.speak(u);
+    } catch { /* speech unsupported */ }
+  };
 
   if (loading) return <div className="min-h-[100dvh] flex items-center justify-center bg-background text-muted-foreground">加载中...</div>;
   if (error || !payload) return <div className="min-h-[100dvh] flex items-center justify-center bg-background"><p className="text-destructive">{error}</p></div>;
@@ -139,6 +153,10 @@ export default function SeatLookupPage() {
             <div className="flex items-center justify-center gap-2 text-2xl font-bold text-primary">
               <MapPin className="w-6 h-6" /> {mySeat.label}
             </div>
+            <button type="button" onClick={() => speakSeat(mySeat.label)}
+              className="mt-3 px-4 py-1.5 rounded-full text-sm border border-primary/30 text-primary bg-background active:bg-primary/10">
+              🔊 再听一遍
+            </button>
           </div>
         )}
 
