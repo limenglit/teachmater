@@ -26,6 +26,7 @@ export default function TaskSubmitPage() {
   const [completedTasks, setCompletedTasks] = useState<Set<number>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [nameQuery, setNameQuery] = useState(() => localStorage.getItem(NAME_KEY) || '');
+  const [saveError, setSaveError] = useState(false);
 
   useEffect(() => {
     loadSession();
@@ -79,6 +80,10 @@ export default function TaskSubmitPage() {
       });
     if (!error) {
       setCompletedTasks(prev => new Set([...prev, taskIdx]));
+      setSaveError(false);
+    } else {
+      console.warn('[task] completion insert failed', error);
+      setSaveError(true);
     }
     setSubmitting(false);
   };
@@ -197,6 +202,13 @@ export default function TaskSubmitPage() {
               );
             })}
           </div>
+
+          {saveError && (
+            <p className="mt-3 text-sm text-destructive text-center" role="alert">
+              {(() => { const s = t('teamwork.saveFailed'); return s === 'teamwork.saveFailed' ? '保存失败' : s; })()}，请再点一次
+            </p>
+          )}
+
 
           {progress === 100 && (
             <div className="mt-4 text-center">
