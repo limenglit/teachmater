@@ -36,6 +36,13 @@
       "when": 1793081380361,
       "tag": "0004_discussion_topic_history",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793685476334,
+      "tag": "0005_fix_task_completion_insert_policy",
+      "breakpoints": true
     }
   ]
 }

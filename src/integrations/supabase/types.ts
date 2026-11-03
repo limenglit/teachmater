@@ -2473,6 +2473,10 @@ export type Database = {
         }[]
       }
       submit_vocab_set: { Args: { p_set_id: string }; Returns: undefined }
+      task_session_is_active: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       teacher_add_checkin_record: {
         Args: { p_session_id: string; p_student_name: string; p_token: string }
         Returns: {
