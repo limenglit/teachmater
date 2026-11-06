@@ -73,6 +73,7 @@ export default function BoardSubmitPage() {
   const [waveBars, setWaveBars] = useState<number[]>(() => Array.from({ length: 20 }, () => 12));
   const [asrPreview, setAsrPreview] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
