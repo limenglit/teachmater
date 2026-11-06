@@ -38,11 +38,19 @@ type UploadListener = (tasks: UploadTask[]) => void;
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
 
 export async function compressImage(file: File): Promise<File> {
-  if (!IMAGE_TYPES.includes(file.type)) return file;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  // HarmonyOS/WeChat pickers often return an empty MIME type; fall back to the extension.
+  const isCompressible = IMAGE_TYPES.includes(file.type)
+    || (!file.type && ['jpg', 'jpeg', 'png', 'webp', 'bmp'].includes(ext));
+  if (!isCompressible) return file;
   // Skip small images (< 500KB)
   if (file.size < 500 * 1024) return file;
 
-  return new Promise<File>((resolve) => {
+  return new Promise<File>((outerResolve) => {
+    let done = false;
+    const resolve = (f: File) => { if (!done) { done = true; outerResolve(f); } };
+    // Some ArkWeb/WebView builds never fire onload for huge photos; upload the original after 8s.
+    setTimeout(() => resolve(file), 8000);
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -57,11 +65,14 @@ export async function compressImage(file: File): Promise<File> {
         h = Math.round(h * ratio);
       }
 
+      try {
       const canvas = document.createElement('canvas');
       canvas.width = w;
       canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { resolve(file); return; }
       ctx.drawImage(img, 0, 0, w, h);
+      if (typeof canvas.toBlob !== 'function') { resolve(file); return; }
 
       canvas.toBlob(
         (blob) => {
@@ -75,6 +86,9 @@ export async function compressImage(file: File): Promise<File> {
         'image/jpeg',
         UPLOAD_CONFIG.IMAGE_QUALITY
       );
+      } catch {
+        resolve(file); // canvas out of memory etc.
+      }
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);

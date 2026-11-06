@@ -73,6 +73,7 @@ export default function BoardSubmitPage() {
   const [waveBars, setWaveBars] = useState<number[]>(() => Array.from({ length: 20 }, () => 12));
   const [asrPreview, setAsrPreview] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -293,7 +294,10 @@ export default function BoardSubmitPage() {
 
     setUploading(true);
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
-    const category = file.type.startsWith('audio/') ? 'audio' : getFileCategory(ext);
+    const category = file.type.startsWith('audio/') ? 'audio'
+      : file.type.startsWith('image/') ? 'image'
+      : file.type.startsWith('video/') ? 'video'
+      : getFileCategory(ext);
 
     const { promise } = uploadProgress.addUpload(file, { boardId });
     try {
@@ -309,9 +313,15 @@ export default function BoardSubmitPage() {
   }, [boardId, uploadProgress]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
-    await uploadFileToBoardMedia(file);
+    try {
+      await uploadFileToBoardMedia(file);
+    } finally {
+      // Allow re-selecting the same photo after a failure (HarmonyOS/WeChat keep the old value).
+      try { input.value = ''; } catch { /* ignore */ }
+    }
   };
 
   const stopRecordingTracks = useCallback(() => {
@@ -1025,6 +1035,10 @@ export default function BoardSubmitPage() {
               <div className="flex gap-2">
                 <Input value={url} onChange={e => setUrl(e.target.value)} placeholder={t('board.cardUrl')} className="flex-1" />
                 <input ref={fileRef} type="file" accept={ACCEPT_ALL_MEDIA} onChange={handleUpload} className="hidden" />
+                <input ref={photoRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+                <Button data-testid="board-submit-photo" variant="outline" size="sm" onClick={() => photoRef.current?.click()} disabled={uploading} className="gap-1 shrink-0">
+                  🖼️ 照片
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading} className="gap-1 shrink-0">
                   <Paperclip className="w-4 h-4" />
                   {uploading ? t('board.uploading') : t('board.uploadFile')}
@@ -1086,6 +1100,9 @@ export default function BoardSubmitPage() {
                 ))}
               </div>
 
+              {uploading && (
+                <p className="text-xs text-muted-foreground text-center">图片/文件上传中，请稍候，完成后即可提交</p>
+              )}
               <Button data-testid="board-submit-btn" onClick={handleSubmit} disabled={(!content.trim() && !mediaUrl) || submitting} className="w-full h-12 text-base gap-2">
                 <Send className="w-4 h-4" />
                 {submitting ? t('board.submitting') : t('board.submit')}
