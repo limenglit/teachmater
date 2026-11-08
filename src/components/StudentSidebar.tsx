@@ -25,6 +25,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
   const [newName, setNewName] = useState('');
   const [importText, setImportText] = useState('');
   const [importOpen, setImportOpen] = useState(false);
+  const [manualPaste, setManualPaste] = useState(false);
   const [importMode, setImportMode] = useState<'replace' | 'append'>('append');
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -126,9 +127,20 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
   };
 
   const handlePasteFromClipboard = async () => {
+    const openManualPaste = () => {
+      setManualPaste(true);
+      setImportOpen(true);
+    };
+    if (/MicroMessenger/i.test(navigator.userAgent) || !navigator.clipboard?.readText) {
+      openManualPaste();
+      return;
+    }
     try {
       const text = await navigator.clipboard.readText();
-      if (!text.trim()) return;
+      if (!text.trim()) {
+        openManualPaste();
+        return;
+      }
       const parsed = parseStudentsFromText(text);
       const parsedCount = parsed.length;
       const prevCount = students.length;
@@ -146,7 +158,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
         });
       }
     } catch {
-      toast({ title: t('sidebar.pasteFailed') || '粘贴失败', variant: 'destructive' });
+      openManualPaste();
     }
   };
 
@@ -309,7 +321,7 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
       </div>
 
       {/* Bottom Actions - no longer sticky, just a normal bottom section */}
-      <div className="shrink-0 p-3 border-t border-border bg-card space-y-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <div className="shrink-0 p-3 border-t border-border bg-card space-y-2">
         {/* Add student row */}
         <div className="flex gap-1.5">
           <Input
@@ -328,20 +340,22 @@ export default function StudentSidebar({ onClose, collapsed, onToggleCollapse, o
           <Button variant="outline" size="sm" onClick={handlePasteFromClipboard} className="flex-1 h-8 text-xs font-medium min-w-0" title={t('sidebar.paste')}>
             <ClipboardPaste className="w-3 h-3 mr-1 shrink-0" /> {t('sidebar.paste')}
           </Button>
-          <Dialog open={importOpen} onOpenChange={setImportOpen}>
+          <Dialog open={importOpen} onOpenChange={(open) => { setImportOpen(open); if (!open) setManualPaste(false); }}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="flex-1 h-8 text-xs font-medium min-w-0">
                 <Upload className="w-3 h-3 mr-1 shrink-0" /> {t('sidebar.import')}
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-2xl max-h-[calc(var(--app-vh,100dvh)-2rem)]" onOpenAutoFocus={(event) => { if (!manualPaste) return; event.preventDefault(); document.getElementById('roster-import-text')?.focus(); }}>
               <DialogHeader>
                 <DialogTitle>{t('sidebar.importTitle')}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 max-h-[70vh] overflow-y-auto">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2">{t('sidebar.importPaste')}</p>
+                  <p className="text-sm text-muted-foreground mb-2">{manualPaste ? '在下方文本框长按粘贴名单' : t('sidebar.importPaste')}</p>
                   <Textarea
+                    id="roster-import-text"
+                    aria-label="粘贴学生名单"
                     value={importText}
                     onChange={e => setImportText(e.target.value)}
                     placeholder="姓名,性别,单位,职务&#10;张三,男,物理学院,组长&#10;李四,女,化学学院,组员"

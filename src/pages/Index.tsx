@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, Suspense } from 'react';
-import { StudentProvider } from '@/contexts/StudentContext';
+import { StudentProvider, useStudents } from '@/contexts/StudentContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -24,7 +24,8 @@ const StoryboardPanel = lazyRetry(() => import('@/components/StoryboardPanel'));
 const PPTPanel = lazyRetry(() => import('@/components/PPTPanel'));
 const VisualizationPanel = lazyRetry(() => import('@/components/VisualizationPanel'));
 const VocabPanel = lazyRetry(() => import('@/components/VocabPanel'));
-import { LogIn } from 'lucide-react';
+import { LogIn, ClipboardList, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useNavigate } from '@/lib/router-compat';
 import { useAIQuota } from '@/hooks/useAIQuota';
 import { useAIOrderNotifier } from '@/hooks/useAIOrderNotifier';
@@ -81,6 +82,18 @@ const PanelFallback = () => (
     <div className="w-6 h-6 rounded-full border-2 border-muted border-t-primary animate-spin" />
   </div>
 );
+
+const EmptyRosterAction = ({ onOpen }: { onOpen: () => void }) => {
+  const { students } = useStudents();
+  if (students.length > 0) return null;
+  return (
+    <div className="px-4 pt-4 lg:hidden">
+      <Button variant="outline" onClick={onOpen} className="max-w-full whitespace-normal h-auto min-h-10">
+        <Upload className="w-4 h-4 shrink-0" /> 导入 / 粘贴学生名单
+      </Button>
+    </div>
+  );
+};
 
 const Index = () => {
   const { user, approvalStatus, isAdmin, nickname } = useAuth();
@@ -167,7 +180,7 @@ const Index = () => {
           <WeChatBanner />
 
           {/* Header */}
-          <header className="app-header-safe sticky top-0 z-30 lg:static flex items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
+          <header className="app-header-safe sticky top-0 z-30 lg:static flex flex-wrap items-center justify-between px-3 sm:px-4 py-0 bg-card border-b border-border">
             <h1 className="sr-only">教创搭子 TeacherMate — 教师智能教学辅助平台：随机点名、座位编排、小组管理、互动签到、白板协作、AI 测验生成</h1>
             <div className="flex items-center gap-2 sm:gap-3">
               <picture>
@@ -181,14 +194,17 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-1">
               {/* Mobile sidebar toggle */}
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSidebarMode('list'); setSidebarCollapsed(false); setSidebarOpen(!sidebarOpen); }}
+                className="lg:hidden gap-1 px-2 text-foreground"
                 aria-label="打开学生名单侧边栏"
+                aria-expanded={sidebarOpen}
                 title="学生名单"
               >
-                <span className="text-base" aria-hidden="true">📋</span>
-              </button>
+                <ClipboardList className="w-4 h-4" aria-hidden="true" /> 名单
+              </Button>
               {/* Auth button */}
               {isApproved && (
                 <button
@@ -243,7 +259,7 @@ const Index = () => {
             {/* Sidebar area */}
             {true ? (
               <div className={`
-                app-sidebar-safe fixed top-0 left-0 lg:relative lg:top-auto lg:left-auto z-50 lg:z-auto h-[100dvh] lg:h-full min-h-0
+                app-sidebar-safe roster-drawer fixed top-0 left-0 lg:relative lg:top-auto lg:left-auto z-50 lg:z-auto lg:h-full min-h-0
                 transition-transform duration-300 ease-in-out
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
               `}>
@@ -277,6 +293,7 @@ const Index = () => {
             ) : null}
 
             <div className="app-content-safe flex-1 min-w-0 lg:min-h-0 lg:overflow-y-auto overflow-x-hidden transition-[width] duration-150 ease-out">
+              {['random', 'teamwork', 'seats'].includes(activeTab) && <EmptyRosterAction onOpen={() => { setSidebarMode('list'); setSidebarCollapsed(false); setSidebarOpen(true); }} />}
               {/* 积分面板后，工具箱前插入社区 */}
               <Suspense fallback={<PanelFallback />}>{renderContent()}</Suspense>
             </div>

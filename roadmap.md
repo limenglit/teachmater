@@ -6,3 +6,8 @@
 # Formula puzzle editor
 - [x] Add draggable, sortable formula blocks with editable math and chemistry fields and live preview.
 - [x] Preserve existing templates and direct LaTeX editing; verify assembly, reorder, edit, delete and insertion (9 focused tests passed; real editor drag/reorder/insert verified).
+
+# WeChat roster access
+- [x] Make the mobile roster entry and empty-roster import action visible.
+- [x] Keep drawer actions within the visible viewport; retain class-library import labels on phones (360px signed-in check passed).
+- [x] Fall back to manual paste when clipboard access is unavailable and verify import end to end (15 tests passed; WeChat simulation imported two names and read them back after reload).

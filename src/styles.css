@@ -480,6 +480,20 @@ html {
    WeChat in-app browser (WKWebView on iOS, X5 / XWeb on Android).
    `.is-wechat*` is set by installWeChatCompat() at boot.
    =================================================================== */
+.roster-drawer {
+  height: 100vh;
+  height: var(--app-vh, 100dvh);
+  padding-top: var(--safe-top, env(safe-area-inset-top, 0px));
+  padding-bottom: var(--safe-bottom, env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 1023px) {
+  html.is-wechat .roster-drawer {
+    padding-bottom: max(var(--safe-bottom, env(safe-area-inset-bottom, 0px)), 3rem);
+  }
+}
+@media (min-width: 1024px) {
+  .roster-drawer { height: 100%; }
+}
 html.is-wechat,
 html.is-wechat body {
   /* X5 breaks document scrolling when both html and body are scroll
