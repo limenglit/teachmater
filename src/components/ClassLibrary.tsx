@@ -551,9 +551,9 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
 
   return (
     <TooltipProvider delayDuration={250}>
-    <div className="flex-1 flex overflow-hidden transition-opacity duration-150">
+    <div className="flex-1 min-h-0 flex flex-col sm:flex-row overflow-hidden transition-opacity duration-150">
       {onBackToList && (
-        <div className="w-10 border-r border-border bg-card flex flex-col h-full items-center py-3 gap-2">
+        <div className="sm:w-10 sm:border-r border-b sm:border-b-0 border-border bg-card flex sm:flex-col shrink-0 items-center p-2 sm:py-3 gap-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -585,21 +585,21 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
         </div>
       )}
       {/* Left: Tree */}
-      <div className="w-56 lg:w-64 border-r border-border bg-card flex flex-col overflow-hidden">
+      <div className="w-full sm:w-56 lg:w-64 max-h-[40%] sm:max-h-none shrink-0 border-r border-border bg-card flex flex-col min-h-0 overflow-hidden">
         <div className="p-3 border-b border-border">
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 min-w-0 truncate">
               <Building2 className="w-4 h-4" /> {t('library.title')}
             </h3>
             <div className="flex flex-wrap justify-end gap-1 shrink-0">
               <input ref={fileRef} type="file" accept=".xls,.xlsx,.csv,.txt,.tsv" onChange={handleFileSelect} className="hidden" />
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={downloadTemplate} title={t('library.downloadTemplate')}>
-                <Download className="w-3 h-3 mr-0 sm:mr-1" />
-                <span className="hidden sm:inline">{t('library.downloadTemplate')}</span>
+                <Download className="w-3 h-3 mr-1" />
+                <span>{t('library.downloadTemplate')}</span>
               </Button>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={() => fileRef.current?.click()} title={t('library.import')}>
-                <Upload className="w-3 h-3 mr-0 sm:mr-1" />
-                <span className="hidden sm:inline">{t('library.import')}</span>
+                <Upload className="w-3 h-3 mr-1" />
+                <span>{t('library.import')}</span>
               </Button>
               <Button variant="ghost" size="sm" className="h-7 px-2 text-xs whitespace-nowrap" onClick={exportAllToExcel} disabled={colleges.length === 0} title={t('library.export')}>
                 <Download className="w-3 h-3 mr-0 sm:mr-1" />
@@ -721,7 +721,7 @@ export default function ClassLibrary({ onBackToList }: ClassLibraryProps) {
       </div>
 
       {/* Right: Student list */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
         {selectedClass ? (
           <>
             <div className="p-3 border-b border-border bg-card flex flex-wrap items-start justify-between gap-2">
