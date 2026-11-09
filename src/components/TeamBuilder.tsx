@@ -1,3 +1,4 @@
+import { readDraggedRosterStudent, applyStudentToGroups } from '@/lib/group-dnd-helper';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import PendingMembersPanel from '@/components/teamwork/PendingMembersPanel';
 import { syncBucketMembers, findUnassigned, fillSmallestBuckets, describeRosterSync, type LeaderOps } from '@/lib/roster-sync';
@@ -205,12 +206,17 @@ export default function TeamBuilder() {
   };
 
   const handleDragStart = (teamId: string, memberIdx: number) => { setDragItem({ teamId, memberIdx }); };
-  const handleDragOver = (e: React.DragEvent, teamId: string, memberIdx: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ teamId, memberIdx }); };
-  const handleDragOverTeam = (e: React.DragEvent, teamId: string) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const team = teams.find(t => t.id === teamId); if (team) setDropTarget({ teamId, memberIdx: team.members.length }); };
+  const handleDragOver = (e: React.DragEvent, teamId: string, memberIdx: number) => { e.preventDefault(); e.dataTransfer.dropEffect = dragItem ? 'move' : 'copy'; setDropTarget({ teamId, memberIdx }); };
+  const handleDragOverTeam = (e: React.DragEvent, teamId: string) => { e.preventDefault(); e.dataTransfer.dropEffect = dragItem ? 'move' : 'copy'; const team = teams.find(t => t.id === teamId); if (team) setDropTarget({ teamId, memberIdx: team.members.length }); };
 
   const handleDrop = (e: React.DragEvent, targetTeamId: string, targetIdx: number) => {
     e.preventDefault();
-    if (!dragItem) return;
+    if (!dragItem) {
+      const s0 = readDraggedRosterStudent(e, students);
+      if (s0) setTeams(prev => applyStudentToGroups<TeamMember, Team>(prev, s0, targetTeamId, targetIdx, s => ({ id: s.id, name: s.name, isCaptain: false, isViceCaptain: false })));
+      setDropTarget(null);
+      return;
+    }
     if (dragItem.teamId === POOL_ID) {
       const student = pendingStudents[dragItem.memberIdx];
       if (student) {
