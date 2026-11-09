@@ -1,3 +1,4 @@
+import { readDraggedRosterStudent, applyStudentToGroups } from '@/lib/group-dnd-helper';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import PendingMembersPanel from '@/components/teamwork/PendingMembersPanel';
 import { syncBucketMembers, findUnassigned, fillSmallestBuckets, describeRosterSync, type LeaderOps } from '@/lib/roster-sync';
@@ -200,12 +201,17 @@ export default function GroupManager() {
   };
 
   const handleDragStart = (groupId: string, memberIdx: number) => { setDragItem({ groupId, memberIdx }); };
-  const handleDragOver = (e: React.DragEvent, groupId: string, memberIdx: number) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDropTarget({ groupId, memberIdx }); };
-  const handleDragOverGroup = (e: React.DragEvent, groupId: string) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; const group = groups.find(g => g.id === groupId); if (group) setDropTarget({ groupId, memberIdx: group.members.length }); };
+  const handleDragOver = (e: React.DragEvent, groupId: string, memberIdx: number) => { e.preventDefault(); e.dataTransfer.dropEffect = dragItem ? 'move' : 'copy'; setDropTarget({ groupId, memberIdx }); };
+  const handleDragOverGroup = (e: React.DragEvent, groupId: string) => { e.preventDefault(); e.dataTransfer.dropEffect = dragItem ? 'move' : 'copy'; const group = groups.find(g => g.id === groupId); if (group) setDropTarget({ groupId, memberIdx: group.members.length }); };
 
   const handleDrop = (e: React.DragEvent, targetGroupId: string, targetIdx: number) => {
     e.preventDefault();
-    if (!dragItem) return;
+    if (!dragItem) {
+      const s0 = readDraggedRosterStudent(e, students);
+      if (s0) setGroups(prev => applyStudentToGroups(prev, s0, targetGroupId, targetIdx, s => ({ id: s.id, name: s.name, isLeader: false, isViceLeader: false })));
+      setDropTarget(null);
+      return;
+    }
     if (dragItem.groupId === POOL_ID) {
       const student = pendingStudents[dragItem.memberIdx];
       if (student) {
