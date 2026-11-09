@@ -22,6 +22,8 @@ export default function SeatLookupPage() {
   const [showSuggest, setShowSuggest] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const mineRef = useRef<HTMLDivElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 
   const namePool = useMemo(() => {
     const names = Array.from(new Set((payload?.entries || []).map(e => e.name.trim()).filter(Boolean)));
@@ -59,7 +61,7 @@ export default function SeatLookupPage() {
   }, [sessionId]);
 
   useEffect(() => {
-    if (mySeat) mineRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+    if (mySeat) resultRef.current?.scrollIntoView({ block: 'start' });
   }, [mySeat]);
 
   const runSearch = (value: string) => {
@@ -79,6 +81,8 @@ export default function SeatLookupPage() {
       const synth = window.speechSynthesis;
       if (!synth || typeof SpeechSynthesisUtterance === 'undefined') return;
       synth.cancel();
+      // WeChat/iOS sometimes leave the engine paused after cancel().
+      try { synth.resume(); } catch { /* ignore */ }
       const u = new SpeechSynthesisUtterance(`你的座位是，${label}`);
       u.lang = 'zh-CN';
       u.rate = 0.9;
@@ -95,10 +99,14 @@ export default function SeatLookupPage() {
   const visCol = (c: number) => c + colAisles.filter(a => c > a).length;
   const visRow = (r: number) => r + rowAisles.filter(a => r > a).length;
   const doorLeft = !payload.doorOnRight;
+  const totalCols = payload.cols + colAisles.length;
+  // Fit the whole room into the phone width: fewer name chars and smaller text as columns grow.
+  const nameChars = totalCols > 12 ? 1 : totalCols > 8 ? 2 : 3;
+  const cellFont = totalCols > 12 ? 9 : 10;
 
   return (
-    <div className="min-h-[100dvh] bg-background p-4 sm:p-8">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-[100dvh] bg-background px-3 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:p-8">
+      <div className="max-w-md mx-auto w-full min-w-0">
         <h1 className="text-xl font-bold text-foreground text-center mb-1">{title || '查询我的座位'}</h1>
         <p className="text-sm text-muted-foreground text-center mb-6">共 {namePool.length} 人，输入姓氏后点选你的名字</p>
 
@@ -148,15 +156,15 @@ export default function SeatLookupPage() {
         )}
 
         {searched && mySeat && (
-          <div className="rounded-xl border-2 border-primary bg-primary/5 p-5 mb-4 text-center">
+          <div ref={resultRef} className="scroll-mt-3 rounded-xl border-2 border-primary bg-primary/5 p-5 mb-4 text-center">
             <div className="text-sm text-muted-foreground mb-1">{mySeat.name} 的座位</div>
             <div className="flex items-center justify-center gap-2 text-2xl font-bold text-primary">
               <MapPin className="w-6 h-6" /> {mySeat.label}
             </div>
-            <button type="button" onClick={() => speakSeat(mySeat.label)}
+            {canSpeak && <button type="button" onClick={() => speakSeat(mySeat.label)}
               className="mt-3 px-4 py-1.5 rounded-full text-sm border border-primary/30 text-primary bg-background active:bg-primary/10">
               🔊 再听一遍
-            </button>
+            </button>}
           </div>
         )}
 
@@ -167,9 +175,9 @@ export default function SeatLookupPage() {
           const leaderWord = payload.groupKind === 'team' ? '队长' : '组长';
           return (
             <div className="rounded-xl border border-border bg-card p-4 mb-4">
-              <div className="flex items-baseline justify-between mb-2">
-                <span className="text-lg font-bold text-foreground">{g.name}</span>
-                <span className="text-xs text-muted-foreground">共 {g.members.length} 人</span>
+              <div className="flex items-baseline justify-between gap-2 mb-2">
+                <span className="min-w-0 break-all text-lg font-bold text-foreground">{g.name}</span>
+                <span className="shrink-0 pl-2 text-xs text-muted-foreground">共 {g.members.length} 人</span>
               </div>
               {g.leader && <div className="text-sm text-muted-foreground mb-2">{leaderWord}：<span className="text-foreground font-medium">⭐ {g.leader}</span></div>}
               <div className="text-xs text-muted-foreground mb-1.5">同{unit}成员</div>
@@ -184,26 +192,26 @@ export default function SeatLookupPage() {
           );
         })()}
 
-        <div className="rounded-xl border border-border bg-card p-3">
+        <div className="rounded-xl border border-border bg-card p-2 sm:p-3">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>{doorLeft ? '🚪 门' : '🪟 窗'}</span>
             <span className="px-6 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 font-medium">讲台</span>
             <span>{doorLeft ? '🪟 窗' : '🚪 门'}</span>
           </div>
-          <div className="overflow-auto max-h-[60dvh]">
-            <div className="grid gap-1 w-fit mx-auto"
-              style={{ gridTemplateColumns: `repeat(${payload.cols + colAisles.length}, minmax(2.25rem, auto))` }}>
+          <div className="w-full">
+            <div className="grid w-full"
+              style={{ gridTemplateColumns: `repeat(${totalCols}, minmax(0, 1fr))`, gap: totalCols > 12 ? 2 : 4 }}>
               {payload.cells.flatMap((row, r) => row.map((n, c) => {
                 const isMine = !!mySeat && mySeat.r === r && mySeat.c === c;
                 const isClosed = closed.has(`${r}-${c}`);
                 return (
                   <div key={`${r}-${c}`} ref={isMine ? mineRef : undefined}
-                    style={{ gridRow: visRow(r) + 1, gridColumn: visCol(c) + 1 }}
-                    className={`h-8 px-1 rounded text-[10px] leading-none flex items-center justify-center whitespace-nowrap border ${
+                    className={`aspect-square min-w-0 max-h-9 overflow-hidden rounded-sm leading-none flex items-center justify-center whitespace-nowrap border ${
                       isMine ? 'bg-primary text-primary-foreground border-primary font-bold ring-2 ring-primary/40'
                         : isClosed ? 'border-dashed border-border/50 bg-transparent'
-                          : n ? 'bg-muted text-muted-foreground border-border' : 'bg-background border-border/60'}`}>
-                    {isMine ? '我' : n ? n.slice(0, 3) : ''}
+                          : n ? 'bg-muted text-muted-foreground border-border' : 'bg-background border-border/60'}`}
+                    style={{ gridRow: visRow(r) + 1, gridColumn: visCol(c) + 1, fontSize: cellFont }}>
+                    {isMine ? '我' : n ? n.slice(0, nameChars) : ''}
                   </div>
                 );
               }))}
