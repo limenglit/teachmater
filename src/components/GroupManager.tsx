@@ -208,7 +208,7 @@ export default function GroupManager() {
     e.preventDefault();
     if (!dragItem) {
       const s0 = readDraggedRosterStudent(e, students);
-      if (s0) setGroups(prev => applyStudentToGroups(prev, s0, targetGroupId, targetIdx, s => ({ id: s.id, name: s.name, isLeader: false, isViceLeader: false })));
+      if (s0) setGroups(prev => applyStudentToGroups<GroupMember, Group>(prev, s0, targetGroupId, targetIdx, s => ({ id: s.id, name: s.name, isLeader: false, isViceLeader: false })));
       setDropTarget(null);
       return;
     }
