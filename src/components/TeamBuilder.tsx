@@ -213,7 +213,7 @@ export default function TeamBuilder() {
     e.preventDefault();
     if (!dragItem) {
       const s0 = readDraggedRosterStudent(e, students);
-      if (s0) setTeams(prev => applyStudentToGroups(prev, s0, targetTeamId, targetIdx, s => ({ id: s.id, name: s.name, isCaptain: false, isViceCaptain: false })));
+      if (s0) setTeams(prev => applyStudentToGroups<TeamMember, Team>(prev, s0, targetTeamId, targetIdx, s => ({ id: s.id, name: s.name, isCaptain: false, isViceCaptain: false })));
       setDropTarget(null);
       return;
     }
