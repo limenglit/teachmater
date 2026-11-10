@@ -41,6 +41,7 @@ describe('ToolkitPanel command cards', () => {
     } as Response);
 
     renderWithProviders(<ToolkitPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /课堂指令卡/ }));
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '小组辩论' },
@@ -65,6 +66,7 @@ describe('ToolkitPanel command cards', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
 
     renderWithProviders(<ToolkitPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /课堂指令卡/ }));
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '快速测验' },
@@ -84,6 +86,7 @@ describe('ToolkitPanel command cards', () => {
     } as Response);
 
     renderWithProviders(<ToolkitPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /课堂指令卡/ }));
 
     fireEvent.change(screen.getByPlaceholderText('输入课堂指令主题，如：小组辩论'), {
       target: { value: '课堂热身' },
