@@ -164,22 +164,22 @@ export default function ToolkitPanel() {
         return (
           <div
             key={id}
-            className={visible ? 'fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-foreground/30 p-0 sm:p-6' : 'hidden'}
+            className={visible ? 'toolkit-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-foreground/30 p-0 sm:p-6' : 'hidden'}
             onClick={() => setOpenId(null)}
           >
             <div
               role="dialog"
               aria-label={label(tool)[0]}
-              className="w-full sm:max-w-2xl max-h-[calc(var(--app-vh,100dvh)-1rem)] sm:max-h-[calc(var(--app-vh,100dvh)-3rem)] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-background border border-border shadow-lg"
+              className="toolkit-window w-full sm:max-w-2xl max-h-[calc(var(--app-vh,100dvh)-1rem)] sm:max-h-[calc(var(--app-vh,100dvh)-3rem)] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-card border border-border shadow-card"
               onClick={e => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 bg-background/95 border-b border-border">
+              <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 bg-card border-b border-border">
                 <span className="font-semibold text-foreground">{label(tool)[0]}</span>
                 <Button variant="ghost" size="icon" aria-label={lang === 'zh' ? '关闭' : 'Close'} onClick={() => setOpenId(null)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="p-3 sm:p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{tool.render()}</div>
+              <div className="toolkit-window-body p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">{tool.render()}</div>
             </div>
           </div>
         );
