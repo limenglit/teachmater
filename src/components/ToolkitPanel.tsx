@@ -1,3 +1,4 @@
+import type React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { Link as LinkIcon, Download, Copy, X, Code2, MessagesSquare, Timer, Volume2, Trophy, Shuffle, Dices, BarChart3, Clock, CircleDot, Wind, Type, MonitorPlay, ListChecks, Braces, Image as ImageIcon, Megaphone, QrCode, Brain, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -83,7 +84,7 @@ function CommandFlash({ text, emoji, iconUrl, onDone }: { text: string; emoji?: 
   );
 }
 
-type ToolDef = { id: string; zh: [string, string]; en: [string, string]; icon: LucideIcon; render: () => JSX.Element };
+type ToolDef = { id: string; zh: [string, string]; en: [string, string]; icon: LucideIcon; render: () => React.ReactNode };
 
 const TOOLS: ToolDef[] = [
   { id: 'coderMate', zh: ['编码搭子', '代码调试与讲解助手'], en: ['CoderMate', 'Code debugging helper'], icon: Code2, render: () => <CoderMateTool /> },
