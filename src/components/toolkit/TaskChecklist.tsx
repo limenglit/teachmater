@@ -743,7 +743,7 @@ export default function TaskChecklist() {
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
+        <h3 className="toolkit-dup-title font-semibold text-foreground flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-primary" />
           {t('task.title')}
         </h3>

@@ -583,6 +583,22 @@ html.is-wechat [data-own-pinch] {
   padding: 0 !important;
   border-radius: 0 !important;
 }
+/* Toolkit window layout spec:
+   header = icon + name + one-line purpose + run-state chip + close (owned by ToolkitPanel);
+   body   = tool content only; tools' own top title is hidden because the header shows it;
+   sections stack with one rhythm; action rows wrap; status/error text uses one size. */
+.toolkit-window-body > * > h3:first-child,
+.toolkit-window-body .toolkit-dup-title { display: none !important; }
+.toolkit-window-body > * > *:first-child:empty { display: none; }
+.toolkit-window-body > * { display: block; }
+.toolkit-window-body > * > * + * { margin-top: 1rem; }
+.toolkit-window-body > * > h3:first-child + * { margin-top: 0; }
+.toolkit-window-body h3:not(:first-child),
+.toolkit-window-body h4 { font-size: 0.875rem; font-weight: 600; color: var(--foreground); }
+.toolkit-window-body .flex:has(> button) { flex-wrap: wrap; }
+.toolkit-window-body .text-destructive,
+.toolkit-window-body [role="status"],
+.toolkit-window-body [role="alert"] { font-size: 0.8125rem; line-height: 1.4; }
 @keyframes toolkit-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes toolkit-rise { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .toolkit-backdrop, .toolkit-window { animation: none; } }

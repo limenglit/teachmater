@@ -376,7 +376,7 @@ export default function PollManager() {
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-foreground flex items-center gap-2">
+        <h3 className="toolkit-dup-title font-semibold text-foreground flex items-center gap-2">
           <BarChart3 className="w-4 h-4" /> {t('poll.title')}
         </h3>
         <Button size="sm" className="gap-1" onClick={() => setShowCreate(true)}>
