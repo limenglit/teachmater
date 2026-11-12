@@ -173,12 +173,22 @@ export default function ToolkitPanel() {
               className="toolkit-window w-full sm:max-w-2xl max-h-[calc(var(--app-vh,100dvh)-1rem)] sm:max-h-[calc(var(--app-vh,100dvh)-3rem)] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-card border border-border shadow-card"
               onClick={e => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 bg-card border-b border-border">
-                <span className="font-semibold text-foreground">{label(tool)[0]}</span>
-                <Button variant="ghost" size="icon" aria-label={lang === 'zh' ? '关闭' : 'Close'} onClick={() => setOpenId(null)}>
+              <header className="toolkit-window-header sticky top-0 z-10 flex items-center gap-3 px-4 sm:px-5 h-16 bg-card/95 backdrop-blur border-b border-border">
+                <span className="w-9 h-9 shrink-0 rounded-xl bg-primary/10 text-primary inline-flex items-center justify-center">
+                  <tool.icon className="w-4 h-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-foreground leading-tight truncate">{label(tool)[0]}</span>
+                  <span className="block text-xs text-muted-foreground truncate">{label(tool)[1]}</span>
+                </span>
+                <span role="status" className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] text-primary">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  {lang === 'zh' ? '关闭窗口后继续运行' : 'Keeps running when closed'}
+                </span>
+                <Button variant="ghost" size="icon" className="shrink-0" aria-label={lang === 'zh' ? '关闭' : 'Close'} onClick={() => setOpenId(null)}>
                   <X className="w-4 h-4" />
                 </Button>
-              </div>
+              </header>
               <div className="toolkit-window-body p-4 sm:p-6 pb-[max(1rem,env(safe-area-inset-bottom))]">{tool.render()}</div>
             </div>
           </div>
@@ -247,7 +257,7 @@ function CommandCards() {
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
-      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">{t('cmd.title')}</h3>
+      <h3 className="toolkit-dup-title font-semibold text-foreground mb-4 flex items-center gap-2">{t('cmd.title')}</h3>
       <div className="mb-3 space-y-2">
         <div className="flex gap-2">
           <Input
@@ -331,7 +341,7 @@ function QRCodeGenerator() {
 
   return (
     <div className="bg-card rounded-2xl border border-border shadow-card p-6">
-      <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+      <h3 className="toolkit-dup-title font-semibold text-foreground mb-4 flex items-center gap-2">
         <LinkIcon className="w-4 h-4" /> {t('qr.title')}
       </h3>
 
