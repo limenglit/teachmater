@@ -589,9 +589,7 @@ html.is-wechat [data-own-pinch] {
    sections stack with one rhythm; action rows wrap; status/error text uses one size. */
 .toolkit-window-body > * > h3:first-child,
 .toolkit-window-body .toolkit-dup-title { display: none !important; }
-.toolkit-window-body > * > *:first-child:empty { display: none; }
-.toolkit-window-body > * { display: block; }
-.toolkit-window-body > * > * + * { margin-top: 1rem; }
+.toolkit-window-body > .space-y-0 > * + * { margin-top: 1rem; }
 .toolkit-window-body > * > h3:first-child + * { margin-top: 0; }
 .toolkit-window-body h3:not(:first-child),
 .toolkit-window-body h4 { font-size: 0.875rem; font-weight: 600; color: var(--foreground); }
