@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Brain, Puzzle, Layers, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,6 +19,13 @@ export default function MemoryAidTool() {
     setMode(null);
     setShowManager(false);
   };
+
+  useEffect(() => {
+    if (!mode) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { setMode(null); setShowManager(false); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode]);
 
   // Fullscreen overlay
   if (mode) {

@@ -576,13 +576,24 @@ html.is-wechat [data-own-pinch] {
 /* Toolkit windows: one shared frame; tools' own card chrome is flattened inside it. */
 .toolkit-backdrop { animation: toolkit-fade 180ms ease-out; }
 .toolkit-window { animation: toolkit-rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-.toolkit-window-body > * {
+.toolkit-window-body > *:not(.fixed) {
   border: 0 !important;
   box-shadow: none !important;
   background: transparent !important;
   padding: 0 !important;
   border-radius: 0 !important;
 }
+/* Fullscreen takeover: a tool's own fixed inset-0 layer keeps its real background and covers the
+   viewport; the window frame steps aside (no transform, so fixed is relative to the viewport). */
+.toolkit-window-body .fixed.inset-0 { z-index: 120 !important; }
+.toolkit-backdrop[data-takeover] { background: transparent !important; animation: none !important; }
+.toolkit-backdrop[data-takeover] .toolkit-window {
+  animation: none !important; transform: none !important; overflow: visible !important;
+  background: transparent !important; border-color: transparent !important; box-shadow: none !important;
+}
+.toolkit-backdrop[data-takeover] .toolkit-window-header { visibility: hidden; }
+.toolkit-backdrop[data-takeover] .toolkit-window-body > *:not(.fixed) { visibility: hidden; }
+.toolkit-backdrop[data-takeover] .toolkit-window-body .fixed { visibility: visible; }
 /* Toolkit window layout spec:
    header = icon + name + one-line purpose + run-state chip + close (owned by ToolkitPanel);
    body   = tool content only; tools' own top title is hidden because the header shows it;
