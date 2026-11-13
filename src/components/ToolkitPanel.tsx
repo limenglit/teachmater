@@ -117,6 +117,16 @@ export default function ToolkitPanel() {
   const tools = TOOLS.filter(tool => isToolkitToolVisible(tool.id as never));
   const label = (tool: ToolDef) => (lang === 'zh' ? tool.zh : tool.en);
 
+  const [takeover, setTakeover] = useState(false);
+  useEffect(() => {
+    if (!openId) { setTakeover(false); return; }
+    const check = () => setTakeover(!!document.querySelector('.toolkit-backdrop:not(.hidden) .toolkit-window-body .fixed.inset-0'));
+    check();
+    const mo = new MutationObserver(check);
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    return () => mo.disconnect();
+  }, [openId]);
+
   const open = (id: string) => {
     setMounted(prev => (prev.includes(id) ? prev : [...prev, id]));
     setOpenId(id);
@@ -124,7 +134,12 @@ export default function ToolkitPanel() {
 
   useEffect(() => {
     if (!openId) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenId(null); };
+    // While a tool shows its own fullscreen layer, Esc belongs to that tool (exit fullscreen), not the window.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('.toolkit-window-body .fixed.inset-0')) return;
+      setOpenId(null);
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [openId]);
@@ -164,6 +179,7 @@ export default function ToolkitPanel() {
         return (
           <div
             key={id}
+            data-takeover={visible && takeover ? '' : undefined}
             className={visible ? 'toolkit-backdrop fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-foreground/30 p-0 sm:p-6' : 'hidden'}
             onClick={() => setOpenId(null)}
           >
