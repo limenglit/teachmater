@@ -784,6 +784,45 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_cast_rooms: {
+        Row: {
+          closed: boolean
+          events: Json
+          expires_at: string
+          host_key: string
+          id: string
+          phone_id: string | null
+          phone_key: string
+          picture: Json | null
+          picture_seq: number
+          seq: number
+        }
+        Insert: {
+          closed?: boolean
+          events?: Json
+          expires_at?: string
+          host_key: string
+          id: string
+          phone_id?: string | null
+          phone_key: string
+          picture?: Json | null
+          picture_seq?: number
+          seq?: number
+        }
+        Update: {
+          closed?: boolean
+          events?: Json
+          expires_at?: string
+          host_key?: string
+          id?: string
+          phone_id?: string | null
+          phone_key?: string
+          picture?: Json | null
+          picture_seq?: number
+          seq?: number
+        }
+        Relationships: []
+      }
       poll_votes: {
         Row: {
           created_at: string
@@ -2433,6 +2472,16 @@ export type Database = {
           p_token: string
         }
         Returns: undefined
+      }
+      phone_cast_exchange: {
+        Args: {
+          p_action: string
+          p_key: string
+          p_payload?: Json
+          p_role: string
+          p_room: string
+        }
+        Returns: Json
       }
       poll_is_active: { Args: { p_poll_id: string }; Returns: boolean }
       reject_user: { Args: { p_user_id: string }; Returns: undefined }
