@@ -50,6 +50,13 @@
       "when": 1794656806907,
       "tag": "0006_phone_cast_rooms",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794656986300,
+      "tag": "0007_phone_cast_room_validation",
+      "breakpoints": true
     }
   ]
 }

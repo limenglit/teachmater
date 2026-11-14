@@ -793,6 +793,7 @@ export type Database = {
           id: string
           phone_id: string | null
           phone_key: string
+          phone_seen_at: string | null
           picture: Json | null
           picture_seq: number
           seq: number
@@ -805,6 +806,7 @@ export type Database = {
           id: string
           phone_id?: string | null
           phone_key: string
+          phone_seen_at?: string | null
           picture?: Json | null
           picture_seq?: number
           seq?: number
@@ -817,6 +819,7 @@ export type Database = {
           id?: string
           phone_id?: string | null
           phone_key?: string
+          phone_seen_at?: string | null
           picture?: Json | null
           picture_seq?: number
           seq?: number
