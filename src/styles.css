@@ -611,3 +611,15 @@ html.is-wechat [data-own-pinch] {
 @keyframes toolkit-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes toolkit-rise { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .toolkit-backdrop, .toolkit-window { animation: none; } }
+
+/* Phone casting: bounded media stages, opaque fullscreen, inspectable photos. */
+:root { --cast-stage: 220 10% 94%; --cast-qr: 0 0% 100%; }
+.dark { --cast-stage: 220 12% 5%; }
+.cast-stage { background: hsl(var(--cast-stage)); position: relative; width: 100%; aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px; }
+.cast-stage-full { aspect-ratio: auto; flex: 1; min-height: 0; }
+.cast-media { width: 100%; height: 100%; object-fit: contain; }
+.cast-turn-90 { transform: rotate(90deg) scale(.72); }
+.cast-turn-180 { transform: rotate(180deg); }
+.cast-turn-270 { transform: rotate(270deg) scale(.72); }
+.cast-qr { background: hsl(var(--cast-qr)); padding: 8px; border-radius: 8px; }
+.cast-phone { min-height: 100vh; min-height: 100dvh; }
