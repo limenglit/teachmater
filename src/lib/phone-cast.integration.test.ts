@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadEnv } from 'vite';
 import { randomUUID } from 'node:crypto';
