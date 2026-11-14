@@ -11,3 +11,8 @@
 - [x] Make the mobile roster entry and empty-roster import action visible.
 - [x] Keep drawer actions within the visible viewport; retain class-library import labels on phones (360px signed-in check passed).
 - [x] Fall back to manual paste when clipboard access is unavailable and verify import end to end (15 tests passed; WeChat simulation imported two names and read them back after reload).
+
+# Phone QR casting
+- [x] Add private single-phone rooms and PC QR receiver with fullscreen, rotation, pause and capture.
+- [x] Add mobile camera, supported screen sharing, photo casting and snapshot fallback with permission/error states.
+- [x] Verify two-browser transmission, room isolation and desktop/mobile rendering (camera snapshot fallback and photos delivered; second phone rejected; closing revokes access). Real phones and unrestricted WebRTC networks remain unverified.

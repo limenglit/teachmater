@@ -6,9 +6,10 @@ export type ToolkitToolId =
   | 'barrage' | 'countdown' | 'noise' | 'scoreboard' | 'randomAssigner'
   | 'lottery' | 'poll' | 'stopwatch' | 'trafficLight' | 'breathing'
   | 'textMagnifier' | 'screenCapture' | 'taskChecklist' | 'codeVisualizer'
-  | 'imageEditor' | 'commandCards' | 'qrCode' | 'memoryAid';
+  | 'imageEditor' | 'commandCards' | 'qrCode' | 'memoryAid' | 'phoneCast';
 
 export interface ToolkitToolFlags {
+  phoneCast: boolean;
   coderMate: boolean;
   barrage: boolean; countdown: boolean; noise: boolean; scoreboard: boolean;
   randomAssigner: boolean; lottery: boolean; poll: boolean; stopwatch: boolean;
@@ -18,6 +19,7 @@ export interface ToolkitToolFlags {
 }
 
 export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
+  phoneCast: true,
   coderMate: true,
   barrage: true, countdown: true, noise: true, scoreboard: true,
   randomAssigner: true, lottery: true, poll: true, stopwatch: true,
@@ -27,6 +29,7 @@ export const DEFAULT_TOOLKIT_TOOLS: ToolkitToolFlags = {
 };
 
 const TOOLKIT_TOOL_KEYS: { key: ToolkitToolId; emoji: string; labelKey: string }[] = [
+  { key: 'phoneCast', emoji: '📱', labelKey: '手机扫码投屏' },
   { key: 'coderMate', emoji: '💻', labelKey: 'toolkit.coderMate' },
   { key: 'barrage', emoji: '💬', labelKey: 'toolkit.barrage' },
   { key: 'countdown', emoji: '⏱️', labelKey: 'toolkit.countdown' },
@@ -69,7 +72,7 @@ export default function AdminToolkitConfigPanel({ userType, label, tools, onTogg
           <div key={key} className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border">
             <span className="text-xs flex items-center gap-1.5">
               <span>{emoji}</span>
-              <span>{t(labelKey)}</span>
+              <span>{key === 'phoneCast' ? '手机扫码投屏' : t(labelKey)}</span>
             </span>
             <Switch
               checked={tools[key] !== false}

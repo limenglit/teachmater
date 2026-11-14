@@ -23,6 +23,7 @@ import { Route as SeatingRuleCheckRouteImport } from './routes/seating-rule-chec
 import { Route as UsernameSlugRouteImport } from './routes/$username/$slug'
 import { Route as CheckinSessionIdRouteImport } from './routes/checkin/$sessionId'
 import { Route as DiscussTopicIdRouteImport } from './routes/discuss/$topicId'
+import { Route as PhoneCastRoomIdRouteImport } from './routes/phone-cast/$roomId'
 import { Route as PollPollIdRouteImport } from './routes/poll/$pollId'
 import { Route as QuizSessionIdRouteImport } from './routes/quiz/$sessionId'
 import { Route as SeatCheckinSessionIdRouteImport } from './routes/seat-checkin/$sessionId'
@@ -105,6 +106,11 @@ const DiscussTopicIdRoute = DiscussTopicIdRouteImport.update({
   path: '/discuss/$topicId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PhoneCastRoomIdRoute = PhoneCastRoomIdRouteImport.update({
+  id: '/phone-cast/$roomId',
+  path: '/phone-cast/$roomId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PollPollIdRoute = PollPollIdRouteImport.update({
   id: '/poll/$pollId',
   path: '/poll/$pollId',
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/$username/$slug': typeof UsernameSlugRoute
   '/checkin/$sessionId': typeof CheckinSessionIdRoute
   '/discuss/$topicId': typeof DiscussTopicIdRoute
+  '/phone-cast/$roomId': typeof PhoneCastRoomIdRoute
   '/poll/$pollId': typeof PollPollIdRoute
   '/quiz/$sessionId': typeof QuizSessionIdRoute
   '/seat-checkin/$sessionId': typeof SeatCheckinSessionIdRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/$username/$slug': typeof UsernameSlugRoute
   '/checkin/$sessionId': typeof CheckinSessionIdRoute
   '/discuss/$topicId': typeof DiscussTopicIdRoute
+  '/phone-cast/$roomId': typeof PhoneCastRoomIdRoute
   '/poll/$pollId': typeof PollPollIdRoute
   '/quiz/$sessionId': typeof QuizSessionIdRoute
   '/seat-checkin/$sessionId': typeof SeatCheckinSessionIdRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/$username/$slug': typeof UsernameSlugRoute
   '/checkin/$sessionId': typeof CheckinSessionIdRoute
   '/discuss/$topicId': typeof DiscussTopicIdRoute
+  '/phone-cast/$roomId': typeof PhoneCastRoomIdRoute
   '/poll/$pollId': typeof PollPollIdRoute
   '/quiz/$sessionId': typeof QuizSessionIdRoute
   '/seat-checkin/$sessionId': typeof SeatCheckinSessionIdRoute
@@ -260,6 +269,7 @@ export interface FileRouteTypes {
     | '/$username/$slug'
     | '/checkin/$sessionId'
     | '/discuss/$topicId'
+    | '/phone-cast/$roomId'
     | '/poll/$pollId'
     | '/quiz/$sessionId'
     | '/seat-checkin/$sessionId'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/$username/$slug'
     | '/checkin/$sessionId'
     | '/discuss/$topicId'
+    | '/phone-cast/$roomId'
     | '/poll/$pollId'
     | '/quiz/$sessionId'
     | '/seat-checkin/$sessionId'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/$username/$slug'
     | '/checkin/$sessionId'
     | '/discuss/$topicId'
+    | '/phone-cast/$roomId'
     | '/poll/$pollId'
     | '/quiz/$sessionId'
     | '/seat-checkin/$sessionId'
@@ -342,6 +354,7 @@ export interface RootRouteChildren {
   UsernameSlugRoute: typeof UsernameSlugRoute
   CheckinSessionIdRoute: typeof CheckinSessionIdRoute
   DiscussTopicIdRoute: typeof DiscussTopicIdRoute
+  PhoneCastRoomIdRoute: typeof PhoneCastRoomIdRoute
   PollPollIdRoute: typeof PollPollIdRoute
   QuizSessionIdRoute: typeof QuizSessionIdRoute
   SeatCheckinSessionIdRoute: typeof SeatCheckinSessionIdRoute
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiscussTopicIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/phone-cast/$roomId': {
+      id: '/phone-cast/$roomId'
+      path: '/phone-cast/$roomId'
+      fullPath: '/phone-cast/$roomId'
+      preLoaderRoute: typeof PhoneCastRoomIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/poll/$pollId': {
       id: '/poll/$pollId'
       path: '/poll/$pollId'
@@ -550,6 +570,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsernameSlugRoute: UsernameSlugRoute,
   CheckinSessionIdRoute: CheckinSessionIdRoute,
   DiscussTopicIdRoute: DiscussTopicIdRoute,
+  PhoneCastRoomIdRoute: PhoneCastRoomIdRoute,
   PollPollIdRoute: PollPollIdRoute,
   QuizSessionIdRoute: QuizSessionIdRoute,
   SeatCheckinSessionIdRoute: SeatCheckinSessionIdRoute,

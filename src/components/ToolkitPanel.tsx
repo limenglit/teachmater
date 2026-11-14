@@ -34,6 +34,7 @@ import CodeVisualizerTool from './toolkit/CodeVisualizerTool';
 import ImageEditorTool from './toolkit/ImageEditorTool';
 import MemoryAidTool from './toolkit/MemoryAidTool';
 import CoderMateTool from './toolkit/CoderMateTool';
+import PhoneCastTool from './toolkit/PhoneCastTool';
 
 
 // Command card flash overlay
@@ -100,6 +101,7 @@ const TOOLS: ToolDef[] = [
   { id: 'breathing', zh: ['呼吸练习', '引导学生放松专注'], en: ['Breathing', 'Calm and focus'], icon: Wind, render: () => <BreathingExercise /> },
   { id: 'textMagnifier', zh: ['文字放大器', '大字投屏展示'], en: ['Text Magnifier', 'Show big text'], icon: Type, render: () => <TextMagnifier /> },
   { id: 'screenCapture', zh: ['截图 / 录屏', '截取或录制屏幕'], en: ['Screen Capture', 'Capture or record screen'], icon: MonitorPlay, render: () => <ScreenCaptureTool /> },
+  { id: 'phoneCast', zh: ['手机扫码投屏', '手机画面与照片显示到电脑'], en: ['Phone Cast', 'Show phone camera and photos'], icon: MonitorPlay, render: () => <PhoneCastTool /> },
   { id: 'taskChecklist', zh: ['课堂任务清单', '扫码打卡，进度实时追踪'], en: ['Task Checklist', 'Track student progress'], icon: ListChecks, render: () => <TaskChecklist /> },
   { id: 'codeVisualizer', zh: ['代码可视化', '代码执行过程演示'], en: ['Code Visualizer', 'Step through code'], icon: Braces, render: () => <CodeVisualizerTool /> },
   { id: 'imageEditor', zh: ['图片编辑器', '裁剪、擦除、图层编辑'], en: ['Image Editor', 'Crop, erase, layers'], icon: ImageIcon, render: () => <ImageEditorTool /> },
