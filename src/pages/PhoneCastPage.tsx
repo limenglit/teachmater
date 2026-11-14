@@ -74,13 +74,16 @@ export default function PhoneCastPage({ roomId }: { roomId: string }) {
       await castExchange(next, 'phone', 'join', { phoneId: phoneId.current });
       if (!alive.current) return;
       const channel = new CastConnection(next, 'phone', phoneId.current); connection.current = channel;
+      const pendingIce: RTCIceCandidateInit[] = [];
       channel.listen(async event => {
         const pc = peer.current;
         if (!pc || event.session !== session.current) return;
         if (event.type === 'answer' && event.sdp) {
           await pc.setRemoteDescription(event.sdp);
+          for (const ice of pendingIce.splice(0)) await pc.addIceCandidate(ice).catch(() => undefined);
         } else if (event.type === 'ice' && event.candidate) {
           if (pc.remoteDescription) await pc.addIceCandidate(event.candidate).catch(() => undefined);
+          else if (pendingIce.length < 30) pendingIce.push(event.candidate);
         }
       }, () => {}, e => { setError(e.message); if (/结束|无效/.test(e.message)) { stopMedia(); channel.stop(); setJoined(false); setStatus('电脑已结束投屏'); } });
       setJoined(true); setStatus('电脑已连接');
@@ -100,7 +103,8 @@ export default function PhoneCastPage({ roomId }: { roomId: string }) {
   const start = async (kind: 'camera' | 'screen') => {
     if (busyRef.current || !joined) return;
     busyRef.current = true; setBusy(true); setError(''); stopMedia(); setPhoto('');
-    await connection.current?.send({ type: 'stop' }).catch(() => undefined);
+    // Do not await network work before opening the screen picker: it needs the tap's user activation.
+    void connection.current?.send({ type: 'stop' }).catch(() => undefined);
     try {
       if (!navigator.mediaDevices) throw new Error('当前浏览器无法获取画面，请使用照片投屏或在系统浏览器打开。');
       const media = kind === 'screen'

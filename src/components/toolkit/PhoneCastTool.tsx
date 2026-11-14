@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Camera, Copy, Maximize, Minimize, Pause, Play, RefreshCw, RotateCw, Smartphone, Square, Download } from 'lucide-react';
+import { Copy, Maximize, Minimize, Pause, Play, RefreshCw, RotateCw, Smartphone, Square, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getShareOrigin } from '@/lib/share-origin';
 import { CAST_ICE, CastConnection, castExchange, type CastEvent, type CastRoom } from '@/lib/phone-cast';
@@ -80,7 +80,11 @@ export default function PhoneCastTool() {
           else pending.set(event.session, [...(pending.get(event.session) || []), event.candidate].slice(-30));
         }
       };
-      channel.listen(receive, connected => { if (connected) setStatus(s => s === '等待手机连接' ? '手机已连接 · 等待画面' : s); }, e => setError(e.message));
+      let wasConnected = false;
+      channel.listen(receive, connected => {
+        if (connected) { wasConnected = true; setStatus(s => ['等待手机连接', '手机连接已断开'].includes(s) ? '手机已连接 · 等待画面' : s); }
+        else if (wasConnected) setStatus('手机连接已断开');
+      }, e => { setError(e.message); if (/结束|无效/.test(e.message)) { channel.stop(); peer.current?.close(); setStatus('投屏通道已结束'); } });
     } catch (e) { setError(e instanceof Error ? e.message : '建立通道失败'); setStatus('通道未建立'); }
     finally { setBusy(false); }
   };
@@ -94,7 +98,8 @@ export default function PhoneCastTool() {
   useEffect(() => {
     if (!video.current) return;
     video.current.srcObject = stream;
-    if (stream && !paused) void video.current.play().catch(() => setError('请点击播放以显示画面。'));
+    if (paused) video.current.pause();
+    else if (stream) void video.current.play().catch(() => setError('请点击播放以显示画面。'));
   }, [stream, fullscreen, photo]);
   useEffect(() => {
     if (!fullscreen) return;
@@ -142,7 +147,7 @@ export default function PhoneCastTool() {
     {display}{controls}
     {url && <div className="flex flex-wrap items-center justify-center gap-5 border-t border-border pt-4">
       <div className="cast-qr"><QRCodeSVG value={url} size={160} marginSize={2} /></div>
-      <div className="space-y-3 text-center"><p className="font-medium">手机扫码投屏</p><Button variant="outline" onClick={async () => {
+      <div className="space-y-3 text-center"><p className="font-medium">手机扫码投屏</p><Button variant="outline" data-phone-link={url} onClick={async () => {
         try { await navigator.clipboard.writeText(url); setStatus('链接已复制'); } catch { setError('无法自动复制，请用手机扫描二维码。'); }
       }}><Copy />复制手机链接</Button></div>
     </div>}
