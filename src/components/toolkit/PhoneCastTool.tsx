@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Maximize, Minimize, Pause, Play, RefreshCw, RotateCw, Smartphone, Square, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getShareOrigin } from '@/lib/share-origin';
-import { CAST_ICE, CastConnection, castExchange, type CastEvent, type CastRoom } from '@/lib/phone-cast';
+import { CAST_ICE, CastConnection, castExchange, tuneCastReceiver, type CastEvent, type CastRoom } from '@/lib/phone-cast';
 
 export default function PhoneCastTool() {
   const [room, setRoom] = useState<CastRoom | null>(null);
@@ -62,7 +62,7 @@ export default function PhoneCastTool() {
           session.current = event.session;
           const pc = new RTCPeerConnection(CAST_ICE); peer.current = pc;
           setPhoto(''); latestPicture.current = ''; setStatus('正在连接画面…');
-          pc.ontrack = (e) => { setStream(e.streams[0] || new MediaStream([e.track])); setStatus('投屏中'); };
+          pc.ontrack = (e) => { tuneCastReceiver(e.receiver); setStream(e.streams[0] || new MediaStream([e.track])); setStatus('投屏中'); };
           pc.onicecandidate = (e) => { if (e.candidate) void channel.send({ type: 'ice', session: event.session, candidate: e.candidate.toJSON() }).catch(() => setError('连接不稳，正在等待手机快照。')); };
           pc.onconnectionstatechange = () => {
             if (peer.current !== pc) return;
