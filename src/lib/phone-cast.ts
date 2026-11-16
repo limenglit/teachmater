@@ -132,5 +132,5 @@ export async function tuneCastSender(pc: RTCPeerConnection, kind: CastKind) {
 /** Keep the receiver jitter buffer short so the big screen stays close to live. */
 export function tuneCastReceiver(receiver: RTCRtpReceiver) {
   const r = receiver as RTCRtpReceiver & { jitterBufferTarget?: number | null; playoutDelayHint?: number };
-  try { if ('jitterBufferTarget' in r) r.jitterBufferTarget = 80; else r.playoutDelayHint = 0.08; } catch { /* ignore */ }
+  try { r.jitterBufferTarget = 80; r.playoutDelayHint = 0.08; } catch { /* ignore */ }
 }
