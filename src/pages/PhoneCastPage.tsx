@@ -108,8 +108,8 @@ export default function PhoneCastPage({ roomId }: { roomId: string }) {
     try {
       if (!navigator.mediaDevices) throw new Error('当前浏览器无法获取画面，请使用照片投屏或在系统浏览器打开。');
       const media = kind === 'screen'
-        ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
-        : await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 24, max: 30 } }, audio: false });
+        ? await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 20, max: 24 } }, audio: false })
+        : await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280, max: 1920 }, height: { ideal: 720, max: 1080 }, frameRate: { ideal: 30, max: 30 } }, audio: false });
       if (!alive.current) { media.getTracks().forEach(t => t.stop()); return; }
       stream.current = media; setMode(kind); setStatus('正在传送画面…');
       if (video.current) { video.current.srcObject = media; await video.current.play(); }
@@ -119,10 +119,11 @@ export default function PhoneCastPage({ roomId }: { roomId: string }) {
       if (typeof RTCPeerConnection === 'undefined') { fallback(id); return; }
       const pc = new RTCPeerConnection(CAST_ICE); peer.current = pc;
       media.getTracks().forEach(t => pc.addTrack(t, media));
+      preferCastCodecs(pc); void tuneCastSender(pc, kind);
       pc.onicecandidate = e => { if (e.candidate) void connection.current?.send({ type: 'ice', session: id, candidate: e.candidate.toJSON() }).catch(() => fallback(id)); };
       pc.onconnectionstatechange = () => {
         if (session.current !== id) return;
-        if (pc.connectionState === 'connected' && !fallbackRunning.current) { clearTimeout(fallbackTimer.current); setStatus('投屏中'); }
+        if (pc.connectionState === 'connected' && !fallbackRunning.current) { clearTimeout(fallbackTimer.current); setStatus('投屏中'); void tuneCastSender(pc, kind); }
         if (['failed', 'disconnected'].includes(pc.connectionState)) fallback(id);
       };
       await pc.setLocalDescription(await pc.createOffer());

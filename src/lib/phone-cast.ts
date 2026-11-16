@@ -92,3 +92,45 @@ export function imageData(source: CanvasImageSource, width: number, height: numb
   }
   throw new Error('图片过于复杂，请缩小后重试。');
 }
+export type CastKind = 'camera' | 'screen';
+/** Encoder targets: camera favours smooth motion, screen favours sharp text at lower fps. */
+export const CAST_ENCODING: Record<CastKind, { maxBitrate: number; maxFramerate: number; hint: string; degradation: RTCDegradationPreference }> = {
+  camera: { maxBitrate: 2_500_000, maxFramerate: 30, hint: 'motion', degradation: 'maintain-framerate' },
+  screen: { maxBitrate: 3_000_000, maxFramerate: 20, hint: 'detail', degradation: 'maintain-resolution' },
+};
+
+/** Put hardware-friendly codecs (H.264, then VP8) first so phones and PCs encode/decode with less CPU. */
+export function preferCastCodecs(pc: RTCPeerConnection) {
+  const caps = typeof RTCRtpSender !== 'undefined' && RTCRtpSender.getCapabilities?.('video');
+  if (!caps) return;
+  const rank = (m: string) => (/h264/i.test(m) ? 0 : /vp8/i.test(m) ? 1 : 2);
+  const codecs = [...caps.codecs].sort((a, b) => rank(a.mimeType) - rank(b.mimeType));
+  for (const t of pc.getTransceivers()) {
+    if (t.sender.track?.kind !== 'video') continue;
+    try { t.setCodecPreferences?.(codecs); } catch { /* unsupported */ }
+  }
+}
+
+/** Apply bitrate/framerate caps to video senders; safe to call repeatedly (e.g. once connected). */
+export async function tuneCastSender(pc: RTCPeerConnection, kind: CastKind) {
+  const cfg = CAST_ENCODING[kind];
+  for (const sender of pc.getSenders()) {
+    const track = sender.track;
+    if (!track || track.kind !== 'video') continue;
+    try { (track as MediaStreamTrack & { contentHint: string }).contentHint = cfg.hint; } catch { /* ignore */ }
+    try {
+      const p = sender.getParameters();
+      if (!p.encodings?.length) p.encodings = [{}];
+      p.encodings[0].maxBitrate = cfg.maxBitrate;
+      p.encodings[0].maxFramerate = cfg.maxFramerate;
+      (p as RTCRtpSendParameters & { degradationPreference?: string }).degradationPreference = cfg.degradation;
+      await sender.setParameters(p);
+    } catch { /* older WebKit: keep defaults */ }
+  }
+}
+
+/** Keep the receiver jitter buffer short so the big screen stays close to live. */
+export function tuneCastReceiver(receiver: RTCRtpReceiver) {
+  const r = receiver as RTCRtpReceiver & { jitterBufferTarget?: number | null; playoutDelayHint?: number };
+  try { if ('jitterBufferTarget' in r) r.jitterBufferTarget = 80; else r.playoutDelayHint = 0.08; } catch { /* ignore */ }
+}
