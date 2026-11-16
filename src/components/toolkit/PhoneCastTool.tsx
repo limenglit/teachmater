@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Maximize, Minimize, Pause, Play, RefreshCw, RotateCw, Smartphone, Square, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getShareOrigin } from '@/lib/share-origin';
-import { CAST_ICE, CastConnection, castExchange, type CastEvent, type CastRoom } from '@/lib/phone-cast';
+import { CAST_ICE, CastConnection, castExchange, tuneCastReceiver, type CastEvent, type CastRoom } from '@/lib/phone-cast';
 
 export default function PhoneCastTool() {
   const [room, setRoom] = useState<CastRoom | null>(null);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, ImagePlus, MonitorUp, RefreshCw, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { CAST_ICE, CastConnection, castExchange, imageData, photoData, validCastId, type CastRoom } from '@/lib/phone-cast';
+import { CAST_ICE, CastConnection, castExchange, imageData, photoData, preferCastCodecs, tuneCastSender, validCastId, type CastRoom } from '@/lib/phone-cast';
 
 export default function PhoneCastPage({ roomId }: { roomId: string }) {
   const [status, setStatus] = useState('正在连接电脑…');
